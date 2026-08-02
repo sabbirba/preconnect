@@ -324,6 +324,7 @@ jobs:
             VERSION_STR=${VERSION_STR%.ipa}
             VERSION_NAME=${VERSION_STR%+*}
             VERSION_CODE=${VERSION_STR#*+}
+            VERSION_CODE=${VERSION_CODE%%-*}
             echo "ios_version_name=$VERSION_NAME" >> "$GITHUB_OUTPUT"
             echo "ios_version_code=$VERSION_CODE" >> "$GITHUB_OUTPUT"
           else
@@ -337,6 +338,7 @@ jobs:
             VERSION_STR=${VERSION_STR%.pkg}
             VERSION_NAME=${VERSION_STR%+*}
             VERSION_CODE=${VERSION_STR#*+}
+            VERSION_CODE=${VERSION_CODE%%-*}
             echo "macos_version_name=$VERSION_NAME" >> "$GITHUB_OUTPUT"
             echo "macos_version_code=$VERSION_CODE" >> "$GITHUB_OUTPUT"
           else

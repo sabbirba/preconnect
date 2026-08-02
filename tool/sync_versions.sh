@@ -5,7 +5,11 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 read_version() {
   local version_line
-  version_line="$(grep '^version:' "${ROOT_DIR}/pubspec.yaml" | head -n1 | awk '{print $2}')"
+  if git rev-parse --is-inside-work-tree >/dev/null 2>&1 && git show HEAD:pubspec.yaml >/dev/null 2>&1; then
+    version_line="$(git show HEAD:pubspec.yaml | grep '^version:' | head -n1 | awk '{print $2}')"
+  else
+    version_line="$(grep '^version:' "${ROOT_DIR}/pubspec.yaml" | head -n1 | awk '{print $2}')"
+  fi
   local version_name="${version_line%%+*}"
   local version_code="${version_line#*+}"
 
