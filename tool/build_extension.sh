@@ -2,7 +2,18 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-OUT_DIR="${1:-${ROOT_DIR}/build/chrome-extension}"
+
+NO_PUB=0
+OUT_DIR=""
+for arg in "$@"; do
+  case "$arg" in
+    --no-pub) NO_PUB=1 ;;
+    --out-dir=*) OUT_DIR="${arg#--out-dir=}" ;;
+    *) echo "Unknown argument: $arg" >&2; exit 1 ;;
+  esac
+done
+OUT_DIR="${OUT_DIR:-${ROOT_DIR}/build/chrome-extension}"
+
 ZIP_OUT="${ZIP_OUT:-${ROOT_DIR}/build/chrome-extension.zip}"
 FIREFOX_DIR="${ROOT_DIR}/build/firefox-extension"
 FIREFOX_ZIP="${ROOT_DIR}/build/firefox-extension.zip"
@@ -58,6 +69,11 @@ rm -rf "${OUT_DIR}" "${FIREFOX_DIR}" "${COMMON_DIR}"
 mkdir -p "${COMMON_DIR}"
 rm -rf "${ROOT_DIR}/.dart_tool/flutter_build"
 
+NO_PUB_FLAG=""
+if [[ "${NO_PUB}" == "1" ]]; then
+  NO_PUB_FLAG="--no-pub"
+fi
+
 flutter build web \
   --release \
   --tree-shake-icons \
@@ -72,7 +88,8 @@ flutter build web \
   --dart-define="APP_VERSION=${APP_VERSION}" \
   --dart-define="APP_BUILD_NUMBER=${APP_BUILD_NUMBER}" \
   --target="${ROOT_DIR}/web/extension_app.dart" \
-  --output="${COMMON_DIR}"
+  --output="${COMMON_DIR}" \
+  ${NO_PUB_FLAG}
 
 for f in \
   manifest.json \
