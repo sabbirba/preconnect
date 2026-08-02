@@ -73,6 +73,7 @@ platform :ios do
       begin
         latest_build = latest_testflight_build_number(
           version: version_name,
+          app_identifier: "com.sabbirba.preconnect",
           api_key: api_key
         )
         if latest_build && latest_build.to_i >= version_code.to_i
