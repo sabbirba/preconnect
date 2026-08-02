@@ -915,6 +915,8 @@ jobs:
                 "DEVELOPMENT_TEAM = ${DEVELOPMENT_TEAM}" \
                 "PROVISIONING_PROFILE = ${MACOS_PROFILE_UUID}" \
                 "PROVISIONING_PROFILE_SPECIFIER = ${MACOS_PROFILE_NAME:-${MACOS_PROFILE_UUID}}" \
+                "PROVISIONING_PROFILE_SPECIFIER[sdk=macosx*] = ${MACOS_PROFILE_NAME:-${MACOS_PROFILE_UUID}}" \
+                "PROVISIONING_PROFILE[sdk=macosx*] = ${MACOS_PROFILE_UUID}" \
                 >> macos/Runner/Configs/Release.xcconfig
 
               if xcodebuild archive \
@@ -922,6 +924,11 @@ jobs:
                 -scheme Runner \
                 -configuration Release \
                 -archivePath "$RUNNER_TEMP/PreConnect_Store.xcarchive" \
+                CODE_SIGN_STYLE=Manual \
+                CODE_SIGN_IDENTITY="Apple Distribution" \
+                DEVELOPMENT_TEAM="$DEVELOPMENT_TEAM" \
+                PROVISIONING_PROFILE_SPECIFIER="${MACOS_PROFILE_NAME:-${MACOS_PROFILE_UUID}}" \
+                "PROVISIONING_PROFILE_SPECIFIER[sdk=macosx*]"="${MACOS_PROFILE_NAME:-${MACOS_PROFILE_UUID}}" \
                 CLANG_ALLOW_NON_MODULAR_INCLUDES_IN_FRAMEWORK_MODULES=YES; then
                 cp "$RUNNER_TEMP/Release.xcconfig.bak" macos/Runner/Configs/Release.xcconfig
 
