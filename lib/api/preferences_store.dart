@@ -15,6 +15,10 @@ class AppPreferencesStore {
     return AppStorage.instance.getInt(key);
   }
 
+  Future<void> setInt(String key, int value) async {
+    await AppStorage.instance.setInt(key, value);
+  }
+
   Future<void> setStringMap(Map<String, String> values) async {
     if (values.isEmpty) return;
     await Future.wait(

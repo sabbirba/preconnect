@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:preconnect/model/advising_phase.dart';
 import 'package:preconnect/tools/runtime_stub.dart'
     if (dart.library.js_interop) 'package:preconnect/tools/runtime_web.dart';
 import 'package:preconnect/tools/origin_stub.dart'
@@ -109,6 +110,18 @@ class ApiConfig {
 
   static String sessionsPath(String portfolioId) =>
       '/adv/v1/student-courses/sessions?studentPortfolioId=$portfolioId';
+
+  static String relatedLabSectionsPath(
+    String portfolioId, {
+    String phase = 'PHASE_ONE',
+  }) =>
+      '/adv/v1/advising/sections/student/$portfolioId/related-lab-sections'
+      '?phase=$phase';
+
+  static String studentCoursesForPhasePath(
+    String portfolioId,
+    AdvisingPhase phase,
+  ) => '/adv/v1/student-courses/$portfolioId/${phase.pathSegment}';
 
   static String attendancePath(String portfolioId) =>
       '/exc/v1/student-courses/$portfolioId/current-semester-attendance';

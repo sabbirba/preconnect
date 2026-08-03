@@ -332,7 +332,9 @@ class _ClassScheduleState extends State<ClassSchedulePage>
       return;
     }
     if (!mounted) return;
-    final currentSessionId = await resolveCurrentSessionSemesterId();
+    final currentSessionId = await resolveCurrentSessionSemesterId(
+      forceRefresh: _selectedSemesterSessionId == null,
+    );
     final targetSemesterId = _selectedSemesterSessionId ?? currentSessionId;
     setState(() {
       _highlightScroll.resetScrollState();

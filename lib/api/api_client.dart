@@ -38,6 +38,7 @@ class ApiClient {
     _cachedAccessTokenAt = null;
     _cachedHasConnection = null;
     _cachedHasConnectionAt = null;
+    _cachedPortfolioId = null;
   }
 
   @visibleForTesting
@@ -170,6 +171,7 @@ class ApiClient {
     Map<String, String> additionalHeaders = const <String, String>{},
     Set<int> acceptedStatusCodes = const <int>{200},
     Duration cacheDuration = _defaultGetCacheTtl,
+    bool bypassCache = false,
   }) async {
     final token = await getAccessToken();
     if (token == null || token.isEmpty) {
@@ -186,6 +188,7 @@ class ApiClient {
       url,
       headers: headers,
       cacheDuration: cacheDuration,
+      bypassCache: bypassCache,
     );
     if (acceptedStatusCodes.contains(response.statusCode)) {
       return response;
@@ -212,6 +215,7 @@ class ApiClient {
         url,
         headers: retryHeaders,
         cacheDuration: cacheDuration,
+        bypassCache: bypassCache,
       );
       if (acceptedStatusCodes.contains(retryResponse.statusCode)) {
         return retryResponse;
@@ -406,6 +410,7 @@ class ApiClient {
     required Map<String, String> headers,
     String body = '',
     Duration cacheDuration = Duration.zero,
+    bool bypassCache = false,
   }) async {
     final normalizedMethod = method.trim().toUpperCase();
     if (normalizedMethod != 'GET') {
@@ -443,9 +448,11 @@ class ApiClient {
       body: body,
     );
     _purgeExpiredResponseCache();
-    final cachedResponse = _cachedResponses[inFlightKey];
-    if (cachedResponse != null && !cachedResponse.isExpired) {
-      return cachedResponse.response;
+    if (!bypassCache) {
+      final cachedResponse = _cachedResponses[inFlightKey];
+      if (cachedResponse != null && !cachedResponse.isExpired) {
+        return cachedResponse.response;
+      }
     }
     final inFlight = _inFlightRequests[inFlightKey];
     if (inFlight != null) return inFlight;

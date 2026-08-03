@@ -911,8 +911,6 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
                     studentIdController: _studentIdController,
                   ),
                 ],
-                if (_studentName.trim().isEmpty && _studentId.trim().isEmpty)
-                  const _PrinterLoginPrompt(),
               ],
             ),
           ),
@@ -1299,58 +1297,6 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
           ),
         ),
       ],
-    );
-  }
-}
-
-class _PrinterLoginPrompt extends StatelessWidget {
-  const _PrinterLoginPrompt();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: BracuPalette.card(context),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: BracuPalette.textSecondary(context).withValues(alpha: 0.12),
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const Icon(
-                Icons.account_circle_outlined,
-                color: BracuPalette.primary,
-                size: 24,
-              ),
-              const Gap(10),
-              Expanded(
-                child: Text(
-                  'Student Profile Required',
-                  style: TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w700,
-                    color: BracuPalette.textPrimary(context),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const Gap(8),
-          Text(
-            'Sign in with your student account to print documents on campus printers.',
-            style: TextStyle(
-              fontSize: 13,
-              color: BracuPalette.textSecondary(context),
-            ),
-          ),
-        ],
-      ),
     );
   }
 }

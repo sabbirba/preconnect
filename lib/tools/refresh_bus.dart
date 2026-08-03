@@ -30,7 +30,10 @@ mixin RefreshBusState<T extends StatefulWidget> on State<T> {
 
   void bindRefreshBus(void Function() handler) {
     if (_subscribers.containsKey(handler)) return;
-    _subscribers[handler] = RefreshBus.instance.stream.listen((_) => handler());
+    _subscribers[handler] = RefreshBus.instance.stream.listen((reason) {
+      RefreshBus.instance._reason = reason;
+      handler();
+    });
   }
 
   void unbindRefreshBus(void Function() handler) {

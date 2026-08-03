@@ -65,6 +65,7 @@ class Section {
   final String? prerequisiteCourses;
   final bool? isReserve;
   final String courseType;
+  final String? sectionType;
   final String? prerequisiteIncompleteGrade;
   final String? prerequisiteResultPublished;
 
@@ -89,6 +90,7 @@ class Section {
     this.prerequisiteCourses,
     this.isReserve,
     required this.courseType,
+    this.sectionType,
     this.prerequisiteIncompleteGrade,
     this.prerequisiteResultPublished,
   });
@@ -117,6 +119,7 @@ class Section {
       prerequisiteCourses: json['prerequisiteCourses']?.toString(),
       isReserve: json['isReserve'],
       courseType: _stringValue(json, 'courseType'),
+      sectionType: json['sectionType']?.toString(),
       prerequisiteIncompleteGrade: json['prerequisiteIncompleteGrade']
           ?.toString(),
       prerequisiteResultPublished: json['prerequisiteResultPublished']
@@ -145,6 +148,7 @@ class Section {
       'prerequisiteCourses': prerequisiteCourses,
       'isReserve': isReserve,
       'courseType': courseType,
+      'sectionType': sectionType,
       'prerequisiteIncompleteGrade': prerequisiteIncompleteGrade,
       'prerequisiteResultPublished': prerequisiteResultPublished,
     };

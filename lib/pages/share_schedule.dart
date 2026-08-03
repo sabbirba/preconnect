@@ -73,7 +73,9 @@ class _ShareSchedulePageState extends State<ShareSchedulePage>
     if (reason == 'share_schedule') {
       return;
     }
-    if (reason == 'auth' || reason == 'friend_schedule') {
+    if (reason == 'auth' ||
+        reason == 'friend_schedule' ||
+        reason == 'cache_cleared') {
       unawaited(_refreshIfOnline());
     }
   }

@@ -119,7 +119,9 @@ class _NotificationsPageState extends State<NotificationsPage>
 
   void _onRefreshSignal() {
     if (!mounted) return;
-    if (isRefreshingFrom('push_notification') || isRefreshingFrom('refresh')) {
+    if (isRefreshingFrom('push_notification') ||
+        isRefreshingFrom('refresh') ||
+        isRefreshingFrom('cache_cleared')) {
       unawaited(_refresh());
     }
   }

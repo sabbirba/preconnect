@@ -29,7 +29,6 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
 
   Future<CampusMapData?>? _campusMapFuture;
   Future<String?>? _transportScheduleUrlFuture;
-  bool _quickAccessExpanded = false;
 
   static const Duration _silentLoginTimeout = Duration(seconds: 45);
   static const String _homeDashboardSnapshotCacheKey =
@@ -38,11 +37,6 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
   static Future<_HomeData>? _preloadFuture;
   static DateTime? _lastBackgroundRefreshAt;
   static const Duration _minBackgroundRefreshInterval = Duration(minutes: 3);
-  void _toggleQuickAccess() {
-    setState(() {
-      _quickAccessExpanded = !_quickAccessExpanded;
-    });
-  }
 
   @override
   void initState() {
@@ -253,8 +247,9 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
       final cardVisibility = await HomeCardPreferences.load().catchError(
         (_) => HomeCardPreferences.defaults,
       );
-      final currentSessionSemesterId = await resolveCurrentSessionSemesterId()
-          .catchError((_) => null);
+      final currentSessionSemesterId = await resolveCurrentSessionSemesterId(
+        forceRefresh: forceRefresh,
+      ).catchError((_) => null);
 
       final needsSchedule =
           cardVisibility.showTodaySchedule ||
@@ -680,7 +675,7 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
           _CountdownCardData(
             title: fin.difference(now).inDays <= 3
                 ? '${s.courseCode} Final'
-                : 'Final',
+                : 'Final Exam',
             targetDateTime: fin,
             tab: HomeTab.examSchedule,
             subtitle: formatDateTimeLabel(fin),

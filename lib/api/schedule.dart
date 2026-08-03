@@ -8,6 +8,7 @@ import 'package:preconnect/api/repository_cache.dart';
 import 'package:preconnect/tools/ramadan.dart';
 import 'package:preconnect/tools/snapshot_store.dart';
 import 'package:preconnect/model/section_info.dart' as section;
+import 'package:preconnect/model/advising_phase.dart';
 import 'package:preconnect/tools/cache_durations.dart';
 import 'package:preconnect/tools/storage_keys.dart';
 
@@ -49,55 +50,75 @@ class ScheduleService {
   final Map<String, Future<String?>> _scheduleFetchInFlight =
       <String, Future<String?>>{};
 
+  Future<String?> _resolvePortfolioId({bool forceRefresh = false}) {
+    return resolvePortfolioId(
+      prefs: AppStorage.instance,
+      refreshProfile: () => ProfileService().fetchProfile(fromGet: true),
+      forceRefresh: forceRefresh,
+    );
+  }
+
   static const String _scheduleKey = 'student_schedule_v1';
   String _cacheKeyForSemester(int semesterSessionId) =>
       '${_scheduleKey}_$semesterSessionId';
+
+  static const String _semesterSessionsCacheKey =
+      'student_semester_sessions_v1';
+  static const String _semesterSessionsFetchedAtKey =
+      'student_semester_sessions_v1_fetched_at';
 
   Future<List<SemesterSessionItem>> fetchSemesterSessions({
     bool forceRefresh = false,
   }) async {
     final repo = RepositoryCache.instance;
-    const cacheKey = 'student_semester_sessions_v1';
     if (!forceRefresh) {
-      final cachedStr = await repo.readString(cacheKey);
-      if (cachedStr != null && cachedStr.isNotEmpty) {
-        try {
-          final decoded = jsonDecode(cachedStr);
-          if (decoded is List) {
-            final items = decoded
-                .whereType<Map>()
-                .map(
-                  (e) =>
-                      SemesterSessionItem.fromJson(e.cast<String, dynamic>()),
-                )
-                .where((e) => e.semesterSessionId > 0)
-                .toList();
-            if (items.isNotEmpty) {
-              items.sort(
-                (a, b) => b.semesterSessionId.compareTo(a.semesterSessionId),
-              );
-              return items;
+      final fetchedAtMs = await repo.readInt(_semesterSessionsFetchedAtKey);
+      final isFresh =
+          fetchedAtMs != null &&
+          DateTime.now().millisecondsSinceEpoch - fetchedAtMs <
+              CacheDurations.semesterSessions.inMilliseconds;
+      if (isFresh) {
+        final cachedStr = await repo.readString(_semesterSessionsCacheKey);
+        if (cachedStr != null && cachedStr.isNotEmpty) {
+          try {
+            final decoded = jsonDecode(cachedStr);
+            if (decoded is List) {
+              final items = decoded
+                  .whereType<Map>()
+                  .map(
+                    (e) =>
+                        SemesterSessionItem.fromJson(e.cast<String, dynamic>()),
+                  )
+                  .where((e) => e.semesterSessionId > 0)
+                  .toList();
+              if (items.isNotEmpty) {
+                items.sort(
+                  (a, b) => b.semesterSessionId.compareTo(a.semesterSessionId),
+                );
+                return items;
+              }
             }
-          }
-        } catch (_) {}
+          } catch (_) {}
+        }
       }
     }
-    final asyncPrefs = AppStorage.instance;
-    final id = await resolvePortfolioId(
-      prefs: asyncPrefs,
-      refreshProfile: () => ProfileService().fetchProfile(fromGet: true),
-    );
+    final id = await _resolvePortfolioId(forceRefresh: forceRefresh);
     if (id == null || id.isEmpty) return const <SemesterSessionItem>[];
     final url = '${ApiConfig.connectApiBase}${ApiConfig.sessionsPath(id)}';
     try {
       final response = await ApiClient().authenticatedGet(
         url,
         cacheDuration: CacheDurations.profileOverview,
+        bypassCache: forceRefresh,
       );
       if (response.statusCode == 200) {
         final decoded = jsonDecode(response.body);
         if (decoded is List) {
-          await repo.writeJson(cacheKey, decoded);
+          await repo.writeJson(_semesterSessionsCacheKey, decoded);
+          await repo.writeInt(
+            _semesterSessionsFetchedAtKey,
+            DateTime.now().millisecondsSinceEpoch,
+          );
           final items = decoded
               .whereType<Map>()
               .map(
@@ -113,6 +134,30 @@ class ScheduleService {
       }
     } catch (_) {}
     return const <SemesterSessionItem>[];
+  }
+
+  Future<List<section.Section>> fetchRelatedLabSections(
+    String phaseQueryValue,
+  ) async {
+    final id = await _resolvePortfolioId();
+    if (id == null || id.isEmpty) return const <section.Section>[];
+    final url =
+        '${ApiConfig.connectApiBase}'
+        '${ApiConfig.relatedLabSectionsPath(id, phase: phaseQueryValue)}';
+    final response = await ApiClient().authenticatedGet(url);
+    return parseStudentSections(response.body);
+  }
+
+  Future<List<section.Section>> fetchStudentCoursesForPhase(
+    AdvisingPhase phase,
+  ) async {
+    final id = await _resolvePortfolioId();
+    if (id == null || id.isEmpty) return const <section.Section>[];
+    final url =
+        '${ApiConfig.connectApiBase}'
+        '${ApiConfig.studentCoursesForPhasePath(id, phase)}';
+    final response = await ApiClient().authenticatedGet(url);
+    return parseStudentSections(response.body);
   }
 
   Future<SemesterSessionItem?> resolveSemesterSessionItem(
@@ -189,10 +234,7 @@ class ScheduleService {
     final cacheKey = _cacheKeyForSemester(semesterSessionId);
     final repo = RepositoryCache.instance;
     final asyncPrefs = AppStorage.instance;
-    final id = await resolvePortfolioId(
-      prefs: asyncPrefs,
-      refreshProfile: () => ProfileService().fetchProfile(fromGet: true),
-    );
+    final id = await _resolvePortfolioId(forceRefresh: fromGet);
     if (id == null || id.isEmpty) {
       return getStudentScheduleForSemester(
         semesterSessionId: semesterSessionId,
@@ -208,6 +250,7 @@ class ScheduleService {
       final response = await ApiClient().authenticatedGet(
         url,
         cacheDuration: CacheDurations.short,
+        bypassCache: fromGet,
       );
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
