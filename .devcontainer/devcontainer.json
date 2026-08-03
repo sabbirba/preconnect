@@ -1,5 +1,5 @@
 {
-  "name": "PreConnect Flutter DevContainer",
+  "name": "PreConnect",
   "image": "ghcr.io/cirrusci/flutter:stable",
   "customizations": {
     "vscode": {
