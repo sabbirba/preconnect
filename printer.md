@@ -1,4 +1,4 @@
-# Campus Print Relay Setup Guide
+# Campus Printer Relay Setup Guide
 
 Print to campus printers (`172.16.0.111`) from the PreConnect app after a 1-click setup on any lab PC.
 
