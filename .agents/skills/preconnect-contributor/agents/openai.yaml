@@ -1,4 +1,0 @@
-interface:
-  display_name: "PreConnect Contributor"
-  short_description: "Implement safe, focused PreConnect contributions"
-  default_prompt: "Use $preconnect-contributor to investigate and implement this PreConnect contribution with the required validation."

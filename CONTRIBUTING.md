@@ -52,7 +52,7 @@ Dart 3.9 and newer include the official Dart and Flutter MCP server. This reposi
 dart mcp-server --version
 ```
 
-Trust the repository and approve the `dart` MCP server when the client asks, then restart the agent or editor. Repository conventions and the complete build matrix are in [AGENTS.md](AGENTS.md). Claude Code imports the same guide through [CLAUDE.md](CLAUDE.md). The shared contribution workflow is in `.agents/skills/preconnect-contributor/SKILL.md`.
+Trust the repository and approve the `dart` MCP server when the client asks, then restart the agent or editor. Repository conventions and the complete build matrix are in [AGENTS.md](AGENTS.md). Claude Code imports the same guide through [CLAUDE.md](CLAUDE.md). The shared contribution workflow is in `.agents/skills/contributor/SKILL.md`.
 
 ## Environment File
 

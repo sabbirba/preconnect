@@ -1,0 +1,4 @@
+interface:
+  display_name: "Contributor"
+  short_description: "Investigate, implement, and validate PreConnect contributions across all platforms"
+  default_prompt: "Use $contributor to investigate, implement, and validate contributions across schedules, profile, extension, wifi printer, bus tracking, and platform features."

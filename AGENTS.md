@@ -138,7 +138,7 @@ Run the affected platform build after changing native configuration, dependencie
 
 ## Agent Workflow
 
-Use the repository skill at `.agents/skills/preconnect-contributor/SKILL.md` for feature ideas, bug fixes, issue triage, reviews, documentation, platform work, and releases. Agents that do not discover repository skills automatically must read that file before performing those workflows.
+Use the repository skill at `.agents/skills/contributor/SKILL.md` for feature ideas, bug fixes, issue triage, reviews, documentation, platform work, and releases. Agents that do not discover repository skills automatically must read that file before performing those workflows.
 
 ## MCP
 

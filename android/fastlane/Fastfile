@@ -9,11 +9,15 @@ platform :android do
     version_code = ENV["VERSION_CODE"] ? ENV["VERSION_CODE"].to_i : nil
 
     begin
-      track_codes = google_play_track_version_codes(
-        track: "internal"
-      )
-      if version_code && track_codes && track_codes.include?(version_code)
-        UI.important("Version code #{version_code} already exists on Play Store internal track. Skipping upload.")
+      existing_codes = []
+      ["internal", "alpha", "beta", "production"].each do |t|
+        codes = google_play_track_version_codes(track: t) rescue nil
+        existing_codes.concat(codes.map(&:to_i)) if codes.is_a?(Array)
+      end
+      existing_codes.uniq!
+
+      if version_code && existing_codes.include?(version_code)
+        UI.important("Version code #{version_code} already exists on Play Store. Skipping upload.")
         next
       end
     rescue => e
@@ -51,10 +55,16 @@ platform :android do
 
   desc "Promote internal track release to production"
   lane :promote_internal_to_production do
+    version_code = ENV["VERSION_CODE"] && !ENV["VERSION_CODE"].empty? ? ENV["VERSION_CODE"].to_i : nil
+
     begin
-      internal_codes = google_play_track_version_codes(track: "internal")
-      production_codes = google_play_track_version_codes(track: "production")
-      if internal_codes && production_codes && (internal_codes & production_codes).any?
+      internal_codes = (google_play_track_version_codes(track: "internal") || []).map(&:to_i)
+      production_codes = (google_play_track_version_codes(track: "production") || []).map(&:to_i)
+
+      if version_code && production_codes.include?(version_code)
+        UI.important("Version code #{version_code} is already in production. Skipping promotion.")
+        next
+      elsif version_code.nil? && internal_codes.any? && (internal_codes & production_codes).length == internal_codes.length
         UI.important("Internal track version codes #{(internal_codes & production_codes).join(", ")} are already in production. Skipping promotion.")
         next
       end
@@ -63,7 +73,7 @@ platform :android do
     end
 
     begin
-      supply(
+      supply_opts = {
         track: "internal",
         track_promote_to: "production",
         track_promote_release_status: "completed",
@@ -73,7 +83,9 @@ platform :android do
         skip_upload_changelogs: true,
         skip_upload_images: true,
         skip_upload_screenshots: true
-      )
+      }
+      supply_opts[:version_code] = version_code if version_code
+      supply(supply_opts)
     rescue => e
       msg = e.message.to_s.downcase
       if msg.include?("already been used") ||

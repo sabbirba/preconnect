@@ -22,6 +22,7 @@ android/key.properties
 *.provisionprofile
 *.base64
 service-account.json
+sign
 
 # Local signing and design exports
 test/IconKitchen-Output/

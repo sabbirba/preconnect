@@ -27,6 +27,13 @@ jobs:
         with:
           fetch-depth: 1
 
+      - name: Read Version
+        id: version
+        shell: bash
+        run: |
+          mapfile -t VERSION_PARTS < <(./tool/sync_versions.sh read)
+          echo "version_code=${VERSION_PARTS[1]}" >> "$GITHUB_OUTPUT"
+
       - name: Check Credentials
         id: play_auth
         shell: bash
@@ -55,6 +62,7 @@ jobs:
           SUPPLY_JSON_KEY_DATA: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
           FASTLANE_OPT_OUT_USAGE: "1"
           BUNDLE_GEMFILE: ${{ github.workspace }}/Gemfile
+          VERSION_CODE: ${{ steps.version.outputs.version_code }}
         run: |
           cd android && bundle exec fastlane promote_internal_to_production
 
