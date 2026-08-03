@@ -188,14 +188,38 @@ class ProfileService {
             StorageKeys.portfolios,
             jsonEncode(data),
           );
-          final activeProfile = data.firstWhere(
-            (p) =>
-                p is Map &&
-                (p['hasCompleted'] == false || p['isCurrent'] == true),
-            orElse: () =>
-                data.lastWhere((p) => p is Map, orElse: () => data[0]),
-          );
-          final profile = activeProfile is Map ? activeProfile : data[0];
+          int parseSessionId(Map p) {
+            final val =
+                p['currentSessionSemesterId'] ??
+                p['enrolledSessionSemesterId'] ??
+                p['id'];
+            if (val is num) return val.toInt();
+            return int.tryParse(val?.toString() ?? '') ?? 0;
+          }
+
+          final portfolios = data.whereType<Map>().toList();
+          if (portfolios.isNotEmpty) {
+            portfolios.sort((a, b) {
+              final isCurrA =
+                  a['isCurrent'] == true ||
+                  a['isCurrent'] == 'true' ||
+                  a['isCurrent'] == 1;
+              final isCurrB =
+                  b['isCurrent'] == true ||
+                  b['isCurrent'] == 'true' ||
+                  b['isCurrent'] == 1;
+              if (isCurrA != isCurrB) return isCurrB ? 1 : -1;
+
+              final compA = a['hasCompleted'] == true ? 1 : 0;
+              final compB = b['hasCompleted'] == true ? 1 : 0;
+              if (compA != compB) return compA - compB;
+
+              return parseSessionId(b).compareTo(parseSessionId(a));
+            });
+          }
+          final profile = portfolios.isNotEmpty
+              ? portfolios.first
+              : <String, dynamic>{};
           await repo.writeStringMap(<String, String>{
             'id': profile['id']?.toString() ?? '',
             'studentId': profile['studentId']?.toString() ?? '',
