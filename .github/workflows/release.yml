@@ -1185,6 +1185,5 @@ jobs:
           FASTLANE_OPT_OUT_USAGE: "1"
           BUNDLE_GEMFILE: ${{ github.workspace }}/Gemfile
           AAB_PATH: ${{ steps.aab.outputs.file }}
-          VERSION_CODE: ${{ needs.prepare-version.outputs.version_code }}
         run: |
           cd android && bundle exec fastlane play_store_upload
