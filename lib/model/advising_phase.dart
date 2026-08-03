@@ -1,5 +1,3 @@
-import 'package:flutter/material.dart';
-
 enum AdvisingPhase {
   phaseOne,
   phaseTwo,
@@ -27,17 +25,5 @@ enum AdvisingPhase {
     AdvisingPhase.phaseOne => 'Advising',
     AdvisingPhase.phaseTwo => 'Advising',
     AdvisingPhase.selfRegistration => 'Registration',
-  };
-
-  IconData get icon => switch (this) {
-    AdvisingPhase.phaseOne => Icons.filter_1_rounded,
-    AdvisingPhase.phaseTwo => Icons.filter_2_rounded,
-    AdvisingPhase.selfRegistration => Icons.how_to_reg_outlined,
-  };
-
-  Color get color => switch (this) {
-    AdvisingPhase.phaseOne => const Color(0xFF1E6BE3),
-    AdvisingPhase.phaseTwo => const Color(0xFF7C56FF),
-    AdvisingPhase.selfRegistration => const Color(0xFF22B573),
   };
 }
