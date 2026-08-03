@@ -229,6 +229,7 @@ Key packages related to user data safety/privacy are listed below.
 Privacy notes:
 
 - **100% Databaseless**: PreConnect uses 0 database engines (no Cloud Firestore, Realtime Database, SQLite, PostgreSQL, or remote user tracking database).
+- **Zero Tracking & Zero Telemetry**: 0 analytics SDKs (no Firebase Analytics, Mixpanel, Amplitude, Segment, or tracking pixels). Student activity is never logged, tracked, or commercialized.
 - **On-Device Local Cache Only**: All student schedules and profile data are fetched live from BRACU API endpoints and cached strictly on-device.
 - **Encrypted Credentials**: Auth tokens and the captive Wi-Fi password are stored only through `flutter_secure_storage` in the native platform keychain.
 - **Complete Cleanup**: Logout removes all sensitive values, including tokens and saved Wi-Fi passwords.
