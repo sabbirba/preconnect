@@ -53,6 +53,7 @@ platform :mac do
     end
 
     upload_kwargs = {
+      app_identifier: "com.sabbirba.preconnect",
       pkg: skip_upload ? nil : options[:pkg],
       skip_binary_upload: skip_upload,
       platform: "osx",
