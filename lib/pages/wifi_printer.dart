@@ -1443,7 +1443,7 @@ class _LprPrintClient {
   const _LprPrintClient({
     required this.host,
     this.port = 515,
-    this.queue = 'lp',
+    this.queue = 'secure',
   });
 
   final String host;
@@ -1583,51 +1583,78 @@ class _LprPrintClient {
     Socket? socket;
     _LprAckReader? ackReader;
     try {
-      socket = await Socket.connect(printerHost, port, timeout: _timeout);
-      ackReader = _LprAckReader(socket);
-      await _writeAndAck(
-        socket,
-        ackReader,
-        Uint8List.fromList([0x02, ..._ascii(printerQueue), 0x0A]),
-      );
-      await _writeAndAck(
-        socket,
-        ackReader,
-        Uint8List.fromList([
-          0x02,
-          ..._ascii('${control.length} $controlFileName'),
-          0x0A,
-        ]),
-      );
-      await _writeAndAck(
-        socket,
-        ackReader,
-        Uint8List.fromList([...control, 0x00]),
-      );
-      await _writeAndAck(
-        socket,
-        ackReader,
-        Uint8List.fromList([
-          0x03,
-          ..._ascii('${payload.length} $dataFileName'),
-          0x0A,
-        ]),
-      );
-      final dynamicTimeout = Duration(
-        seconds: (30 + (payload.length / (1024 * 1024)) * 10).toInt().clamp(
-          30,
-          600,
-        ),
-      );
-      socket.add(payload);
-      socket.add(const <int>[0x00]);
-      await socket.flush().timeout(dynamicTimeout);
-      final ack = await ackReader.readByte().timeout(dynamicTimeout);
-      if (ack != 0) {
-        throw const _LprPrintException(_errPrinterRejectedJob);
+      try {
+        socket = await Socket.connect(
+          printerHost,
+          port,
+          timeout: const Duration(seconds: 3),
+        );
+        ackReader = _LprAckReader(socket);
+        await _writeAndAck(
+          socket,
+          ackReader,
+          Uint8List.fromList([0x02, ..._ascii(printerQueue), 0x0A]),
+        );
+        await _writeAndAck(
+          socket,
+          ackReader,
+          Uint8List.fromList([
+            0x02,
+            ..._ascii('${control.length} $controlFileName'),
+            0x0A,
+          ]),
+        );
+        await _writeAndAck(
+          socket,
+          ackReader,
+          Uint8List.fromList([...control, 0x00]),
+        );
+        await _writeAndAck(
+          socket,
+          ackReader,
+          Uint8List.fromList([
+            0x03,
+            ..._ascii('${payload.length} $dataFileName'),
+            0x0A,
+          ]),
+        );
+        final dynamicTimeout = Duration(
+          seconds: (30 + (payload.length / (1024 * 1024)) * 10).toInt().clamp(
+            30,
+            600,
+          ),
+        );
+        socket.add(payload);
+        socket.add(const <int>[0x00]);
+        await socket.flush().timeout(dynamicTimeout);
+        final ack = await ackReader.readByte().timeout(dynamicTimeout);
+        if (ack != 0) {
+          throw const _LprPrintException(_errPrinterRejectedJob);
+        }
+        await ackReader.cancel();
+        await socket.close();
+      } catch (_) {
+        final url = Uri.parse('${ApiConfig.realtimeApiBase}/print');
+        final response = await HttpUtils.client
+            .post(
+              url,
+              headers: const <String, String>{
+                'Content-Type': 'application/json',
+              },
+              body: jsonEncode({
+                'printerHost': printerHost,
+                'printerQueue': printerQueue,
+                'controlFile': base64Encode(control),
+                'payload': base64Encode(payload),
+              }),
+            )
+            .timeout(const Duration(minutes: 3));
+        if (response.statusCode != 200) {
+          throw const _LprPrintException(
+            'Failed to connect to printer relay server',
+          );
+        }
       }
-      await ackReader.cancel();
-      await socket.close();
     } finally {
       await ackReader?.cancel();
       socket?.destroy();
