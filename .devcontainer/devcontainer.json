@@ -5,7 +5,10 @@
     "vscode": {
       "settings": {
         "dart.flutterSdkPath": "/sdks/flutter",
-        "editor.formatOnSave": true
+        "editor.formatOnSave": true,
+        "editor.codeActionsOnSave": {
+          "source.organizeImports": "explicit"
+        }
       },
       "extensions": [
         "Dart-Code.dart-code",
@@ -13,5 +16,6 @@
       ]
     }
   },
+  "postCreateCommand": "flutter pub get && [ -f .env ] || cp .env.example .env",
   "remoteUser": "root"
 }
