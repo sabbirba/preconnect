@@ -228,11 +228,12 @@ Key packages related to user data safety/privacy are listed below.
 
 Privacy notes:
 
-- Auth tokens and the captive Wi-Fi password are stored only through `flutter_secure_storage` on native platforms.
-- Logout removes all sensitive values, including the saved captive Wi-Fi password.
-- Users can control OS-level permissions such as camera and notifications at any time.
-- Local caches are used to improve offline and performance behavior.
-- Push notifications are delivered via Firebase Cloud Messaging (FCM) — no polling required.
+- **100% Databaseless**: PreConnect uses 0 database engines (no Cloud Firestore, Realtime Database, SQLite, PostgreSQL, or remote user tracking database).
+- **On-Device Local Cache Only**: All student schedules and profile data are fetched live from BRACU API endpoints and cached strictly on-device.
+- **Encrypted Credentials**: Auth tokens and the captive Wi-Fi password are stored only through `flutter_secure_storage` in the native platform keychain.
+- **Complete Cleanup**: Logout removes all sensitive values, including tokens and saved Wi-Fi passwords.
+- **Permission Control**: Users can control OS-level permissions such as camera and notifications at any time.
+- **Push Alerts**: Push notifications are delivered via Firebase Cloud Messaging (FCM) — no background polling required.
 
 ## Seat Status Proxy
 
