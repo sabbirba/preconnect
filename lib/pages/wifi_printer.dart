@@ -213,7 +213,6 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
   static const int _maxHistoryEntries = 50;
   static const String _copiesKey = 'campus_printer_copies';
   static const String _snackFileReadFailed = "Couldn't read selected file";
-  static const String _snackNoPrinter = 'No printer detected';
   static const String _snackChooseFile = 'Select a file first';
   static const String _snackBlankPageLoadFailed =
       "Couldn't load the blank page";
@@ -685,17 +684,15 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
 
   Future<void> _sendToPrinter() async {
     if (_busy) return;
-    final host = _printerHost.trim();
+    final host = _printerHost.trim().isEmpty
+        ? _CampusPrinterConfig.current.hosts.first
+        : _printerHost.trim();
     final studentId = _studentId.trim();
     final user = studentId;
     final clientName = _studentName.trim().isNotEmpty
         ? _studentName.trim()
         : studentId;
 
-    if (host.isEmpty) {
-      showAppSnackBar(context, _snackNoPrinter);
-      return;
-    }
     if (_selectedFiles.isEmpty) {
       showAppSnackBar(context, _snackChooseFile);
       return;
@@ -858,17 +855,16 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
     final canPrint =
         !_busy &&
         !_discovering &&
-        _printerHost.isNotEmpty &&
         _selectedFiles.isNotEmpty &&
         _studentId.isNotEmpty &&
         _studentName.isNotEmpty;
     final printerSubtitle = _discovering
         ? 'Scanning..'
         : _printerHost.isNotEmpty
-        ? 'Connected'
-        : 'Not found';
+        ? 'Connected to ${_printerHost.trim()}'
+        : 'Relay via ${_CampusPrinterConfig.current.hosts.first}';
     return BracuPageScaffold(
-      title: 'Printer',
+      title: 'Campus Printer',
       subtitle: printerSubtitle,
       subtitleColor: _printerHost.isNotEmpty && !_discovering
           ? const Color(0xFF22B573)
@@ -1450,7 +1446,6 @@ class _LprPrintClient {
   final int port;
   final String queue;
   static const Duration _timeout = Duration(seconds: 15);
-  static const String _errPrinterHostRequired = 'Printer host is required';
   static const String _errPrinterConnectionTimedOut =
       'Printer connection timed out';
   static const String _errPrinterRejectedJob = 'Printer rejected the job';
@@ -1463,10 +1458,9 @@ class _LprPrintClient {
     required _PrintTicket preferences,
     void Function(String message)? onStatus,
   }) async {
-    final printerHost = host.trim();
-    if (printerHost.isEmpty) {
-      throw const _LprPrintException(_errPrinterHostRequired);
-    }
+    final printerHost = host.trim().isEmpty
+        ? _CampusPrinterConfig.current.hosts.first
+        : host.trim();
 
     final printerQueue = queue;
     final owner = user;
