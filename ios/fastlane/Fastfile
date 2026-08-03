@@ -69,16 +69,15 @@ platform :ios do
     version_name = ENV["IOS_VERSION_NAME"]
     version_code = ENV["IOS_VERSION_CODE"]
     skip_upload = false
-    if version_name && version_code
+    if version_code
       begin
         latest_build = latest_testflight_build_number(
-          version: version_name,
           app_identifier: "com.sabbirba.preconnect",
           api_key: api_key
         )
         if latest_build && latest_build.to_i >= version_code.to_i
-          UI.message("iOS build #{version_code} for version #{version_name} already exists on App Store Connect. Skipping upload.")
-          next
+          UI.message("Build #{version_code} for version #{version_name} already exists on App Store Connect. Skipping binary upload.")
+          skip_upload = true
         end
       rescue => e
         UI.message("Could not fetch latest TestFlight build: #{e.message}. Proceeding with upload.")
