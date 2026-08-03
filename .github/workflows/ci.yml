@@ -40,6 +40,9 @@ jobs:
       - name: Install Dependencies
         run: flutter pub get
 
+      - name: Audit Compliance (0 Databases, 0 Trackers, 0 Secrets)
+        run: ./tool/scan_compliance.sh
+
       - name: Audit License Compliance
         run: ./tool/check_licenses.sh
 
