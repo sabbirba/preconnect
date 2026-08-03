@@ -19,41 +19,44 @@ platform :android do
       skip_upload_changelogs: false
     }
     supply_opts[:version_code] = version_code if version_code
-    supply(supply_opts)
+
+    begin
+      supply(supply_opts)
+    rescue => e
+      msg = e.message.to_s.downcase
+      if msg.include?("already been used") ||
+         msg.include?("already exists") ||
+         msg.include?("higher than") ||
+         msg.include?("cannot rollout this release") ||
+         msg.include?("does not allow any existing users to upgrade") ||
+         msg.include?("must be greater than") ||
+         msg.include?("already in draft") ||
+         msg.include?("already in use")
+        UI.important("Version code #{version_code} is already uploaded to Google Play. Skipping upload.")
+      else
+        raise e
+      end
+    end
   end
 
   desc "Promote internal track release to production"
   lane :promote_internal_to_production do
     version_code = ENV["VERSION_CODE"] && !ENV["VERSION_CODE"].empty? ? ENV["VERSION_CODE"].to_i : nil
 
-    begin
-      internal_codes = (google_play_track_version_codes(track: "internal") || []).map(&:to_i)
-      production_codes = (google_play_track_version_codes(track: "production") || []).map(&:to_i)
-
-      if version_code && production_codes.include?(version_code)
-        UI.important("Version code #{version_code} is already in production. Skipping promotion.")
-        next
-      elsif version_code.nil? && internal_codes.any? && (internal_codes & production_codes).length == internal_codes.length
-        UI.important("Internal track version codes #{(internal_codes & production_codes).join(", ")} are already in production. Skipping promotion.")
-        next
-      end
-    rescue => e
-      UI.message("Could not compare track version codes: #{e.message}. Proceeding with promotion.")
-    end
+    supply_opts = {
+      track: "internal",
+      track_promote_to: "production",
+      track_promote_release_status: "completed",
+      skip_upload_apk: true,
+      skip_upload_aab: true,
+      skip_upload_metadata: true,
+      skip_upload_changelogs: true,
+      skip_upload_images: true,
+      skip_upload_screenshots: true
+    }
+    supply_opts[:version_code] = version_code if version_code
 
     begin
-      supply_opts = {
-        track: "internal",
-        track_promote_to: "production",
-        track_promote_release_status: "completed",
-        skip_upload_apk: true,
-        skip_upload_aab: true,
-        skip_upload_metadata: true,
-        skip_upload_changelogs: true,
-        skip_upload_images: true,
-        skip_upload_screenshots: true
-      }
-      supply_opts[:version_code] = version_code if version_code
       supply(supply_opts)
     rescue => e
       msg = e.message.to_s.downcase
@@ -66,7 +69,11 @@ platform :android do
          msg.include?("already in draft") ||
          msg.include?("already in use") ||
          msg.include?("release is already in the") ||
-         msg.include?("already promoted")
+         msg.include?("already in production") ||
+         msg.include?("already promoted") ||
+         msg.include?("no track release") ||
+         msg.include?("nothing to promote") ||
+         msg.include?("cannot promote")
         UI.important("Release already promoted to production or no eligible release found. Skipping without failing pipeline.")
       else
         raise e
