@@ -100,7 +100,7 @@ platform :ios do
     end
 
     upload_kwargs = {
-      ipa: skip_upload ? nil : options[:ipa],
+      ipa: options[:ipa],
       skip_binary_upload: skip_upload,
       skip_metadata: false,
       skip_screenshots: true,
