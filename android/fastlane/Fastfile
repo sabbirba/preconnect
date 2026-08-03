@@ -12,7 +12,7 @@ platform :android do
         aab: aab_path,
         track: "internal",
         release_status: "completed",
-        in_app_update_priority: 3,
+        rollout: "1.0",
         skip_upload_metadata: true,
         skip_upload_images: true,
         skip_upload_screenshots: true,
