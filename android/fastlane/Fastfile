@@ -6,51 +6,20 @@ platform :android do
   desc "Upload a new build to the Google Play internal track"
   lane :play_store_upload do
     aab_path = ENV["AAB_PATH"]
-    version_code = ENV["VERSION_CODE"] ? ENV["VERSION_CODE"].to_i : nil
+    version_code = ENV["VERSION_CODE"] && !ENV["VERSION_CODE"].empty? ? ENV["VERSION_CODE"].to_i : nil
 
-    begin
-      existing_codes = []
-      ["internal", "alpha", "beta", "production"].each do |t|
-        codes = google_play_track_version_codes(track: t) rescue nil
-        existing_codes.concat(codes.map(&:to_i)) if codes.is_a?(Array)
-      end
-      existing_codes.uniq!
-
-      if version_code && existing_codes.include?(version_code)
-        UI.important("Version code #{version_code} already exists on Play Store. Skipping upload.")
-        next
-      end
-    rescue => e
-      UI.message("Could not fetch Play Store track version codes: #{e.message}. Proceeding with supply upload.")
-    end
-
-    begin
-      supply(
-        aab: aab_path,
-        version_code: version_code,
-        track: "internal",
-        release_status: "completed",
-        in_app_update_priority: 3,
-        skip_upload_metadata: true,
-        skip_upload_images: true,
-        skip_upload_screenshots: true,
-        skip_upload_changelogs: false
-      )
-    rescue => e
-      msg = e.message.to_s.downcase
-      if msg.include?("already been used") ||
-         msg.include?("already exists") ||
-         msg.include?("higher than") ||
-         msg.include?("cannot rollout this release") ||
-         msg.include?("does not allow any existing users to upgrade") ||
-         msg.include?("must be greater than") ||
-         msg.include?("already in draft") ||
-         msg.include?("already in use")
-        UI.important("Version code #{version_code} already uploaded or active on Play Store. Skipping upload without failing pipeline.")
-      else
-        raise e
-      end
-    end
+    supply_opts = {
+      aab: aab_path,
+      track: "internal",
+      release_status: "completed",
+      in_app_update_priority: 3,
+      skip_upload_metadata: true,
+      skip_upload_images: true,
+      skip_upload_screenshots: true,
+      skip_upload_changelogs: false
+    }
+    supply_opts[:version_code] = version_code if version_code
+    supply(supply_opts)
   end
 
   desc "Promote internal track release to production"
