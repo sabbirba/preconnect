@@ -30,7 +30,7 @@ platform :mac do
           api_key: api_key
         )
         if latest_build && latest_build.to_i >= version_code.to_i
-          UI.message("macOS build #{version_code} for version #{version_name} already exists on App Store Connect. Skipping binary upload.")
+          UI.message("Build #{version_code} for version #{version_name} already exists on App Store Connect. Skipping binary upload.")
           skip_upload = true
         end
       rescue => e
