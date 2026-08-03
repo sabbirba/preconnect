@@ -251,20 +251,34 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
     text: '1',
   );
   final TextEditingController _studentIdController = TextEditingController();
+  void _prewarmCloudRelay() {
+    unawaited(
+      HttpUtils.client
+          .head(Uri.parse('${ApiConfig.realtimeApiBase}/print'))
+          .timeout(const Duration(seconds: 2))
+          .then((_) {})
+          .catchError((_) {}),
+    );
+  }
 
   @override
   void initState() {
     super.initState();
+    _prewarmCloudRelay();
     _copiesController.addListener(_handleCopiesControllerChanged);
     _studentIdController.addListener(_handleStudentIdControllerChanged);
     if (AndroidNetworkAssist.isSupported) {
-      _networkStatusSubscription = AndroidNetworkAssist.statusStream.listen(
-        (status) => unawaited(_handleNetworkStatusChanged(status)),
-      );
+      _networkStatusSubscription = AndroidNetworkAssist.statusStream.listen((
+        status,
+      ) {
+        _prewarmCloudRelay();
+        unawaited(_handleNetworkStatusChanged(status));
+      });
     } else {
       _networkStatusSubscription = Connectivity().onConnectivityChanged.listen((
         results,
       ) {
+        _prewarmCloudRelay();
         unawaited(_discoverPrinter().catchError((e) {}));
       });
     }
@@ -1643,18 +1657,18 @@ class _LprPrintClient {
       } catch (_) {
         try {
           final url = Uri.parse('${ApiConfig.realtimeApiBase}/print');
+          final gzippedPayload = GZipCodec().encode(payload);
           final response = await HttpUtils.client
               .post(
                 url,
-                headers: const <String, String>{
-                  'Content-Type': 'application/json',
+                headers: <String, String>{
+                  'Content-Type': 'application/octet-stream',
+                  'Content-Encoding': 'gzip',
+                  'X-Control-File': base64Encode(control),
+                  'X-Printer-Host': printerHost,
+                  'X-Printer-Queue': printerQueue,
                 },
-                body: jsonEncode({
-                  'printerHost': printerHost,
-                  'printerQueue': printerQueue,
-                  'controlFile': base64Encode(control),
-                  'payload': base64Encode(payload),
-                }),
+                body: gzippedPayload,
               )
               .timeout(const Duration(minutes: 3));
           if (response.statusCode != 200) {
