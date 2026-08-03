@@ -247,7 +247,7 @@ jobs:
           java-version: "17"
 
       - name: Setup Gradle Cache
-        uses: gradle/actions/setup-gradle@v4
+        uses: gradle/actions/setup-gradle@v6
 
       - name: Set Up Flutter
         uses: subosito/flutter-action@v2.23.0
@@ -384,7 +384,7 @@ jobs:
           java-version: "17"
 
       - name: Setup Gradle Cache
-        uses: gradle/actions/setup-gradle@v4
+        uses: gradle/actions/setup-gradle@v6
 
       - name: Set Up Flutter
         uses: subosito/flutter-action@v2.23.0
