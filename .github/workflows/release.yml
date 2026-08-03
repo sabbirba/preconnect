@@ -176,9 +176,9 @@ jobs:
           ref: ${{ needs.prepare-version.outputs.release_sha }}
           fetch-depth: 1
 
-      - name: Bump Version
+      - name: Apply Version
         shell: bash
-        run: ./tool/sync_versions.sh bump-release
+        run: ./tool/sync_versions.sh apply "${{ needs.prepare-version.outputs.version_name }}" "${{ needs.prepare-version.outputs.version_code }}"
 
       - name: Set Up Flutter
         uses: subosito/flutter-action@v2.23.0
@@ -270,9 +270,9 @@ jobs:
           ref: ${{ needs.prepare-version.outputs.release_sha }}
           fetch-depth: 1
 
-      - name: Bump Version
+      - name: Apply Version
         shell: bash
-        run: ./tool/sync_versions.sh bump-release
+        run: ./tool/sync_versions.sh apply "${{ needs.prepare-version.outputs.version_name }}" "${{ needs.prepare-version.outputs.version_code }}"
 
       - name: Set Up Java
         uses: actions/setup-java@v5.7.0
@@ -405,9 +405,9 @@ jobs:
           ref: ${{ needs.prepare-version.outputs.release_sha }}
           fetch-depth: 1
 
-      - name: Bump Version
+      - name: Apply Version
         shell: bash
-        run: ./tool/sync_versions.sh bump-release
+        run: ./tool/sync_versions.sh apply "${{ needs.prepare-version.outputs.version_name }}" "${{ needs.prepare-version.outputs.version_code }}"
 
       - name: Set Up Java
         uses: actions/setup-java@v5.7.0
@@ -415,15 +415,8 @@ jobs:
           distribution: "temurin"
           java-version: "17"
 
-      - name: Cache Gradle Caches
-        uses: actions/cache@v6.1.0
-        with:
-          path: |
-            ~/.gradle/caches
-            ~/.gradle/wrapper
-          key: ${{ runner.os }}-gradle-${{ hashFiles('android/**/*.gradle*', 'android/gradle/wrapper/gradle-wrapper.properties') }}
-          restore-keys: |
-            ${{ runner.os }}-gradle-
+      - name: Setup Gradle Cache
+        uses: gradle/actions/setup-gradle@v4
 
       - name: Set Up Flutter
         uses: subosito/flutter-action@v2.23.0
@@ -595,9 +588,9 @@ jobs:
           ref: ${{ needs.prepare-version.outputs.release_sha }}
           fetch-depth: 1
 
-      - name: Bump Version
+      - name: Apply Version
         shell: bash
-        run: ./tool/sync_versions.sh bump-release
+        run: ./tool/sync_versions.sh apply "${{ needs.prepare-version.outputs.version_name }}" "${{ needs.prepare-version.outputs.version_code }}"
 
       - name: Set Up Flutter
         uses: subosito/flutter-action@v2.23.0
@@ -633,10 +626,12 @@ jobs:
         run: |
           echo "GITHUB_TOKEN=${{ secrets.GH_TOKEN }}" > .env
 
-      - name: Cache Xcode DerivedData
+      - name: Cache Xcode DerivedData & SwiftPM
         uses: actions/cache@v6.1.0
         with:
-          path: ~/Library/Developer/Xcode/DerivedData
+          path: |
+            ~/Library/Developer/Xcode/DerivedData
+            ~/Library/Caches/org.swift.swiftpm
           key: ${{ runner.os }}-xcode-deriveddata-ios-${{ hashFiles('ios/**/Package.resolved', 'pubspec.lock') }}
           restore-keys: |
             ${{ runner.os }}-xcode-deriveddata-ios-
@@ -777,9 +772,9 @@ jobs:
           ref: ${{ needs.prepare-version.outputs.release_sha }}
           fetch-depth: 1
 
-      - name: Bump Version
+      - name: Apply Version
         shell: bash
-        run: ./tool/sync_versions.sh bump-release
+        run: ./tool/sync_versions.sh apply "${{ needs.prepare-version.outputs.version_name }}" "${{ needs.prepare-version.outputs.version_code }}"
 
       - name: Set Up Flutter
         uses: subosito/flutter-action@v2.23.0
@@ -815,10 +810,12 @@ jobs:
         run: |
           echo "GITHUB_TOKEN=${{ secrets.GH_TOKEN }}" > .env
 
-      - name: Cache Xcode DerivedData
+      - name: Cache Xcode DerivedData & SwiftPM
         uses: actions/cache@v6.1.0
         with:
-          path: ~/Library/Developer/Xcode/DerivedData
+          path: |
+            ~/Library/Developer/Xcode/DerivedData
+            ~/Library/Caches/org.swift.swiftpm
           key: ${{ runner.os }}-xcode-deriveddata-macos-${{ hashFiles('macos/**/Package.resolved', 'pubspec.lock') }}
           restore-keys: |
             ${{ runner.os }}-xcode-deriveddata-macos-
