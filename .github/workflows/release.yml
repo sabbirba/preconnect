@@ -47,19 +47,7 @@ jobs:
             exit 0
           fi
 
-          LAST_TAG=$(git tag --list 'v*' --sort=-v:refname | head -n1 || true)
-          if [ -z "$LAST_TAG" ]; then
-            echo "should_run=true" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-
-          LAST_TAG_SHA=$(git rev-list -n 1 "$LAST_TAG")
-          HEAD_SHA=$(git rev-parse HEAD)
-          if [ "$HEAD_SHA" = "$LAST_TAG_SHA" ]; then
-            echo "should_run=false" >> "$GITHUB_OUTPUT"
-          else
-            echo "should_run=true" >> "$GITHUB_OUTPUT"
-          fi
+          echo "should_run=true" >> "$GITHUB_OUTPUT"
 
   prepare-version:
     name: Prepare Version & Release
@@ -100,7 +88,7 @@ jobs:
           RELEASE_TAG="v${{ steps.version.outputs.version_name }}+${{ steps.version.outputs.version_code }}"
           echo "release_tag=$RELEASE_TAG" >> "$GITHUB_OUTPUT"
 
-          LAST_TAG=$(git tag --list 'v*' --sort=-v:refname | head -n1 || true)
+          LAST_TAG=$(git tag --list 'v*' --sort=-version:refname | head -n1 || true)
           if [ -n "$LAST_TAG" ]; then
             RANGE="$LAST_TAG..HEAD"
           else
