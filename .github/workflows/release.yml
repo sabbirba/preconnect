@@ -304,6 +304,8 @@ jobs:
               echo "Configured Android NDK path does not exist: ${NDK_DIR}" >&2
               exit 1
             fi
+            printf 'flutter.versionName=%s\n' "${{ needs.prepare-version.outputs.version_name }}"
+            printf 'flutter.versionCode=%s\n' "${{ needs.prepare-version.outputs.version_code }}"
           } > android/local.properties
 
       - name: Cache Dart Packages
@@ -439,6 +441,8 @@ jobs:
               echo "Configured Android NDK path does not exist: ${NDK_DIR}" >&2
               exit 1
             fi
+            printf 'flutter.versionName=%s\n' "${{ needs.prepare-version.outputs.version_name }}"
+            printf 'flutter.versionCode=%s\n' "${{ needs.prepare-version.outputs.version_code }}"
           } > android/local.properties
 
       - name: Cache Dart Packages
