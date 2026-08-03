@@ -7,6 +7,9 @@ import 'package:http/http.dart' as http;
 import 'package:preconnect/tools/http/http_headers.dart';
 import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/api/auth.dart';
+import 'package:preconnect/model/advising_phase.dart';
+import 'package:preconnect/pages/advising_phase.dart';
+import 'package:preconnect/pages/lab_sections.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/pages/wishlist.dart';
 import 'package:preconnect/tools/preconnect_constants.dart';
@@ -188,12 +191,7 @@ class _ApiTestPageState extends State<ApiTestPage> {
       final decoded = jsonDecode(payloadJson);
       if (decoded is! Map) return const _JwtSnapshot();
 
-      final claims = decoded.cast<String, dynamic>();
-      final expSeconds = int.tryParse('${claims['exp'] ?? ''}');
-      final expiry = expSeconds == null
-          ? null
-          : DateTime.fromMillisecondsSinceEpoch(expSeconds * 1000);
-      return _JwtSnapshot(expiry: expiry, claims: claims);
+      return _JwtSnapshot(claims: decoded.cast<String, dynamic>());
     } catch (_) {
       return const _JwtSnapshot();
     }
@@ -229,53 +227,52 @@ class _ApiTestPageState extends State<ApiTestPage> {
         BracuCard(
           padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
           backgroundColor: BracuPalette.card(context).withValues(alpha: 0.35),
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              final layout = quickAccessGridLayout(
-                constraints.maxWidth,
-                targetColumns: 2,
-              );
-              return Center(
-                child: Wrap(
-                  alignment: WrapAlignment.center,
-                  runAlignment: WrapAlignment.center,
-                  spacing: layout.spacing,
-                  runSpacing: layout.spacing,
-                  children: [
-                    QuickAccessCard(
-                      width: layout.itemWidth,
-                      icon: Icons.star_outline_rounded,
-                      title: 'Wishlist',
-                      subtitle: 'Advising',
-                      color: const Color(0xFFFF8A34),
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const WishlistPage(),
-                          ),
-                        );
-                      },
+          child: QuickAccessGrid(
+            items: [
+              QuickAccessItem(
+                icon: Icons.star_outline_rounded,
+                title: 'Wishlist',
+                subtitle: 'Advising',
+                color: const Color(0xFFFF8A34),
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const WishlistPage(),
                     ),
-                    QuickAccessCard(
-                      width: layout.itemWidth,
-                      icon: Icons.school_outlined,
-                      title: 'Advising',
-                      subtitle: 'Helper',
-                      color: const Color(0xFF5B8DEF),
-                      onTap: () {
-                        unawaited(
-                          openExternalUrl(
-                            context,
-                            'https://chromewebstore.google.com/detail/preconnect/fcfkbdogaciifaihbfhnaijfhdcjokca',
-                          ),
-                        );
-                      },
-                    ),
-                  ],
+                  );
+                },
+              ),
+              for (final phase in AdvisingPhase.values)
+                QuickAccessItem(
+                  icon: phase.icon,
+                  title: phase.label,
+                  subtitle: phase.subtitle,
+                  color: phase.color,
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => AdvisingPhasePage(phase: phase),
+                      ),
+                    );
+                  },
                 ),
-              );
-            },
+              QuickAccessItem(
+                icon: Icons.science_outlined,
+                title: 'Lab',
+                subtitle: 'Sections',
+                color: const Color(0xFF00A8E8),
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const LabSectionsPage(),
+                    ),
+                  );
+                },
+              ),
+            ],
           ),
         ),
       ],
@@ -357,9 +354,8 @@ class _ApiTestPageState extends State<ApiTestPage> {
 }
 
 class _JwtSnapshot {
-  const _JwtSnapshot({this.expiry, this.claims});
+  const _JwtSnapshot({this.claims});
 
-  final DateTime? expiry;
   final Map<String, dynamic>? claims;
 }
 

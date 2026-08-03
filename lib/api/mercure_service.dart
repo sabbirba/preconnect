@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:preconnect/api/api_client.dart';
 import 'package:preconnect/api/api_config.dart';
+import 'package:preconnect/features/schedule/application/session_resolver.dart';
 import 'package:preconnect/tools/bracu_logout.dart';
 import 'package:preconnect/tools/http/http_utils.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
@@ -90,14 +91,17 @@ class MercureService {
   }
 
   void _processMercureEvent(dynamic data) {
+    ApiClient().clearTransientCaches();
+    resetCachedCurrentSessionSemesterId();
+
     if (data is Map<String, dynamic>) {
       final type = (data['type'] ?? data['event'] ?? data['topic'] ?? '')
           .toString();
-      RefreshBus.instance.notify(reason: 'mercure_$type');
-      RefreshBus.instance.notify(reason: 'cache_cleared');
       if (type.isNotEmpty) {
+        RefreshBus.instance.notify(reason: 'mercure_$type');
         RefreshBus.instance.notify(reason: type);
       }
+      RefreshBus.instance.notify(reason: 'cache_cleared');
     } else {
       RefreshBus.instance.notify(reason: 'mercure_event');
       RefreshBus.instance.notify(reason: 'cache_cleared');

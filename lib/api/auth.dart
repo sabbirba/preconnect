@@ -7,6 +7,7 @@ import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/api/api_client.dart';
 import 'package:preconnect/features/auth/application/auth_bridge.dart';
 import 'package:preconnect/features/auth/application/session_cleanup.dart';
+import 'package:preconnect/features/schedule/application/session_resolver.dart';
 import 'package:preconnect/tools/bracu_logout.dart';
 import 'package:preconnect/tools/cached_image.dart';
 import 'package:preconnect/tools/preconnect_constants.dart';
@@ -231,6 +232,7 @@ class AuthService {
     await AppStorage.instance.clear();
     await ProfileImageCache.instance.clear();
     CachedImage.clearMemoryCache();
+    resetCachedCurrentSessionSemesterId();
     await LibSyncAuthService.instance.logout();
     try {
       final tempDir = await AppPaths.temporaryDirectory();

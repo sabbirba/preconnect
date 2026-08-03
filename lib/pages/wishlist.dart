@@ -482,6 +482,11 @@ class _WishlistPageState extends State<WishlistPage> {
       subtitle: 'Wishlist',
       icon: Icons.star_outline_rounded,
       actions: [
+        IconButton(
+          tooltip: 'Sync',
+          icon: const Icon(Icons.sync_rounded),
+          onPressed: _isLoading ? null : _loadInitialData,
+        ),
         BracuRefreshButton(
           onPressed: _refreshWishlistData,
           isLoading: _isLoading,

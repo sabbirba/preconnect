@@ -505,24 +505,25 @@ class _ContributorsGrid extends StatelessWidget {
         final width = constraints.maxWidth.isFinite
             ? constraints.maxWidth
             : 0.0;
-        final maxExtent = width < 360
-            ? 160.0
-            : width < 560
-            ? 182.0
-            : 202.0;
-        return GridView.builder(
-          gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
-            maxCrossAxisExtent: maxExtent,
-            mainAxisExtent: 126,
-            mainAxisSpacing: 8,
-            crossAxisSpacing: 0,
-          ),
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          itemCount: all.length,
-          itemBuilder: (context, index) {
-            return _DevGridTile(contributor: all[index]);
-          },
+        const minTileWidth = 104.0;
+        const spacing = 10.0;
+        final rawCount = ((width + spacing) / (minTileWidth + spacing)).floor();
+        final crossAxisCount = rawCount < 1 ? 1 : rawCount;
+        final totalSpacing = spacing * (crossAxisCount - 1);
+        final itemWidth = ((width - totalSpacing) / crossAxisCount).clamp(
+          0.0,
+          double.infinity,
+        );
+        return Wrap(
+          spacing: spacing,
+          runSpacing: 12,
+          children: [
+            for (final contributor in all)
+              SizedBox(
+                width: itemWidth,
+                child: _DevGridTile(contributor: contributor),
+              ),
+          ],
         );
       },
     );
@@ -687,52 +688,50 @@ class _DevGridTile extends StatelessWidget {
       builder: (context, constraints) {
         final width = constraints.maxWidth;
         final compact = width < 165;
-        final avatarSize = (width * 0.46).clamp(58.0, 78.0);
-        final nameSize = compact ? 12.8 : 14.2;
-        final roleSize = compact ? 10.8 : 11.6;
+        final avatarSize = (width * 0.44).clamp(50.0, 64.0);
+        final nameSize = compact ? 13.0 : 13.8;
+        final roleSize = compact ? 11.0 : 11.6;
         return InkWell(
           onTap: () => openExternalUrl(context, contributor.url),
           borderRadius: BorderRadius.circular(12),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.start,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              _ContributorAvatar(
-                name: contributor.name,
-                url: contributor.avatarUrl,
-                size: avatarSize,
-              ),
-              const Gap(7),
-              FittedBox(
-                fit: BoxFit.scaleDown,
-                alignment: Alignment.center,
-                child: Text(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 4),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                _ContributorAvatar(
+                  name: contributor.name,
+                  url: contributor.avatarUrl,
+                  size: avatarSize,
+                ),
+                const Gap(5),
+                Text(
                   contributor.name,
-                  maxLines: 1,
+                  maxLines: 2,
+                  softWrap: true,
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: nameSize,
                     fontWeight: FontWeight.w700,
-                    height: 1.05,
+                    height: 1.1,
                   ),
                 ),
-              ),
-              const Gap(5),
-              FittedBox(
-                fit: BoxFit.scaleDown,
-                alignment: Alignment.center,
-                child: Text(
+                const Gap(2),
+                Text(
                   contributor.role,
-                  maxLines: 1,
+                  maxLines: 2,
+                  softWrap: true,
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     color: textSecondary,
                     fontSize: roleSize,
-                    height: 1.05,
+                    height: 1.1,
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         );
       },

@@ -63,7 +63,6 @@ class _AcademicSummary extends StatefulWidget {
 
 class _AcademicSummaryState extends State<_AcademicSummary> {
   bool _isCgpaRevealed = false;
-
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -167,7 +166,7 @@ class _AcademicSummaryState extends State<_AcademicSummary> {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Text(
-                          _isCgpaRevealed ? cgpa : '***',
+                          _isCgpaRevealed ? cgpa : '',
                           style: TextStyle(
                             color: textPrimary,
                             fontSize: 16,

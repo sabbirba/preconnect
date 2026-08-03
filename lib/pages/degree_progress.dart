@@ -139,10 +139,11 @@ class _DegreeProgressPageState extends State<DegreeProgressPage>
     if (reason == 'degree_progress') return;
     if (reason != 'home_dashboard' &&
         reason != 'student_profile' &&
-        reason != 'auth') {
+        reason != 'auth' &&
+        reason != 'cache_cleared') {
       return;
     }
-    if (reason == 'auth') {
+    if (reason == 'auth' || reason == 'cache_cleared') {
       cache.clear();
       setState(() {
         _latestInfo = null;

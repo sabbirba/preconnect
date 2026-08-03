@@ -179,6 +179,7 @@ class ProfileService {
       final response = await ApiClient().authenticatedGet(
         url,
         cacheDuration: CacheDurations.profileOverview,
+        bypassCache: fromGet,
       );
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);

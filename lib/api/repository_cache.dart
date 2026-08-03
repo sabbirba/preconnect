@@ -15,6 +15,10 @@ class RepositoryCache {
     return _store.getInt(key);
   }
 
+  Future<void> writeInt(String key, int value) {
+    return _store.setInt(key, value);
+  }
+
   Future<Map<String, String?>> readStringMap(Set<String> keys) {
     return _store.getStringMap(keys);
   }

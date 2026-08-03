@@ -26,6 +26,8 @@ import 'package:http/http.dart' as http;
 import 'package:share_plus/share_plus.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:preconnect/tools/network_assist.dart';
+import 'package:preconnect/pages/home_tab.dart';
+import 'package:preconnect/model/section_info.dart';
 
 export 'package:preconnect/tools/web_shared.dart';
 
@@ -35,6 +37,8 @@ part 'shared_widgets/ui_selects.dart';
 part 'shared_widgets/ui_refresh.dart';
 part 'shared_widgets/ui_chrome.dart';
 part 'shared_widgets/ui_launchers.dart';
+part 'shared_widgets/quick_access.dart';
+part 'shared_widgets/section_list.dart';
 
 String formatDate(String? input) {
   return BracuTime.formatDate(input);
@@ -212,20 +216,7 @@ class _BracuImageErrorFallback extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    return Container(
-      color: isDark ? const Color(0xFF1B2430) : const Color(0xFFF2F6FC),
-      alignment: Alignment.center,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            Icons.broken_image_outlined,
-            color: isDark ? Colors.white70 : const Color(0xFF60738A),
-          ),
-        ],
-      ),
-    );
+    return const SizedBox.shrink();
   }
 }
 
@@ -986,25 +977,31 @@ class _BracuCampaignSupportersState extends State<BracuCampaignSupporters> {
         const Gap(16),
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          crossAxisAlignment: CrossAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.baseline,
+          textBaseline: TextBaseline.alphabetic,
           children: [
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.baseline,
-              textBaseline: TextBaseline.alphabetic,
-              children: [
-                const BracuSectionTitle(title: 'Campaign Supporters'),
-                const Gap(6),
-                Text(
-                  '(${contributions.length})',
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: BracuPalette.textPrimary(context),
+            Expanded(
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.baseline,
+                textBaseline: TextBaseline.alphabetic,
+                children: [
+                  const Flexible(
+                    child: BracuSectionTitle(title: 'Campaign Supporters'),
                   ),
-                ),
-              ],
+                  const Gap(6),
+                  Text(
+                    '(${contributions.length})',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: BracuPalette.textPrimary(context),
+                    ),
+                  ),
+                ],
+              ),
             ),
+            const Gap(8),
             Text(
               '৳${status.totalRaised}',
               style: TextStyle(

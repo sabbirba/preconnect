@@ -177,7 +177,11 @@ class _BracuNotificationsIconButtonState
   }
 
   void _onRefreshSignal() {
-    if (!mounted || !isRefreshingFrom('notifications')) return;
+    if (!mounted) return;
+    if (!isRefreshingFrom('notifications') &&
+        !isRefreshingFrom('cache_cleared')) {
+      return;
+    }
     setState(() {
       _future = NotificationService().getTotalUnreadCount(forceRefresh: true);
     });
