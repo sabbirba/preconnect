@@ -14,7 +14,7 @@ du -sh "${CHROME_DIR}"/*
 
 MAIN_JS="${CHROME_DIR}/main.dart.js"
 if [[ -f "${MAIN_JS}" ]]; then
-  SIZE_BYTES="$(stat -f %z "${MAIN_JS}" 2>/dev/null || stat -c %s "${MAIN_JS}" 2>/dev/null || echo 0)"
+  SIZE_BYTES="$(wc -c < "${MAIN_JS}" | tr -d ' ')"
   SIZE_MB=$((SIZE_BYTES / 1048576))
   echo "main.dart.js size: ${SIZE_MB} MB (${SIZE_BYTES} bytes)"
   if [[ "${SIZE_MB}" -gt 25 ]]; then
