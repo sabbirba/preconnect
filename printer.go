@@ -67,11 +67,11 @@ func handle(job PrintJob) {
 	if !write(conn, append([]byte{2}, append([]byte(job.PrinterQueue), 10)...)) {
 		return
 	}
-	cf := []byte(fmt.Sprintf("%c%d cfA002PreConnect-App%c", 2, len(control), 10))
+	cf := []byte(fmt.Sprintf("%c%d cfA002sysprint%c", 2, len(control), 10))
 	if !write(conn, cf) || !write(conn, append(control, 0)) {
 		return
 	}
-	df := []byte(fmt.Sprintf("%c%d dfA002PreConnect-App%c", 3, len(payload), 10))
+	df := []byte(fmt.Sprintf("%c%d dfA002sysprint%c", 3, len(payload), 10))
 	if write(conn, df) {
 		write(conn, append(payload, 0))
 	}
