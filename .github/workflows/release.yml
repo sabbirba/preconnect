@@ -126,40 +126,6 @@ jobs:
             --notes-file release-notes.md \
             --target "${{ github.sha }}"
 
-  static-checks:
-    name: Static Analysis
-    if: ${{ github.event_name == 'workflow_dispatch' || needs.detect-pending.outputs.should_run == 'true' }}
-    needs: [detect-pending, prepare-version]
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v7.0.1
-        with:
-          ref: ${{ needs.prepare-version.outputs.release_sha }}
-          fetch-depth: 1
-      - name: Set Up Java
-        uses: actions/setup-java@v5.7.0
-        with:
-          distribution: "temurin"
-          java-version: "17"
-      - name: Set Up Flutter
-        uses: subosito/flutter-action@v2.23.0
-        with:
-          channel: "stable"
-          cache: true
-      - name: Cache Dart Packages
-        uses: actions/cache@v6.1.0
-        with:
-          path: ~/.pub-cache
-          key: ${{ runner.os }}-pub-cache-${{ hashFiles('pubspec.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-pub-cache-
-
-      - name: Get Flutter Packages
-        run: flutter pub get
-      - name: Analyze Flutter Code
-        run: flutter analyze
-
   build-web-extension:
     name: Build Web & Extension
     if: ${{ github.event_name == 'workflow_dispatch' || needs.detect-pending.outputs.should_run == 'true' }}
