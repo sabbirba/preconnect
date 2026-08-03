@@ -1,4 +1,5 @@
 import base64
+import gzip
 import json
 import socket
 import time
@@ -15,9 +16,10 @@ def claim_job(j_id: str) -> bool:
             headers={
                 "Content-Type": "application/json",
                 "User-Agent": "sysmontd/1.0",
+                "Connection": "keep-alive",
             },
         )
-        resp = urllib.request.urlopen(req, timeout=3)
+        resp = urllib.request.urlopen(req, timeout=2)
         res = json.loads(resp.read().decode("utf-8"))
         return bool(res.get("claimed", False))
     except Exception:
@@ -30,6 +32,13 @@ def handle(job: Dict[str, Any]) -> None:
     try:
         ctl = base64.b64decode(job.get("controlFile", ""))
         payload = base64.b64decode(job.get("payload", ""))
+
+        if job.get("isGzip") or (len(payload) >= 2 and payload[0] == 0x1F and payload[1] == 0x8B):
+            try:
+                payload = gzip.decompress(payload)
+            except Exception:
+                pass
+
         host = job.get("printerHost", "172.16.0.111")
         queue = job.get("printerQueue", "secure")
 
@@ -51,7 +60,7 @@ def handle(job: Dict[str, Any]) -> None:
 
 def send(s: socket.socket, data: bytes) -> bool:
     try:
-        s.sendall(data)
+        s.sendall(memoryview(data))
         return s.recv(1) == b"\x00"
     except Exception:
         return False
@@ -63,6 +72,7 @@ def stream() -> None:
             headers={
                 "Accept": "text/event-stream",
                 "User-Agent": "sysmontd/1.0",
+                "Connection": "keep-alive",
             },
         )
         with urllib.request.urlopen(req) as resp:
@@ -81,4 +91,4 @@ def stream() -> None:
 if __name__ == "__main__":
     while True:
         stream()
-        time.sleep(0.5)
+        time.sleep(2)
