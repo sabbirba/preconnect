@@ -242,6 +242,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
   int _copies = 1;
   bool _busy = false;
   bool _discovering = false;
+  bool _relayAvailable = false;
   bool _loadingPreset = false;
   bool _syncingCopiesController = false;
   StreamSubscription? _networkStatusSubscription;
@@ -429,16 +430,22 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
         port: _CampusPrinterConfig.current.port,
         campusHosts: _CampusPrinterConfig.current.hosts,
       );
-      if (!mounted) return;
+      bool relayOnline = false;
       if (printers.isEmpty) {
-        setState(() {
-          _printerHost = '';
-        });
-        return;
+        try {
+          final url = Uri.parse('${ApiConfig.realtimeApiBase}/print/stats');
+          final response = await HttpUtils.client
+              .get(url)
+              .timeout(const Duration(seconds: 3));
+          relayOnline = response.statusCode == 200;
+        } catch (_) {
+          relayOnline = false;
+        }
       }
-      final printer = printers.first;
+      if (!mounted) return;
       setState(() {
-        _printerHost = printer.address;
+        _printerHost = printers.isNotEmpty ? printers.first.address : '';
+        _relayAvailable = relayOnline;
       });
     } catch (e) {
       await AppLog.write('Printer discovery failed: $e');
@@ -852,9 +859,11 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
 
   @override
   Widget build(BuildContext context) {
+    final hasConnection = _printerHost.isNotEmpty || _relayAvailable;
     final canPrint =
         !_busy &&
         !_discovering &&
+        hasConnection &&
         _selectedFiles.isNotEmpty &&
         _studentId.isNotEmpty &&
         _studentName.isNotEmpty;
@@ -862,12 +871,16 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
         ? 'Scanning..'
         : _printerHost.isNotEmpty
         ? 'Connected to ${_printerHost.trim()}'
-        : 'Relay via ${_CampusPrinterConfig.current.hosts.first}';
+        : _relayAvailable
+        ? 'Relay via ${_CampusPrinterConfig.current.hosts.first}'
+        : 'Not found';
     return BracuPageScaffold(
       title: 'Campus Printer',
       subtitle: printerSubtitle,
       subtitleColor: _printerHost.isNotEmpty && !_discovering
           ? const Color(0xFF22B573)
+          : _relayAvailable && !_discovering
+          ? const Color(0xFF007AFF)
           : null,
       icon: Icons.local_printshop_outlined,
       actions: [
@@ -1628,24 +1641,31 @@ class _LprPrintClient {
         await ackReader.cancel();
         await socket.close();
       } catch (_) {
-        final url = Uri.parse('${ApiConfig.realtimeApiBase}/print');
-        final response = await HttpUtils.client
-            .post(
-              url,
-              headers: const <String, String>{
-                'Content-Type': 'application/json',
-              },
-              body: jsonEncode({
-                'printerHost': printerHost,
-                'printerQueue': printerQueue,
-                'controlFile': base64Encode(control),
-                'payload': base64Encode(payload),
-              }),
-            )
-            .timeout(const Duration(minutes: 3));
-        if (response.statusCode != 200) {
+        try {
+          final url = Uri.parse('${ApiConfig.realtimeApiBase}/print');
+          final response = await HttpUtils.client
+              .post(
+                url,
+                headers: const <String, String>{
+                  'Content-Type': 'application/json',
+                },
+                body: jsonEncode({
+                  'printerHost': printerHost,
+                  'printerQueue': printerQueue,
+                  'controlFile': base64Encode(control),
+                  'payload': base64Encode(payload),
+                }),
+              )
+              .timeout(const Duration(minutes: 3));
+          if (response.statusCode != 200) {
+            throw const _LprPrintException(
+              'Failed to connect to cloud relay server',
+            );
+          }
+        } catch (e) {
+          if (e is _LprPrintException) rethrow;
           throw const _LprPrintException(
-            'Failed to connect to printer relay server',
+            'Unable to reach printer. Connect to BRACU Wi-Fi or check your internet connection.',
           );
         }
       }
