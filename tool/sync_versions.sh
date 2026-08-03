@@ -42,13 +42,22 @@ sync_store_metadata() {
 }
 
 bump_release_version() {
-  local version_name version_code new_version_code new_version
+  local version_name version_code max_tag_code base_code new_version_code new_version
   local version_output
   version_output="$(read_version)"
   version_name="${version_output%%$'\n'*}"
   version_code="${version_output#*$'\n'}"
 
-  new_version_code=$((version_code + 1))
+  max_tag_code="$(git tag --list 'v*+*' | sed -n -E 's/^v[^+]*\+([0-9]+)$/\1/p' | sort -n | tail -n1 || true)"
+
+  base_code="${version_code}"
+  if [[ -n "${max_tag_code}" && "${max_tag_code}" =~ ^[0-9]+$ ]]; then
+    if [[ "${max_tag_code}" -ge "${base_code}" ]]; then
+      base_code="${max_tag_code}"
+    fi
+  fi
+
+  new_version_code=$((base_code + 1))
   new_version="${version_name}+${new_version_code}"
 
   perl -i -pe "s/^version:\\s*.*/version: ${new_version}/" "${ROOT_DIR}/pubspec.yaml"
