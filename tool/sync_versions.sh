@@ -41,6 +41,20 @@ sync_store_metadata() {
   printf '%s\n' "${notes}" >"${ROOT_DIR}/android/fastlane/metadata/android/en-US/changelogs/default.txt"
 }
 
+sync_local_properties() {
+  local version_name="${1}"
+  local version_code="${2}"
+  local local_props="${ROOT_DIR}/android/local.properties"
+
+  if [[ -f "${local_props}" ]]; then
+    local tmp_props="${local_props}.tmp"
+    grep -v '^flutter\.versionName=' "${local_props}" | grep -v '^flutter\.versionCode=' >"${tmp_props}" || true
+    mv "${tmp_props}" "${local_props}"
+    printf 'flutter.versionName=%s\n' "${version_name}" >>"${local_props}"
+    printf 'flutter.versionCode=%s\n' "${version_code}" >>"${local_props}"
+  fi
+}
+
 bump_release_version() {
   local version_name version_code max_tag_code base_code new_version_code new_version
   local version_output
@@ -64,6 +78,7 @@ bump_release_version() {
   perl -0pi -e "s/\"version\":\\s*\"[^\"]+\"/\"version\": \"${version_name}\"/" "${ROOT_DIR}/web/manifest.json"
 
   sync_store_metadata
+  sync_local_properties "${version_name}" "${new_version_code}"
 
   printf '%s\n%s\n' "${version_name}" "${new_version_code}"
 }
@@ -81,6 +96,7 @@ apply_version() {
   perl -0pi -e "s/\"version\":\\s*\"[^\"]+\"/\"version\": \"${version_name}\"/" "${ROOT_DIR}/web/manifest.json"
 
   sync_store_metadata
+  sync_local_properties "${version_name}" "${version_code}"
 }
 
 case "${1:-}" in

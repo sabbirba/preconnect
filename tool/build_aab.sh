@@ -14,6 +14,10 @@ if [[ -f "${ENV_FILE}" ]]; then
   DART_DEFINES="${DART_DEFINES%,}"
 fi
 
+VERSION_LINE="$(grep '^version:' "${ROOT_DIR}/pubspec.yaml" | head -n1 | awk '{print $2}')"
+VERSION_NAME="${VERSION_LINE%%+*}"
+VERSION_CODE="${VERSION_LINE#*+}"
+
 (
   cd "${ROOT_DIR}/android"
   ./gradlew bundleRelease \
@@ -23,5 +27,7 @@ fi
     -Pdart-obfuscation=true \
     -Psplit-debug-info="${ROOT_DIR}/build/symbols/android" \
     -Pextra-gen-snapshot-options=--strip \
-    -Pdart-defines="${DART_DEFINES}"
+    -Pdart-defines="${DART_DEFINES}" \
+    -Pbuild-name="${VERSION_NAME}" \
+    -Pbuild-number="${VERSION_CODE}"
 )
