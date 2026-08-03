@@ -40,11 +40,19 @@ jobs:
       - name: Install Dependencies
         run: flutter pub get
 
+      - name: Audit License Compliance
+        run: ./tool/check_licenses.sh
+
       - name: Verify Formatting
         run: dart format --output=none --set-exit-if-changed lib web test
 
       - name: Analyze
         run: flutter analyze
+
+      - name: Build & Validate Browser Extensions
+        run: |
+          ./tool/validate_extension.sh
+          ./tool/profile_extension.sh
 
       - name: Test
         run: flutter test
