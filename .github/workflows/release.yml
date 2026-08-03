@@ -1095,60 +1095,35 @@ jobs:
             exit 1
           fi
 
+
       - name: Generate Google Play Release Notes
-        id: play_notes
         shell: bash
         run: |
-          NOTES_DIR="android/fastlane/metadata/android"
-          CHANGELOG_DIR="$NOTES_DIR/en-US/changelogs"
-          rm -rf "$NOTES_DIR"
+          CHANGELOG_DIR="android/fastlane/metadata/android/en-US/changelogs"
           mkdir -p "$CHANGELOG_DIR"
-
-          if [ -f CHANGELOG.md ]; then
-            NOTES="$(
-              awk '
-                /^## \[/ && !/\[Unreleased\]/ {
-                  if (found) exit
-                  found = 1
-                  next
+          awk '
+            /^## \[/ && !/\[Unreleased\]/ {
+              if (found) exit
+              found = 1
+              next
+            }
+            found && /^## \[/ { exit }
+            found { print }
+          ' CHANGELOG.md \
+            | sed 's/^[-*] /• /' \
+            | sed 's/^#+[[:space:]]*//' \
+            | awk -v max=480 '
+                BEGIN { len = 0 }
+                {
+                  add = length($0) + (len > 0 ? 1 : 0)
+                  if (len + add <= max) {
+                    if (len > 0) printf "\n"
+                    printf "%s", $0
+                    len += add
+                  } else { exit }
                 }
-                found && /^## \[/ { exit }
-                found { print }
-              ' CHANGELOG.md \
-              | sed 's/^[-*] /• /' \
-              | sed 's/^#+[[:space:]]*//'
-            )"
-          fi
-
-          if [ -z "$(printf '%s' "${NOTES:-}" | tr -d '[:space:]')" ]; then
-            NOTES="$(git log -1 --pretty=%B)"
-          fi
-
-          if [ -z "$(printf '%s' "${NOTES:-}" | tr -d '[:space:]')" ]; then
-            NOTES="PreConnect ${{ needs.prepare-version.outputs.version_name }}+${{ needs.prepare-version.outputs.version_code }}"
-          fi
-
-          NOTES=$(printf '%s\n' "$NOTES" | awk -v max=480 '
-            BEGIN { len = 0 }
-            {
-              add = length($0) + (len > 0 ? 1 : 0)
-              if (len + add <= max) {
-                if (len > 0) printf "\n"
-                printf "%s", $0
-                len += add
-              } else {
-                exit
-              }
-            }
-            END {
-              if (len > 0) printf "\n"
-            }
-          ')
-
-          printf '%s' "$NOTES" > "$CHANGELOG_DIR/default.txt"
-          printf '%s' "$NOTES" > "$CHANGELOG_DIR/${{ needs.prepare-version.outputs.version_code }}.txt"
-
-          echo "dir=$NOTES_DIR" >> "$GITHUB_OUTPUT"
+                END { if (len > 0) printf "\n" }
+              ' > "$CHANGELOG_DIR/default.txt"
 
       - name: Set Up Ruby
         if: steps.aab.outputs.found == 'true' && steps.play_auth.outputs.enabled == 'true'
