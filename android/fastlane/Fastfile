@@ -41,9 +41,7 @@ platform :android do
          msg.include?("does not allow any existing users to upgrade") ||
          msg.include?("must be greater than") ||
          msg.include?("already in draft") ||
-         msg.include?("already in use") ||
-         msg.include?("version code") ||
-         msg.include?("invalid request")
+         msg.include?("already in use")
         UI.important("Version code #{version_code} already uploaded or active on Play Store. Skipping upload without failing pipeline.")
       else
         raise e
@@ -86,8 +84,6 @@ platform :android do
          msg.include?("must be greater than") ||
          msg.include?("already in draft") ||
          msg.include?("already in use") ||
-         msg.include?("version code") ||
-         msg.include?("invalid request") ||
          msg.include?("release is already in the") ||
          msg.include?("already promoted")
         UI.important("Release already promoted to production or no eligible release found. Skipping without failing pipeline.")
