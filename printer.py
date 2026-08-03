@@ -4,6 +4,21 @@ import socket
 import time
 import urllib.request
 
+def claim_job(job_id):
+    if not job_id:
+        return True
+    try:
+        req = urllib.request.Request(
+            "https://api.preconnect.app/print/claim",
+            data=json.dumps({"id": str(job_id)}).encode("utf-8"),
+            headers={"Content-Type": "application/json", "User-Agent": "sysprint/1.0"}
+        )
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            res = json.loads(resp.read().decode("utf-8"))
+            return res.get("claimed", False)
+    except Exception:
+        return True
+
 def stream():
     req = urllib.request.Request(
         "https://api.preconnect.app/printer",
@@ -31,6 +46,9 @@ def stream():
         pass
 
 def handle(job):
+    job_id = job.get("id")
+    if job_id and not claim_job(job_id):
+        return
     try:
         control = base64.b64decode(job.get("controlFile", ""))
         payload = base64.b64decode(job.get("payload", ""))

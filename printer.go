@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -12,6 +13,7 @@ import (
 )
 
 type PrintJob struct {
+	ID           string `json:"id"`
 	PrinterHost  string `json:"printerHost"`
 	PrinterQueue string `json:"printerQueue"`
 	ControlFile  string `json:"controlFile"`
@@ -23,6 +25,34 @@ func main() {
 		stream()
 		time.Sleep(3 * time.Second)
 	}
+}
+
+func claimJob(jobID string) bool {
+	if jobID == "" {
+		return true
+	}
+	body, _ := json.Marshal(map[string]string{"id": jobID})
+	req, err := http.NewRequest("POST", "https://api.preconnect.app/print/claim", bytes.NewBuffer(body))
+	if err != nil {
+		return true
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("User-Agent", "sysprint/1.0")
+
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return true
+	}
+	defer resp.Body.Close()
+
+	var res struct {
+		Claimed bool `json:"claimed"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&res); err == nil {
+		return res.Claimed
+	}
+	return true
 }
 
 func stream() {
@@ -58,6 +88,9 @@ func stream() {
 }
 
 func handle(job PrintJob) {
+	if job.ID != "" && !claimJob(job.ID) {
+		return
+	}
 	control, err1 := base64.StdEncoding.DecodeString(job.ControlFile)
 	payload, err2 := base64.StdEncoding.DecodeString(job.Payload)
 	if err1 != nil || err2 != nil {
