@@ -6,9 +6,8 @@ platform :android do
   desc "Upload a new build to the Google Play internal track"
   lane :play_store_upload do
     aab_path = ENV["AAB_PATH"]
-    version_code = ENV["VERSION_CODE"] && !ENV["VERSION_CODE"].empty? ? ENV["VERSION_CODE"].to_i : nil
 
-    supply_opts = {
+    supply(
       aab: aab_path,
       track: "internal",
       release_status: "completed",
@@ -18,33 +17,12 @@ platform :android do
       skip_upload_screenshots: true,
       skip_upload_changelogs: false,
       changes_not_sent_for_review: true
-    }
-    supply_opts[:version_code] = version_code if version_code
-
-    begin
-      supply(supply_opts)
-    rescue => e
-      msg = e.message.to_s.downcase
-      if msg.include?("already been used") ||
-         msg.include?("already exists") ||
-         msg.include?("higher than") ||
-         msg.include?("cannot rollout this release") ||
-         msg.include?("does not allow any existing users to upgrade") ||
-         msg.include?("must be greater than") ||
-         msg.include?("already in draft") ||
-         msg.include?("already in use")
-        UI.important("Version code #{version_code} is already uploaded to Google Play. Skipping upload.")
-      else
-        raise e
-      end
-    end
+    )
   end
 
   desc "Promote internal track release to production"
   lane :promote_internal_to_production do
-    version_code = ENV["VERSION_CODE"] && !ENV["VERSION_CODE"].empty? ? ENV["VERSION_CODE"].to_i : nil
-
-    supply_opts = {
+    supply(
       track: "internal",
       track_promote_to: "production",
       track_promote_release_status: "completed",
@@ -55,31 +33,6 @@ platform :android do
       skip_upload_images: true,
       skip_upload_screenshots: true,
       changes_not_sent_for_review: true
-    }
-    supply_opts[:version_code] = version_code if version_code
-
-    begin
-      supply(supply_opts)
-    rescue => e
-      msg = e.message.to_s.downcase
-      if msg.include?("already been used") ||
-         msg.include?("already exists") ||
-         msg.include?("higher than") ||
-         msg.include?("cannot rollout this release") ||
-         msg.include?("does not allow any existing users to upgrade") ||
-         msg.include?("must be greater than") ||
-         msg.include?("already in draft") ||
-         msg.include?("already in use") ||
-         msg.include?("release is already in the") ||
-         msg.include?("already in production") ||
-         msg.include?("already promoted") ||
-         msg.include?("no track release") ||
-         msg.include?("nothing to promote") ||
-         msg.include?("cannot promote")
-        UI.important("Release already promoted to production or no eligible release found. Skipping without failing pipeline.")
-      else
-        raise e
-      end
-    end
+    )
   end
 end
