@@ -1,9 +1,9 @@
-# Campus Printer Relay Setup Guide
+# Campus Print Relay Setup Guide
 
-This tool lets you send print jobs to campus printers (`172.16.0.111`) from mobile and off-campus from PreConnect App after setup.
+Print to campus printers (`172.16.0.111`) from the PreConnect app after a 1-click setup on any lab PC.
 
 - **Zero Setup Required**: Uses built-in Python 3 — no admin rights or compiler tools needed.
-- **Fully Automatic**: Runs invisibly in the background and auto-starts when computer turns on.
+- **Fully Automatic**: Runs invisibly in the background and auto-starts when your computer turns on.
 
 ---
 
