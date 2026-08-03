@@ -68,6 +68,21 @@ bump_release_version() {
   printf '%s\n%s\n' "${version_name}" "${new_version_code}"
 }
 
+apply_version() {
+  local version_name="${1:-}"
+  local version_code="${2:-}"
+  if [[ -z "${version_name}" || -z "${version_code}" ]]; then
+    echo "Usage: $0 apply <version_name> <version_code>" >&2
+    exit 1
+  fi
+  local new_version="${version_name}+${version_code}"
+
+  perl -i -pe "s/^version:\\s*.*/version: ${new_version}/" "${ROOT_DIR}/pubspec.yaml"
+  perl -0pi -e "s/\"version\":\\s*\"[^\"]+\"/\"version\": \"${version_name}\"/" "${ROOT_DIR}/web/manifest.json"
+
+  sync_store_metadata
+}
+
 case "${1:-}" in
   read)
     read_version
@@ -75,11 +90,14 @@ case "${1:-}" in
   bump-release)
     bump_release_version
     ;;
+  apply)
+    apply_version "${2:-}" "${3:-}"
+    ;;
   sync-metadata)
     sync_store_metadata
     ;;
   *)
-    echo "Usage: $0 {read|bump-release|sync-metadata}" >&2
+    echo "Usage: $0 {read|bump-release|apply|sync-metadata}" >&2
     exit 1
     ;;
 esac
