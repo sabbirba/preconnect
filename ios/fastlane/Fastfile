@@ -77,8 +77,8 @@ platform :ios do
           api_key: api_key
         )
         if latest_build && latest_build.to_i >= version_code.to_i
-          UI.message("Build #{version_code} for version #{version_name} already exists on App Store Connect. Skipping binary upload.")
-          skip_upload = true
+          UI.message("iOS build #{version_code} for version #{version_name} already exists on App Store Connect. Skipping upload.")
+          next
         end
       rescue => e
         UI.message("Could not fetch latest TestFlight build: #{e.message}. Proceeding with upload.")
