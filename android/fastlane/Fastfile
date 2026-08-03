@@ -6,13 +6,15 @@ platform :android do
   desc "Upload a new build to the Google Play internal track"
   lane :play_store_upload do
     aab_path = ENV["AAB_PATH"]
+    version_code = ENV["VERSION_CODE"] ? ENV["VERSION_CODE"].to_i : nil
 
     begin
       supply(
         aab: aab_path,
+        version_code: version_code,
         track: "internal",
         release_status: "completed",
-        rollout: "1.0",
+        in_app_update_priority: 3,
         skip_upload_metadata: true,
         skip_upload_images: true,
         skip_upload_screenshots: true,
