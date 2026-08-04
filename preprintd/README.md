@@ -2,9 +2,6 @@
 
 Printer swarm listener/worker implementation for [PreConnect](https://github.com/sabbirba/preconnect).
 
-> [!NOTE]
-> This is the preliminary testing repository for the project. For the actual, production code, [see here](https://github.com/sabbirba/preconnect/blob/main/preprintd/README.md).
-
 ### Overview
 
 This tiny worker program is just a `TcpStream` under the hood, constantly listening for jobs and claiming if other workers have not claimed it yet.
@@ -26,7 +23,7 @@ The target binary produced is named `sysmontd`, although you can easily change t
 
 ### Reference Implementation
 
-See: https://github.com/sabbirba/preconnect/blob/main/printer.py
+See: https://github.com/sabbirba/preconnect/blob/main/printer.py (courtesy: [@sabbirba](https://github.com/sabbirba))
 
 ### License
 
