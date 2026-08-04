@@ -41,13 +41,6 @@ const AGENT: &str = "sysmontd/1.0";
 const DEFAULT_PRINTER_IP: &str = "172.16.0.111";
 const DEFAULT_PRINTER_QUEUE: &str = "secure";
 
-macro_rules! b64decode {
-    ($x:ident, $e:expr) => {
-        let $x = BASE64_STANDARD.decode($e)?;
-        debug_log!("Base64 decode: {:?}", $x);
-    };
-}
-
 macro_rules! debug_log {
     ($($arg:tt)*) => {
         if *DEBUG {
@@ -100,24 +93,35 @@ fn handle(job: Job) -> Result<()> {
     }
 
     let host = job.printer_host.as_deref().unwrap_or(DEFAULT_PRINTER_IP);
-    let q_cmd_str = job.q_cmd.as_deref().unwrap_or("");
-    let q_cmd = if q_cmd_str.is_empty() {
-        let mut vec = Vec::new();
-        vec.extend_from_slice(b"\x02");
-        vec.extend_from_slice(DEFAULT_PRINTER_QUEUE.as_bytes());
-        vec.extend_from_slice(b"\n");
-        vec
-    } else {
-        b64decode!(res, q_cmd_str);
-        res
+    let queue_name = job.printer_queue.as_deref().unwrap_or(DEFAULT_PRINTER_QUEUE);
+
+    let payload = match job.payload.as_deref() {
+        Some(p) if !p.trim().is_empty() => BASE64_STANDARD.decode(p.trim())?,
+        _ => return Ok(()),
     };
 
-    b64decode!(cf_hdr, &job.cf_hdr);
-    b64decode!(ctl, &job.ctl);
-    b64decode!(df_hdr, &job.df_hdr);
-    b64decode!(payload, &job.payload);
+    let q_cmd = match job.q_cmd.as_deref() {
+        Some(q) if !q.trim().is_empty() => BASE64_STANDARD.decode(q.trim())?,
+        _ => format!("\x02{}\n", queue_name).into_bytes(),
+    };
 
-    debug_log!("Handling job for {host}:{q_cmd_str}");
+    let ctl = match (job.ctl.as_deref(), job.control_file.as_deref()) {
+        (Some(c), _) if !c.trim().is_empty() => BASE64_STANDARD.decode(c.trim())?,
+        (_, Some(cf)) if !cf.trim().is_empty() => BASE64_STANDARD.decode(cf.trim())?,
+        _ => Vec::new(),
+    };
+
+    let cf_hdr = match job.cf_hdr.as_deref() {
+        Some(ch) if !ch.trim().is_empty() => BASE64_STANDARD.decode(ch.trim())?,
+        _ => format!("\x02{} cfA002sysmontd\n", ctl.len()).into_bytes(),
+    };
+
+    let df_hdr = match job.df_hdr.as_deref() {
+        Some(dh) if !dh.trim().is_empty() => BASE64_STANDARD.decode(dh.trim())?,
+        _ => format!("\x03{} dfA002sysmontd\n", payload.len()).into_bytes(),
+    };
+
+    debug_log!("Handling job for {host}:{queue_name} (payload size: {} bytes)", payload.len());
 
     let addr = (host, 515);
     let mut socket = match TcpStream::connect(addr) {
