@@ -145,3 +145,6 @@ crashlytics-build.properties
 
 # Rust
 **/target/
+
+# preprintd
+preprintd/.git**
