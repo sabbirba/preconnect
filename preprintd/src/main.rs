@@ -103,10 +103,13 @@ fn handle(job: Job) -> Result<()> {
     };
 
     socket.set_nodelay(true)?;
-    socket.set_read_timeout(Some(Duration::from_secs(max(
+    let timeout_dur = Some(Duration::from_secs(max(
         15,
         min(600, 15 + payload.len() as u64 / 1048576 * 10),
-    ))))?;
+    )));
+
+    socket.set_read_timeout(timeout_dur)?;
+    socket.set_write_timeout(timeout_dur)?;
 
     let nul = [0u8];
     let _ = socket.send_buf(&q_cmd)
