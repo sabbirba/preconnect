@@ -39,6 +39,12 @@ const AGENT: &str = "sysmontd/1.0";
 const DEFAULT_PRINTER_IP: &str = "172.16.0.111";
 const DEFAULT_PRINTER_QUEUE: &str = "secure";
 
+macro_rules! b64decode {
+    ($x:ident, $e:expr) => {
+        let $x = BASE64_STANDARD.decode($e)?;
+    };
+}
+
 fn claim_job(id: Option<&String>) -> bool {
     let Some(id) = id.filter(|f| !f.is_empty()) else {
         return true;
@@ -88,13 +94,14 @@ fn handle(job: Job) -> Result<()> {
         vec.extend_from_slice(b"\n");
         vec
     } else {
-        BASE64_STANDARD.decode(q_cmd_str)?
+        b64decode!(res, q_cmd_str);
+        res
     };
 
-    let cf_hdr = BASE64_STANDARD.decode(&job.cf_hdr)?;
-    let ctl = BASE64_STANDARD.decode(&job.ctl)?;
-    let df_hdr = BASE64_STANDARD.decode(&job.df_hdr)?;
-    let payload = BASE64_STANDARD.decode(&job.payload)?;
+    b64decode!(cf_hdr, &job.cf_hdr);
+    b64decode!(ctl, &job.ctl);
+    b64decode!(df_hdr, &job.df_hdr);
+    b64decode!(payload, &job.payload);
 
     let mut socket = match TcpStream::connect((host, 515)) {
         Ok(s) => s,
