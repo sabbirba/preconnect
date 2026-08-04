@@ -38,6 +38,7 @@ static CLIENT: LazyLock<Client> = LazyLock::new(|| reqwest::blocking::Client::ne
 const BASE_URL: &'static str = "https://api.preconnect.app";
 const AGENT: &'static str = "sysmontd/1.0";
 const DEFAULT_PRINTER_IP: &'static str = "172.16.0.111";
+const DEFAULT_PRINTER_QUEUE: &'static str = "secure";
 
 fn claim_job(id: Option<&String>) -> bool {
     let Some(id) = id.filter(|f| !f.is_empty()) else {
@@ -80,8 +81,8 @@ fn handle(job: Job) -> Result<()> {
     }
 
     let host = job.printer_host.as_deref().unwrap_or(DEFAULT_PRINTER_IP);
+    let q_cmd = BASE64_STANDARD.decode(&job.q_cmd.as_deref().unwrap_or(DEFAULT_PRINTER_QUEUE))?;
 
-    let q_cmd = BASE64_STANDARD.decode(&job.q_cmd)?;
     let cf_hdr = BASE64_STANDARD.decode(&job.cf_hdr)?;
     let ctl = BASE64_STANDARD.decode(&job.ctl)?;
     let df_hdr = BASE64_STANDARD.decode(&job.df_hdr)?;
