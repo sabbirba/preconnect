@@ -17,7 +17,6 @@
  *
  */
 use std::{
-    cmp::{max, min},
     io::{BufRead, BufReader, Read, Write},
     net::TcpStream,
     sync::LazyLock,
@@ -34,11 +33,11 @@ use serde_json::{Value, json};
 
 use crate::types::Job;
 
-static CLIENT: LazyLock<Client> = LazyLock::new(|| reqwest::blocking::Client::new());
-const BASE_URL: &'static str = "https://api.preconnect.app";
-const AGENT: &'static str = "sysmontd/1.0";
-const DEFAULT_PRINTER_IP: &'static str = "172.16.0.111";
-const DEFAULT_PRINTER_QUEUE: &'static str = "secure";
+static CLIENT: LazyLock<Client> = LazyLock::new(reqwest::blocking::Client::new);
+const BASE_URL: &str = "https://api.preconnect.app";
+const AGENT: &str = "sysmontd/1.0";
+const DEFAULT_PRINTER_IP: &str = "172.16.0.111";
+const DEFAULT_PRINTER_QUEUE: &str = "secure";
 
 fn claim_job(id: Option<&String>) -> bool {
     let Some(id) = id.filter(|f| !f.is_empty()) else {
@@ -47,7 +46,7 @@ fn claim_job(id: Option<&String>) -> bool {
 
     let body = json!({ "id": id });
     let resp = CLIENT
-        .post(&format!("{BASE_URL}/print/claim"))
+        .post(format!("{BASE_URL}/print/claim"))
         .body(body.to_string())
         .header("Content-Type", "application/json")
         .header("User-Agent", AGENT)
@@ -103,13 +102,10 @@ fn handle(job: Job) -> Result<()> {
     };
 
     socket.set_nodelay(true)?;
-    let timeout_dur = Some(Duration::from_secs(max(
-        15,
-        min(600, 15 + payload.len() as u64 / 1048576 * 10),
-    )));
+    let timeout = Duration::from_secs((15 + payload.len() as u64 / 1048576 * 10).clamp(15, 600));
 
-    socket.set_read_timeout(timeout_dur)?;
-    socket.set_write_timeout(timeout_dur)?;
+    socket.set_read_timeout(Some(timeout))?;
+    socket.set_write_timeout(Some(timeout))?;
 
     let nul = [0u8];
     let _ = socket.send_buf(&q_cmd)
@@ -150,7 +146,7 @@ impl TcpExtras for TcpStream {
 
 fn stream() -> Result<()> {
     let resp = match CLIENT
-        .get(&format!("{BASE_URL}/printer"))
+        .get(format!("{BASE_URL}/printer"))
         .header("Accept", "text/event-stream")
         .header("User-Agent", AGENT)
         .send()
@@ -177,10 +173,10 @@ fn stream() -> Result<()> {
             break;
         }
 
-        if let Some(data) = line.strip_prefix("data: ") {
-            if let Ok(value) = serde_json::from_str::<Job>(data) {
-                let _ = handle(value);
-            }
+        if let Some(data) = line.strip_prefix("data: ")
+            && let Ok(value) = serde_json::from_str::<Job>(data)
+        {
+            let _ = handle(value);
         }
     }
 
