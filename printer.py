@@ -1,80 +1,134 @@
-import base64, gc, json, logging, signal, socket, sys, time, urllib.request
+import base64
+import json
+import socket
+import sys
+import time
+import urllib.request
 
-logging.basicConfig(level=logging.INFO, format="[%(asctime)s] [sysmontd] %(message)s", datefmt="%Y-%m-%d %H:%M:%S")
-sys.dont_write_bytecode = True; sys.tracebacklimit = 0; gc.disable()
+def log(msg):
+    sys.stderr.write(f"[sysprint] {msg}\n")
+    sys.stderr.flush()
 
-try:
-    signal.signal(signal.SIGINT, lambda *_: (logging.info("Daemon stopping..."), sys.exit(0)))
-    signal.signal(signal.SIGTERM, lambda *_: (logging.info("Daemon stopping..."), sys.exit(0)))
-except Exception: pass
-
-NUL = b"\x00"
-
-def req(url, data=None, accept=None):
-    h = {"User-Agent": "sysmontd/1.0", "Connection": "keep-alive"}
-    if accept: h["Accept"] = accept
-    if data: h["Content-Type"] = "application/json"
-    return urllib.request.Request(url, data=data, headers=h)
-
-def claim_job(i):
-    if not i: return True
+def claim_job(job_id):
+    if not job_id:
+        return True
     try:
-        r = urllib.request.urlopen(req("https://api.preconnect.app/print/claim", f'{{"id":"{i}"}}'.encode()), timeout=3).read().replace(b" ", b"")
-        claimed = b'"claimed":true' in r
-        if claimed: logging.info(f"Claimed print job {i}")
+        req = urllib.request.Request(
+            "https://api.preconnect.app/print/claim",
+            data=f'{{"id":"{job_id}"}}'.encode("utf-8"),
+            headers={
+                "Content-Type": "application/json",
+                "User-Agent": "sysprint/1.0"
+            }
+        )
+        resp = urllib.request.urlopen(req, timeout=3)
+        body = resp.read().replace(b" ", b"")
+        claimed = b'"claimed":true' in body
+        if claimed:
+            log(f"Claimed print job {job_id}")
         return claimed
     except Exception as e:
-        logging.warning(f"Failed to claim job {i}: {e}")
+        log(f"Failed to claim job {job_id}: {e}")
         return True
 
-def send(s, d):
-    try: s.sendall(memoryview(d)); return True
-    except Exception: return False
-
-def handle(j):
-    i = j.get("id", "unknown")
-    logging.info(f"Received job {i} from server stream")
-    if i != "unknown" and not claim_job(str(i)):
-        logging.info(f"Job {i} already claimed by another worker. Skipping.")
-        return
+def stream():
+    req = urllib.request.Request(
+        "https://api.preconnect.app/printer",
+        headers={
+            "Accept": "text/event-stream",
+            "Cache-Control": "no-cache",
+            "User-Agent": "sysprint/1.0"
+        }
+    )
     try:
-        q = base64.b64decode(j["qCmd"]) if j.get("qCmd") else b"\x02secure\n"
-        ch, c, dh, p = [base64.b64decode(j.get(k, "")) for k in ("cfHdr", "ctl", "dfHdr", "payload")]
+        resp = urllib.request.urlopen(req)
+        log("Connected to relay stream https://api.preconnect.app/printer")
+        while True:
+            line = resp.readline()
+            if not line:
+                break
+            text = line.decode("utf-8", errors="ignore").strip()
+            if text.startswith("data: "):
+                try:
+                    job = json.loads(text[6:])
+                    job_id = job.get("id")
+                    if job_id and not claim_job(str(job_id)):
+                        log(f"Job {job_id} already claimed by another worker. Skipping.")
+                        continue
+                    log(f"Received print job for queue '{job.get('printerQueue', 'secure')}' at '{job.get('printerHost', '172.16.0.111')}'")
+                    handle(job)
+                except Exception as e:
+                    log(f"Failed to parse job payload: {e}")
+        resp.close()
+    except Exception as e:
+        log(f"Relay stream disconnected: {e}")
+
+def handle(job):
+    try:
+        host = job.get("printerHost") or "172.16.0.111"
+        queue = job.get("printerQueue") or "secure"
+        
+        if job.get("qCmd") and job.get("cfHdr") and job.get("ctl") and job.get("dfHdr") and job.get("payload"):
+            q_cmd = base64.b64decode(job["qCmd"])
+            cf_hdr = base64.b64decode(job["cfHdr"])
+            ctl = base64.b64decode(job["ctl"])
+            df_hdr = base64.b64decode(job["dfHdr"])
+            payload = base64.b64decode(job["payload"])
+        else:
+            control = base64.b64decode(job.get("controlFile", ""))
+            payload = base64.b64decode(job.get("payload", ""))
+            q_cmd = b"\x02" + queue.encode("utf-8") + b"\n"
+            cf_hdr = b"\x02" + str(len(control)).encode("utf-8") + b" cfA002sysprint\n"
+            ctl = control
+            df_hdr = b"\x03" + str(len(payload)).encode("utf-8") + b" dfA002sysprint\n"
+        
+        payload_mb = len(payload) / (1024 * 1024)
+        dynamic_timeout = max(30, min(600, int(30 + payload_mb * 10)))
+        
+        log(f"Connecting to printer {host}:515 (timeout: {dynamic_timeout}s, payload: {payload_mb:.2f}MB)...")
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         s.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
-        s.settimeout(max(15, min(600, int(15 + len(p) / 1048576 * 10))))
-        host = j.get("printerHost") or "172.16.0.111"
-        logging.info(f"Connecting to printer at {host}:515 for job {i} ({len(p)} bytes)...")
-        try:
-            s.connect((host, 515))
-            ok = (send(s, q) and s.recv(1) == NUL and
-                  send(s, ch) and s.recv(1) == NUL and
-                  send(s, c) and send(s, NUL) and s.recv(1) == NUL and
-                  send(s, dh) and s.recv(1) == NUL and
-                  send(s, p) and send(s, NUL) and s.recv(1) == NUL)
-            if ok:
-                logging.info(f"Job {i} successfully printed on {host}:515")
-            else:
-                logging.error(f"Printer socket ACK failed for job {i}")
-        finally: s.close()
+        s.settimeout(dynamic_timeout)
+        s.connect((host, 515))
+        
+        if not send_ack(s, q_cmd):
+            log("Printer queue setup failed (LPR 0x02 command rejected)")
+            s.close()
+            return
+            
+        if not send_ack(s, cf_hdr) or not send_data_and_ack(s, ctl):
+            log("Control file transfer failed")
+            s.close()
+            return
+            
+        if send_ack(s, df_hdr) and send_data_and_ack(s, payload):
+            log("Print job delivered successfully to printer!")
+        else:
+            log("Data payload transfer failed")
+            
+        s.close()
     except Exception as e:
-        logging.error(f"Error executing print job {i}: {e}")
+        log(f"Printer connection error: {e}")
 
-def stream():
-    logging.info("Connecting to SSE event stream at https://api.preconnect.app/printer...")
+def send_ack(s, data):
     try:
-        with urllib.request.urlopen(req("https://api.preconnect.app/printer", accept="text/event-stream")) as r:
-            logging.info("SSE event stream connected. Listening for print jobs...")
-            while l := r.readline():
-                if l.startswith(b"data: "):
-                    try: handle(json.loads(l[6:]))
-                    except Exception as e:
-                        logging.error(f"Failed to parse job JSON: {e}")
-    except Exception as e:
-        logging.warning(f"SSE stream disconnected ({e}). Retrying in 2s...")
+        s.sendall(data)
+        ack = s.recv(1)
+        return len(ack) == 1 and ack[0] == 0
+    except Exception:
+        return False
+
+def send_data_and_ack(s, data):
+    try:
+        s.sendall(data)
+        s.sendall(b"\x00")
+        ack = s.recv(1)
+        return len(ack) == 1 and ack[0] == 0
+    except Exception:
+        return False
 
 if __name__ == "__main__":
-    logging.info("Starting sysmontd printer daemon v1.0...")
+    log("Starting sysprint print daemon...")
     while True:
         stream()
-        time.sleep(2)
+        time.sleep(3)
