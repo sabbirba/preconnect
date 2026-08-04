@@ -93,7 +93,10 @@ fn handle(job: Job) -> Result<()> {
     }
 
     let host = job.printer_host.as_deref().unwrap_or(DEFAULT_PRINTER_IP);
-    let queue_name = job.printer_queue.as_deref().unwrap_or(DEFAULT_PRINTER_QUEUE);
+    let queue_name = job
+        .printer_queue
+        .as_deref()
+        .unwrap_or(DEFAULT_PRINTER_QUEUE);
 
     let payload = match job.payload.as_deref() {
         Some(p) if !p.trim().is_empty() => BASE64_STANDARD.decode(p.trim())?,
@@ -121,7 +124,10 @@ fn handle(job: Job) -> Result<()> {
         _ => format!("\x03{} dfA002sysmontd\n", payload.len()).into_bytes(),
     };
 
-    debug_log!("Handling job for {host}:{queue_name} (payload size: {} bytes)", payload.len());
+    debug_log!(
+        "Handling job for {host}:{queue_name} (payload size: {} bytes)",
+        payload.len()
+    );
 
     let addr = (host, 515);
     let mut socket = match TcpStream::connect(addr) {

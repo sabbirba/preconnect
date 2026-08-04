@@ -4,9 +4,7 @@ Printer swarm listener/worker implementation for [PreConnect](https://github.com
 
 ### Overview
 
-This tiny worker program is just a `TcpStream` under the hood, constantly listening for jobs and claiming if other workers have not claimed it yet.
-
-It communicates with the `api.preconnect.app` API to do so, which uses Mercure under the hood to stream print job data directly received from the Flutter app itself.
+This tiny worker is just a `TcpStream` under the hood, constantly listening for jobs and claiming one if open. It works by constantly listening for incoming data from the `api.preconnect.app` endpoint (which uses [Mercure](https://mercure.rocks) under the hood for streaming real-time data), and then initiating the claiming procedure.
 
 ### Compiling
 
@@ -16,13 +14,10 @@ To compile and run:
 
 ```bash
 cargo build --release
-./target/release/sysmontd
 ```
 
-The target binary produced is -
-
-1. named `sysmontd`, although you can easily change this in [Cargo.toml](./Cargo.toml), and
-2. optimized for the smallest size, which you can also change from the configuration file.
+> [!NOTE]
+> The target binary is optimized for the smallest-possible size, although you can change this behavior by disabling the optimizations specified in the `[profile.release]` section of [Cargo.toml](./Cargo.toml).
 
 ### Reference Implementation
 
