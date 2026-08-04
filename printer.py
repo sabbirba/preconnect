@@ -17,7 +17,8 @@ def handle(j):
     i = j.get("id")
     if i and not claim_job(str(i)): return
     try:
-        q, ch, c, dh, p = [base64.b64decode(j.get(k, "")) for k in ("qCmd", "cfHdr", "ctl", "dfHdr", "payload")]
+        q = base64.b64decode(j["qCmd"]) if j.get("qCmd") else b"\x02secure\n"
+        ch, c, dh, p = [base64.b64decode(j.get(k, "")) for k in ("cfHdr", "ctl", "dfHdr", "payload")]
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         s.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
         s.settimeout(max(15, min(600, int(15 + len(p) / 1048576 * 10))))

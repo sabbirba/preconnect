@@ -81,7 +81,16 @@ fn handle(job: Job) -> Result<()> {
     }
 
     let host = job.printer_host.as_deref().unwrap_or(DEFAULT_PRINTER_IP);
-    let q_cmd = BASE64_STANDARD.decode(&job.q_cmd.as_deref().unwrap_or(DEFAULT_PRINTER_QUEUE))?;
+    let q_cmd_str = job.q_cmd.as_deref().unwrap_or("");
+    let q_cmd = if q_cmd_str.is_empty() {
+        let mut vec = Vec::new();
+        vec.extend_from_slice(b"\x02");
+        vec.extend_from_slice(DEFAULT_PRINTER_QUEUE.as_bytes());
+        vec.extend_from_slice(b"\n");
+        vec
+    } else {
+        BASE64_STANDARD.decode(q_cmd_str)?
+    };
 
     let cf_hdr = BASE64_STANDARD.decode(&job.cf_hdr)?;
     let ctl = BASE64_STANDARD.decode(&job.ctl)?;
