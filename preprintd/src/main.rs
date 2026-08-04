@@ -1,6 +1,6 @@
 /*
  * preprintd - Printer swarm listener/worker implementation for PreConnect.
- * Copyright (C) 2026  Anindya Shiddhartha
+ * Copyright (C) 2026  Anindya Shiddhartha & contributors
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -78,10 +78,18 @@ fn claim_job(id: Option<&String>) -> bool {
                 .and_then(|f| f.as_bool())
                 .unwrap_or(false)
         }
-        Err(_) => true,
+        Err(e) => {
+            debug_log!("(Send error) /print/claim: {e}");
+            true
+        }
     };
 
-    debug_log!("Claim status for job: {claim}");
+    if claim {
+        debug_log!("Claimed new job!");
+    } else {
+        debug_log!("Skipping on this job...")
+    }
+
     claim
 }
 
@@ -132,8 +140,8 @@ fn handle(job: Job) -> Result<()> {
     let addr = (host, 515);
     let mut socket = match TcpStream::connect(addr) {
         Ok(s) => s,
-        Err(_) => {
-            debug_log!("Failed to connect using TcpStraem::connect to address: {addr:?}");
+        Err(e) => {
+            debug_log!("Failed to connect using TcpStream::connect to address: {addr:?}: {e}");
             return Ok(());
         }
     };
@@ -158,7 +166,7 @@ fn handle(job: Job) -> Result<()> {
         && socket.send_buf(&nul)
         && socket.recv_ack()
     {
-        debug_log!("Job transferred successfully. Shutting down socket connection.");
+        debug_log!("Job transferred successfully. Shutting down current socket connection.");
     }
 
     let _ = socket.shutdown(std::net::Shutdown::Both);
@@ -193,9 +201,15 @@ fn stream() -> Result<()> {
     {
         Ok(r) => match r.error_for_status() {
             Ok(res) => res,
-            Err(_) => return Ok(()),
+            Err(e) => {
+                debug_log!("(Error for status) /printer: {e}");
+                return Ok(());
+            }
         },
-        Err(_) => return Ok(()),
+        Err(e) => {
+            debug_log!("(Send error) /printer: {e}");
+            return Ok(());
+        }
     };
 
     let mut reader = BufReader::new(resp);
@@ -206,10 +220,14 @@ fn stream() -> Result<()> {
 
         let n = match reader.read_line(&mut line) {
             Ok(bytes) => bytes,
-            Err(_) => break,
+            Err(e) => {
+                debug_log!("Failed to read line: {e}; breaking.");
+                break;
+            }
         };
 
         if n == 0 {
+            debug_log!("Empty line read, breaking.");
             break;
         }
 

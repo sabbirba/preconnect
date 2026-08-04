@@ -1,6 +1,6 @@
 ## `preprintd`
 
-Printer swarm listener/worker implementation for [PreConnect](https://github.com/sabbirba/preconnect).
+Printer swarm-worker daemon implementation for [PreConnect](https://github.com/sabbirba/preconnect).
 
 ### Overview
 
@@ -14,6 +14,12 @@ To compile and run:
 
 ```bash
 cargo build --release
+```
+
+For running the binary in debug mode, use the `--debug` flag:
+
+```bash
+cargo run -- --debug
 ```
 
 > [!NOTE]
