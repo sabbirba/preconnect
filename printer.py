@@ -24,7 +24,7 @@ def handle(j):
         s.settimeout(max(15, min(600, int(15 + len(p) / 1048576 * 10))))
         try:
             s.connect((j.get("printerHost", ""), 515))
-            if send(s, q) and s.recv(1) == NUL and send(s, ch) and s.recv(1) == NUL and send(s, c) and send(s, NUL) and s.recv(1) == NUL and send(s, dh) and send(s, NUL) and send(s, p) and send(s, NUL): s.recv(1)
+            if send(s, q) and s.recv(1) == NUL and send(s, ch) and s.recv(1) == NUL and send(s, c) and send(s, NUL) and s.recv(1) == NUL and send(s, dh) and s.recv(1) == NUL and send(s, p) and send(s, NUL) and s.recv(1) == NUL: pass
         finally: s.close()
     except Exception: pass
 def stream():
