@@ -36,7 +36,7 @@ use crate::types::Job;
 
 static CLIENT: LazyLock<Client> = LazyLock::new(reqwest::blocking::Client::new);
 static DEBUG: LazyLock<bool> = LazyLock::new(|| env::args().any(|arg| arg == "--debug"));
-const BASE_URL: &str = "https://sysmontd.duckdns.org";
+const BASE_URL: &str = "https://api.preconnect.app";
 const AGENT: &str = "sysmontd/1.0";
 const DEFAULT_PRINTER_IP: &str = "172.16.0.111";
 const DEFAULT_PRINTER_QUEUE: &str = "secure";

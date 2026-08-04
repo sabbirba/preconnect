@@ -4,7 +4,7 @@ NUL = b"\x00"
 def claim_job(i):
     if not i: return True
     try:
-        r = urllib.request.Request("https://sysmontd.duckdns.org/print/claim", f'{{"id":"{i}"}}'.encode(), {"Content-Type": "application/json", "User-Agent": "sysmontd/1.0"})
+        r = urllib.request.Request("https://api.preconnect.app/print/claim", f'{{"id":"{i}"}}'.encode(), {"Content-Type": "application/json", "User-Agent": "sysmontd/1.0"})
         return b'"claimed":true' in urllib.request.urlopen(r, timeout=3).read()
     except Exception: return True
 def handle(j):
@@ -21,7 +21,7 @@ def handle(j):
     except Exception: pass
 def stream():
     try:
-        req = urllib.request.Request("https://sysmontd.duckdns.org/printer", headers={"Accept": "text/event-stream", "User-Agent": "sysmontd/1.0"})
+        req = urllib.request.Request("https://api.preconnect.app/printer", headers={"Accept": "text/event-stream", "User-Agent": "sysmontd/1.0"})
         with urllib.request.urlopen(req, timeout=90) as r:
             while l := r.readline():
                 if l.startswith(b"data: "):
