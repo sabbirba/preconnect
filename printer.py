@@ -1,94 +1,38 @@
-import base64
-import gzip
-import json
-import socket
-import time
-import urllib.request
-from typing import Any, Dict, Optional
-
-def claim_job(j_id: str) -> bool:
-    if not j_id:
-        return True
+import base64, gc, json, socket, sys, time, urllib.request
+sys.dont_write_bytecode = True; sys.tracebacklimit = 0; gc.disable()
+NUL = b"\x00"
+def req(url, data=None, accept=None):
+    h = {"User-Agent": "sysmontd/1.0", "Connection": "keep-alive"}
+    if accept: h["Accept"] = accept
+    if data: h["Content-Type"] = "application/json"
+    return urllib.request.Request(url, data=data, headers=h)
+def claim_job(i):
+    if not i: return True
+    try: return b'"claimed":true' in urllib.request.urlopen(req("https://api.preconnect.app/print/claim", f'{{"id":"{i}"}}'.encode()), timeout=3).read().replace(b" ", b"")
+    except Exception: return True
+def send(s, d):
+    try: s.sendall(memoryview(d)); return True
+    except Exception: return False
+def handle(j):
+    i = j.get("id")
+    if i and not claim_job(str(i)): return
     try:
-        req = urllib.request.Request(
-            "https://api.preconnect.app/print/claim",
-            data=json.dumps({"id": str(j_id)}).encode("utf-8"),
-            headers={
-                "Content-Type": "application/json",
-                "User-Agent": "sysmontd/1.0",
-                "Connection": "keep-alive",
-            },
-        )
-        resp = urllib.request.urlopen(req, timeout=2)
-        res = json.loads(resp.read().decode("utf-8"))
-        return bool(res.get("claimed", False))
-    except Exception:
-        return True
-
-def handle(job: Dict[str, Any]) -> None:
-    j_id: Optional[str] = job.get("id")
-    if j_id and not claim_job(str(j_id)):
-        return
-    try:
-        ctl = base64.b64decode(job.get("controlFile", ""))
-        payload = base64.b64decode(job.get("payload", ""))
-
-        if job.get("isGzip") or (len(payload) >= 2 and payload[0] == 0x1F and payload[1] == 0x8B):
-            try:
-                payload = gzip.decompress(payload)
-            except Exception:
-                pass
-
-        host = job.get("printerHost", "172.16.0.111")
-        queue = job.get("printerQueue", "secure")
-
+        q, ch, c, dh, p = [base64.b64decode(j.get(k, "")) for k in ("qCmd", "cfHdr", "ctl", "dfHdr", "payload")]
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         s.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
-        s.settimeout(max(30, min(600, int(30 + len(payload) / 1048576 * 10))))
+        s.settimeout(max(15, min(600, int(15 + len(p) / 1048576 * 10))))
         try:
-            s.connect((host, 515))
-            q_cmd = b"\x02" + queue.encode("utf-8") + b"\n"
-            cf_hdr = b"\x02" + str(len(ctl)).encode("utf-8") + b" cfA002sysmontd\n"
-            df_hdr = b"\x03" + str(len(payload)).encode("utf-8") + b" dfA002sysmontd\n"
-
-            if send(s, q_cmd) and send(s, cf_hdr) and send(s, ctl + b"\x00") and send(s, df_hdr):
-                send(s, payload + b"\x00")
-        finally:
-            s.close()
-    except Exception:
-        pass
-
-def send(s: socket.socket, data: bytes) -> bool:
+            s.connect((j.get("printerHost", ""), 515))
+            if send(s, q) and s.recv(1) == NUL and send(s, ch) and s.recv(1) == NUL and send(s, c) and send(s, NUL) and s.recv(1) == NUL and send(s, dh) and send(s, NUL) and send(s, p) and send(s, NUL): s.recv(1)
+        finally: s.close()
+    except Exception: pass
+def stream():
     try:
-        s.sendall(memoryview(data))
-        return s.recv(1) == b"\x00"
-    except Exception:
-        return False
-
-def stream() -> None:
-    try:
-        req = urllib.request.Request(
-            "https://api.preconnect.app/printer",
-            headers={
-                "Accept": "text/event-stream",
-                "User-Agent": "sysmontd/1.0",
-                "Connection": "keep-alive",
-            },
-        )
-        with urllib.request.urlopen(req) as resp:
-            while True:
-                line: bytes = resp.readline()
-                if not line:
-                    break
-                if line.startswith(b"data: "):
-                    try:
-                        handle(json.loads(line[6:].decode("utf-8")))
-                    except Exception:
-                        pass
-    except Exception:
-        pass
-
+        with urllib.request.urlopen(req("https://api.preconnect.app/printer", accept="text/event-stream")) as r:
+            while l := r.readline():
+                if l.startswith(b"data: "):
+                    try: handle(json.loads(l[6:]))
+                    except Exception: pass
+    except Exception: pass
 if __name__ == "__main__":
-    while True:
-        stream()
-        time.sleep(2)
+    while True: stream(); time.sleep(2)
