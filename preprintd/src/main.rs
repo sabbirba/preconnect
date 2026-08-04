@@ -44,6 +44,7 @@ const DEFAULT_PRINTER_QUEUE: &str = "secure";
 macro_rules! b64decode {
     ($x:ident, $e:expr) => {
         let $x = BASE64_STANDARD.decode($e)?;
+        debug_log!("Base64 decode: {:?}", $x);
     };
 }
 
@@ -142,7 +143,7 @@ fn handle(job: Job) -> Result<()> {
         && socket.send_buf(&nul)
         && socket.recv_ack()
         && socket.send_buf(&df_hdr)
-        && socket.send_buf(&nul)
+        && socket.recv_ack()
         && socket.send_buf(&payload)
         && socket.send_buf(&nul)
         && socket.recv_ack()
@@ -216,7 +217,7 @@ fn stream() -> Result<()> {
 fn main() {
     let mut iter_count = 0;
     loop {
-        debug_log!("Connection attempt: {iter_count}");
+        debug_log!("Connection #{iter_count}");
         let _ = stream();
         sleep(Duration::from_millis(2000));
         iter_count += 1;
