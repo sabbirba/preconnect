@@ -3,7 +3,7 @@ name = "preprintd"
 description = "Printer swarm listener/worker implementation for PreConnect."
 authors = ["Anindya Shiddhartha <shiddhartha@tuta.io>"]
 license = "GPL-3.0-only"
-version = "0.1.1"
+version = "0.1.3"
 edition = "2024"
 
 [[bin]]
