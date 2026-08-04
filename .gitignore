@@ -140,3 +140,8 @@ crashlytics-build.properties
 **/.history/
 **/.vscode/*
 !/.vscode/settings.json
+**/.idea/
+**/.DS_Store
+
+# Rust
+**/target/
