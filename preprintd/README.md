@@ -19,7 +19,10 @@ cargo build --release
 ./target/release/sysmontd
 ```
 
-The target binary produced is named `sysmontd`, although you can easily change this in [Cargo.toml](./Cargo.toml).
+The target binary produced is -
+
+1. named `sysmontd`, although you can easily change this in [Cargo.toml](./Cargo.toml), and
+2. optimized for the smallest size, which you can also change from the configuration file.
 
 ### Reference Implementation
 
