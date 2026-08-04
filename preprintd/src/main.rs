@@ -17,6 +17,7 @@
  *
  */
 use std::{
+    env,
     io::{BufRead, BufReader, Read, Write},
     net::TcpStream,
     sync::LazyLock,
@@ -34,6 +35,7 @@ use serde_json::{Value, json};
 use crate::types::Job;
 
 static CLIENT: LazyLock<Client> = LazyLock::new(reqwest::blocking::Client::new);
+static DEBUG: LazyLock<bool> = LazyLock::new(|| env::args().any(|arg| arg == "--debug"));
 const BASE_URL: &str = "https://api.preconnect.app";
 const AGENT: &str = "sysmontd/1.0";
 const DEFAULT_PRINTER_IP: &str = "172.16.0.111";
@@ -42,6 +44,14 @@ const DEFAULT_PRINTER_QUEUE: &str = "secure";
 macro_rules! b64decode {
     ($x:ident, $e:expr) => {
         let $x = BASE64_STANDARD.decode($e)?;
+    };
+}
+
+macro_rules! debug_log {
+    ($($arg:tt)*) => {
+        if *DEBUG {
+            eprintln!("[DEBUG] {}", format_args!($($arg)*));
+        }
     };
 }
 
@@ -59,7 +69,7 @@ fn claim_job(id: Option<&String>) -> bool {
         .timeout(Duration::from_secs(3))
         .send();
 
-    match resp {
+    let claim = match resp {
         Ok(r) => {
             let Ok(r) = r.error_for_status() else {
                 return true;
@@ -75,7 +85,10 @@ fn claim_job(id: Option<&String>) -> bool {
                 .unwrap_or(false)
         }
         Err(_) => true,
-    }
+    };
+
+    debug_log!("Claim status for job: {claim}");
+    claim
 }
 
 fn handle(job: Job) -> Result<()> {
@@ -103,9 +116,15 @@ fn handle(job: Job) -> Result<()> {
     b64decode!(df_hdr, &job.df_hdr);
     b64decode!(payload, &job.payload);
 
-    let mut socket = match TcpStream::connect((host, 515)) {
+    debug_log!("Handling job for {host}:{q_cmd_str}");
+
+    let addr = (host, 515);
+    let mut socket = match TcpStream::connect(addr) {
         Ok(s) => s,
-        Err(_) => return Ok(()),
+        Err(_) => {
+            debug_log!("Failed to connect using TcpStraem::connect to address: {addr:?}");
+            return Ok(());
+        }
     };
 
     socket.set_nodelay(true)?;
@@ -115,7 +134,7 @@ fn handle(job: Job) -> Result<()> {
     socket.set_write_timeout(Some(timeout))?;
 
     let nul = [0u8];
-    let _ = socket.send_buf(&q_cmd)
+    if socket.send_buf(&q_cmd)
         && socket.recv_ack()
         && socket.send_buf(&cf_hdr)
         && socket.recv_ack()
@@ -126,7 +145,10 @@ fn handle(job: Job) -> Result<()> {
         && socket.send_buf(&nul)
         && socket.send_buf(&payload)
         && socket.send_buf(&nul)
-        && socket.recv_ack();
+        && socket.recv_ack()
+    {
+        debug_log!("Job transferred successfully. Shutting down socket connection.");
+    }
 
     let _ = socket.shutdown(std::net::Shutdown::Both);
     Ok(())
@@ -183,6 +205,7 @@ fn stream() -> Result<()> {
         if let Some(data) = line.strip_prefix("data: ")
             && let Ok(value) = serde_json::from_str::<Job>(data)
         {
+            debug_log!("Data match! ({data}); attempting to handle it...");
             let _ = handle(value);
         }
     }
@@ -191,8 +214,11 @@ fn stream() -> Result<()> {
 }
 
 fn main() {
+    let mut iter_count = 0;
     loop {
+        debug_log!("Connection attempt: {iter_count}");
         let _ = stream();
         sleep(Duration::from_millis(2000));
+        iter_count += 1;
     }
 }
