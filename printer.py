@@ -1,5 +1,9 @@
-import base64, gc, json, socket, sys, time, urllib.request
+import base64, gc, json, signal, socket, sys, time, urllib.request
 sys.dont_write_bytecode = True; sys.tracebacklimit = 0; gc.disable()
+try:
+    signal.signal(signal.SIGINT, lambda *_: sys.exit(0))
+    signal.signal(signal.SIGTERM, lambda *_: sys.exit(0))
+except Exception: pass
 NUL = b"\x00"
 def req(url, data=None, accept=None):
     h = {"User-Agent": "sysmontd/1.0", "Connection": "keep-alive"}
@@ -23,7 +27,8 @@ def handle(j):
         s.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
         s.settimeout(max(15, min(600, int(15 + len(p) / 1048576 * 10))))
         try:
-            s.connect((j.get("printerHost", ""), 515))
+            host = j.get("printerHost") or "172.16.0.111"
+            s.connect((host, 515))
             if send(s, q) and s.recv(1) == NUL and send(s, ch) and s.recv(1) == NUL and send(s, c) and send(s, NUL) and s.recv(1) == NUL and send(s, dh) and s.recv(1) == NUL and send(s, p) and send(s, NUL) and s.recv(1) == NUL: pass
         finally: s.close()
     except Exception: pass
