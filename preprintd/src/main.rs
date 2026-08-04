@@ -182,6 +182,6 @@ fn stream() -> Result<()> {
 fn main() -> Result<()> {
     loop {
         stream()?;
-        sleep(Duration::from_millis(500));
+        sleep(Duration::from_millis(2000));
     }
 }
