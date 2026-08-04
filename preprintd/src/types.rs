@@ -1,13 +1,13 @@
 use serde::Deserialize;
 
-#[derive(Deserialize)]
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Job {
     pub id: Option<String>,
-    #[serde(rename = "controlFile")]
-    pub control_file: String,
-    pub payload: String,
-    #[serde(rename = "printerHost")]
     pub printer_host: Option<String>,
-    #[serde(rename = "printerQueue")]
-    pub printer_queue: Option<String>,
+    pub q_cmd: String,
+    pub cf_hdr: String,
+    pub ctl: String,
+    pub df_hdr: String,
+    pub payload: String,
 }

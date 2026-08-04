@@ -38,7 +38,6 @@ static CLIENT: LazyLock<Client> = LazyLock::new(|| reqwest::blocking::Client::ne
 const BASE_URL: &'static str = "https://api.preconnect.app";
 const AGENT: &'static str = "sysmontd/1.0";
 const DEFAULT_PRINTER_IP: &'static str = "172.16.0.111";
-const DEFAULT_PRINTER_QUEUE: &'static str = "secure";
 
 fn claim_job(id: Option<&String>) -> bool {
     let Some(id) = id.filter(|f| !f.is_empty()) else {
@@ -81,42 +80,27 @@ fn handle(job: Job) -> Result<()> {
     }
 
     let host = job.printer_host.as_deref().unwrap_or(DEFAULT_PRINTER_IP);
-    let queue = job
-        .printer_queue
-        .as_deref()
-        .unwrap_or(DEFAULT_PRINTER_QUEUE);
 
-    let mut socket = TcpStream::connect((host, 515))?;
-
-    let control_file = BASE64_STANDARD.decode(&job.control_file)?;
+    let q_cmd = BASE64_STANDARD.decode(&job.q_cmd)?;
+    let cf_hdr = BASE64_STANDARD.decode(&job.cf_hdr)?;
+    let ctl = BASE64_STANDARD.decode(&job.ctl)?;
+    let df_hdr = BASE64_STANDARD.decode(&job.df_hdr)?;
     let payload = BASE64_STANDARD.decode(&job.payload)?;
 
+    let mut socket = TcpStream::connect((host, 515))?;
     socket.set_read_timeout(Some(Duration::from_secs(max(
         15,
         min(600, 15 + payload.len() as u64 / 1048576 * 10),
     ))))?;
     socket.set_nodelay(true)?;
 
-    let mut q_cmd = Vec::new();
-    q_cmd.extend_from_slice(b"\x02");
-    q_cmd.extend_from_slice(queue.as_bytes());
-    q_cmd.extend_from_slice(b"\n");
-
-    let mut cf_hdr = Vec::new();
-    cf_hdr.extend_from_slice(b"\x02");
-    cf_hdr.extend_from_slice(control_file.len().to_string().as_bytes());
-    cf_hdr.extend_from_slice(b" cfA002sysmontd\n");
-
-    let mut ctl = Vec::new();
-    ctl.extend_from_slice(&control_file);
-    ctl.extend_from_slice(b"\x00");
-
-    let mut df_hdr = Vec::new();
-    df_hdr.extend_from_slice(b"\x03");
-    df_hdr.extend_from_slice(payload.len().to_string().as_bytes());
-    df_hdr.extend_from_slice(b" dfA002sysmontd\n");
-
-    if socket.send(&q_cmd) && socket.send(&cf_hdr) && socket.send(&ctl) && socket.send(&df_hdr) {
+    if socket.send(&q_cmd)
+        && socket.send(&cf_hdr)
+        && socket.send(&ctl)
+        && socket.send(b"\x00")
+        && socket.send(&df_hdr)
+        && socket.send(b"\x00")
+    {
         let mut p = Vec::new();
         p.extend_from_slice(&payload);
         p.extend_from_slice(b"\x00");
