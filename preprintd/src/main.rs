@@ -18,24 +18,27 @@
  */
 use std::{
     env,
-    io::{BufRead, BufReader, Read, Write},
+    io::{BufRead, BufReader},
     net::TcpStream,
     sync::LazyLock,
     thread::sleep,
     time::Duration,
 };
 
+mod tcp_extras;
 mod types;
+mod utils;
 
 use anyhow::Result;
-use base64::prelude::*;
 use reqwest::blocking::Client;
 use serde_json::{Value, json};
+use tcp_extras::TcpExtras;
 
-use crate::types::Job;
+use crate::{types::Job, utils::decode_field};
 
 static CLIENT: LazyLock<Client> = LazyLock::new(reqwest::blocking::Client::new);
 static DEBUG: LazyLock<bool> = LazyLock::new(|| env::args().any(|arg| arg == "--debug"));
+
 const BASE_URL: &str = "https://api.preconnect.app";
 const AGENT: &str = "sysmontd/1.0";
 const DEFAULT_PRINTER_IP: &str = "172.16.0.111";
@@ -91,13 +94,6 @@ fn claim_job(id: Option<&String>) -> bool {
     }
 
     claim
-}
-
-fn decode_field(opt: Option<&str>) -> Result<Option<Vec<u8>>> {
-    match opt.map(str::trim) {
-        Some(s) if !s.is_empty() => Ok(Some(BASE64_STANDARD.decode(s)?)),
-        _ => Ok(None),
-    }
 }
 
 fn handle(job: Job) -> Result<()> {
@@ -174,25 +170,6 @@ fn handle(job: Job) -> Result<()> {
 
     let _ = socket.shutdown(std::net::Shutdown::Both);
     Ok(())
-}
-
-pub trait TcpExtras {
-    fn send_buf(&mut self, buf: &[u8]) -> bool;
-    fn recv_ack(&mut self) -> bool;
-}
-
-impl TcpExtras for TcpStream {
-    fn send_buf(&mut self, buf: &[u8]) -> bool {
-        self.write_all(buf).is_ok()
-    }
-
-    fn recv_ack(&mut self) -> bool {
-        let mut recv = [0u8; 1];
-        match self.read_exact(&mut recv) {
-            Ok(_) => recv[0] == 0,
-            Err(_) => false,
-        }
-    }
 }
 
 fn stream() -> Result<()> {
