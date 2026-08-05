@@ -9,9 +9,12 @@ edition = "2024"
 [dependencies]
 anyhow = "1.0.104"
 base64 = "0.23.0"
+hmac = "0.13.0"
 reqwest = { version = "0.13.4", features = ["blocking", "rustls", "json"] }
 serde = { version = "1.0.229", features = ["derive"] }
 serde_json = "1.0.151"
+sha2 = "0.11.0"
+socket2 = "0.6.5"
 
 [lints.clippy]
 unwrap_used = "deny"
