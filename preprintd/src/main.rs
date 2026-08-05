@@ -1,4 +1,5 @@
 /*
+ * preprintd - Printer swarm listener/worker implementation for PreConnect.
  * Copyright (C) 2026  Anindya Shiddhartha & contributors
  *
  * This program is free software: you can redistribute it and/or modify
