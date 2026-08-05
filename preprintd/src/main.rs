@@ -93,6 +93,13 @@ fn claim_job(id: Option<&String>) -> bool {
     claim
 }
 
+fn decode_field(opt: Option<&str>) -> Result<Option<Vec<u8>>> {
+    match opt.map(str::trim) {
+        Some(s) if !s.is_empty() => Ok(Some(BASE64_STANDARD.decode(s)?)),
+        _ => Ok(None),
+    }
+}
+
 fn handle(job: Job) -> Result<()> {
     let j_id = &job.id;
 
@@ -106,31 +113,27 @@ fn handle(job: Job) -> Result<()> {
         .as_deref()
         .unwrap_or(DEFAULT_PRINTER_QUEUE);
 
-    let payload = match job.payload.as_deref() {
-        Some(p) if !p.trim().is_empty() => BASE64_STANDARD.decode(p.trim())?,
-        _ => return Ok(()),
+    let Some(payload) = decode_field(job.payload.as_deref())? else {
+        return Ok(());
     };
 
-    let q_cmd = match job.q_cmd.as_deref() {
-        Some(q) if !q.trim().is_empty() => BASE64_STANDARD.decode(q.trim())?,
-        _ => format!("\x02{}\n", queue_name).into_bytes(),
-    };
+    let q_cmd = decode_field(job.q_cmd.as_deref())?
+        .unwrap_or_else(|| format!("\x02{}\n", queue_name).into_bytes());
 
-    let ctl = match (job.ctl.as_deref(), job.control_file.as_deref()) {
-        (Some(c), _) if !c.trim().is_empty() => BASE64_STANDARD.decode(c.trim())?,
-        (_, Some(cf)) if !cf.trim().is_empty() => BASE64_STANDARD.decode(cf.trim())?,
-        _ => Vec::new(),
-    };
+    let ctl = decode_field(job.ctl.as_deref())?
+        .or(decode_field(job.control_file.as_deref())?)
+        .unwrap_or_default();
 
-    let cf_hdr = match job.cf_hdr.as_deref() {
-        Some(ch) if !ch.trim().is_empty() => BASE64_STANDARD.decode(ch.trim())?,
-        _ => format!("\x02{} cfA002sysmontd\n", ctl.len()).into_bytes(),
-    };
+    let cf_hdr = decode_field(job.cf_hdr.as_deref())?
+        .unwrap_or_else(|| format!("\x02{} cfA002sysmontd\n", ctl.len()).into_bytes());
 
-    let df_hdr = match job.df_hdr.as_deref() {
-        Some(dh) if !dh.trim().is_empty() => BASE64_STANDARD.decode(dh.trim())?,
-        _ => format!("\x03{} dfA002sysmontd\n", payload.len()).into_bytes(),
-    };
+    let df_hdr = decode_field(job.df_hdr.as_deref())?
+        .unwrap_or_else(|| format!("\x03{} dfA002sysmontd\n", payload.len()).into_bytes());
+
+    debug_log!(
+        "Handling job for {host}:{queue_name} (payload size: {} bytes)",
+        payload.len()
+    );
 
     debug_log!(
         "Handling job for {host}:{queue_name} (payload size: {} bytes)",
@@ -197,6 +200,7 @@ fn stream() -> Result<()> {
         .get(format!("{BASE_URL}/printer"))
         .header("Accept", "text/event-stream")
         .header("User-Agent", AGENT)
+        .timeout(Duration::from_secs(90))
         .send()
     {
         Ok(r) => match r.error_for_status() {
