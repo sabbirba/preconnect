@@ -52,7 +52,7 @@ static WORKER_KEY: LazyLock<String> = LazyLock::new(|| {
 
     while let Some(arg) = args.next() {
         if arg == "--key" {
-            return decode_b64(&args.next().expect("--key must be a string literal")).unwrap();
+            return args.next().expect("--key must be a string literal");
         }
     }
 
@@ -96,8 +96,7 @@ fn is_online(host: &str) -> Result<bool> {
     sock!(s, host, DEF_PORT, 800);
 
     if let Ok(conn) = s {
-        conn.shutdown(std::net::Shutdown::Both)
-            .context("failed to shutdown socket while checking is_online")?;
+        let _ = conn.shutdown(std::net::Shutdown::Both);
     } else {
         return Ok(false);
     }

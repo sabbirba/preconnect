@@ -37,7 +37,7 @@ When you're going through the code, you'll see these:
 - Some `decode_b64()` calls - those are primarily for obfuscation needs but since the inner value is Base64-encoded, you can easily use a decoder to decouple the values underneath. One such tool that you can use is [this](https://www.base64decode.org).
 - The standard LPR/LPD sequence (except the code doing HTTP requests via [reqwest's](https://github.com/seanmonstar/reqwest) blocking API and every other code surrounding/using this logic).
 
-### Mercure SSE Connection Protocol
+#### Mercure SSE Connection Protocol
 
 `preprintd` streams real-time job notifications from the Mercure Hub (`/.well-known/mercure`).
 
@@ -53,7 +53,3 @@ See: https://github.com/sabbirba/preconnect/blob/main/printer.py (courtesy: [@sa
 ### License
 
 Licensed under the [GNU General Public License v3](./LICENSE).
-
-```
-
-```
