@@ -11,6 +11,7 @@
 
 # Environment and secrets
 .env
+printer-sys.md
 android/key.properties
 *.jks
 *.keystore
