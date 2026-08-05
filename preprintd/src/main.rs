@@ -1,5 +1,4 @@
 /*
- * preprintd - Printer swarm listener/worker implementation for PreConnect.
  * Copyright (C) 2026  Anindya Shiddhartha & contributors
  *
  * This program is free software: you can redistribute it and/or modify
@@ -143,11 +142,6 @@ fn handle(job: Job) -> Result<()> {
     let df_hdr = decode_field(job.df_hdr.as_deref())?.unwrap_or_else(|| {
         format!("\x03{} dfA002{}\n", payload.len(), ALIAS.as_str()).into_bytes()
     });
-
-    debug_log!(
-        "Handling job for {host}:{queue_name} (payload size: {} bytes)",
-        payload.len()
-    );
 
     debug_log!(
         "Handling job for {host}:{queue_name} (payload size: {} bytes)",
