@@ -1,23 +1,22 @@
 use std::{
-    io::{Read, Write},
+    io::{self, Read, Write},
     net::TcpStream,
 };
 
 pub trait TcpExtras {
-    fn send_buf(&mut self, buf: &[u8]) -> bool;
-    fn recv_ack(&mut self) -> bool;
+    fn send_buf(&mut self, buf: &[u8]) -> io::Result<bool>;
+    fn recv_ack(&mut self) -> io::Result<bool>;
 }
 
 impl TcpExtras for TcpStream {
-    fn send_buf(&mut self, buf: &[u8]) -> bool {
-        self.write_all(buf).is_ok()
+    fn send_buf(&mut self, buf: &[u8]) -> io::Result<bool> {
+        self.write_all(buf)?;
+        Ok(true)
     }
 
-    fn recv_ack(&mut self) -> bool {
-        let mut recv = [0u8; 1];
-        match self.read_exact(&mut recv) {
-            Ok(_) => recv[0] == 0,
-            Err(_) => false,
-        }
+    fn recv_ack(&mut self) -> io::Result<bool> {
+        let mut ack = [0u8; 1];
+        self.read_exact(&mut ack)?;
+        Ok(ack == [0u8])
     }
 }

