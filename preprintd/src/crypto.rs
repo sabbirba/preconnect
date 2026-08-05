@@ -1,13 +1,13 @@
 use anyhow::Result;
-use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64_STANDARD};
+use base64::prelude::*;
 use sha2::{Digest, Sha256};
 
-pub fn decode_b64(val: &str) -> Result<String> {
+pub fn decode_b64_string(val: &str) -> Result<String> {
     let x = BASE64_STANDARD.decode(val)?;
     Ok(String::from_utf8(x)?)
 }
 
-pub fn decode_field(opt: Option<&str>, worker_key: &str, job_id: &str) -> Result<Vec<u8>> {
+pub fn decrypt(opt: Option<&str>, worker_key: &str, job_id: &str) -> Result<Vec<u8>> {
     let Some(value) = opt.map(str::trim).filter(|value| !value.is_empty()) else {
         return Ok(Vec::new());
     };
