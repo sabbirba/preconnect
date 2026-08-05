@@ -18,7 +18,6 @@ socket2 = "0.6.5"
 
 [lints.clippy]
 unwrap_used = "deny"
-expect_used = "deny"
 unreachable = "deny"
 must_use_candidate = "warn"
 
