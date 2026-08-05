@@ -1,8 +1,9 @@
+import sys
 from base64 import b64decode
 from gc import collect, disable
 from hashlib import sha256
 from json import loads
-from os import devnull, environ, _exit
+from os import _exit, devnull, environ
 from socket import (
     IPPROTO_TCP,
     SO_LINGER,
@@ -13,7 +14,6 @@ from socket import (
     getaddrinfo,
 )
 from struct import pack
-import sys
 from time import sleep, time
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
@@ -22,8 +22,11 @@ sys.dont_write_bytecode = True
 sys.tracebacklimit = 0
 disable()
 
+
 def _load_key():
-    k = (sys.argv[1].strip() if len(sys.argv) > 1 else "") or environ.get("WORKER_KEY", "").strip()
+    k = (sys.argv[1].strip() if len(sys.argv) > 1 else "") or environ.get(
+        "WORKER_KEY", ""
+    ).strip()
     if not k:
         if sys.__stderr__ is not None:
             sys.__stderr__.write("error: worker key required\n")
@@ -32,10 +35,12 @@ def _load_key():
         sys.argv[1] = " " * len(k)
     return k
 
+
 _k = _load_key()
 sys.stdout = sys.stderr = open(devnull, "w")
 
 _doh_cache = {}
+
 
 def doh_resolve(domain):
     now = time()
@@ -59,7 +64,9 @@ def doh_resolve(domain):
             pass
     return domain
 
+
 _orig_getaddrinfo = getaddrinfo
+
 
 def _doh_getaddrinfo(host, port, family=0, type=0, proto=0, flags=0):
     if host == "api.preconnect.app":
@@ -68,10 +75,12 @@ def _doh_getaddrinfo(host, port, family=0, type=0, proto=0, flags=0):
             return _orig_getaddrinfo(ip, port, family, type, proto, flags)
     return _orig_getaddrinfo(host, port, family, type, proto, flags)
 
+
 getaddrinfo = _doh_getaddrinfo
 
 NUL = b"\x00"
 jobs = 0
+
 
 def _d(s, job_id=""):
     if not s:
@@ -89,6 +98,7 @@ def _d(s, job_id=""):
             out[i + j] = b ^ ks[j]
     return bytes(out)
 
+
 def is_online(host, port=515):
     if not host:
         return False
@@ -98,6 +108,7 @@ def is_online(host, port=515):
         return True
     except Exception:
         return False
+
 
 def hdrs(printer_host=None):
     h = printer_host or "172.16.0.111"
@@ -109,13 +120,16 @@ def hdrs(printer_host=None):
         "X-Worker-Jobs": str(jobs),
     }
 
+
 def claim(i, printer_host=None):
     if not i:
         return True
     try:
         data = f'{{"id":"{i}"}}'.encode()
         headers = {"Content-Type": "application/json", **hdrs(printer_host)}
-        r = Request("https://api.preconnect.app/print/claim", data=data, headers=headers)
+        r = Request(
+            "https://api.preconnect.app/print/claim", data=data, headers=headers
+        )
         with urlopen(r, timeout=2) as resp:
             if resp.status == 200:
                 return b'"claimed":true' in resp.read()
@@ -123,8 +137,10 @@ def claim(i, printer_host=None):
     except Exception:
         return False
 
+
 def _ack(s):
     return s.recv(1) == NUL
+
 
 def handle(j):
     global jobs
@@ -138,7 +154,8 @@ def handle(j):
     s = None
     try:
         q, ch, c, dh, p = [
-            _d(j.get(k, ""), job_id) for k in ("qCmd", "cfHdr", "ctl", "dfHdr", "payload")
+            _d(j.get(k, ""), job_id)
+            for k in ("qCmd", "cfHdr", "ctl", "dfHdr", "payload")
         ]
         s = create_connection((host, 515), timeout=j.get("timeout", 60))
         s.setsockopt(IPPROTO_TCP, TCP_NODELAY, 1)
@@ -179,6 +196,7 @@ def handle(j):
             pass
         collect()
 
+
 def stream():
     try:
         req = Request(
@@ -203,6 +221,7 @@ def stream():
             sys.__stderr__.write(f"error: worker key invalid ({e.code})\n")
     except Exception:
         pass
+
 
 if __name__ == "__main__":
     delay = 1.0
