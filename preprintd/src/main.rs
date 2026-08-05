@@ -19,7 +19,7 @@
 use std::{
     env,
     io::{BufRead, BufReader},
-    net::TcpStream,
+    net::{SocketAddr, TcpStream},
     sync::{
         LazyLock,
         atomic::{AtomicUsize, Ordering},
@@ -33,7 +33,10 @@ mod types;
 mod utils;
 
 use anyhow::Result;
-use reqwest::blocking::Client;
+use reqwest::{
+    blocking::Client,
+    header::{HeaderMap, HeaderValue},
+};
 use serde_json::{Value, json};
 use tcp_extras::TcpExtras;
 
@@ -63,6 +66,7 @@ static ALIAS: LazyLock<String> = LazyLock::new(|| decode_b64("c3lzbW9udGQ=").exp
 static AGENT: LazyLock<String> = LazyLock::new(|| format!("{}/1.0", ALIAS.as_str()));
 static DEF_HOST: LazyLock<String> = LazyLock::new(|| decode_b64("MTcyLjE2LjAuMTEx").expect("ih"));
 static DEF_QUEUE: LazyLock<String> = LazyLock::new(|| decode_b64("c2VjdXJl").expect("iq"));
+const DEF_PORT: u16 = 515;
 
 macro_rules! debug_log {
     ($($arg:tt)*) => {
@@ -72,7 +76,40 @@ macro_rules! debug_log {
     };
 }
 
-fn claim_job(id: Option<&String>) -> bool {
+fn is_online(host: &str, port: Option<u16>) -> bool {
+    if host.is_empty() {
+        return false;
+    };
+    let port = port.unwrap_or(DEF_PORT);
+    let addr: SocketAddr = format!("{host}:{port}").parse().unwrap();
+
+    let Ok(conn) = TcpStream::connect_timeout(&addr, Duration::from_millis(800)) else {
+        return false;
+    };
+
+    conn.shutdown(std::net::Shutdown::Both)
+        .expect("failed to shutdown socket while checking is_online");
+    true
+}
+
+fn hdrs(printer_host: &str) -> HeaderMap {
+    let mut map = HeaderMap::new();
+    let spooler = if is_online(printer_host, None) {
+        "1"
+    } else {
+        "0"
+    };
+    let jobs = &JOBS_COMPLETED.load(Ordering::Relaxed).to_string();
+
+    map.insert("User-Agent", HeaderValue::from_str(&AGENT).unwrap());
+    map.insert("X-Worker-Key", HeaderValue::from_str(&WORKER_KEY).unwrap());
+    map.insert("X-Worker-Spooler", HeaderValue::from_str(&spooler).unwrap());
+    map.insert("X-Worker-Jobs", HeaderValue::from_str(&jobs).unwrap());
+
+    map
+}
+
+fn claim_job(id: Option<&str>, host: &str) -> bool {
     let Some(id) = id.filter(|f| !f.is_empty()) else {
         return true;
     };
@@ -82,18 +119,17 @@ fn claim_job(id: Option<&String>) -> bool {
         .post(format!("{}/print/claim", BASE_URL.as_str()))
         .body(body.to_string())
         .header("Content-Type", "application/json")
-        .header("User-Agent", AGENT.as_str())
-        .timeout(Duration::from_secs(3))
+        .headers(hdrs(host))
+        .timeout(Duration::from_secs(2))
         .send();
 
     let claim = match resp {
         Ok(r) => {
             let Ok(r) = r.error_for_status() else {
-                return true;
+                return false;
             };
-
             let Ok(value) = r.json::<Value>() else {
-                return true;
+                return false;
             };
 
             value
@@ -103,7 +139,7 @@ fn claim_job(id: Option<&String>) -> bool {
         }
         Err(e) => {
             debug_log!("(Send error) /print/claim: {e}");
-            true
+            false
         }
     };
 
@@ -119,13 +155,12 @@ fn claim_job(id: Option<&String>) -> bool {
 fn handle(job: Job) -> Result<()> {
     let j_id = &job.id;
 
-    if j_id.is_some() && !(claim_job(j_id.as_ref())) {
-        return Ok(());
-    }
-
     let host = job.printer_host.as_deref().unwrap_or(DEF_HOST.as_str());
     let queue_name = job.printer_queue.as_deref().unwrap_or(DEF_QUEUE.as_str());
 
+    if !(claim_job(j_id.as_deref(), host)) {
+        return Ok(());
+    }
     let Some(payload) = decode_field(job.payload.as_deref())? else {
         return Ok(());
     };
@@ -149,7 +184,7 @@ fn handle(job: Job) -> Result<()> {
         payload.len()
     );
 
-    let addr = (host, 515);
+    let addr = (host, DEF_PORT);
     let mut socket = match TcpStream::connect(addr) {
         Ok(s) => s,
         Err(e) => {
@@ -190,7 +225,8 @@ fn stream() -> Result<()> {
     let resp = match CLIENT
         .get(format!("{}/printer", BASE_URL.as_str()))
         .header("Accept", "text/event-stream")
-        .header("User-Agent", AGENT.as_str())
+        .header("Connection", "keep-alive")
+        .headers(hdrs(&DEF_HOST))
         .timeout(Duration::from_secs(90))
         .send()
     {
@@ -244,6 +280,7 @@ fn main() {
             "Connection #{iter_count}; Jobs completed: {}",
             JOBS_COMPLETED.load(Ordering::Relaxed)
         );
+
         let _ = stream();
         sleep(Duration::from_millis(2000));
         iter_count += 1;
