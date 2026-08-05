@@ -30,7 +30,7 @@ pub fn decode_field(opt: Option<&str>, worker_key: &str, job_id: &str) -> Result
 
     for (idx, chunk) in encrypted.chunks(32).enumerate() {
         let mut hasher = Sha256::new();
-        hasher.update(&p);
+        hasher.update(p);
         hasher.update((idx as u32).to_be_bytes());
         let key_stream = hasher.finalize();
 

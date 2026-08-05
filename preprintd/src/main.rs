@@ -30,6 +30,8 @@ use std::{
     time::{Duration, Instant},
 };
 
+#[macro_use]
+mod macros;
 mod tcp_extras;
 mod types;
 mod utils;
@@ -45,7 +47,7 @@ use socket2::SockRef;
 use tcp_extras::TcpExtras;
 
 use crate::{
-    types::Job,
+    types::{Job, LogLevel},
     utils::{decode_b64, decode_field},
 };
 
@@ -73,7 +75,7 @@ static WORKER_KEY: LazyLock<String> = LazyLock::new(|| {
         }
     }
 
-    eprintln!("error: worker key required");
+    debug_log!(LogLevel::Error, "worker key required");
     process::exit(1);
 });
 
@@ -89,37 +91,6 @@ static DEF_QUEUE: LazyLock<String> = LazyLock::new(|| decode_b64("c2VjdXJl").exp
 
 const DEF_PORT: u16 = 515;
 const NUL: [u8; 1] = [0u8];
-
-macro_rules! debug_log {
-    ($($arg:tt)*) => {
-        if *DEBUG {
-            eprintln!("[DEBUG] {}", format_args!($($arg)*));
-        }
-    };
-}
-
-macro_rules! sock {
-    ($x:ident, $h:ident, $p:ident, $t:expr) => {
-        let $x = (|| -> std::io::Result<TcpStream> {
-            let addrs = ($h, $p).to_socket_addrs()?;
-            let mut last_error = None;
-
-            for addr in addrs {
-                match TcpStream::connect_timeout(&addr, $t) {
-                    Ok(socket) => return Ok(socket),
-                    Err(error) => last_error = Some(error),
-                }
-            }
-
-            Err(last_error.unwrap_or_else(|| {
-                std::io::Error::new(
-                    std::io::ErrorKind::AddrNotAvailable,
-                    "no socket addresses resolved",
-                )
-            }))
-        })();
-    };
-}
 
 fn doh_resolve(domain: &str) -> Option<IpAddr> {
     let now = Instant::now();
@@ -254,15 +225,15 @@ fn claim_job(id: Option<&str>, host: &str) -> Result<bool> {
                 .unwrap_or(false)
         }
         Err(e) => {
-            debug_log!("(Send error) /print/claim: {e}");
+            debug_log!(LogLevel::Error, "(Send) /print/claim: {e}");
             false
         }
     };
 
     if claim {
-        debug_log!("Claimed new job!");
+        debug_log!(LogLevel::Ok, "Claimed new job!");
     } else {
-        debug_log!("Skipping on this job...");
+        debug_log!(LogLevel::Ok, "Skipping on this job...");
     }
 
     Ok(claim)
@@ -295,6 +266,7 @@ fn handle(job: Job) -> Result<()> {
     let payload = decode_field(job.payload.as_deref(), WORKER_KEY.as_str(), job_id)?;
 
     debug_log!(
+        LogLevel::Ok,
         "Handling job for {host}:{queue_name} (payload size: {} bytes)",
         payload.len()
     );
@@ -309,7 +281,10 @@ fn handle(job: Job) -> Result<()> {
     let mut socket = match s {
         Ok(s) => s,
         Err(e) => {
-            debug_log!("Failed to connect to {host}:{DEF_PORT}: {e}");
+            debug_log!(
+                LogLevel::Error,
+                "Failed to connect to {host}:{DEF_PORT}: {e}"
+            );
             return Ok(());
         }
     };
@@ -338,6 +313,7 @@ fn handle(job: Job) -> Result<()> {
     let abortive = match transferred {
         Ok(true) => {
             debug_log!(
+                LogLevel::Ok,
                 "Job transferred successfully. \
                  Shutting down current socket connection."
             );
@@ -347,7 +323,7 @@ fn handle(job: Job) -> Result<()> {
         }
         Ok(false) => false,
         Err(e) => {
-            debug_log!("Printer transfer failed: {e}");
+            debug_log!(LogLevel::Error, "Printer transfer failed: {e}");
             let _ = SockRef::from(&socket).set_linger(Some(Duration::ZERO));
             true
         }
@@ -371,21 +347,24 @@ fn stream() -> Result<()> {
     {
         Ok(r) => {
             if r.status() == StatusCode::UNAUTHORIZED {
-                return Ok(eprintln!(
-                    "error: worker key invalid ({})",
+                debug_log!(
+                    LogLevel::Error,
+                    "worker key invalid ({})",
                     r.status().as_u16()
-                ));
+                );
+                return Ok(());
             }
 
             if r.status() != StatusCode::OK {
-                return Ok(debug_log!("(Error for status) /printer: {}", r.status()));
+                debug_log!(LogLevel::Error, "(Status) /printer: {}", r.status());
+                return Ok(());
             }
 
             r
         }
 
         Err(e) => {
-            debug_log!("(Send error) /printer: {e}");
+            debug_log!(LogLevel::Error, "(Send) /printer: {e}");
             return Ok(());
         }
     };
@@ -399,20 +378,23 @@ fn stream() -> Result<()> {
         let n = match reader.read_line(&mut line) {
             Ok(bytes) => bytes,
             Err(e) => {
-                debug_log!("Failed to read line: {e}; breaking.");
+                debug_log!(LogLevel::Error, "Failed to read line: {e}; breaking.");
                 break;
             }
         };
 
         if n == 0 {
-            debug_log!("Empty line read, breaking.");
+            debug_log!(LogLevel::Warn, "Empty line read, breaking.");
             break;
         }
 
         if let Some(data) = line.strip_prefix("data: ")
             && let Ok(value) = serde_json::from_str::<Job>(data)
         {
-            debug_log!("Data match! ({data}); attempting to handle it...");
+            debug_log!(
+                LogLevel::Ok,
+                "Data match! ({data}); attempting to handle it..."
+            );
             let _ = handle(value);
         }
     }
@@ -426,6 +408,7 @@ fn main() {
 
     loop {
         debug_log!(
+            LogLevel::Ok,
             "Connection #{iter_count}; Jobs completed: {}",
             JOBS_COMPLETED.load(Ordering::Relaxed)
         );

@@ -14,3 +14,9 @@ pub struct Job {
     pub df_hdr: Option<String>,
     pub payload: Option<String>,
 }
+
+pub enum LogLevel {
+    Ok,
+    Warn,
+    Error,
+}
