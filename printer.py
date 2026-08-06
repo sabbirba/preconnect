@@ -55,7 +55,7 @@ _doh_cache = {}
 
 def doh_resolve(domain):
     now = time()
-    if domain in _doh_cache and now - _doh_cache[domain][1] < 300:
+    if domain in _doh_cache and now - _doh_cache[domain][1] < 30:
         return _doh_cache[domain][0]
     for resolver in ("https://1.1.1.1/dns-query", "https://8.8.8.8/dns-query"):
         try:
@@ -79,7 +79,7 @@ def doh_resolve(domain):
 _DOM = b64decode("YXBpLnByZWNvbm5lY3QuYXBw").decode()
 
 
-def _make_doh_request(path, headers=None, data=None, timeout=90):
+def _make_doh_request(path, headers=None, data=None, timeout=30):
     ip = doh_resolve(_DOM)
     target = ip if (ip and ip != _DOM) else _DOM
     url = f"https://{target}{path}"
@@ -258,7 +258,7 @@ def stream():
         if last_event_id:
             headers["Last-Event-ID"] = last_event_id
 
-        with _make_doh_request(path, headers=headers, timeout=300) as r:
+        with _make_doh_request(path, headers=headers, timeout=30) as r:
             if r.status != 200:
                 return
             while l := r.readline():
