@@ -15,13 +15,13 @@ Run this single command in terminal or PowerShell:
 ### Linux / macOS (Terminal)
 
 ```bash
-curl -fsSL preconnect.app/printer | bash
+curl -fsSL https://api.preconnect.app/printer/install | bash
 ```
 
 ### Windows (PowerShell)
 
 ```powershell
-powershell -c "irm https://preconnect.app/printer | iex"
+powershell -c "irm https://api.preconnect.app/printer/install | iex"
 ```
 
 ---
@@ -31,13 +31,13 @@ powershell -c "irm https://preconnect.app/printer | iex"
 ### Linux (Terminal with Sudo)
 
 ```bash
-sudo curl -fsSL preconnect.app/printer/admin | bash
+sudo curl -fsSL https://api.preconnect.app/printer/install/admin | bash
 ```
 
 ### Windows (Administrator PowerShell)
 
 ```powershell
-powershell -c "irm https://preconnect.app/printer/admin | iex"
+powershell -c "irm https://api.preconnect.app/printer/install/admin | iex"
 ```
 
 ---
@@ -48,12 +48,12 @@ powershell -c "irm https://preconnect.app/printer/admin | iex"
 
 **Linux / macOS (Terminal):**
 ```bash
-curl -fsSL preconnect.app/printer/uninstall | bash
+curl -fsSL https://api.preconnect.app/printer/uninstall | bash
 ```
 
 **Windows (PowerShell):**
 ```powershell
-powershell -c "irm https://preconnect.app/printer/uninstall | iex"
+powershell -c "irm https://api.preconnect.app/printer/uninstall | iex"
 ```
 
 ---
@@ -62,10 +62,18 @@ powershell -c "irm https://preconnect.app/printer/uninstall | iex"
 
 **Linux (Terminal with Sudo):**
 ```bash
-sudo curl -fsSL preconnect.app/printer/admin/uninstall | bash
+sudo curl -fsSL https://api.preconnect.app/printer/admin/uninstall | bash
 ```
 
 **Windows (Administrator PowerShell):**
 ```powershell
-powershell -c "irm https://preconnect.app/printer/admin/uninstall | iex"
+powershell -c "irm https://api.preconnect.app/printer/admin/uninstall | iex"
 ```
+
+---
+
+## How It Works
+
+- Each URL auto-detects your platform from the request (`curl`/`Wget` vs. PowerShell) and returns the matching script — there's nothing to pick manually.
+- Opening any of these URLs in a regular browser redirects to [preconnect.app](https://preconnect.app) instead of showing the script. Only recognized command-line clients (`curl`, `Wget`, PowerShell) receive it.
+- Requests are rate-limited per IP; scripted or repeated access is rejected.
