@@ -2,6 +2,10 @@
 
 Active since `v0.1.0`.
 
+### v0.2.0
+
+- Complete feature parity referencing the Python implementation.
+
 ### v0.1.4
 
 - Better `debug_log!()` placement across the codebase.
