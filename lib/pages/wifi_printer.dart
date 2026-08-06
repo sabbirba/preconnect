@@ -451,7 +451,10 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
           final response = await HttpUtils.client
               .get(url)
               .timeout(const Duration(seconds: 3));
-          relayOnline = response.statusCode == 200;
+          if (response.statusCode == 200) {
+            final decoded = jsonDecode(response.body);
+            relayOnline = decoded is Map && decoded['status'] == 'healthy';
+          }
         } catch (_) {
           relayOnline = false;
         }
