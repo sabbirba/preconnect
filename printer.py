@@ -4,7 +4,7 @@ from base64 import b64decode
 from gc import collect, disable
 from hashlib import sha256
 from json import loads
-from os import _exit, devnull, environ, execv
+from os import _exit, devnull, environ
 from socket import (
     IPPROTO_TCP,
     SO_SNDBUF,
@@ -49,16 +49,6 @@ def _load_key():
 _k = _load_key()
 sys.stdout = sys.stderr = open(devnull, "w")  # noqa: SIM115
 
-
-def _calc_hash():
-    try:
-        with open(__file__, "rb") as f:
-            return sha256(f.read()).hexdigest()
-    except Exception:  # noqa: BLE001
-        return ""
-
-
-_h = _calc_hash()
 _doh_cache = {}
 
 
@@ -152,21 +142,7 @@ def hdrs(printer_host=None):
         "X-Worker-Key": _k,
         "X-Worker-Spooler": sp,
         "X-Worker-Jobs": str(jobs),
-        "X-Worker-Hash": _h,
     }
-
-
-def _apply_update():
-    try:
-        with _make_doh_request("/print/update", headers=hdrs()) as resp:
-            if resp.status == 200:
-                code = resp.read()
-                if code and len(code) > 100:
-                    with open(__file__, "wb") as f:
-                        f.write(code)
-                    execv(sys.executable, [sys.executable, __file__])
-    except Exception:  # noqa: BLE001, S110
-        pass
 
 
 def claim(i, printer_host=None):
@@ -177,8 +153,6 @@ def claim(i, printer_host=None):
         headers = {"Content-Type": "application/json", **hdrs(printer_host)}
         with _make_doh_request("/print/claim", headers=headers, data=data) as resp:
             if resp.status == 200:
-                if resp.headers.get("X-Worker-Update") == "1":
-                    _apply_update()
                 return b'"claimed":true' in resp.read()
             return False
     except Exception:  # noqa: BLE001
@@ -286,8 +260,6 @@ def stream():
         with _make_doh_request(path, headers=headers) as r:
             if r.status != 200:
                 return
-            if r.headers.get("X-Worker-Update") == "1":
-                _apply_update()
             while l := r.readline():
                 if l.startswith(b"id: "):
                     last_event_id = l[4:].strip().decode("utf-8", "ignore")
