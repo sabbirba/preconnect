@@ -20,7 +20,6 @@ use std::{
     env,
     io::{BufRead, BufReader},
     net::{SocketAddr, TcpStream, ToSocketAddrs},
-    process,
     sync::{
         LazyLock, Mutex,
         atomic::{AtomicUsize, Ordering},
@@ -49,28 +48,18 @@ use tcp_extras::TcpExtras;
 
 use crate::{
     constant::{AGENT, BASE_DOMAIN, BASE_URL, DEF_HOST, DEF_QUEUE},
-    crypto::decrypt,
+    crypto::{decrypt, make_subscriber_jwt},
     doh::resolve_doh,
     types::{Job, LogLevel},
 };
 
 static CLIENT: LazyLock<Mutex<(Client, Instant)>> =
-    LazyLock::new(|| Mutex::new((get_latest_client(), Instant::now())));
+    LazyLock::new(|| Mutex::new((build_client(), Instant::now())));
 
 static DEBUG: LazyLock<bool> = LazyLock::new(|| env::args().any(|arg| arg == "--debug"));
-
-static WORKER_KEY: LazyLock<String> = LazyLock::new(|| {
-    let mut args = env::args();
-
-    while let Some(arg) = args.next() {
-        if arg == "--key" {
-            return args.next().expect("--key must be a string literal");
-        }
-    }
-
-    debug_log!(LogLevel::Error, "worker key required");
-    process::exit(1);
-});
+static LAST_EVENT_ID: LazyLock<Mutex<Option<String>>> = LazyLock::new(|| Mutex::new(None));
+static WORKER_KEY: LazyLock<String> =
+    LazyLock::new(|| env::var("WORKER_KEY").expect("missing WORKER_KEY environment variable"));
 
 static JOBS_COMPLETED: AtomicUsize = AtomicUsize::new(0);
 
@@ -87,7 +76,7 @@ fn build_client() -> Client {
     builder.build().expect("failed to build HTTP client")
 }
 
-fn get_latest_client() -> Client {
+fn client() -> Client {
     let mut state = CLIENT.lock().expect("HTTP client lock poisoned");
 
     if state.1.elapsed() >= Duration::from_secs(300) {
@@ -133,7 +122,7 @@ fn claim_job(id: Option<&str>, host: &str) -> Result<bool> {
 
     let body = json!({ "id": id });
 
-    let resp = get_latest_client()
+    let resp = client()
         .post(format!("{}/print/claim", BASE_URL.as_str()))
         .body(body.to_string())
         .header("Content-Type", "application/json")
@@ -269,11 +258,28 @@ fn handle(job: Job) -> Result<()> {
 }
 
 fn stream() -> Result<()> {
-    let resp = match get_latest_client()
-        .get(format!("{}/printer", BASE_URL.as_str()))
+    let mut headers = hdrs(&DEF_HOST)?;
+
+    if let Some(last_event_id) = LAST_EVENT_ID
+        .lock()
+        .expect("last event ID mutex lock poisoned")
+        .as_deref()
+        .filter(|id| !id.is_empty())
+    {
+        headers.insert("Last-Event-ID", HeaderValue::from_str(last_event_id)?);
+    }
+
+    let resp = match client()
+        .get(format!(
+            "{}/.well-known/mercure?topic=https%3A%2F%2Fpreconnect.app%2Fprinter",
+            BASE_URL.as_str()
+        ))
         .header("Accept", "text/event-stream")
-        .header("Connection", "keep-alive")
-        .headers(hdrs(DEF_HOST.as_str())?)
+        .header(
+            "Authorization",
+            format!("Bearer {}", make_subscriber_jwt(&WORKER_KEY)),
+        )
+        .headers(headers)
         .timeout(Duration::from_secs(90))
         .send()
     {
@@ -320,7 +326,12 @@ fn stream() -> Result<()> {
             break;
         }
 
-        if let Some(data) = line.strip_prefix("data: ")
+        if let Some(data) = line.strip_prefix("id: ") {
+            let mut l = LAST_EVENT_ID
+                .lock()
+                .expect("last event ID mutex lock poisoned");
+            *l = Some(data.trim().to_string());
+        } else if let Some(data) = line.strip_prefix("data: ")
             && let Ok(value) = serde_json::from_str::<Job>(data)
         {
             debug_log!(

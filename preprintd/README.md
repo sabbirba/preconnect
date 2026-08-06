@@ -14,7 +14,7 @@ To compile and run:
 
 ```bash
 cargo build --release
-./target/release/preprintd --key WORKER_KEY_HERE
+WORKER_KEY=yourworkerkeyhere ./target/release/preprintd
 ```
 
 > [!NOTE]
@@ -23,8 +23,10 @@ cargo build --release
 For running the binary in debug mode, use the `--debug` flag:
 
 ```bash
-cargo run -- --debug --key WORKER_KEY_HERE
+WORKER_KEY=yourworkerkeyhere cargo run -- --debug
 ```
+
+> The `WORKER_KEY` can be set just like a regular environment variable. A good option for this is [direnv](https://github.com/direnv/direnv) to set `WORKER_KEY` on the current directory using the `.envrc` file.
 
 ### Prebuilt Binaries
 
