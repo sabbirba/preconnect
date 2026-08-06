@@ -278,7 +278,6 @@ fn stream() -> Result<()> {
             format!("Bearer {}", make_subscriber_jwt(&WORKER_KEY)),
         )
         .headers(headers)
-        .timeout(Duration::from_secs(90))
         .send()
     {
         Ok(r) => {
