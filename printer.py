@@ -120,7 +120,7 @@ def is_online(host, port=515):
     if host in _online_cache and now - _online_cache[host][1] < 2.0:
         return _online_cache[host][0]
     try:
-        s = create_connection((host, port), timeout=0.8)
+        s = create_connection((host, port), timeout=1.0)
         try:
             s.shutdown(2)
         except Exception:  # noqa: BLE001, S110
