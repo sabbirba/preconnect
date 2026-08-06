@@ -1,6 +1,24 @@
 use anyhow::Result;
+use base64::Engine;
+use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 use base64::prelude::*;
+use hmac::{Hmac, KeyInit, Mac};
 use sha2::{Digest, Sha256};
+
+type HmacSha256 = Hmac<Sha256>;
+
+pub fn make_subscriber_jwt(worker_key: &str) -> String {
+    let header = URL_SAFE_NO_PAD.encode(b"{\"alg\":\"HS256\",\"typ\":\"JWT\"}");
+    let payload = URL_SAFE_NO_PAD
+        .encode(b"{\"mercure\":{\"subscribe\":[\"https://preconnect.app/printer\"]}}");
+
+    let sig_input = format!("{}.{}", header, payload);
+    let mut mac = HmacSha256::new_from_slice(worker_key.as_bytes()).expect("HMAC init failed");
+    mac.update(sig_input.as_bytes());
+
+    let signature = URL_SAFE_NO_PAD.encode(mac.finalize().into_bytes());
+    format!("{}.{}.{}", header, payload, signature)
+}
 
 pub fn decode_b64_string(val: &str) -> Result<String> {
     let x = BASE64_STANDARD.decode(val)?;
