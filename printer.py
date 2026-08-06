@@ -78,14 +78,14 @@ def doh_resolve(domain):
 _DOM = b64decode("YXBpLnByZWNvbm5lY3QuYXBw").decode()
 
 
-def _make_doh_request(path, headers=None, data=None):
+def _make_doh_request(path, headers=None, data=None, timeout=90):
     ip = doh_resolve(_DOM)
     target = ip if (ip and ip != _DOM) else _DOM
     url = f"https://{target}{path}"
     req = Request(url, headers=headers or {}, data=data)
     req.add_header("Host", _DOM)
     ctx = _create_unverified_context() if target == ip else create_default_context()
-    return urlopen(req, timeout=90, context=ctx)
+    return urlopen(req, timeout=timeout, context=ctx)
 
 
 NUL = b"\x00"
@@ -257,7 +257,7 @@ def stream():
         if last_event_id:
             headers["Last-Event-ID"] = last_event_id
 
-        with _make_doh_request(path, headers=headers) as r:
+        with _make_doh_request(path, headers=headers, timeout=300) as r:
             if r.status != 200:
                 return
             while l := r.readline():
@@ -265,7 +265,7 @@ def stream():
                     last_event_id = l[4:].strip().decode("utf-8", "ignore")
                 elif l.startswith(b"data: "):
                     try:
-                        handle(loads(l[6:]))
+                        handle(loads(l[6:].decode("utf-8", "replace")))
                     except Exception:  # noqa: BLE001, S110
                         pass
     except HTTPError as e:
