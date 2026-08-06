@@ -67,7 +67,9 @@ const DEF_PORT: u16 = 515;
 const NUL: [u8; 1] = [0u8];
 
 fn build_client() -> Client {
-    let mut builder = Client::builder();
+    let mut builder = Client::builder()
+        .tcp_nodelay(true)
+        .tcp_keepalive(Duration::from_secs(15));
 
     if let Some(ip) = resolve_doh(&BASE_DOMAIN) {
         builder = builder.resolve(&BASE_DOMAIN, SocketAddr::new(ip, 443));
@@ -312,8 +314,8 @@ fn stream() -> Result<()> {
 
         let n = match reader.read_line(&mut line) {
             Ok(bytes) => bytes,
-            Err(e) => {
-                debug_log!(LogLevel::Error, "Failed to read line: {e}; breaking.");
+            Err(_) => {
+                debug_log!(LogLevel::Ok, "Re-establishing stream connection...");
                 break;
             }
         };
