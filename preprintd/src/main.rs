@@ -336,7 +336,9 @@ fn stream() -> Result<()> {
                 LogLevel::Ok,
                 "Data match! ({data}); attempting to handle it..."
             );
-            let _ = handle(value);
+            std::thread::spawn(move || {
+                let _ = handle(value);
+            });
         }
     }
 
