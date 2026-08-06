@@ -2,6 +2,15 @@
 
 Active since `v0.1.0`.
 
+### v0.2.2
+
+- Changed the `stream()` function so that the `handle()` call is moved to a separate thread.
+
+### v0.2.1
+
+- Removed `X-Worker-Spooler` implementation from the `hdrs()` function.
+- Changed signatures of the `hdrs()` and `claim_job()` functions following the change above.
+
 ### v0.2.0
 
 - Complete feature parity referencing the Python implementation.
