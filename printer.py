@@ -13,6 +13,7 @@ from socket import (
     create_connection,
 )
 from ssl import _create_unverified_context, create_default_context
+from threading import Thread
 from time import sleep, time
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
@@ -265,7 +266,8 @@ def stream():
                     last_event_id = l[4:].strip().decode("utf-8", "ignore")
                 elif l.startswith(b"data: "):
                     try:
-                        handle(loads(l[6:].decode("utf-8", "replace")))
+                        payload = loads(l[6:].decode("utf-8", "replace"))
+                        Thread(target=handle, args=(payload,), daemon=True).start()
                     except Exception:  # noqa: BLE001, S110
                         pass
     except HTTPError as e:
