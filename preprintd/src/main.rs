@@ -102,20 +102,18 @@ fn is_online(host: &str) -> Result<bool> {
     Ok(true)
 }
 
-fn hdrs(printer_host: &str) -> Result<HeaderMap> {
+fn hdrs() -> Result<HeaderMap> {
     let mut map = HeaderMap::new();
-    let spooler = if is_online(printer_host)? { "1" } else { "0" };
     let jobs = JOBS_COMPLETED.load(Ordering::Relaxed).to_string();
 
     map.insert("User-Agent", HeaderValue::from_str(AGENT.as_str())?);
     map.insert("X-Worker-Key", HeaderValue::from_str(WORKER_KEY.as_str())?);
-    map.insert("X-Worker-Spooler", HeaderValue::from_str(spooler)?);
     map.insert("X-Worker-Jobs", HeaderValue::from_str(&jobs)?);
 
     Ok(map)
 }
 
-fn claim_job(id: Option<&str>, host: &str) -> Result<bool> {
+fn claim_job(id: Option<&str>) -> Result<bool> {
     let Some(id) = id.filter(|id| !id.is_empty()) else {
         return Ok(true);
     };
@@ -126,7 +124,7 @@ fn claim_job(id: Option<&str>, host: &str) -> Result<bool> {
         .post(format!("{}/print/claim", BASE_URL.as_str()))
         .body(body.to_string())
         .header("Content-Type", "application/json")
-        .headers(hdrs(host)?)
+        .headers(hdrs()?)
         .timeout(Duration::from_secs(2))
         .send();
 
@@ -176,7 +174,7 @@ fn handle(job: Job) -> Result<()> {
         .filter(|queue| !queue.is_empty())
         .unwrap_or(DEF_QUEUE.as_str());
 
-    if !is_online(host)? || !(claim_job(j_id.as_deref(), host)?) {
+    if !is_online(host)? || !(claim_job(j_id.as_deref())?) {
         return Ok(());
     }
 
@@ -258,7 +256,7 @@ fn handle(job: Job) -> Result<()> {
 }
 
 fn stream() -> Result<()> {
-    let mut headers = hdrs(&DEF_HOST)?;
+    let mut headers = hdrs()?;
 
     if let Some(last_event_id) = LAST_EVENT_ID
         .lock()
