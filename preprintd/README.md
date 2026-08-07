@@ -2,6 +2,8 @@
 
 Printer swarm-worker daemon implementation for [PreConnect](https://github.com/sabbirba/preconnect).
 
+You can also visit the [Codeberg Mirror](https://codeberg.org/hitblast/preprintd).
+
 ### Overview
 
 This tiny worker is just a `TcpStream` under the hood, constantly listening for jobs and claiming one if open. It works by constantly listening for incoming data from the `api.preconnect.app` endpoint (which uses [Mercure](https://mercure.rocks) under the hood for streaming real-time data), and then initiating the claiming procedure.
