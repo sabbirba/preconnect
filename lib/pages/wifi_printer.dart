@@ -44,7 +44,7 @@ class CampusPrinterPage extends StatefulWidget {
 
   static Future<void> clearStoredState() async {
     await AppStorage.instance.remove('campus_printer_copies');
-    await AppStorage.instance.remove('campus_printer_history');
+    await AppStorage.instance.remove('printer_history');
     await AppStorage.instance.remove('campus_printer_last_host');
     await AppStorage.instance.remove('campus_printer_last_wifi');
     await AppStorage.instance.remove(StorageKeys.studentId);
@@ -186,23 +186,38 @@ class CampusPrinterPage extends StatefulWidget {
     );
   }
 
+  static List<_PrintHistoryEntry> _deduplicateHistory(
+    List<_PrintHistoryEntry> list,
+  ) {
+    final seen = <String>{};
+    final result = <_PrintHistoryEntry>[];
+    for (final entry in list) {
+      final timeBucket = entry.createdAt.millisecondsSinceEpoch ~/ 10000;
+      final key = '${entry.fileName}:${entry.status}:$timeBucket';
+      if (seen.add(key)) {
+        result.add(entry);
+      }
+    }
+    return result;
+  }
+
   static Future<List<_PrintHistoryEntry>> _loadHistorySnapshot() async {
-    final raw =
-        (await AppStorage.instance.getString('campus_printer_history') ?? '')
-            .trim();
-    if (raw.isEmpty) return const <_PrintHistoryEntry>[];
+    final raw = (await AppStorage.instance.getString('printer_history') ?? '')
+        .trim();
+    if (raw.isEmpty) return const [];
     try {
       final decoded = jsonDecode(raw);
-      if (decoded is! List<dynamic>) return const <_PrintHistoryEntry>[];
-      return decoded
-          .whereType<Map>()
-          .map((e) => e.cast<String, dynamic>())
-          .map(_PrintHistoryEntry.fromJson)
-          .where((entry) => entry.fileName.isNotEmpty)
-          .toList(growable: false);
-    } catch (_) {
-      return const <_PrintHistoryEntry>[];
-    }
+      if (decoded is List<dynamic>) {
+        final entries = decoded
+            .whereType<Map>()
+            .map((e) => e.cast<String, dynamic>())
+            .map(_PrintHistoryEntry.fromJson)
+            .where((entry) => entry.fileName.isNotEmpty)
+            .toList(growable: false);
+        return _deduplicateHistory(entries);
+      }
+    } catch (_) {}
+    return const [];
   }
 
   @override
@@ -211,18 +226,23 @@ class CampusPrinterPage extends StatefulWidget {
 
 class _CampusPrinterPageState extends State<CampusPrinterPage>
     with WidgetsBindingObserver {
-  static const String _historyKey = 'campus_printer_history';
+  static const String _historyKey = 'printer_history';
   static const int _maxHistoryEntries = 50;
   static const String _copiesKey = 'campus_printer_copies';
-  static const String _snackFileReadFailed = "Couldn't read selected file";
-  static const String _snackChooseFile = 'Select a file first';
+  static const String _snackFileReadFailed =
+      'Unable to read the selected file. Please select a valid document.';
+  static const String _snackChooseFile =
+      'Please select a document file to print.';
   static const String _snackBlankPageLoadFailed =
-      "Couldn't load the blank page";
-  static const String _snackIdentityRequired = 'Profile data required';
-  static const String _snackPrintSent = 'Print sent';
-  static const String _snackPrintFailed = 'Print failed';
+      'Unable to load blank page. Please check your internet connection.';
+  static const String _snackIdentityRequired =
+      'Student ID and profile data are required to submit print jobs.';
+  static const String _snackPrintSent =
+      'Document sent to campus printer successfully.';
+  static const String _snackPrintFailed =
+      'Unable to complete print job. Please check your connection.';
   static const String _snackPrinterConnectionFailed =
-      'Printer connection failed';
+      'Failed to connect to printer. Connect to BRACU Wi-Fi or check your internet connection.';
 
   List<_SelectedFile> _selectedFiles = const <_SelectedFile>[];
   Map<String, String?>? _profile;
@@ -511,7 +531,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage>
         }
       }
     } catch (_) {}
-    return _relayAvailable;
+    return false;
   }
 
   Future<String> _currentNetworkFingerprint() async {
@@ -574,7 +594,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage>
   }
 
   Future<void> _addHistory(_PrintHistoryEntry entry) async {
-    final next = <_PrintHistoryEntry>[entry, ..._history];
+    final next = CampusPrinterPage._deduplicateHistory([entry, ..._history]);
     await _saveHistory(next);
   }
 
@@ -792,6 +812,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage>
         booklet: _booklet,
       );
 
+      _PrintJobResult? lastResult;
       for (int i = 0; i < _selectedFiles.length; i++) {
         final file = _selectedFiles[i];
         if (!mounted) return;
@@ -800,7 +821,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage>
           duration: const Duration(seconds: 2),
         );
         try {
-          await client.sendFile(
+          final result = await client.sendFile(
             bytes: file.bytes,
             fileName: file.name,
             user: user,
@@ -814,20 +835,33 @@ class _CampusPrinterPageState extends State<CampusPrinterPage>
               );
             },
           );
+          lastResult = result;
           if (!mounted) return;
-          final isOfflineMode = !_relayAvailable && _printerHost.isEmpty;
+          final statusLabel = result.isQueued
+              ? (result.queueNumber.isNotEmpty
+                    ? 'Queue #${result.queueNumber}'
+                    : 'Queued')
+              : 'Sent';
+          final messageLabel = result.isQueued
+              ? 'Queued in cloud (Queue #${result.queueNumber})'
+              : 'Sent to campus printer';
+
           await _addHistory(
             _PrintHistoryEntry(
               fileName: file.name,
               printerHost: host.isNotEmpty ? host : 'Cloud Queue',
               copies: copies,
-              status: isOfflineMode ? 'Queued' : 'Sent',
-              message: isOfflineMode
-                  ? 'Queued in cloud (will print automatically when printer comes online)'
-                  : 'Sent to campus printer',
+              status: statusLabel,
+              message: messageLabel,
               createdAt: DateTime.now(),
             ),
           );
+          if (mounted && result.isQueued) {
+            _showPrintProgress(
+              'Queue #${result.queueNumber}',
+              duration: const Duration(seconds: 4),
+            );
+          }
         } on _LprPrintException catch (error) {
           if (!mounted) return;
           await _addHistory(
@@ -864,7 +898,14 @@ class _CampusPrinterPageState extends State<CampusPrinterPage>
         }
       }
       if (mounted) {
-        showAppSnackBar(context, _snackPrintSent);
+        final hasQueuedJob = lastResult?.isQueued ?? false;
+        final queueNum = lastResult?.queueNumber ?? '';
+        final snackMessage = hasQueuedJob
+            ? (queueNum.isNotEmpty
+                  ? 'Queue #$queueNum. It will print automatically when the printer comes online.'
+                  : 'It will print automatically when the printer comes online.')
+            : _snackPrintSent;
+        showAppSnackBar(context, snackMessage);
       }
     } finally {
       if (mounted) {
@@ -1406,12 +1447,12 @@ class _PrintHistoryRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final failed = entry.status.toLowerCase() == 'failed';
+    final statusLabel = entry.status.trim().isNotEmpty ? entry.status : 'Sent';
     final copiesLabel = entry.copies == 1 ? '1 copy' : '${entry.copies} copies';
     return _PrinterFileCard(
       title: entry.fileName,
       subtitle:
-          '${failed ? 'Failed' : 'Sent'} • $copiesLabel • ${formatDateTimeLabel(entry.createdAt)}',
+          '$statusLabel • $copiesLabel • ${formatDateTimeLabel(entry.createdAt)}',
       isEmpty: false,
     );
   }
@@ -1510,6 +1551,13 @@ class _LprPrintException implements Exception {
   String toString() => message;
 }
 
+class _PrintJobResult {
+  const _PrintJobResult({this.isQueued = false, this.queueNumber = ''});
+
+  final bool isQueued;
+  final String queueNumber;
+}
+
 class _LprPrintClient {
   const _LprPrintClient({
     required this.host,
@@ -1525,7 +1573,7 @@ class _LprPrintClient {
       'Printer connection timed out';
   static const String _errPrinterRejectedJob = 'Printer rejected the job';
 
-  Future<void> sendFile({
+  Future<_PrintJobResult> sendFile({
     required Uint8List bytes,
     required String fileName,
     required String user,
@@ -1599,7 +1647,7 @@ class _LprPrintClient {
         payload = sendBytes;
       }
 
-      await _sendLprJob(
+      return await _sendLprJob(
         printerHost: printerHost,
         printerQueue: printerQueue,
         controlFileName: controlFileName,
@@ -1642,7 +1690,7 @@ class _LprPrintClient {
     return number.toString().padLeft(3, '0');
   }
 
-  Future<void> _sendLprJob({
+  Future<_PrintJobResult> _sendLprJob({
     required String printerHost,
     required String printerQueue,
     required String controlFileName,
@@ -1656,13 +1704,15 @@ class _LprPrintClient {
     try {
       try {
         Socket? connectedSocket;
-        try {
-          connectedSocket = await Socket.connect(
-            printerHost,
-            port,
-            timeout: const Duration(seconds: 1),
-          );
-        } catch (_) {}
+        if (printerHost.trim().isNotEmpty) {
+          try {
+            connectedSocket = await Socket.connect(
+              printerHost,
+              port,
+              timeout: const Duration(seconds: 1),
+            );
+          } catch (_) {}
+        }
         if (connectedSocket == null) {
           throw const _LprPrintException(_errPrinterConnectionTimedOut);
         }
@@ -1712,6 +1762,7 @@ class _LprPrintClient {
         }
         await ackReader.cancel();
         await socket.close();
+        return const _PrintJobResult(isQueued: false, queueNumber: '');
       } catch (_) {
         try {
           final url = Uri.parse('${ApiConfig.realtimeApiBase}/print');
@@ -1734,6 +1785,24 @@ class _LprPrintClient {
             throw const _LprPrintException(
               'Failed to connect to cloud relay server',
             );
+          }
+          try {
+            final Map<String, dynamic> data = jsonDecode(response.body);
+            var queueId = data['id']?.toString() ?? '';
+            if (queueId.isEmpty) {
+              final queueRes = await HttpUtils.client
+                  .get(Uri.parse('${ApiConfig.realtimeApiBase}/print/queue'))
+                  .timeout(const Duration(seconds: 3));
+              if (queueRes.statusCode == 200) {
+                final List<dynamic> queueList = jsonDecode(queueRes.body);
+                if (queueList.isNotEmpty && queueList.last is Map) {
+                  queueId = queueList.last['id']?.toString() ?? '';
+                }
+              }
+            }
+            return _PrintJobResult(isQueued: true, queueNumber: queueId);
+          } catch (_) {
+            return const _PrintJobResult(isQueued: true, queueNumber: '');
           }
         } catch (e) {
           if (e is _LprPrintException) rethrow;
