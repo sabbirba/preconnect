@@ -42,16 +42,22 @@ class CampusPrinterPage extends StatefulWidget {
     cachedBlankPageBytes = null;
   }
 
+  static const String historyKey = 'printer_history';
+  static const String copiesKey = 'campus_printer_copies';
+  static const String lastHostKey = 'campus_printer_last_host';
+  static const String lastWifiKey = 'campus_printer_last_wifi';
+  static const String cachedBlankPagePdfKey = 'cached_blank_page_pdf';
+
   static Future<void> clearStoredState() async {
-    await AppStorage.instance.remove('campus_printer_copies');
-    await AppStorage.instance.remove('printer_history');
-    await AppStorage.instance.remove('campus_printer_last_host');
-    await AppStorage.instance.remove('campus_printer_last_wifi');
+    await AppStorage.instance.remove(copiesKey);
+    await AppStorage.instance.remove(historyKey);
+    await AppStorage.instance.remove(lastHostKey);
+    await AppStorage.instance.remove(lastWifiKey);
     await AppStorage.instance.remove(StorageKeys.studentId);
     await AppStorage.instance.remove(StorageKeys.fullName);
     await AppStorage.instance.remove(StorageKeys.shortCode);
     await AppStorage.instance.remove(StorageKeys.currentSemester);
-    await AppStorage.instance.remove('cached_blank_page_pdf');
+    await AppStorage.instance.remove(cachedBlankPagePdfKey);
     invalidateCache();
   }
 
@@ -59,7 +65,7 @@ class CampusPrinterPage extends StatefulWidget {
     if (cachedBlankPageBytes != null) return;
     try {
       final cachedBase64 = await AppStorage.instance.getString(
-        'cached_blank_page_pdf',
+        cachedBlankPagePdfKey,
       );
       if (cachedBase64 != null && cachedBase64.isNotEmpty) {
         cachedBlankPageBytes = base64Decode(cachedBase64);
@@ -78,7 +84,7 @@ class CampusPrinterPage extends StatefulWidget {
         final bytes = response.bodyBytes;
         cachedBlankPageBytes = bytes;
         await AppStorage.instance.setString(
-          'cached_blank_page_pdf',
+          cachedBlankPagePdfKey,
           base64Encode(bytes),
         );
       }
@@ -226,9 +232,9 @@ class CampusPrinterPage extends StatefulWidget {
 
 class _CampusPrinterPageState extends State<CampusPrinterPage>
     with WidgetsBindingObserver {
-  static const String _historyKey = 'printer_history';
+  static const String _historyKey = CampusPrinterPage.historyKey;
   static const int _maxHistoryEntries = 50;
-  static const String _copiesKey = 'campus_printer_copies';
+  static const String _copiesKey = CampusPrinterPage.copiesKey;
   static const String _snackFileReadFailed =
       'Unable to read the selected file. Please select a valid document.';
   static const String _snackChooseFile =
@@ -314,7 +320,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage>
     }
     _refreshBusSubscription = RefreshBus.instance.stream.listen((reason) {
       final r = (reason ?? '').toString();
-      if (r == 'printer' || r.startsWith('mercure_')) {
+      if (r == 'printer' || r == 'mercure_event') {
         _refreshPrinterInfo();
       }
     });
@@ -527,7 +533,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage>
           final activePrinters = decoded['activePrinters'];
           final status = decoded['status']?.toString();
           return (activePrinters is num && activePrinters > 0) ||
-              status == 'healthy';
+              status == 'online';
         }
       }
     } catch (_) {}
@@ -696,7 +702,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage>
       CampusPrinterPage.cachedBlankPageBytes = bytes;
       unawaited(
         AppStorage.instance.setString(
-          'cached_blank_page_pdf',
+          CampusPrinterPage.cachedBlankPagePdfKey,
           base64Encode(bytes),
         ),
       );
@@ -1783,7 +1789,7 @@ class _LprPrintClient {
               .timeout(const Duration(minutes: 3));
           if (response.statusCode != 200) {
             throw const _LprPrintException(
-              'Failed to connect to cloud relay server',
+              _CampusPrinterPageState._snackPrinterConnectionFailed,
             );
           }
           try {
@@ -1807,7 +1813,7 @@ class _LprPrintClient {
         } catch (e) {
           if (e is _LprPrintException) rethrow;
           throw const _LprPrintException(
-            'Unable to reach printer. Connect to BRACU Wi-Fi or check your internet connection.',
+            _CampusPrinterPageState._snackPrinterConnectionFailed,
           );
         }
       }
