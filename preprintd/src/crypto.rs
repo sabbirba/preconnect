@@ -5,7 +5,7 @@ use base64::prelude::*;
 use hmac::{Hmac, KeyInit, Mac};
 use sha2::{Digest, Sha256};
 
-use crate::constant::BASE_DOMAIN_NOAPI;
+use crate::{WORKER_KEY, consts::BASE_DOMAIN_NOAPI};
 
 type HmacSha256 = Hmac<Sha256>;
 
@@ -27,7 +27,7 @@ pub fn make_subscriber_jwt(worker_key: &str) -> String {
     format!("{}.{}.{}", header, payload, signature)
 }
 
-pub fn decrypt(opt: Option<&str>, worker_key: &str, job_id: &str) -> Result<Vec<u8>> {
+pub fn decrypt(opt: Option<&str>, job_id: &str) -> Result<Vec<u8>> {
     let Some(value) = opt.map(str::trim).filter(|value| !value.is_empty()) else {
         return Ok(Vec::new());
     };
@@ -41,7 +41,7 @@ pub fn decrypt(opt: Option<&str>, worker_key: &str, job_id: &str) -> Result<Vec<
     let (iv, encrypted) = raw.split_at(16);
 
     let mut seed = Sha256::new();
-    seed.update(worker_key.as_bytes());
+    seed.update(WORKER_KEY.as_bytes());
     seed.update(iv);
     seed.update(job_id.as_bytes());
     let p = seed.finalize();

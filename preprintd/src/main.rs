@@ -30,7 +30,7 @@ use std::{
 
 #[macro_use]
 mod macros;
-mod constant;
+mod consts;
 mod crypto;
 mod doh;
 mod tcp_extras;
@@ -47,7 +47,7 @@ use socket2::SockRef;
 use tcp_extras::TcpExtras;
 
 use crate::{
-    constant::{BASE_DOMAIN, BASE_DOMAIN_NOAPI, BASE_URL},
+    consts::{BASE_DOMAIN, BASE_DOMAIN_NOAPI, BASE_URL},
     crypto::{decrypt, make_subscriber_jwt},
     doh::resolve_doh,
     types::{Job, LogLevel},
@@ -113,8 +113,8 @@ fn hdrs() -> Result<HeaderMap> {
     let mut map = HeaderMap::new();
     let jobs = JOBS_COMPLETED.load(Ordering::Relaxed).to_string();
 
-    map.insert("User-Agent", HeaderValue::from_str(AGENT.as_str())?);
-    map.insert("X-Worker-Key", HeaderValue::from_str(WORKER_KEY.as_str())?);
+    map.insert("User-Agent", HeaderValue::from_str(&AGENT)?);
+    map.insert("X-Worker-Key", HeaderValue::from_str(&WORKER_KEY)?);
     map.insert("X-Worker-Jobs", HeaderValue::from_str(&jobs)?);
 
     Ok(map)
@@ -128,7 +128,7 @@ fn claim_job(id: Option<&str>) -> Result<bool> {
     let body = json!({ "id": id });
 
     let resp = client()
-        .post(format!("{}/print/claim", BASE_URL.as_str()))
+        .post(format!("{BASE_URL}/print/claim"))
         .body(body.to_string())
         .header("Content-Type", "application/json")
         .headers(hdrs()?)
@@ -138,10 +138,15 @@ fn claim_job(id: Option<&str>) -> Result<bool> {
     let claim = match resp {
         Ok(r) => {
             if r.status() != StatusCode::OK {
+                debug_log!(
+                    LogLevel::Warn,
+                    "Status code not OK, so skipping on this job..."
+                );
                 return Ok(false);
             }
 
             let Ok(value) = r.json::<Value>() else {
+                debug_log!(LogLevel::Warn, "Parsing failed, so skipping on this job...");
                 return Ok(false);
             };
 
@@ -173,23 +178,23 @@ fn handle(job: Job) -> Result<()> {
         .printer_host
         .as_deref()
         .filter(|host| !host.is_empty())
-        .unwrap_or(DEF_HOST.as_str());
+        .unwrap_or(&DEF_HOST);
 
     let queue_name = job
         .printer_queue
         .as_deref()
         .filter(|queue| !queue.is_empty())
-        .unwrap_or(DEF_QUEUE.as_str());
+        .unwrap_or(&DEF_QUEUE);
 
     if !is_online(host)? || !(claim_job(j_id.as_deref())?) {
         return Ok(());
     }
 
-    let q_cmd = decrypt(job.q_cmd.as_deref(), WORKER_KEY.as_str(), job_id)?;
-    let cf_hdr = decrypt(job.cf_hdr.as_deref(), WORKER_KEY.as_str(), job_id)?;
-    let ctl = decrypt(job.ctl.as_deref(), WORKER_KEY.as_str(), job_id)?;
-    let df_hdr = decrypt(job.df_hdr.as_deref(), WORKER_KEY.as_str(), job_id)?;
-    let payload = decrypt(job.payload.as_deref(), WORKER_KEY.as_str(), job_id)?;
+    let q_cmd = decrypt(job.q_cmd.as_deref(), job_id)?;
+    let cf_hdr = decrypt(job.cf_hdr.as_deref(), job_id)?;
+    let ctl = decrypt(job.ctl.as_deref(), job_id)?;
+    let df_hdr = decrypt(job.df_hdr.as_deref(), job_id)?;
+    let payload = decrypt(job.payload.as_deref(), job_id)?;
 
     debug_log!(
         LogLevel::Ok,
@@ -276,9 +281,7 @@ fn stream() -> Result<()> {
 
     let resp = match client()
         .get(format!(
-            "{}/.well-known/mercure?topic=https%3A%2F%2F{}%2Fprinter",
-            BASE_URL.as_str(),
-            BASE_DOMAIN_NOAPI
+            "{BASE_URL}/.well-known/mercure?topic=https%3A%2F%2F{BASE_DOMAIN_NOAPI}%2Fprinter",
         ))
         .header("Accept", "text/event-stream")
         .header(
