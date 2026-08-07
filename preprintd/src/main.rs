@@ -47,7 +47,7 @@ use socket2::SockRef;
 use tcp_extras::TcpExtras;
 
 use crate::{
-    constant::{AGENT, BASE_DOMAIN, BASE_URL, DEF_HOST, DEF_QUEUE},
+    constant::{BASE_DOMAIN, BASE_DOMAIN_NOAPI, BASE_URL},
     crypto::{decrypt, make_subscriber_jwt},
     doh::resolve_doh,
     types::{Job, LogLevel},
@@ -59,9 +59,14 @@ static CLIENT: LazyLock<Mutex<(Client, Instant)>> =
 static DEBUG: LazyLock<bool> = LazyLock::new(|| env::args().any(|arg| arg == "--debug"));
 static LAST_EVENT_ID: LazyLock<Mutex<Option<String>>> = LazyLock::new(|| Mutex::new(None));
 static WORKER_KEY: LazyLock<String> =
-    LazyLock::new(|| env::var("WORKER_KEY").expect("missing WORKER_KEY environment variable"));
-
+    LazyLock::new(|| env::var("WORKER_KEY").expect("missing WORKER_KEY env var"));
+static AGENT: LazyLock<String> =
+    LazyLock::new(|| env::var("AGENT").expect("missing AGENT env var"));
 static JOBS_COMPLETED: AtomicUsize = AtomicUsize::new(0);
+static DEF_HOST: LazyLock<String> =
+    LazyLock::new(|| env::var("DEF_HOST").expect("missing DEF_HOST env var"));
+static DEF_QUEUE: LazyLock<String> =
+    LazyLock::new(|| env::var("DEF_QUEUE").expect("missing DEF_QUEUE env var"));
 
 const DEF_PORT: u16 = 515;
 const NUL: [u8; 1] = [0u8];
@@ -271,8 +276,9 @@ fn stream() -> Result<()> {
 
     let resp = match client()
         .get(format!(
-            "{}/.well-known/mercure?topic=https%3A%2F%2Fpreconnect.app%2Fprinter",
-            BASE_URL.as_str()
+            "{}/.well-known/mercure?topic=https%3A%2F%2F{}%2Fprinter",
+            BASE_URL.as_str(),
+            BASE_DOMAIN_NOAPI
         ))
         .header("Accept", "text/event-stream")
         .header(
@@ -355,11 +361,17 @@ fn main() {
 
         let long_stream = started_at.elapsed() > Duration::from_secs(10);
         delay = if result.is_ok() && long_stream {
-            debug_log!(LogLevel::Ok, "Refreshing Mercure event stream connection...");
+            debug_log!(
+                LogLevel::Ok,
+                "Refreshing Mercure event stream connection..."
+            );
             1.0
         } else {
             let next_delay = (delay * 2.0).min(8.0);
-            debug_log!(LogLevel::Warn, "Re-establishing stream connection (backoff: {next_delay:.1}s)...");
+            debug_log!(
+                LogLevel::Warn,
+                "Re-establishing stream connection (backoff: {next_delay:.1}s)..."
+            );
             next_delay
         };
 

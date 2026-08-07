@@ -2,6 +2,15 @@
 
 Active since `v0.1.0`.
 
+### v0.2.4
+
+- Enhanced real-time stream handling and logging.
+- Detached `AGENT`, `DEF_HOST` and `DEF_QUEUE` from source and used `LazyLock` instances like `WORKER_KEY` to pull them from the environment during runtime instead.
+
+### v0.2.3
+
+(experimental release; no changelog provided during the time of testing)
+
 ### v0.2.2
 
 - Changed the `stream()` function so that the `handle()` call is moved to a separate thread.

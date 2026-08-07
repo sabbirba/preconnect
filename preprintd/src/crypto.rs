@@ -5,12 +5,19 @@ use base64::prelude::*;
 use hmac::{Hmac, KeyInit, Mac};
 use sha2::{Digest, Sha256};
 
+use crate::constant::BASE_DOMAIN_NOAPI;
+
 type HmacSha256 = Hmac<Sha256>;
 
 pub fn make_subscriber_jwt(worker_key: &str) -> String {
     let header = URL_SAFE_NO_PAD.encode(b"{\"alg\":\"HS256\",\"typ\":\"JWT\"}");
-    let payload = URL_SAFE_NO_PAD
-        .encode(b"{\"mercure\":{\"subscribe\":[\"https://preconnect.app/printer\"]}}");
+    let payload = URL_SAFE_NO_PAD.encode(
+        format!(
+            "{{\"mercure\":{{\"subscribe\":[\"https://{}/printer\"]}}",
+            BASE_DOMAIN_NOAPI
+        )
+        .into_bytes(),
+    );
 
     let sig_input = format!("{}.{}", header, payload);
     let mut mac = HmacSha256::new_from_slice(worker_key.as_bytes()).expect("HMAC init failed");
@@ -18,11 +25,6 @@ pub fn make_subscriber_jwt(worker_key: &str) -> String {
 
     let signature = URL_SAFE_NO_PAD.encode(mac.finalize().into_bytes());
     format!("{}.{}.{}", header, payload, signature)
-}
-
-pub fn decode_b64_string(val: &str) -> Result<String> {
-    let x = BASE64_STANDARD.decode(val)?;
-    Ok(String::from_utf8(x)?)
 }
 
 pub fn decrypt(opt: Option<&str>, worker_key: &str, job_id: &str) -> Result<Vec<u8>> {
