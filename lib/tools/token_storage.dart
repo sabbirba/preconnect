@@ -664,7 +664,7 @@ class InAppReviewPrompt {
         }
 
         final fallbackAppStoreUri = Uri.parse(
-          'https://apps.apple.com/app/id6503926521',
+          'https://apps.apple.com/us/app/preconnect-bracu-student-app/id6791423431',
         );
         try {
           final launched = await launchUrl(

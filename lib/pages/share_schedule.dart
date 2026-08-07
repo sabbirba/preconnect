@@ -279,9 +279,9 @@ class _ShareSchedulePageState extends State<ShareSchedulePage>
       const fileName = 'preconnect_schedule_qr.png';
 
       const shareText =
-          "Scan my schedule QR to import in PreConnect's Friends Schedule.\n"
+          "Scan my schedule QR to import in PreConnect's Friends Schedule.\n\n"
           'Play Store: https://play.google.com/store/apps/details?id=com.sabbirba.preconnect\n'
-          'App Store: https://apps.apple.com/app/id6503926521';
+          'App Store: https://apps.apple.com/us/app/preconnect-bracu-student-app/id6791423431';
 
       if (kIsWeb) {
         await openImageInBrowser(bytes: bytes, fileName: fileName);
