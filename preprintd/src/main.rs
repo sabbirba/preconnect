@@ -76,8 +76,8 @@ fn build_client() -> Client {
         .tcp_nodelay(true)
         .tcp_keepalive(Duration::from_secs(15));
 
-    if let Some(ip) = resolve_doh(&BASE_DOMAIN) {
-        builder = builder.resolve(&BASE_DOMAIN, SocketAddr::new(ip, 443));
+    if let Some(ip) = resolve_doh(BASE_DOMAIN) {
+        builder = builder.resolve(BASE_DOMAIN, SocketAddr::new(ip, 443));
     }
 
     builder.build().expect("failed to build HTTP client")
