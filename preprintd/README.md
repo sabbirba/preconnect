@@ -10,23 +10,14 @@ This tiny worker is just a `TcpStream` under the hood, constantly listening for 
 
 Requires [Rust](https://rust-lang.org/) (2024 edition or later) to be installed.
 
-To compile and run:
+Run the traditional release command:
 
 ```bash
 cargo build --release
-WORKER_KEY=yourworkerkeyhere ./target/release/preprintd
 ```
 
 > [!NOTE]
 > The release binary is optimized for the smallest-possible size, although you can change this behavior by disabling the optimizations specified in the `[profile.release]` section of [Cargo.toml](./Cargo.toml).
-
-For running the binary in debug mode, use the `--debug` flag:
-
-```bash
-WORKER_KEY=yourworkerkeyhere cargo run -- --debug
-```
-
-> The `WORKER_KEY` can be set just like a regular environment variable. A good option for this is [direnv](https://github.com/direnv/direnv) to set `WORKER_KEY` on the current directory using the `.envrc` file.
 
 ### Prebuilt Binaries
 
@@ -42,9 +33,14 @@ sudo nano /etc/systemd/system/preprintd.service
 
 Write the following INI configuration in your `preprintd.service` file. Make sure to replace the following things as well:
 
-1. `yourworkerkeyhere` -> Replace with your worker key credential.
-2. `username` -> Replace with the current logged-in user.
-3. `/usr/bin/preprintd` -> Replace with the correct execution path based on where you've put your binary.
+1. Under `Environment=`:
+
+- `WORKER_KEY`: Your worker key credential (from the PreConnect API).
+- `AGENT`: Agent name to use for outbound requests.
+- `DEF_HOST`: The default printer host to use in case the API cannot provide one.
+- `DEF_QUEUE`: The default queue name to send printable data to.
+
+2. Under `User`, replace `username` with the username you're logged in with on your local machine.
 
 ```ini
 [Unit]
@@ -55,7 +51,7 @@ After=network.target
 Type=simple
 ExecStart=/usr/bin/preprintd --debug
 Restart=always
-Environment="WORKER_KEY=yourworkerkeyhere"
+Environment="WORKER_KEY=yourworkerkeyhere" "AGENT=preprintd" "DEF_HOST=192.168.0.102" "DEF_QUEUE=queuename"
 User=username
 
 [Install]
