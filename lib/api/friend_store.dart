@@ -48,13 +48,26 @@ class FriendScheduleStore {
     }
   }
 
-  Future<void> upsertEncodedSchedule(String encodedValue) async {
-    final encoded = encodedValue.trim();
-    if (encoded.isEmpty) return;
-    final friendId = _extractFriendId(encoded);
-    if (friendId == null || friendId.isEmpty) return;
+  Future<void> upsertEncodedSchedule(String encodedValue) =>
+      upsertEncodedSchedules([encodedValue]);
+
+  Future<void> upsertEncodedSchedules(List<String> encodedValues) async {
+    if (encodedValues.isEmpty) return;
     final snapshot = await loadSnapshot();
-    final next = <String>{...snapshot.encodedSchedules, encoded}.toList();
+    final incoming = <String, String>{};
+    for (final v in encodedValues) {
+      final encoded = v.trim();
+      if (encoded.isEmpty) continue;
+      final id = _extractFriendId(encoded);
+      if (id == null || id.isEmpty) continue;
+      incoming[id] = encoded;
+    }
+    if (incoming.isEmpty) return;
+    final next = <String>[
+      for (final existing in snapshot.encodedSchedules)
+        if (!incoming.containsKey(_extractFriendId(existing))) existing,
+      ...incoming.values,
+    ];
     await AppStorage.instance.setString(_encodedSchedulesKey, jsonEncode(next));
   }
 

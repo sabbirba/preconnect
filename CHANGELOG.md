@@ -7,9 +7,9 @@ Entries are written for students, not developers — plain language, no commit h
 
 ## [2.0.5] — 2026-08-02
 
+- Optimize schedule handling and improve connectivity status management.
 - All-Department Payments Sync: Integrated multi-portfolio query flags (`includeInactive=true`) so payment records, dues, and transaction histories across all active and past departments load in full.
 - Semester Session Isolation: Fixed switching between past and current semesters to accurately preserve course schedules, exam rooms, seating details, and grade sheets.
-- Release & Build Performance: Optimized build configurations and automated workflows for faster app compilation.
 
 ## [2.0.4] — 2026-07-29
 

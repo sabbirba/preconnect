@@ -277,7 +277,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
               children: [
                 Positioned.fill(
                   child: SingleChildScrollView(
-                    padding: const EdgeInsets.fromLTRB(20, 20, 20, 155),
+                    padding: const EdgeInsets.fromLTRB(20, 20, 20, 180),
                     child: Column(
                       children: [
                         const Gap(12),
