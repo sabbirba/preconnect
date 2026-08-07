@@ -32,6 +32,53 @@ WORKER_KEY=yourworkerkeyhere cargo run -- --debug
 
 See the [GitHub Releases](https://github.com/hitblast/preprintd/releases) for a prebuilt binary for either Windows, Linux (built via CI workers running Ubuntu), or macOS.
 
+### Daemon Usage
+
+Create a new `systemd` service which you can enable later:
+
+```bash
+sudo nano /etc/systemd/system/preprintd.service
+```
+
+Write the following INI configuration in your `preprintd.service` file. Make sure to replace the following things as well:
+
+1. `yourworkerkeyhere` -> Replace with your worker key credential.
+2. `username` -> Replace with the current logged-in user.
+3. `/usr/bin/preprintd` -> Replace with the correct execution path based on where you've put your binary.
+
+```ini
+[Unit]
+Description=PreConnect Printer Worker Daemon
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/preprintd --debug
+Restart=always
+Environment="WORKER_KEY=yourworkerkeyhere"
+User=username
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Enable and start it once you're done:
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable preprintd.service
+sudo systemctl start preprintd.service
+
+# now check status:
+systemctl status preprintd.service
+```
+
+To check the logs in real-time, run:
+
+```bash
+journalctl -u preprintd.service -f
+```
+
 ### Code Inspection
 
 When you're going through the code, you'll see these:
