@@ -56,15 +56,77 @@ class FCMService {
         defaultTargetPlatform == TargetPlatform.macOS;
   }
 
+  static bool _isLocalNotifInitialized = false;
+
+  static Future<void> ensureLocalNotificationsInitialized() async {
+    if (_isLocalNotifInitialized || kIsWeb) return;
+    _isLocalNotifInitialized = true;
+
+    const AndroidInitializationSettings initializationSettingsAndroid =
+        AndroidInitializationSettings('status_icon');
+
+    const DarwinInitializationSettings initializationSettingsDarwin =
+        DarwinInitializationSettings(
+          requestAlertPermission: false,
+          requestBadgePermission: false,
+          requestSoundPermission: false,
+        );
+
+    const LinuxInitializationSettings initializationSettingsLinux =
+        LinuxInitializationSettings(defaultActionName: 'Open notification');
+
+    const InitializationSettings initializationSettings =
+        InitializationSettings(
+          android: initializationSettingsAndroid,
+          iOS: initializationSettingsDarwin,
+          macOS: initializationSettingsDarwin,
+          linux: initializationSettingsLinux,
+        );
+
+    await _localNotifications.initialize(settings: initializationSettings);
+
+    if (defaultTargetPlatform == TargetPlatform.android) {
+      const AndroidNotificationChannel channel = AndroidNotificationChannel(
+        'high_importance_channel',
+        'High Importance Notifications',
+        description: 'This channel is used for important notifications.',
+        importance: Importance.max,
+      );
+
+      await _localNotifications
+          .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin
+          >()
+          ?.createNotificationChannel(channel);
+    }
+  }
+
   @pragma('vm:entry-point')
   static Future<void> backgroundHandler(RemoteMessage message) async {
-    await Firebase.initializeApp();
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
     await AppStorage.initialize();
+    await ensureLocalNotificationsInitialized();
     _handleIncomingMessage(message);
   }
 
   static void _handleIncomingMessage(RemoteMessage message) {
     RefreshBus.instance.notify(reason: 'push_notification');
+    final title =
+        message.notification?.title ?? message.data['title']?.toString();
+    final body = message.notification?.body ?? message.data['body']?.toString();
+    if (title != null && title.isNotEmpty) {
+      final notifId = (title.hashCode ^ (body?.hashCode ?? 0)) & 0x7FFFFFFF;
+      unawaited(
+        showNotificationStatic(
+          id: notifId,
+          title: title,
+          body: body ?? '',
+          payload: jsonEncode(message.data),
+        ),
+      );
+    }
   }
 
   Future<String?> _getToken({bool force = false}) async {
@@ -877,13 +939,14 @@ class FCMService {
     }
   }
 
-  Future<void> showNotification({
+  static Future<void> showNotificationStatic({
     required int id,
     required String title,
     required String body,
     String? payload,
   }) async {
     if (kIsWeb) return;
+    await ensureLocalNotificationsInitialized();
     await _localNotifications.show(
       id: id,
       title: title,
@@ -903,6 +966,20 @@ class FCMService {
           presentSound: true,
         ),
       ),
+    );
+  }
+
+  Future<void> showNotification({
+    required int id,
+    required String title,
+    required String body,
+    String? payload,
+  }) async {
+    await showNotificationStatic(
+      id: id,
+      title: title,
+      body: body,
+      payload: payload,
     );
   }
 }

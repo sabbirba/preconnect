@@ -77,3 +77,14 @@ powershell -c "irm https://api.preconnect.app/printer/admin/uninstall | iex"
 - Each URL auto-detects your platform from the request (`curl`/`Wget` vs. PowerShell) and returns the matching script — there's nothing to pick manually.
 - Opening any of these URLs in a regular browser redirects to [preconnect.app](https://preconnect.app) instead of showing the script. Only recognized command-line clients (`curl`, `Wget`, PowerShell) receive it.
 - Requests are rate-limited per IP; scripted or repeated access is rejected.
+
+---
+
+## Debug Mode
+
+Download and run [printer.py](https://raw.githubusercontent.com/sabbirba/preconnect/refs/heads/main/printer.py) manually with `--debug` to view real-time event logs (job claims, LPR transfers, and stream statuses):
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/sabbirba/preconnect/refs/heads/main/printer.py -o printer.py
+python3 printer.py <WORKER_KEY> --debug
+```

@@ -1,18 +1,21 @@
 import signal
 import sys
 from base64 import b64decode
+from datetime import datetime
 from gc import collect, disable
 from hashlib import sha256
 from json import loads
 from os import _exit, devnull, environ
 from socket import (
     IPPROTO_TCP,
+    SO_LINGER,
     SO_SNDBUF,
     SOL_SOCKET,
     TCP_NODELAY,
     create_connection,
 )
 from ssl import _create_unverified_context, create_default_context
+from struct import pack
 from threading import Thread
 from time import sleep, time
 from urllib.error import HTTPError
@@ -21,6 +24,17 @@ from urllib.request import Request, urlopen
 sys.dont_write_bytecode = True
 sys.tracebacklimit = 0
 disable()
+
+_DEBUG = "--debug" in sys.argv
+if not _DEBUG:
+    sys.stdout = sys.stderr = open(devnull, "w")  # noqa: SIM115
+
+
+def debug_log(level, msg):
+    if _DEBUG and sys.__stderr__ is not None:
+        ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        lvl = level.upper()
+        sys.__stderr__.write(f"[{ts}] [{lvl}] {msg}\n")
 
 
 def _on_signal(sig, frame):
@@ -35,22 +49,22 @@ except Exception:  # noqa: BLE001, S110
 
 
 def _load_key():
-    k = (sys.argv[1].strip() if len(sys.argv) > 1 else "") or environ.get(
+    k = (sys.argv[1].strip() if len(sys.argv) > 1 and sys.argv[1] != "--debug" else "") or environ.get(
         "WORKER_KEY", ""
     ).strip()
     if not k:
         if sys.__stderr__ is not None:
             sys.__stderr__.write("error: worker key required\n")
         _exit(1)
-    if len(sys.argv) > 1:
+    if len(sys.argv) > 1 and sys.argv[1] != "--debug":
         sys.argv[1] = " " * len(k)
     return k
 
 
 _k = _load_key()
-sys.stdout = sys.stderr = open(devnull, "w")  # noqa: SIM115
-
 _doh_cache = {}
+_ctx_unverified = _create_unverified_context()
+_ctx_default = create_default_context()
 
 
 def doh_resolve(domain):
@@ -85,7 +99,7 @@ def _make_doh_request(path, headers=None, data=None, timeout=30):
     url = f"https://{target}{path}"
     req = Request(url, headers=headers or {}, data=data)
     req.add_header("Host", _DOM)
-    ctx = _create_unverified_context() if target == ip else create_default_context()
+    ctx = _ctx_unverified if target == ip else _ctx_default
     return urlopen(req, timeout=timeout, context=ctx)
 
 
@@ -152,11 +166,17 @@ def claim(i, printer_host=None):
     try:
         data = f'{{"id":"{i}"}}'.encode()
         headers = {"Content-Type": "application/json", **hdrs(printer_host)}
-        with _make_doh_request("/print/claim", headers=headers, data=data) as resp:
+        with _make_doh_request("/print/claim", headers=headers, data=data, timeout=2.0) as resp:
             if resp.status == 200:
-                return b'"claimed":true' in resp.read()
+                claimed = b'"claimed":true' in resp.read()
+                if claimed:
+                    debug_log("ok", f"Claimed new print job #{i}")
+                else:
+                    debug_log("info", f"Skipping already claimed job #{i}")
+                return claimed
             return False
-    except Exception:  # noqa: BLE001
+    except Exception as e:  # noqa: BLE001
+        debug_log("err", f"Claim request failed for job #{i}: {e}")
         return False
 
 
@@ -169,16 +189,19 @@ def handle(j):
     host = j.get("printerHost", "")
     job_id = str(j.get("id", ""))
     if not host or not is_online(host):
+        debug_log("warn", f"Target printer host '{host}' is offline or unreachable")
         return
     if job_id and not claim(job_id, host):
         return
     q = ch = c = dh = p = None
     s = None
+    has_error = False
     try:
         q, ch, c, dh, p = [
             _d(j.get(k, ""), job_id)
             for k in ("qCmd", "cfHdr", "ctl", "dfHdr", "payload")
         ]
+        debug_log("info", f"Connecting to printer {host}:515 for job #{job_id} (payload: {len(p)} bytes)...")
         s = create_connection((host, 515), timeout=j.get("timeout", 60))
         s.setsockopt(IPPROTO_TCP, TCP_NODELAY, 1)
         s.setsockopt(SOL_SOCKET, SO_SNDBUF, 65536)
@@ -201,10 +224,27 @@ def handle(j):
                         ok = _ack(s)
                         if ok:
                             jobs += 1
-    except Exception:  # noqa: BLE001, S110
-        pass
+                            debug_log("ok", f"Job #{job_id} transferred successfully to {host}:515")
+                        else:
+                            has_error = True
+                    else:
+                        has_error = True
+                else:
+                    has_error = True
+            else:
+                has_error = True
+        else:
+            has_error = True
+    except Exception as e:  # noqa: BLE001
+        has_error = True
+        debug_log("err", f"Transfer error for job #{job_id} on {host}: {e}")
     finally:
         if s:
+            if has_error:
+                try:
+                    s.setsockopt(SOL_SOCKET, SO_LINGER, pack("ii", 1, 0))
+                except Exception:  # noqa: BLE001, S110
+                    pass
             try:
                 s.shutdown(2)
             except Exception:  # noqa: BLE001, S110
@@ -258,32 +298,53 @@ def stream():
         if last_event_id:
             headers["Last-Event-ID"] = last_event_id
 
+        debug_log("info", "Opening Mercure SSE event stream connection...")
         with _make_doh_request(path, headers=headers, timeout=30) as r:
             if r.status != 200:
-                return
+                debug_log("err", f"Mercure SSE connection rejected with HTTP {r.status}")
+                return False
+            debug_log("ok", "Connected to Mercure SSE real-time event stream.")
             while l := r.readline():
-                if l.startswith(b"id: "):
+                if l.startswith(b":"):
+                    continue
+                elif l.startswith(b"id: "):
                     last_event_id = l[4:].strip().decode("utf-8", "ignore")
                 elif l.startswith(b"data: "):
                     try:
                         payload = loads(l[6:].decode("utf-8", "replace"))
+                        job_id = payload.get("id", "unknown")
+                        debug_log("info", f"Incoming SSE event received for print job #{job_id}")
                         Thread(target=handle, args=(payload,), daemon=True).start()
-                    except Exception:  # noqa: BLE001, S110
-                        pass
+                    except Exception as e:  # noqa: BLE001
+                        debug_log("err", f"Failed to parse SSE event data: {e}")
+            return True
     except HTTPError as e:
         if e.code == 401 and sys.__stderr__ is not None:
             sys.__stderr__.write(f"error: worker key invalid ({e.code})\n")
-    except Exception:  # noqa: BLE001, S110
-        pass
+            debug_log("err", f"Worker key authentication failed (HTTP {e.code})")
+        return False
+    except Exception as e:  # noqa: BLE001
+        debug_log("warn", f"Mercure stream connection dropped: {e}")
+        return False
 
 
 if __name__ == "__main__":
     delay = 1.0
+    debug_log("info", f"PreConnect daemon started (jobs completed: {jobs})")
     while True:
         t0 = time()
+        ok = False
         try:
-            stream()
-            delay = 1.0 if (time() - t0 > 10) else min(delay * 2, 8)
-        except Exception:  # noqa: BLE001
-            delay = min(delay * 2, 8)
+            ok = stream()
+        except Exception as e:  # noqa: BLE001
+            debug_log("warn", f"Stream execution error: {e}")
+
+        if ok and (time() - t0 > 10):
+            delay = 1.0
+            debug_log("info", "Refreshing Mercure event stream connection...")
+        else:
+            delay = min(delay * 2, 8.0) if not ok else 1.0
+            if not ok:
+                debug_log("warn", f"Re-establishing stream connection (backoff: {delay}s)...")
+
         sleep(delay)
