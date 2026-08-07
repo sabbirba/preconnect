@@ -105,11 +105,9 @@ class _ScanSchedulePageState extends State<ScanSchedulePage>
           parsed['type'] == 'friend_schedules_export') {
         final schedules = parsed['schedules'];
         if (schedules is List) {
-          for (final sched in schedules) {
-            if (sched is String) {
-              await _store.upsertEncodedSchedule(sched);
-            }
-          }
+          await _store.upsertEncodedSchedules(
+            schedules.whereType<String>().toList(),
+          );
         }
         return;
       }

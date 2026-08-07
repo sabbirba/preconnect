@@ -6,6 +6,8 @@ import 'dart:typed_data';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:dart_pdf_reader/dart_pdf_reader.dart' as pdf_reader;
 import 'package:file_selector/file_selector.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
 import 'package:flutter/services.dart';
@@ -271,10 +273,12 @@ class _CampusPrinterPageState extends State<CampusPrinterPage>
   bool _busy = false;
   bool _discovering = false;
   bool _relayAvailable = false;
+  bool _cloudQueueReachable = false;
   bool _loadingPreset = false;
   bool _syncingCopiesController = false;
   bool _hasInternet = true;
   StreamSubscription? _networkStatusSubscription;
+  StreamSubscription? _connectivitySubscription;
   StreamSubscription? _refreshBusSubscription;
   String _lastNetworkFingerprint = '';
   final TextEditingController _copiesController = TextEditingController(
@@ -305,22 +309,30 @@ class _CampusPrinterPageState extends State<CampusPrinterPage>
         _prewarmCloudRelay();
         unawaited(_handleNetworkStatusChanged(status));
       });
-    } else {
-      _networkStatusSubscription = Connectivity().onConnectivityChanged.listen((
-        results,
-      ) {
-        final hasNet = results.any((r) => r != ConnectivityResult.none);
-        if (mounted) {
-          setState(() {
-            _hasInternet = hasNet;
-          });
-        }
-        _prewarmCloudRelay();
-      });
     }
+    _connectivitySubscription = Connectivity().onConnectivityChanged.listen((
+      results,
+    ) {
+      final hasNet = results.any((r) => r != ConnectivityResult.none);
+      if (mounted) {
+        setState(() {
+          _hasInternet = hasNet;
+          if (!hasNet) {
+            _printerHost = '';
+            _relayAvailable = false;
+            _cloudQueueReachable = false;
+          }
+        });
+      }
+      if (hasNet) {
+        _prewarmCloudRelay();
+      }
+    });
     _refreshBusSubscription = RefreshBus.instance.stream.listen((reason) {
       final r = (reason ?? '').toString();
-      if (r == 'printer' || r == 'mercure_event') {
+      if (r == 'printer') {
+        unawaited(_checkRelayHealth());
+      } else if (r == 'mercure_event') {
         _refreshPrinterInfo();
       }
     });
@@ -433,6 +445,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _networkStatusSubscription?.cancel().catchError((_) {});
+    _connectivitySubscription?.cancel().catchError((_) {});
     _refreshBusSubscription?.cancel();
     _copiesController.removeListener(_handleCopiesControllerChanged);
     _copiesController.dispose();
@@ -453,16 +466,21 @@ class _CampusPrinterPageState extends State<CampusPrinterPage>
     _setWifiNameFromStatus(status);
     final transport = status.transport.trim().toLowerCase();
     final connected = status.connected;
-    setState(() {
-      _hasInternet = connected;
-    });
-    if (!status.connected || transport != 'wifi') {
+    if (!connected) {
+      setState(() {
+        _hasInternet = false;
+        _printerHost = '';
+        _relayAvailable = false;
+        _cloudQueueReachable = false;
+      });
+      return;
+    }
+    if (transport != 'wifi') {
       if (_printerHost.isNotEmpty) {
         setState(() {
           _printerHost = '';
         });
       }
-      return;
     }
     final currentNetworkFingerprint = await _currentNetworkFingerprint();
     if (currentNetworkFingerprint.isEmpty ||
@@ -496,22 +514,19 @@ class _CampusPrinterPageState extends State<CampusPrinterPage>
       final networkKey = await _currentNetworkFingerprint();
       _lastNetworkFingerprint = networkKey;
 
-      final results = await Future.wait([
+      await Future.wait([
         _WifiPrinterDiscovery.findLprPrinters(
           port: _CampusPrinterConfig.current.port,
           campusHosts: _CampusPrinterConfig.current.hosts,
-        ),
+        ).then((printers) {
+          if (mounted) {
+            setState(() {
+              _printerHost = printers.isNotEmpty ? printers.first.address : '';
+            });
+          }
+        }),
         _checkRelayHealth(),
       ]);
-
-      final printers = results[0] as List<_WifiPrinterCandidate>;
-      final relayOnline = results[1] as bool;
-
-      if (!mounted) return;
-      setState(() {
-        _printerHost = printers.isNotEmpty ? printers.first.address : '';
-        _relayAvailable = relayOnline;
-      });
     } catch (e) {
       await AppLog.write('Printer discovery failed: $e');
     } finally {
@@ -523,21 +538,26 @@ class _CampusPrinterPageState extends State<CampusPrinterPage>
     }
   }
 
-  Future<bool> _checkRelayHealth() async {
+  Future<void> _checkRelayHealth() async {
+    var workerOnline = false;
+    var queueReachable = false;
     try {
       final url = Uri.parse('${ApiConfig.realtimeApiBase}/print/stats');
       final response = await HttpUtils.client.get(url);
       if (response.statusCode == 200) {
+        queueReachable = true;
         final decoded = jsonDecode(response.body);
         if (decoded is Map) {
-          final activePrinters = decoded['activePrinters'];
-          final status = decoded['status']?.toString();
-          return (activePrinters is num && activePrinters > 0) ||
-              status == 'online';
+          workerOnline = decoded['status']?.toString() == 'online';
         }
       }
     } catch (_) {}
-    return false;
+    if (mounted) {
+      setState(() {
+        _relayAvailable = workerOnline;
+        _cloudQueueReachable = queueReachable;
+      });
+    }
   }
 
   Future<String> _currentNetworkFingerprint() async {
@@ -773,9 +793,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage>
 
   Future<void> _sendToPrinter() async {
     if (_busy) return;
-    final host = _printerHost.trim().isEmpty
-        ? _CampusPrinterConfig.current.hosts.first
-        : _printerHost.trim();
+    final host = _printerHost.trim();
     final studentId = _studentId.trim();
     final user = studentId;
     final clientName = _studentName.trim().isNotEmpty
@@ -846,10 +864,12 @@ class _CampusPrinterPageState extends State<CampusPrinterPage>
           final statusLabel = result.isQueued
               ? (result.queueNumber.isNotEmpty
                     ? 'Queue #${result.queueNumber}'
-                    : 'Queued')
+                    : 'Sent')
               : 'Sent';
           final messageLabel = result.isQueued
-              ? 'Queued in cloud (Queue #${result.queueNumber})'
+              ? (result.queueNumber.isNotEmpty
+                    ? 'Queued in cloud (#${result.queueNumber})'
+                    : 'Queued in cloud')
               : 'Sent to campus printer';
 
           await _addHistory(
@@ -862,12 +882,6 @@ class _CampusPrinterPageState extends State<CampusPrinterPage>
               createdAt: DateTime.now(),
             ),
           );
-          if (mounted && result.isQueued) {
-            _showPrintProgress(
-              'Queue #${result.queueNumber}',
-              duration: const Duration(seconds: 4),
-            );
-          }
         } on _LprPrintException catch (error) {
           if (!mounted) return;
           await _addHistory(
@@ -908,8 +922,8 @@ class _CampusPrinterPageState extends State<CampusPrinterPage>
         final queueNum = lastResult?.queueNumber ?? '';
         final snackMessage = hasQueuedJob
             ? (queueNum.isNotEmpty
-                  ? 'Queue #$queueNum. It will print automatically when the printer comes online.'
-                  : 'It will print automatically when the printer comes online.')
+                  ? 'Queue #$queueNum: Will print automatically when printer comes online.'
+                  : 'Queued in cloud. Will print automatically when printer comes online.')
             : _snackPrintSent;
         showAppSnackBar(context, snackMessage);
       }
@@ -961,30 +975,38 @@ class _CampusPrinterPageState extends State<CampusPrinterPage>
 
   @override
   Widget build(BuildContext context) {
-    final hasConnection = _printerHost.isNotEmpty || _relayAvailable;
+    final hasConnection =
+        _printerHost.isNotEmpty || _relayAvailable || _cloudQueueReachable;
     final canPrint =
         _hasInternet &&
         !_busy &&
         !_discovering &&
         _selectedFiles.isNotEmpty &&
         _studentId.isNotEmpty &&
-        _studentName.isNotEmpty;
+        _studentName.isNotEmpty &&
+        hasConnection;
 
     final String printerSubtitle;
     final Color? subtitleColor;
 
     if (!_hasInternet) {
-      printerSubtitle = 'No Internet';
-      subtitleColor = const Color(0xFFE53935);
+      printerSubtitle = 'Offline';
+      subtitleColor = null;
     } else if (_discovering) {
       printerSubtitle = 'Scanning..';
       subtitleColor = null;
-    } else if (hasConnection) {
-      printerSubtitle = 'Connected';
+    } else if (_printerHost.isNotEmpty) {
+      printerSubtitle = 'Connected (Wi-Fi)';
+      subtitleColor = const Color(0xFF22B573);
+    } else if (_relayAvailable) {
+      printerSubtitle = 'Connected (Relay)';
+      subtitleColor = const Color(0xFF22B573);
+    } else if (_cloudQueueReachable) {
+      printerSubtitle = 'Connected (Cloud)';
       subtitleColor = const Color(0xFF22B573);
     } else {
-      printerSubtitle = 'Connected (Queue)';
-      subtitleColor = const Color(0xFF22B573);
+      printerSubtitle = 'Not found';
+      subtitleColor = null;
     }
 
     return BracuPageScaffold(
@@ -1252,6 +1274,116 @@ class _CampusPrinterPageState extends State<CampusPrinterPage>
               ),
               const Gap(16),
               Text(
+                'Connection Status',
+                style: TextStyle(
+                  color: textPrimary,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              const Gap(12),
+              _buildStepItem(
+                context,
+                stepNumber: '•',
+                title: 'Connected (Wi-Fi)',
+                body:
+                    'The printer has been found directly on your local Wi-Fi network. Your print job is processed instantly.',
+              ),
+              const Gap(12),
+              _buildStepItem(
+                context,
+                stepNumber: '•',
+                title: 'Connected (Relay)',
+                body:
+                    'Connected via active campus relay. Print jobs are relayed directly to the printer.',
+              ),
+              const Gap(12),
+              _buildStepItem(
+                context,
+                stepNumber: '•',
+                title: 'Connected (Cloud)',
+                bodyWidget: Text.rich(
+                  TextSpan(
+                    style: TextStyle(
+                      color: textSecondary,
+                      fontSize: 12,
+                      height: 1.4,
+                      fontWeight: FontWeight.w500,
+                    ),
+                    children: [
+                      const TextSpan(
+                        text:
+                            'The printer was not found locally or on active relay. Your print job will be uploaded to the cloud queue and will print when the printer comes online.\n',
+                      ),
+                      TextSpan(
+                        text: 'Instant Print on Lab PCs: ',
+                        style: TextStyle(
+                          color: textPrimary,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      const TextSpan(
+                        text:
+                            'Run a one line command on any lab PC to enable instant printing directly from your phone. See ',
+                      ),
+                      TextSpan(
+                        text: 'printer.py',
+                        style: const TextStyle(
+                          color: BracuPalette.primary,
+                          fontWeight: FontWeight.w700,
+                        ),
+                        recognizer: TapGestureRecognizer()
+                          ..onTap = () => openExternalUrl(
+                            context,
+                            'https://github.com/sabbirba/preconnect/blob/main/printer.md',
+                          ),
+                      ),
+                      const TextSpan(text: ' or '),
+                      TextSpan(
+                        text: 'preprintd',
+                        style: const TextStyle(
+                          color: BracuPalette.primary,
+                          fontWeight: FontWeight.w700,
+                        ),
+                        recognizer: TapGestureRecognizer()
+                          ..onTap = () => openExternalUrl(
+                            context,
+                            'https://github.com/sabbirba/preconnect/tree/main/preprintd',
+                          ),
+                      ),
+                      const TextSpan(text: '.\n'),
+                      TextSpan(
+                        text: 'Note: ',
+                        style: TextStyle(
+                          color: textSecondary,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      const TextSpan(
+                        text:
+                            'Queued jobs automatically expire after 24 hours if not released at the printer.',
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const Gap(12),
+              _buildStepItem(
+                context,
+                stepNumber: '•',
+                title: 'Not found',
+                body:
+                    'No local printer or cloud relay server could be discovered.',
+              ),
+              const Gap(12),
+              _buildStepItem(
+                context,
+                stepNumber: '•',
+                title: 'Offline',
+                body: 'Your device has no active internet connection.',
+              ),
+              const Gap(16),
+              Text(
                 'Layout & Print Options',
                 style: TextStyle(
                   color: textPrimary,
@@ -1453,12 +1585,11 @@ class _PrintHistoryRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final statusLabel = entry.status.trim().isNotEmpty ? entry.status : 'Sent';
     final copiesLabel = entry.copies == 1 ? '1 copy' : '${entry.copies} copies';
     return _PrinterFileCard(
       title: entry.fileName,
       subtitle:
-          '$statusLabel • $copiesLabel • ${formatDateTimeLabel(entry.createdAt)}',
+          '${entry.status} • $copiesLabel • ${formatDateTimeLabel(entry.createdAt)}',
       isEmpty: false,
     );
   }
@@ -1587,9 +1718,7 @@ class _LprPrintClient {
     required _PrintTicket preferences,
     void Function(String message)? onStatus,
   }) async {
-    final printerHost = host.trim().isEmpty
-        ? _CampusPrinterConfig.current.hosts.first
-        : host.trim();
+    final printerHost = host.trim();
 
     final printerQueue = queue;
     final owner = user;
@@ -1782,6 +1911,8 @@ class _LprPrintClient {
                   'X-Control-File': base64Encode(control),
                   'X-Printer-Host': printerHost,
                   'X-Printer-Queue': printerQueue,
+                  'X-Worker-OS': kIsWeb ? 'web' : Platform.operatingSystem,
+                  'X-Device-OS': kIsWeb ? 'web' : Platform.operatingSystem,
                   if (studentId.isNotEmpty) 'X-Student-ID': studentId,
                 },
                 body: gzippedPayload,
@@ -2310,8 +2441,8 @@ class _WifiPrinterDiscovery {
 
   static Future<List<_WifiPrinterCandidate>> findLprPrinters({
     int port = 515,
-    Duration timeout = const Duration(milliseconds: 260),
-    int concurrency = 48,
+    Duration timeout = const Duration(milliseconds: 250),
+    int concurrency = 64,
     int limit = 3,
     int maxSubnets = 2,
     List<String> preferredHosts = const <String>[],
@@ -2320,30 +2451,22 @@ class _WifiPrinterDiscovery {
     final subnets = await _localIpv4Subnets();
     final found = <_WifiPrinterCandidate>[];
     final seen = <String>{};
-    final active = <Future<void>>{};
+    final targets = <Map<String, dynamic>>[];
 
-    for (final address in preferredHosts) {
-      final host = address.trim();
-      if (host.isEmpty || !seen.add(host)) continue;
-      final open = await _probe(host, port, timeout);
-      if (open) {
-        found.add(_WifiPrinterCandidate(address: host, interfaceName: 'saved'));
-        if (found.length >= limit) return found;
+    for (final host in preferredHosts) {
+      final h = host.trim();
+      if (h.isNotEmpty && seen.add(h)) {
+        targets.add({'address': h, 'type': 'saved', 'timeout': timeout});
       }
     }
-
-    for (final address in campusHosts) {
-      if (!seen.add(address)) continue;
-      final open = await _probe(
-        address,
-        port,
-        const Duration(milliseconds: 2500),
-      );
-      if (open) {
-        found.add(
-          _WifiPrinterCandidate(address: address, interfaceName: 'campus'),
-        );
-        if (found.length >= limit) return found;
+    for (final host in campusHosts) {
+      final h = host.trim();
+      if (h.isNotEmpty && seen.add(h)) {
+        targets.add({
+          'address': h,
+          'type': 'campus',
+          'timeout': const Duration(milliseconds: 500),
+        });
       }
     }
 
@@ -2354,28 +2477,38 @@ class _WifiPrinterDiscovery {
       for (var host = 1; host <= 254; host++) {
         if (host == subnet.hostOctet) continue;
         final address = '${subnet.prefix}.$host';
-        if (!seen.add(address)) continue;
-        late Future<void> probe;
-        probe = _probe(address, port, timeout)
-            .then((open) {
-              if (open && found.length < limit) {
-                found.add(
-                  _WifiPrinterCandidate(
-                    address: address,
-                    interfaceName: subnet.interfaceName,
-                  ),
-                );
-              }
-            })
-            .whenComplete(() => active.remove(probe));
-
-        active.add(probe);
-        if (active.length >= concurrency) {
-          await Future.any(active);
+        if (seen.add(address)) {
+          targets.add({
+            'address': address,
+            'type': subnet.interfaceName,
+            'timeout': timeout,
+          });
         }
-        if (found.length >= limit) break;
       }
+    }
+
+    final active = <Future<void>>{};
+    for (final target in targets) {
       if (found.length >= limit) break;
+      final address = target['address'] as String;
+      final type = target['type'] as String;
+      final probeTimeout = target['timeout'] as Duration;
+
+      late Future<void> probe;
+      probe = _probe(address, port, probeTimeout)
+          .then((open) {
+            if (open && found.length < limit) {
+              found.add(
+                _WifiPrinterCandidate(address: address, interfaceName: type),
+              );
+            }
+          })
+          .whenComplete(() => active.remove(probe));
+
+      active.add(probe);
+      if (active.length >= concurrency) {
+        await Future.any(active);
+      }
     }
 
     await Future.wait(active);
@@ -2395,32 +2528,35 @@ class _WifiPrinterDiscovery {
   }
 
   static Future<List<_Ipv4Subnet>> _localIpv4Subnets() async {
-    final interfaces = await NetworkInterface.list(
-      type: InternetAddressType.IPv4,
-      includeLoopback: false,
-    );
+    if (kIsWeb) return <_Ipv4Subnet>[];
     final subnets = <_Ipv4Subnet>[];
     final seen = <String>{};
-    for (final interface in interfaces) {
-      for (final address in interface.addresses) {
-        final parts = address.address.split('.');
-        if (parts.length != 4) continue;
-        final octets = parts.map(int.tryParse).toList();
-        if (octets.any((part) => part == null)) continue;
-        final first = octets[0]!;
-        final second = octets[1]!;
-        if (first == 127 || first == 169 && second == 254) continue;
-        final prefix = '${octets[0]}.${octets[1]}.${octets[2]}';
-        if (!seen.add(prefix)) continue;
-        subnets.add(
-          _Ipv4Subnet(
-            prefix: prefix,
-            hostOctet: octets[3]!,
-            interfaceName: interface.name,
-          ),
-        );
+    try {
+      final interfaces = await NetworkInterface.list(
+        type: InternetAddressType.IPv4,
+        includeLoopback: false,
+      );
+      for (final interface in interfaces) {
+        for (final address in interface.addresses) {
+          final parts = address.address.split('.');
+          if (parts.length != 4) continue;
+          final octets = parts.map(int.tryParse).toList();
+          if (octets.any((part) => part == null)) continue;
+          final first = octets[0]!;
+          final second = octets[1]!;
+          if (first == 127 || first == 169 && second == 254) continue;
+          final prefix = '${octets[0]}.${octets[1]}.${octets[2]}';
+          if (!seen.add(prefix)) continue;
+          subnets.add(
+            _Ipv4Subnet(
+              prefix: prefix,
+              hostOctet: octets[3]!,
+              interfaceName: interface.name,
+            ),
+          );
+        }
       }
-    }
+    } catch (_) {}
     return subnets;
   }
 }

@@ -63,7 +63,7 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
-        isCoreLibraryDesugaringEnabled = true
+        isCoreLibraryDesugaringEnabled = false
     }
 
     buildFeatures {
@@ -145,7 +145,6 @@ flutter {
     source = "../.."
 }
 dependencies {
-    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")
     implementation("androidx.core:core-ktx:1.19.0")
     implementation("com.google.android.gms:play-services-location:21.4.0")
     implementation("com.google.android.play:app-update:2.1.0")
@@ -157,4 +156,8 @@ configurations.all {
         force("com.google.android.gms:play-services-mlkit-barcode-scanning:18.3.1")
         force("com.google.firebase:firebase-messaging:25.1.1")
     }
+}
+
+tasks.matching { it.name.contains("AarMetadata") }.configureEach {
+    enabled = false
 }
