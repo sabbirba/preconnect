@@ -247,6 +247,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage>
   bool _relayAvailable = false;
   bool _loadingPreset = false;
   bool _syncingCopiesController = false;
+  bool _hasInternet = true;
   StreamSubscription? _networkStatusSubscription;
   StreamSubscription? _refreshBusSubscription;
   String _lastNetworkFingerprint = '';
@@ -282,6 +283,12 @@ class _CampusPrinterPageState extends State<CampusPrinterPage>
       _networkStatusSubscription = Connectivity().onConnectivityChanged.listen((
         results,
       ) {
+        final hasNet = results.any((r) => r != ConnectivityResult.none);
+        if (mounted) {
+          setState(() {
+            _hasInternet = hasNet;
+          });
+        }
         _prewarmCloudRelay();
       });
     }
@@ -418,7 +425,12 @@ class _CampusPrinterPageState extends State<CampusPrinterPage>
   Future<void> _handleNetworkStatusChanged(AndroidNetworkStatus status) async {
     if (!mounted) return;
     _setWifiNameFromStatus(status);
-    if (status.transport.trim().toLowerCase() != 'wifi' || !status.connected) {
+    final transport = status.transport.trim().toLowerCase();
+    final connected = status.connected;
+    setState(() {
+      _hasInternet = connected;
+    });
+    if (!status.connected || transport != 'wifi') {
       if (_printerHost.isNotEmpty) {
         setState(() {
           _printerHost = '';
@@ -784,7 +796,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage>
         final file = _selectedFiles[i];
         if (!mounted) return;
         _showPrintProgress(
-          'Sending ${i + 1}/${_selectedFiles.length}: ${file.name}',
+          'Sending ${file.name}',
           duration: const Duration(seconds: 2),
         );
         try {
@@ -803,14 +815,16 @@ class _CampusPrinterPageState extends State<CampusPrinterPage>
             },
           );
           if (!mounted) return;
+          final isOfflineMode = !_relayAvailable && _printerHost.isEmpty;
           await _addHistory(
             _PrintHistoryEntry(
               fileName: file.name,
-              printerHost: host,
+              printerHost: host.isNotEmpty ? host : 'Cloud Queue',
               copies: copies,
-              status: 'Sent',
-              message:
-                  'Sent to campus printer (${i + 1}/${_selectedFiles.length})',
+              status: isOfflineMode ? 'Queued' : 'Sent',
+              message: isOfflineMode
+                  ? 'Queued in cloud (will print automatically when printer comes online)'
+                  : 'Sent to campus printer',
               createdAt: DateTime.now(),
             ),
           );
@@ -902,23 +916,34 @@ class _CampusPrinterPageState extends State<CampusPrinterPage>
   Widget build(BuildContext context) {
     final hasConnection = _printerHost.isNotEmpty || _relayAvailable;
     final canPrint =
+        _hasInternet &&
         !_busy &&
         !_discovering &&
-        hasConnection &&
         _selectedFiles.isNotEmpty &&
         _studentId.isNotEmpty &&
         _studentName.isNotEmpty;
-    final printerSubtitle = _discovering
-        ? 'Scanning'
-        : hasConnection
-        ? 'Connected'
-        : 'Not found';
+
+    final String printerSubtitle;
+    final Color? subtitleColor;
+
+    if (!_hasInternet) {
+      printerSubtitle = 'No Internet';
+      subtitleColor = const Color(0xFFE53935);
+    } else if (_discovering) {
+      printerSubtitle = 'Scanning..';
+      subtitleColor = null;
+    } else if (hasConnection) {
+      printerSubtitle = 'Connected';
+      subtitleColor = const Color(0xFF22B573);
+    } else {
+      printerSubtitle = 'Connected (Queue)';
+      subtitleColor = const Color(0xFF22B573);
+    }
+
     return BracuPageScaffold(
       title: 'Campus Printer',
       subtitle: printerSubtitle,
-      subtitleColor: hasConnection && !_discovering
-          ? const Color(0xFF22B573)
-          : null,
+      subtitleColor: subtitleColor,
       icon: Icons.local_printshop_outlined,
       actions: [
         BracuRefreshButton(
