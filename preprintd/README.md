@@ -16,6 +16,12 @@ Run the traditional release command:
 cargo build --release
 ```
 
+You can also directly install the `preprintd` binary globally using [cargo](https://github.com/rust-lang/cargo):
+
+```bash
+cargo install preprintd
+```
+
 > [!NOTE]
 > The release binary is optimized for the smallest-possible size, although you can change this behavior by disabling the optimizations specified in the `[profile.release]` section of [Cargo.toml](./Cargo.toml).
 
@@ -45,13 +51,14 @@ Write the following INI configuration in your `preprintd.service` file. Make sur
 ```ini
 [Unit]
 Description=PreConnect Printer Worker Daemon
-After=network.target
+Wants=network-online.target
+After=network-online.target
 
 [Service]
 Type=simple
 ExecStart=/usr/bin/preprintd --debug
 Restart=always
-Environment="WORKER_KEY=yourworkerkeyhere" "AGENT=preprintd" "DEF_HOST=192.168.0.102" "DEF_QUEUE=queuename"
+Environment="WORKER_KEY=yourworkerkeyhere" "AGENT=preprintd/1.0" "DEF_HOST=192.168.0.102" "DEF_QUEUE=queuename"
 User=username
 
 [Install]
