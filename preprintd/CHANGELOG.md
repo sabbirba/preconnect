@@ -2,6 +2,11 @@
 
 Active since `v0.1.0`.
 
+### v0.2.5
+
+- Removed unnecessary `LazyLock` from variables inside the `consts` (previously `constant`) module.
+- `decrypt()` function now uses the `WORKER_KEY` constant from the global scope and not from its parameters.
+
 ### v0.2.4
 
 - Enhanced real-time stream handling and logging.

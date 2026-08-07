@@ -79,7 +79,6 @@ journalctl -u preprintd.service -f
 
 When you're going through the code, you'll see these:
 
-- Some `decode_b64_string()` calls - those are primarily for obfuscation needs but since the inner value is Base64-encoded, you can easily use a decoder to decouple the values underneath. One such tool that you can use is [this](https://www.base64decode.org).
 - The standard LPR/LPD sequence (except the code doing HTTP requests via [reqwest's](https://github.com/seanmonstar/reqwest) blocking API and every other code surrounding/using this logic).
 - LOTS of `LazyLock` usage. ALthough this is not optimal for a program that's supposed to be tiny, we've kept this pattern to reuse as much data as physically possible without hardcoding and messing up.
 
