@@ -453,11 +453,13 @@ class _MyAppState extends State<MyApp>
             final results = data['results'] as List<dynamic>;
             if (results.isNotEmpty) {
               final storeVersion = results[0]['version'] as String;
-              final appStoreId = results[0]['trackId'].toString();
-
+              final appStoreId = results[0]['trackId']?.toString() ?? '';
               if (storeVersion.compareTo(localVersion) > 0) {
+                final targetId = appStoreId.isEmpty ? '6791423431' : appStoreId;
                 await launchUrl(
-                  Uri.parse('https://apps.apple.com/app/id$appStoreId'),
+                  Uri.parse(
+                    'https://apps.apple.com/us/app/preconnect-bracu-student-app/id$targetId',
+                  ),
                   mode: LaunchMode.externalApplication,
                 );
                 return true;
