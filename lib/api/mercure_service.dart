@@ -96,22 +96,20 @@ class MercureService {
 
     if (data is Map<String, dynamic>) {
       if (data.containsKey('status') ||
-          data.containsKey('active') ||
-          data.containsKey('queued') ||
-          data.containsKey('released')) {
+          data.containsKey('activePrinters') ||
+          data.containsKey('queuedJobsCount') ||
+          data.containsKey('claimedJobsCount')) {
         RefreshBus.instance.notify(reason: 'printer');
+        return;
       }
       final type = (data['type'] ?? data['event'] ?? data['topic'] ?? '')
           .toString();
       if (type.isNotEmpty) {
-        RefreshBus.instance.notify(reason: 'mercure_$type');
         RefreshBus.instance.notify(reason: type);
+        return;
       }
-      RefreshBus.instance.notify(reason: 'cache_cleared');
-    } else {
-      RefreshBus.instance.notify(reason: 'mercure_event');
-      RefreshBus.instance.notify(reason: 'cache_cleared');
     }
+    RefreshBus.instance.notify(reason: 'mercure_event');
   }
 
   void _handleDisconnect() {
