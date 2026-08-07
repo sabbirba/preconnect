@@ -95,6 +95,12 @@ class MercureService {
     resetCachedCurrentSessionSemesterId();
 
     if (data is Map<String, dynamic>) {
+      if (data.containsKey('status') ||
+          data.containsKey('active') ||
+          data.containsKey('queued') ||
+          data.containsKey('released')) {
+        RefreshBus.instance.notify(reason: 'printer');
+      }
       final type = (data['type'] ?? data['event'] ?? data['topic'] ?? '')
           .toString();
       if (type.isNotEmpty) {

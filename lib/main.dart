@@ -41,11 +41,17 @@ Future<void> main() async {
         return true;
       };
 
-      Future<FirebaseApp>? firebaseInit;
       if (!isChromeRuntimeAvailable()) {
-        firebaseInit = Firebase.initializeApp(
-          options: DefaultFirebaseOptions.currentPlatform,
-        );
+        try {
+          await Firebase.initializeApp(
+            options: DefaultFirebaseOptions.currentPlatform,
+          );
+          FirebaseMessaging.onBackgroundMessage(FCMService.backgroundHandler);
+        } catch (error, stackTrace) {
+          unawaited(
+            AppLog.write('Firebase initialization failed: $error\n$stackTrace'),
+          );
+        }
       }
 
       await AppStorage.initialize();
@@ -57,17 +63,6 @@ Future<void> main() async {
       final initialState = MyApp.bootstrapSync();
 
       runApp(MyApp(bootstrapState: initialState));
-
-      try {
-        if (firebaseInit != null) {
-          await firebaseInit;
-          FirebaseMessaging.onBackgroundMessage(FCMService.backgroundHandler);
-        }
-      } catch (error, stackTrace) {
-        unawaited(
-          AppLog.write('Firebase initialization failed: $error\n$stackTrace'),
-        );
-      }
     },
     (error, stackTrace) {
       unawaited(AppLog.write('Uncaught zone error: $error\n$stackTrace'));

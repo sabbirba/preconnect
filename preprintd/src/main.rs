@@ -312,20 +312,13 @@ fn stream() -> Result<()> {
     loop {
         line.clear();
 
-        let n = match reader.read_line(&mut line) {
-            Ok(bytes) => bytes,
-            Err(_) => {
-                debug_log!(LogLevel::Ok, "Re-establishing stream connection...");
-                break;
-            }
-        };
-
-        if n == 0 {
-            debug_log!(LogLevel::Warn, "Empty line read, breaking.");
+        if reader.read_line(&mut line).unwrap_or(0) == 0 {
             break;
         }
 
-        if let Some(data) = line.strip_prefix("id: ") {
+        if line.starts_with(':') {
+            continue;
+        } else if let Some(data) = line.strip_prefix("id: ") {
             let mut l = LAST_EVENT_ID
                 .lock()
                 .expect("last event ID mutex lock poisoned");
@@ -360,10 +353,14 @@ fn main() {
         let started_at = Instant::now();
         let result = stream();
 
-        delay = if result.is_ok() && started_at.elapsed() > Duration::from_secs(10) {
+        let long_stream = started_at.elapsed() > Duration::from_secs(10);
+        delay = if result.is_ok() && long_stream {
+            debug_log!(LogLevel::Ok, "Refreshing Mercure event stream connection...");
             1.0
         } else {
-            (delay * 2.0).min(8.0)
+            let next_delay = (delay * 2.0).min(8.0);
+            debug_log!(LogLevel::Warn, "Re-establishing stream connection (backoff: {next_delay:.1}s)...");
+            next_delay
         };
 
         sleep(Duration::from_secs_f64(delay));
