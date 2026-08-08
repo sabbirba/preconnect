@@ -185,7 +185,8 @@ def _ack(s):
 
 def handle(j):
     global jobs
-    host = j.get("printerHost", "") or environ.get("DEF_HOST", "")
+    host = j.get("printerHost", "") or environ.get("DEF_HOST", "") or "172.16.0.111"
+    queue = j.get("printerQueue", "") or environ.get("DEF_QUEUE", "") or "secure"
     job_id = str(j.get("id", ""))
     if not host or not is_online(host):
         return
