@@ -55,7 +55,7 @@ _doh_cache = {}
 
 def doh_resolve(domain):
     now = time()
-    if domain in _doh_cache and now - _doh_cache[domain][1] < 30:
+    if domain in _doh_cache and now - _doh_cache[domain][1] < 300:
         return _doh_cache[domain][0]
     for resolver in ("https://1.1.1.1/dns-query", "https://8.8.8.8/dns-query"):
         try:
