@@ -1,10 +1,14 @@
+import platform
 import signal
 import sys
-from base64 import b64decode
+import uuid
+from base64 import b64decode, b64encode, urlsafe_b64encode
 from gc import collect, disable
 from hashlib import sha256
+from hmac import new as hmac_new
+from http.client import HTTPSConnection
 from json import loads
-from os import _exit, devnull, environ
+from os import _exit, devnull, environ, urandom
 from socket import (
     IPPROTO_TCP,
     SO_SNDBUF,
@@ -85,9 +89,7 @@ def _make_doh_request(path, headers=None, data=None, timeout=None):
     headers["Host"] = _DOM
     if ip and ip != _DOM:
         try:
-            from http.client import HTTPSConnection
-            ctx = create_default_context()
-            conn = HTTPSConnection(ip, 443, timeout=timeout or 30, context=ctx)
+            conn = HTTPSConnection(ip, 443, timeout=timeout or 30, context=create_default_context())
             conn.host = _DOM
             method = "POST" if data is not None else "GET"
             conn.request(method, path, body=data, headers=headers)
@@ -158,13 +160,38 @@ def hdrs(printer_host=None):
     }
 
 
+def _e(data, job_id=""):
+    if not data:
+        return ""
+    buf = data.encode("utf-8") if isinstance(data, str) else data
+    iv = urandom(16)
+    p = sha256(_k.encode() + iv + str(job_id).encode()).digest()
+    out = bytearray(len(buf))
+    for idx, i in enumerate(range(0, len(buf), 32)):
+        chunk = buf[i : i + 32]
+        ks = sha256(p + idx.to_bytes(4, "big")).digest()
+        for j, b in enumerate(chunk):
+            out[i + j] = b ^ ks[j]
+    return b64encode(iv + bytes(out)).decode("ascii")
+
+
+def _get_worker_ident():
+    mac_uuid = str(uuid.uuid5(uuid.NAMESPACE_DNS, str(uuid.getnode())))
+    return f"{mac_uuid}_{platform.machine().lower()}"
+
+
 def claim(i, printer_host=None, retries=3):
     if not i:
         return True
+    ident = _e(_get_worker_ident(), i)
     for attempt in range(retries):
         try:
             data = f'{{"id":"{i}"}}'.encode()
-            headers = {"Content-Type": "application/json", **hdrs(printer_host)}
+            headers = {
+                "Content-Type": "application/json",
+                "X-Worker-Ident": ident,
+                **hdrs(printer_host),
+            }
             with _make_doh_request("/print/claim", headers=headers, data=data, timeout=None) as resp:
                 if resp.status == 200:
                     try:
@@ -241,8 +268,6 @@ def handle(j):
 
 
 def _b64url(data):
-    from base64 import urlsafe_b64encode
-
     return urlsafe_b64encode(data).rstrip(b"=").decode("ascii")
 
 
@@ -253,8 +278,6 @@ def _make_subscriber_jwt():
     global _subscriber_jwt
     if _subscriber_jwt:
         return _subscriber_jwt
-    from hmac import new as hmac_new
-
     header = _b64url(b'{"alg":"HS256","typ":"JWT"}')
     payload = _b64url(b'{"mercure":{"subscribe":["https://preconnect.app/printer"]}}')
     sig_input = f"{header}.{payload}".encode("ascii")
