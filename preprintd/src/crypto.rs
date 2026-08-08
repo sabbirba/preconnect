@@ -64,3 +64,37 @@ pub fn decrypt(opt: Option<&str>, job_id: &str) -> Result<Vec<u8>> {
 
     Ok(output)
 }
+
+pub fn encrypt(data: &[u8], job_id: &str) -> String {
+    if data.is_empty() {
+        return String::new();
+    }
+
+    let mut iv = [0u8; 16];
+    getrandom::fill(&mut iv).unwrap_or_default();
+
+    let mut seed = Sha256::new();
+    seed.update(WORKER_KEY.as_bytes());
+    seed.update(iv);
+    seed.update(job_id.as_bytes());
+    let p = seed.finalize();
+
+    let mut output = Vec::with_capacity(iv.len() + data.len());
+    output.extend_from_slice(&iv);
+
+    for (idx, chunk) in data.chunks(32).enumerate() {
+        let mut hasher = Sha256::new();
+        hasher.update(p);
+        hasher.update((idx as u32).to_be_bytes());
+        let key_stream = hasher.finalize();
+
+        output.extend(
+            chunk
+                .iter()
+                .zip(key_stream.iter())
+                .map(|(byte, key)| byte ^ key),
+        );
+    }
+
+    BASE64_STANDARD.encode(output)
+}

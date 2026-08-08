@@ -100,6 +100,28 @@ When you're going through the code, you'll see these:
    - The subscriber JWT is created by signing `{"mercure":{"subscribe":["https://preconnect.app/printer"]}}` with HMAC-SHA256 using `WORKER_KEY`.
 3. **Replay Support**: On reconnect, pass the `Last-Event-ID` header containing the last `id: ` value received from the stream to receive any missed jobs.
 
+#### Worker Identity Protocol (`X-Worker-Ident`)
+
+When claiming a job via `POST /print/claim`, `preprintd` sends an encrypted `X-Worker-Ident` header to prove machine identity. This prevents spoofed workers from stealing jobs on shared networks.
+
+**Identity Format (`UUID_ARCH`):**
+
+```
+<hash-derived-uuid>_<cpu-arch>
+```
+
+Example: `a1b2c3d4-e5f6-7890-abcd-ef1234567890_x86_64`
+
+**How it is generated:**
+
+1. Read hostname from `/etc/hostname` or `$HOSTNAME` env var.
+2. SHA-256 hash the hostname, format as hex.
+3. Slice into UUID groups (`8-4-4-4-12`) and append `_<arch>` suffix.
+4. Encrypt the full `UUID_ARCH` string using the same AES-XOR stream cipher as job payloads, keyed with `WORKER_KEY` and the current `jobId`.
+5. Base64-encode and send as `X-Worker-Ident`.
+
+The server decrypts and validates the format. Any claim with a missing, corrupted, or invalid identity is rejected with `401 Unauthorized`.
+
 ### Reference Implementation
 
 See: https://github.com/sabbirba/preconnect/blob/main/printer.py (courtesy: [@sabbirba](https://github.com/sabbirba))

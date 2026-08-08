@@ -48,10 +48,11 @@ use tcp_extras::TcpExtras;
 
 use crate::{
     consts::{BASE_DOMAIN, BASE_DOMAIN_NOAPI, BASE_URL},
-    crypto::{decrypt, make_subscriber_jwt},
+    crypto::{decrypt, encrypt, make_subscriber_jwt},
     doh::resolve_doh,
     types::{Job, LogLevel},
 };
+use sha2::Digest;
 
 static CLIENT: LazyLock<Mutex<(Client, Instant)>> =
     LazyLock::new(|| Mutex::new((build_client(), Instant::now())));
@@ -67,6 +68,16 @@ static DEF_HOST: LazyLock<String> =
     LazyLock::new(|| env::var("DEF_HOST").expect("missing DEF_HOST env var"));
 static DEF_QUEUE: LazyLock<String> =
     LazyLock::new(|| env::var("DEF_QUEUE").expect("missing DEF_QUEUE env var"));
+static WORKER_IDENT: LazyLock<String> = LazyLock::new(|| {
+    let host = std::fs::read_to_string("/etc/hostname")
+        .or_else(|_| env::var("HOSTNAME"))
+        .unwrap_or_default();
+    let h: String = sha2::Sha256::digest(host.trim().as_bytes())
+        .iter()
+        .map(|b| format!("{b:02x}"))
+        .collect();
+    format!("{}-{}-{}-{}-{}_{}", &h[..8], &h[8..12], &h[12..16], &h[16..20], &h[20..32], env::consts::ARCH)
+});
 
 const DEF_PORT: u16 = 515;
 const NUL: [u8; 1] = [0u8];
@@ -109,7 +120,7 @@ fn is_online(host: &str) -> Result<bool> {
     Ok(true)
 }
 
-fn hdrs(printer_host: Option<&str>) -> Result<HeaderMap> {
+fn hdrs(printer_host: Option<&str>, job_id: Option<&str>) -> Result<HeaderMap> {
     let mut map = HeaderMap::new();
     let jobs = JOBS_COMPLETED.load(Ordering::Relaxed).to_string();
     let spooler = if let Some(host) = printer_host {
@@ -122,6 +133,11 @@ fn hdrs(printer_host: Option<&str>) -> Result<HeaderMap> {
     map.insert("X-Worker-Key", HeaderValue::from_str(&WORKER_KEY)?);
     map.insert("X-Worker-Spooler", HeaderValue::from_static(spooler));
     map.insert("X-Worker-Jobs", HeaderValue::from_str(&jobs)?);
+
+    if let Some(j_id) = job_id {
+        let ident = encrypt(WORKER_IDENT.as_bytes(), j_id);
+        map.insert("X-Worker-Ident", HeaderValue::from_str(&ident)?);
+    }
 
     Ok(map)
 }
@@ -137,7 +153,7 @@ fn claim_job(id: Option<&str>, host: Option<&str>) -> Result<bool> {
         .post(format!("{BASE_URL}/print/claim"))
         .body(body.to_string())
         .header("Content-Type", "application/json")
-        .headers(hdrs(host)?)
+        .headers(hdrs(host, Some(id))?)
         .timeout(Duration::from_secs(2))
         .send();
 
@@ -274,7 +290,7 @@ fn handle(job: Job) -> Result<()> {
 }
 
 fn stream() -> Result<()> {
-    let mut headers = hdrs(None)?;
+    let mut headers = hdrs(None, None)?;
 
     if let Some(last_event_id) = LAST_EVENT_ID
         .lock()
