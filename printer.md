@@ -1,4 +1,4 @@
-# Cloud Relay Setup Guide
+# Cloud Relay Setup Guide for Windows PC
 
 Print directly to campus printers from the PreConnect app by running one command on any lab PC.
 
@@ -10,15 +10,7 @@ Print directly to campus printers from the PreConnect app by running one command
 
 ## User Setup
 
-Run this single command in terminal or PowerShell:
-
-### Linux / macOS (Terminal)
-
-```bash
-curl -fsSL https://api.preconnect.app/printer/install | bash
-```
-
-### Windows (PowerShell)
+Run this single command in PowerShell:
 
 ```powershell
 powershell -c "irm https://api.preconnect.app/printer/install | iex"
@@ -28,13 +20,7 @@ powershell -c "irm https://api.preconnect.app/printer/install | iex"
 
 ## Admin Setup (System-Wide)
 
-### Linux (Terminal with Sudo)
-
-```bash
-sudo curl -fsSL https://api.preconnect.app/printer/admin/install | bash
-```
-
-### Windows (Run with Administrator PowerShell)
+Run this single command in Run with Administrator PowerShell:
 
 ```powershell
 powershell -c "irm https://api.preconnect.app/printer/admin/install | iex"
@@ -46,24 +32,12 @@ powershell -c "irm https://api.preconnect.app/printer/admin/install | iex"
 
 ### User Mode
 
-#### Linux / macOS
-```bash
-curl -fsSL https://api.preconnect.app/printer/uninstall | bash
-```
-
-#### Windows
 ```powershell
 powershell -c "irm https://api.preconnect.app/printer/uninstall | iex"
 ```
 
 ### Admin Mode (System-Wide)
 
-#### Linux / macOS
-```bash
-sudo curl -fsSL https://api.preconnect.app/printer/admin/uninstall | bash
-```
-
-#### Windows
 ```powershell
 powershell -c "irm https://api.preconnect.app/printer/admin/uninstall | iex"
 ```
@@ -72,18 +46,16 @@ powershell -c "irm https://api.preconnect.app/printer/admin/uninstall | iex"
 
 ## How It Works
 
-- Each URL auto-detects your platform from the request (`curl`/`Wget` vs. PowerShell) and returns the matching script — there's nothing to pick manually.
-- Opening any of these URLs in a regular browser redirects to [preconnect.app](https://preconnect.app) instead of showing the script. Only recognized command-line clients (`curl`, `Wget`, PowerShell) receive it.
+- Opening any of these URLs in a regular browser redirects to [preconnect.app](https://preconnect.app) instead of showing the script. Only recognized command-line client PowerShell receive it.
 - Requests are rate-limited per IP; scripted or repeated access is rejected.
 
 ---
 
 ## Debug Mode
 
-Download and run [printer.py](https://raw.githubusercontent.com/sabbirba/preconnect/refs/heads/main/printer.py) manually with `--debug` to view real-time event logs.
+Download and run [printer.py](https://raw.githubusercontent.com/sabbirba/preconnect/refs/heads/main/printer.py) manually with `--debug` to view real-time event logs:
 
-```bash
-curl -fsSL https://raw.githubusercontent.com/sabbirba/preconnect/refs/heads/main/printer.py -o printer.py
-python3 printer.py <WORKER_KEY> --debug
+```powershell
+Invoke-WebRequest -Uri "https://raw.githubusercontent.com/sabbirba/preconnect/refs/heads/main/printer.py" -OutFile "printer.py"
+python printer.py <WORKER_KEY> --debug
 ```
-
