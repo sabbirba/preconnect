@@ -86,7 +86,9 @@ def _make_doh_request(path, headers=None, data=None, timeout=None):
     req = Request(url, headers=headers or {}, data=data)
     req.add_header("Host", _DOM)
     ctx = _create_unverified_context() if target == ip else create_default_context()
-    return urlopen(req, timeout=timeout, context=ctx)
+    if timeout is not None:
+        return urlopen(req, timeout=timeout, context=ctx)
+    return urlopen(req, context=ctx)
 
 
 NUL = b"\x00"
