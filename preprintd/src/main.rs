@@ -212,7 +212,7 @@ fn handle(job: Job) -> Result<()> {
         .printer_host
         .as_deref()
         .filter(|host| !host.is_empty())
-        .unwrap_or(DEF_HOST.as_str());
+        .unwrap_or(&DEF_HOST);
 
     let queue_name = job
         .printer_queue
@@ -320,7 +320,7 @@ fn stream() -> Result<()> {
         .header("Accept", "text/event-stream")
         .header(
             "Authorization",
-            format!("Bearer {}", make_subscriber_jwt(WORKER_KEY.as_str())),
+            format!("Bearer {}", make_subscriber_jwt(&WORKER_KEY)),
         )
         .headers(headers)
         .send()
