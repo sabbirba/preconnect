@@ -258,7 +258,7 @@ def stream():
         if last_event_id:
             headers["Last-Event-ID"] = last_event_id
 
-        with _make_doh_request(path, headers=headers, timeout=30) as r:
+        with _make_doh_request(path, headers=headers, timeout=None) as r:
             if r.status != 200:
                 return
             while l := r.readline():
