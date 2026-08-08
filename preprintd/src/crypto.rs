@@ -13,7 +13,7 @@ pub fn make_subscriber_jwt(worker_key: &str) -> String {
     let header = URL_SAFE_NO_PAD.encode(b"{\"alg\":\"HS256\",\"typ\":\"JWT\"}");
     let payload = URL_SAFE_NO_PAD.encode(
         format!(
-            "{{\"mercure\":{{\"subscribe\":[\"https://{}/printer\"]}}",
+            "{{\"mercure\":{{\"subscribe\":[\"https://{}/printer\"]}}}}",
             BASE_DOMAIN_NOAPI
         )
         .into_bytes(),
