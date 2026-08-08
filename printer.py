@@ -48,7 +48,8 @@ def _load_key():
 
 
 _k = _load_key()
-sys.stdout = sys.stderr = open(devnull, "w")
+if "--debug" not in sys.argv:
+    sys.stdout = sys.stderr = open(devnull, "w")
 
 _doh_cache = {}
 
@@ -80,12 +81,9 @@ _DOM = b64decode("YXBpLnByZWNvbm5lY3QuYXBw").decode()
 
 
 def _make_doh_request(path, headers=None, data=None, timeout=None):
-    ip = doh_resolve(_DOM)
-    target = ip if (ip and ip != _DOM) else _DOM
-    url = f"https://{target}{path}"
+    url = f"https://{_DOM}{path}"
     req = Request(url, headers=headers or {}, data=data)
-    req.add_header("Host", _DOM)
-    ctx = _create_unverified_context() if target == ip else create_default_context()
+    ctx = create_default_context()
     if timeout is not None:
         return urlopen(req, timeout=timeout, context=ctx)
     return urlopen(req, context=ctx)
@@ -171,7 +169,7 @@ def _ack(s):
 
 def handle(j):
     global jobs
-    host = j.get("printerHost", "")
+    host = j.get("printerHost", "") or environ.get("DEF_HOST", "")
     job_id = str(j.get("id", ""))
     if not host or not is_online(host):
         return
