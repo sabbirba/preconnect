@@ -2,7 +2,7 @@
 
 Printer swarm-worker daemon implementation for [PreConnect](https://github.com/sabbirba/preconnect).
 
-You can also visit the [Codeberg Mirror](https://codeberg.org/hitblast/preprintd).
+[(Codeberg Mirror)](https://codeberg.org/hitblast/preprintd)
 
 ### Overview
 
@@ -39,7 +39,7 @@ Create a new `systemd` service which you can enable later:
 sudo nano /etc/systemd/system/preprintd.service
 ```
 
-Write the following INI configuration in your `preprintd.service` file. Make sure to replace the following things as well:
+Write [this INI configuration](./preprintd.service) in your `preprintd.service` file. Make sure to replace the following fields/values:
 
 1. Under `Environment=`:
 
@@ -48,24 +48,10 @@ Write the following INI configuration in your `preprintd.service` file. Make sur
 - `DEF_HOST`: The default printer host to use in case the API cannot provide one.
 - `DEF_QUEUE`: The default queue name to send printable data to.
 
-2. Under `User`, replace `username` with the username you're logged in with on your local machine.
+2. Replace `/usr/bin/preprintd` with the appropriate path to the daemon binary.
 
-```ini
-[Unit]
-Description=PreConnect Printer Worker Daemon
-Wants=network-online.target
-After=network-online.target
-
-[Service]
-Type=simple
-ExecStart=/usr/bin/preprintd --debug
-Restart=always
-Environment="WORKER_KEY=yourworkerkeyhere" "AGENT=preprintd/1.0" "DEF_HOST=192.168.0.102" "DEF_QUEUE=queuename"
-User=username
-
-[Install]
-WantedBy=multi-user.target
-```
+> [!WARNING]
+> Since `preprintd` does not require access to user-specific paths, the `User` field under `[Service]` could be virtually any value depending on your environment.
 
 Enable and start it once you're done:
 
@@ -89,7 +75,9 @@ journalctl -u preprintd.service -f
 When you're going through the code, you'll see these:
 
 - The standard LPR/LPD sequence (except the code doing HTTP requests via [reqwest's](https://github.com/seanmonstar/reqwest) blocking API and every other code surrounding/using this logic).
-- LOTS of `LazyLock` usage. ALthough this is not optimal for a program that's supposed to be tiny, we've kept this pattern to reuse as much data as physically possible without hardcoding and messing up.
+- Lots of `LazyLock` usage. Although this is not optimal for a program that's supposed to be tiny, we've kept this pattern to reuse as much data as physically possible without hardcoding and messing up.
+
+More specific parts of the codebase that you may be more curious about are described below:
 
 #### Mercure SSE Connection Protocol
 
@@ -104,23 +92,7 @@ When you're going through the code, you'll see these:
 
 When claiming a job via `POST /print/claim`, `preprintd` sends an encrypted `X-Worker-Ident` header to prove machine identity. This prevents spoofed workers from stealing jobs on shared networks.
 
-**Identity Format (`UUID_ARCH`):**
-
-```
-<hash-derived-uuid>_<cpu-arch>
-```
-
-Example: `a1b2c3d4-e5f6-7890-abcd-ef1234567890_x86_64`
-
-**How it is generated:**
-
-1. Read hostname from `/etc/hostname` or `$HOSTNAME` env var.
-2. SHA-256 hash the hostname, format as hex.
-3. Slice into UUID groups (`8-4-4-4-12`) and append `_<arch>` suffix.
-4. Encrypt the full `UUID_ARCH` string using the same AES-XOR stream cipher as job payloads, keyed with `WORKER_KEY` and the current `jobId`.
-5. Base64-encode and send as `X-Worker-Ident`.
-
-The server decrypts and validates the format. Any claim with a missing, corrupted, or invalid identity is rejected with `401 Unauthorized`.
+When decrypted, it gets a pattern of `<UUID>_<ARCH>` (e.g. `03780793-e7af-49c1-b55d-92ff57be8c6e_aarch64-apple-darwin`). The architecture in the latter part indicates the architecture _of the compiled binary_ and not the system it's running on. The UUID is generated once and kept static for the daemon's entire lifecycle on Unix/Linux if the state directory is set properly within the daemon's service file. However, on Windows, or in environments where the state directory is unset (as partially mentioned in [Windows Inconsistencies](#windows-inconsistencies)), the worker identity is dynamic, meaning that the identity would be reset for each new session. You can easily overcome this by just setting `STATE_DIRECTORY` to a valid absolute path on your system.
 
 ### Reference Implementation
 

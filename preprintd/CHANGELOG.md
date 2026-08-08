@@ -2,6 +2,28 @@
 
 Active since `v0.1.0`.
 
+### v0.3.2
+
+- Working version; reverted some `LazyLock` shenanigans back to the old version.
+
+### v0.3.1
+
+- Attempt to fix issues with coercion, leading to the "WORKER_KEY is unauthorized" bug.
+
+### v0.3.0
+
+- `X-Worker-Ident` can no longer be disabled.
+- `X-Worker-Ident` is now only passed into requests during a claim-job attempt.
+- `X-Worker-Ident` is now encrypted and then Base64-encoded before being passed into HTTP requests.
+- `X-Worker-Ident` is now static (generated once and stored in the state directory).
+- Moved client-creation helpers into its own `client` module.
+- Added a new `encrypt()` function in the `crypto` module.
+
+### v0.2.6
+
+- The `hdrs()` function now passes in a new `X-Worker-Ident` header with the `HeaderMap` it generates.
+- Fixed the debug log with mercure endpoint.
+
 ### v0.2.5
 
 - Removed unnecessary `LazyLock` from variables inside the `consts` (previously `constant`) module.

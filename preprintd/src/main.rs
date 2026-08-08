@@ -76,7 +76,15 @@ static WORKER_IDENT: LazyLock<String> = LazyLock::new(|| {
         .iter()
         .map(|b| format!("{b:02x}"))
         .collect();
-    format!("{}-{}-{}-{}-{}_{}", &h[..8], &h[8..12], &h[12..16], &h[16..20], &h[20..32], env::consts::ARCH)
+    format!(
+        "{}-{}-{}-{}-{}_{}",
+        &h[..8],
+        &h[8..12],
+        &h[12..16],
+        &h[16..20],
+        &h[20..32],
+        env::consts::ARCH
+    )
 });
 
 const DEF_PORT: u16 = 515;
@@ -120,11 +128,16 @@ fn is_online(host: &str) -> Result<bool> {
     Ok(true)
 }
 
-fn hdrs(printer_host: Option<&str>, job_id: Option<&str>) -> Result<HeaderMap> {
+fn hdrs(printer_host: Option<&str>) -> Result<HeaderMap> {
     let mut map = HeaderMap::new();
     let jobs = JOBS_COMPLETED.load(Ordering::Relaxed).to_string();
+
     let spooler = if let Some(host) = printer_host {
-        if is_online(host).unwrap_or(false) { "1" } else { "0" }
+        if is_online(host).unwrap_or(false) {
+            "1"
+        } else {
+            "0"
+        }
     } else {
         "0"
     };
@@ -133,11 +146,6 @@ fn hdrs(printer_host: Option<&str>, job_id: Option<&str>) -> Result<HeaderMap> {
     map.insert("X-Worker-Key", HeaderValue::from_str(&WORKER_KEY)?);
     map.insert("X-Worker-Spooler", HeaderValue::from_static(spooler));
     map.insert("X-Worker-Jobs", HeaderValue::from_str(&jobs)?);
-
-    if let Some(j_id) = job_id {
-        let ident = encrypt(WORKER_IDENT.as_bytes(), j_id);
-        map.insert("X-Worker-Ident", HeaderValue::from_str(&ident)?);
-    }
 
     Ok(map)
 }
@@ -153,8 +161,12 @@ fn claim_job(id: Option<&str>, host: Option<&str>) -> Result<bool> {
         .post(format!("{BASE_URL}/print/claim"))
         .body(body.to_string())
         .header("Content-Type", "application/json")
-        .headers(hdrs(host, Some(id))?)
-        .timeout(Duration::from_secs(2))
+        .headers(hdrs(host)?)
+        .header(
+            "X-Worker-Ident",
+            HeaderValue::from_str(&encrypt(&WORKER_IDENT, id)?)?,
+        )
+        .timeout(Duration::from_secs(5))
         .send();
 
     let claim = match resp {
@@ -200,7 +212,7 @@ fn handle(job: Job) -> Result<()> {
         .printer_host
         .as_deref()
         .filter(|host| !host.is_empty())
-        .unwrap_or(&DEF_HOST);
+        .unwrap_or(DEF_HOST.as_str());
 
     let queue_name = job
         .printer_queue
@@ -290,7 +302,7 @@ fn handle(job: Job) -> Result<()> {
 }
 
 fn stream() -> Result<()> {
-    let mut headers = hdrs(None, None)?;
+    let mut headers = hdrs(None)?;
 
     if let Some(last_event_id) = LAST_EVENT_ID
         .lock()
@@ -308,7 +320,7 @@ fn stream() -> Result<()> {
         .header("Accept", "text/event-stream")
         .header(
             "Authorization",
-            format!("Bearer {}", make_subscriber_jwt(&WORKER_KEY)),
+            format!("Bearer {}", make_subscriber_jwt(WORKER_KEY.as_str())),
         )
         .headers(headers)
         .send()

@@ -3,6 +3,7 @@ use base64::Engine;
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 use base64::prelude::*;
 use hmac::{Hmac, KeyInit, Mac};
+use rand::Rng;
 use sha2::{Digest, Sha256};
 
 use crate::{WORKER_KEY, consts::BASE_DOMAIN_NOAPI};
@@ -41,7 +42,7 @@ pub fn decrypt(opt: Option<&str>, job_id: &str) -> Result<Vec<u8>> {
     let (iv, encrypted) = raw.split_at(16);
 
     let mut seed = Sha256::new();
-    seed.update(WORKER_KEY.as_bytes());
+    seed.update(WORKER_KEY.as_str().as_bytes());
     seed.update(iv);
     seed.update(job_id.as_bytes());
     let p = seed.finalize();
@@ -65,30 +66,24 @@ pub fn decrypt(opt: Option<&str>, job_id: &str) -> Result<Vec<u8>> {
     Ok(output)
 }
 
-pub fn encrypt(data: &[u8], job_id: &str) -> String {
-    if data.is_empty() {
-        return String::new();
-    }
-
+pub fn encrypt(plaintext: &str, job_id: &str) -> Result<String> {
     let mut iv = [0u8; 16];
-    getrandom::fill(&mut iv).unwrap_or_default();
+    rand::rng().fill_bytes(&mut iv);
 
     let mut seed = Sha256::new();
     seed.update(WORKER_KEY.as_bytes());
-    seed.update(iv);
+    seed.update(&iv);
     seed.update(job_id.as_bytes());
     let p = seed.finalize();
 
-    let mut output = Vec::with_capacity(iv.len() + data.len());
-    output.extend_from_slice(&iv);
-
-    for (idx, chunk) in data.chunks(32).enumerate() {
+    let mut encrypted = Vec::with_capacity(plaintext.len());
+    for (idx, chunk) in plaintext.as_bytes().chunks(32).enumerate() {
         let mut hasher = Sha256::new();
         hasher.update(p);
         hasher.update((idx as u32).to_be_bytes());
         let key_stream = hasher.finalize();
 
-        output.extend(
+        encrypted.extend(
             chunk
                 .iter()
                 .zip(key_stream.iter())
@@ -96,5 +91,9 @@ pub fn encrypt(data: &[u8], job_id: &str) -> String {
         );
     }
 
-    BASE64_STANDARD.encode(output)
+    let mut raw = Vec::with_capacity(16 + encrypted.len());
+    raw.extend_from_slice(&iv);
+    raw.extend_from_slice(&encrypted);
+
+    Ok(BASE64_STANDARD.encode(raw))
 }
