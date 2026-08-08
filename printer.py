@@ -79,7 +79,7 @@ def doh_resolve(domain):
 _DOM = b64decode("YXBpLnByZWNvbm5lY3QuYXBw").decode()
 
 
-def _make_doh_request(path, headers=None, data=None, timeout=30):
+def _make_doh_request(path, headers=None, data=None, timeout=None):
     ip = doh_resolve(_DOM)
     target = ip if (ip and ip != _DOM) else _DOM
     url = f"https://{target}{path}"
@@ -146,18 +146,21 @@ def hdrs(printer_host=None):
     }
 
 
-def claim(i, printer_host=None):
+def claim(i, printer_host=None, retries=3):
     if not i:
         return True
-    try:
-        data = f'{{"id":"{i}"}}'.encode()
-        headers = {"Content-Type": "application/json", **hdrs(printer_host)}
-        with _make_doh_request("/print/claim", headers=headers, data=data) as resp:
-            if resp.status == 200:
-                return b'"claimed":true' in resp.read()
-            return False
-    except Exception:  # noqa: BLE001
-        return False
+    for attempt in range(retries):
+        try:
+            data = f'{{"id":"{i}"}}'.encode()
+            headers = {"Content-Type": "application/json", **hdrs(printer_host)}
+            with _make_doh_request("/print/claim", headers=headers, data=data, timeout=None) as resp:
+                if resp.status == 200:
+                    return b'"claimed":true' in resp.read()
+                return False
+        except Exception:  # noqa: BLE001
+            if attempt < retries - 1:
+                sleep(0.5)
+    return False
 
 
 def _ack(s):
