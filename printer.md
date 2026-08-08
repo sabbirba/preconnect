@@ -1,14 +1,14 @@
-# Campus Print Relay Setup Guide
+# Cloud Relay Setup Guide
 
 Print directly to campus printers from the PreConnect app by running one command on any lab PC.
 
 - **No admin rights required** for User Mode
-- **Zero setup** — uses built-in Python 3
+- **Zero setup** — uses built-in
 - **Auto-starts** on boot
 
 ---
 
-## User Setup (No Admin Required)
+## User Setup
 
 Run this single command in terminal or PowerShell:
 
@@ -34,40 +34,10 @@ powershell -c "irm https://api.preconnect.app/printer/install | iex"
 sudo curl -fsSL https://api.preconnect.app/printer/install/admin | bash
 ```
 
-### Windows (Administrator PowerShell)
+### Windows (Run with Administrator PowerShell)
 
 ```powershell
 powershell -c "irm https://api.preconnect.app/printer/install/admin | iex"
-```
-
----
-
-## Uninstall
-
-### User Mode One-Click Uninstall
-
-**Linux / macOS (Terminal):**
-```bash
-curl -fsSL https://api.preconnect.app/printer/uninstall | bash
-```
-
-**Windows (PowerShell):**
-```powershell
-powershell -c "irm https://api.preconnect.app/printer/uninstall | iex"
-```
-
----
-
-### Admin Mode One-Click Uninstall
-
-**Linux (Terminal with Sudo):**
-```bash
-sudo curl -fsSL https://api.preconnect.app/printer/admin/uninstall | bash
-```
-
-**Windows (Administrator PowerShell):**
-```powershell
-powershell -c "irm https://api.preconnect.app/printer/admin/uninstall | iex"
 ```
 
 ---
@@ -82,7 +52,7 @@ powershell -c "irm https://api.preconnect.app/printer/admin/uninstall | iex"
 
 ## Debug Mode
 
-Download and run [printer.py](https://raw.githubusercontent.com/sabbirba/preconnect/refs/heads/main/printer.py) manually with `--debug` to view real-time event logs (job claims, LPR transfers, and stream statuses):
+Download and run [printer.py](https://raw.githubusercontent.com/sabbirba/preconnect/refs/heads/main/printer.py) manually with `--debug` to view real-time event logs.
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/sabbirba/preconnect/refs/heads/main/printer.py -o printer.py
