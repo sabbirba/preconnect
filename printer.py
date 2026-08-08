@@ -30,7 +30,7 @@ def _on_signal(sig, frame):
 try:
     signal.signal(signal.SIGINT, _on_signal)
     signal.signal(signal.SIGTERM, _on_signal)
-except Exception:  # noqa: BLE001, S110
+except Exception:
     pass
 
 
@@ -48,7 +48,7 @@ def _load_key():
 
 
 _k = _load_key()
-sys.stdout = sys.stderr = open(devnull, "w")  # noqa: SIM115
+sys.stdout = sys.stderr = open(devnull, "w")
 
 _doh_cache = {}
 
@@ -71,7 +71,7 @@ def doh_resolve(domain):
                             ip = ans.get("data")
                             _doh_cache[domain] = (ip, now)
                             return ip
-        except Exception:  # noqa: BLE001, S110
+        except Exception:
             pass
     return domain
 
@@ -125,12 +125,12 @@ def is_online(host, port=515):
         s = create_connection((host, port), timeout=1.0)
         try:
             s.shutdown(2)
-        except Exception:  # noqa: BLE001, S110
+        except Exception:
             pass
         s.close()
         _online_cache[host] = (True, now)
         return True
-    except Exception:  # noqa: BLE001
+    except Exception:
         _online_cache[host] = (False, now)
         return False
 
@@ -159,7 +159,7 @@ def claim(i, printer_host=None, retries=3):
                 if resp.status == 200:
                     return b'"claimed":true' in resp.read()
                 return False
-        except Exception:  # noqa: BLE001
+        except Exception:
             if attempt < retries - 1:
                 sleep(0.5)
     return False
@@ -206,21 +206,21 @@ def handle(j):
                         ok = _ack(s)
                         if ok:
                             jobs += 1
-    except Exception:  # noqa: BLE001, S110
+    except Exception:
         pass
     finally:
         if s:
             try:
                 s.shutdown(2)
-            except Exception:  # noqa: BLE001, S110
+            except Exception:
                 pass
             try:
                 s.close()
-            except Exception:  # noqa: BLE001, S110
+            except Exception:
                 pass
         try:
             del q, ch, c, dh, p
-        except Exception:  # noqa: BLE001, S110
+        except Exception:
             pass
         collect()
 
@@ -273,12 +273,12 @@ def stream():
                     try:
                         payload = loads(l[6:].decode("utf-8", "replace"))
                         Thread(target=handle, args=(payload,), daemon=True).start()
-                    except Exception:  # noqa: BLE001, S110
+                    except Exception:
                         pass
     except HTTPError as e:
         if e.code == 401 and sys.__stderr__ is not None:
             sys.__stderr__.write(f"error: worker key invalid ({e.code})\n")
-    except Exception:  # noqa: BLE001, S110
+    except Exception:
         pass
 
 
@@ -289,6 +289,6 @@ if __name__ == "__main__":
         try:
             stream()
             delay = 1.0 if (time() - t0 > 10) else min(delay * 2, 8)
-        except Exception:  # noqa: BLE001
+        except Exception:
             delay = min(delay * 2, 8)
         sleep(delay)
