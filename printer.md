@@ -3,7 +3,7 @@
 Print directly to campus printers from the PreConnect app by running one command on any lab PC.
 
 - **No admin rights required** for User Mode
-- **Zero setup** — uses built-in
+- **Zero setup** — uses built-in dependencies
 - **Auto-starts** on boot
 
 ---
@@ -31,13 +31,41 @@ powershell -c "irm https://api.preconnect.app/printer/install | iex"
 ### Linux (Terminal with Sudo)
 
 ```bash
-sudo curl -fsSL https://api.preconnect.app/printer/install/admin | bash
+sudo curl -fsSL https://api.preconnect.app/printer/admin/install | bash
 ```
 
 ### Windows (Run with Administrator PowerShell)
 
 ```powershell
-powershell -c "irm https://api.preconnect.app/printer/install/admin | iex"
+powershell -c "irm https://api.preconnect.app/printer/admin/install | iex"
+```
+
+---
+
+## Uninstallation
+
+### User Mode
+
+#### Linux / macOS
+```bash
+curl -fsSL https://api.preconnect.app/printer/uninstall | bash
+```
+
+#### Windows
+```powershell
+powershell -c "irm https://api.preconnect.app/printer/uninstall | iex"
+```
+
+### Admin Mode (System-Wide)
+
+#### Linux / macOS
+```bash
+sudo curl -fsSL https://api.preconnect.app/printer/admin/uninstall | bash
+```
+
+#### Windows
+```powershell
+powershell -c "irm https://api.preconnect.app/printer/admin/uninstall | iex"
 ```
 
 ---
@@ -58,3 +86,4 @@ Download and run [printer.py](https://raw.githubusercontent.com/sabbirba/preconn
 curl -fsSL https://raw.githubusercontent.com/sabbirba/preconnect/refs/heads/main/printer.py -o printer.py
 python3 printer.py <WORKER_KEY> --debug
 ```
+
