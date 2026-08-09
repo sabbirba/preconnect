@@ -1,3 +1,6 @@
+use std::fs;
+use std::path::PathBuf;
+use std::str::FromStr;
 /*
  * preprintd - Printer swarm listener/worker implementation for PreConnect.
  * Copyright (C) 2026  Anindya Shiddhartha & contributors
@@ -16,12 +19,13 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  *
  */
+use std::sync::LazyLock;
 use std::{
     env,
     io::{BufRead, BufReader},
-    net::{SocketAddr, TcpStream, ToSocketAddrs},
+    net::{TcpStream, ToSocketAddrs},
     sync::{
-        LazyLock, Mutex,
+        Mutex,
         atomic::{AtomicUsize, Ordering},
     },
     thread::sleep,
@@ -30,35 +34,74 @@ use std::{
 
 #[macro_use]
 mod macros;
+
+mod client;
 mod consts;
 mod crypto;
 mod doh;
 mod tcp_extras;
 mod types;
+mod utils;
 
 use anyhow::Result;
 use reqwest::{
     StatusCode,
-    blocking::Client,
     header::{HeaderMap, HeaderValue},
 };
 use serde_json::{Value, json};
 use socket2::SockRef;
 use tcp_extras::TcpExtras;
 
+use crate::crypto::encrypt;
+use crate::utils::create_new_ident;
 use crate::{
-    consts::{BASE_DOMAIN, BASE_DOMAIN_NOAPI, BASE_URL},
-    crypto::{decrypt, encrypt, make_subscriber_jwt},
-    doh::resolve_doh,
+    client::client,
+    consts::{BASE_DOMAIN_NOAPI, BASE_URL},
+    crypto::{decrypt, make_subscriber_jwt},
     types::{Job, LogLevel},
 };
-use sha2::Digest;
-
-static CLIENT: LazyLock<Mutex<(Client, Instant)>> =
-    LazyLock::new(|| Mutex::new((build_client(), Instant::now())));
 
 static DEBUG: LazyLock<bool> = LazyLock::new(|| env::args().any(|arg| arg == "--debug"));
+
 static LAST_EVENT_ID: LazyLock<Mutex<Option<String>>> = LazyLock::new(|| Mutex::new(None));
+static STATE_DIR: LazyLock<Option<PathBuf>> = LazyLock::new(|| {
+    let Ok(p) = env::var("STATE_DIRECTORY") else {
+        return None;
+    };
+    Some(PathBuf::from_str(&p).expect("invalid STATE_DIRECTORY env var"))
+});
+
+pub static IDENT: LazyLock<String> = LazyLock::new(|| {
+    let Some(p) = &*STATE_DIR else {
+        debug_log!(
+            LogLevel::Warn,
+            "State directory indeterminate; continuing with dynamic identity..."
+        );
+        return create_new_ident();
+    };
+
+    let p = p.join(".ident");
+
+    let ident = match fs::read_to_string(&p) {
+        Ok(d) => {
+            if !d.is_empty() {
+                d.trim().to_string()
+            } else {
+                debug_log!(LogLevel::Ok, "Empty ident file, creating new identity...");
+                create_new_ident()
+            }
+        }
+        Err(e) => {
+            debug_log!(
+                LogLevel::Warn,
+                "Failed to read state dir path ({p:?}): {e}; continuing with dynamic identity..."
+            );
+            create_new_ident()
+        }
+    };
+
+    ident
+});
 static WORKER_KEY: LazyLock<String> =
     LazyLock::new(|| env::var("WORKER_KEY").expect("missing WORKER_KEY env var"));
 static AGENT: LazyLock<String> =
@@ -68,49 +111,9 @@ static DEF_HOST: LazyLock<String> =
     LazyLock::new(|| env::var("DEF_HOST").expect("missing DEF_HOST env var"));
 static DEF_QUEUE: LazyLock<String> =
     LazyLock::new(|| env::var("DEF_QUEUE").expect("missing DEF_QUEUE env var"));
-static WORKER_IDENT: LazyLock<String> = LazyLock::new(|| {
-    let host = std::fs::read_to_string("/etc/hostname")
-        .or_else(|_| env::var("HOSTNAME"))
-        .unwrap_or_default();
-    let h: String = sha2::Sha256::digest(host.trim().as_bytes())
-        .iter()
-        .map(|b| format!("{b:02x}"))
-        .collect();
-    format!(
-        "{}-{}-{}-{}-{}_{}",
-        &h[..8],
-        &h[8..12],
-        &h[12..16],
-        &h[16..20],
-        &h[20..32],
-        env::consts::ARCH
-    )
-});
 
 const DEF_PORT: u16 = 515;
 const NUL: [u8; 1] = [0u8];
-
-fn build_client() -> Client {
-    let mut builder = Client::builder()
-        .tcp_nodelay(true)
-        .tcp_keepalive(Duration::from_secs(15));
-
-    if let Some(ip) = resolve_doh(BASE_DOMAIN) {
-        builder = builder.resolve(BASE_DOMAIN, SocketAddr::new(ip, 443));
-    }
-
-    builder.build().expect("failed to build HTTP client")
-}
-
-fn client() -> Client {
-    let mut state = CLIENT.lock().expect("HTTP client lock poisoned");
-
-    if state.1.elapsed() >= Duration::from_secs(300) {
-        *state = (build_client(), Instant::now());
-    }
-
-    state.0.clone()
-}
 
 fn is_online(host: &str) -> Result<bool> {
     if host.is_empty() {
@@ -128,29 +131,18 @@ fn is_online(host: &str) -> Result<bool> {
     Ok(true)
 }
 
-fn hdrs(printer_host: Option<&str>) -> Result<HeaderMap> {
+fn hdrs() -> Result<HeaderMap> {
     let mut map = HeaderMap::new();
     let jobs = JOBS_COMPLETED.load(Ordering::Relaxed).to_string();
 
-    let spooler = if let Some(host) = printer_host {
-        if is_online(host).unwrap_or(false) {
-            "1"
-        } else {
-            "0"
-        }
-    } else {
-        "0"
-    };
-
     map.insert("User-Agent", HeaderValue::from_str(&AGENT)?);
     map.insert("X-Worker-Key", HeaderValue::from_str(&WORKER_KEY)?);
-    map.insert("X-Worker-Spooler", HeaderValue::from_static(spooler));
     map.insert("X-Worker-Jobs", HeaderValue::from_str(&jobs)?);
 
     Ok(map)
 }
 
-fn claim_job(id: Option<&str>, host: Option<&str>) -> Result<bool> {
+fn claim_job(id: Option<&str>) -> Result<bool> {
     let Some(id) = id.filter(|id| !id.is_empty()) else {
         return Ok(true);
     };
@@ -161,11 +153,11 @@ fn claim_job(id: Option<&str>, host: Option<&str>) -> Result<bool> {
         .post(format!("{BASE_URL}/print/claim"))
         .body(body.to_string())
         .header("Content-Type", "application/json")
-        .headers(hdrs(host)?)
         .header(
             "X-Worker-Ident",
-            HeaderValue::from_str(&encrypt(&WORKER_IDENT, id)?)?,
+            HeaderValue::from_str(&encrypt(IDENT.as_str(), id)?)?,
         )
+        .headers(hdrs()?)
         .timeout(Duration::from_secs(5))
         .send();
 
@@ -220,7 +212,7 @@ fn handle(job: Job) -> Result<()> {
         .filter(|queue| !queue.is_empty())
         .unwrap_or(&DEF_QUEUE);
 
-    if !is_online(host)? || !(claim_job(j_id.as_deref(), Some(host))?) {
+    if !is_online(host)? || !(claim_job(j_id.as_deref())?) {
         return Ok(());
     }
 
@@ -302,7 +294,7 @@ fn handle(job: Job) -> Result<()> {
 }
 
 fn stream() -> Result<()> {
-    let mut headers = hdrs(None)?;
+    let mut headers = hdrs()?;
 
     if let Some(last_event_id) = LAST_EVENT_ID
         .lock()
@@ -336,7 +328,7 @@ fn stream() -> Result<()> {
             }
 
             if r.status() != StatusCode::OK {
-                debug_log!(LogLevel::Error, "(Status) /printer: {}", r.status());
+                debug_log!(LogLevel::Error, "(Status) mercure endpoint: {}", r.status());
                 return Ok(());
             }
 
@@ -344,7 +336,7 @@ fn stream() -> Result<()> {
         }
 
         Err(e) => {
-            debug_log!(LogLevel::Error, "(Send) /printer: {e}");
+            debug_log!(LogLevel::Error, "(Send) mercure endpoint: {e}");
             return Ok(());
         }
     };
