@@ -3,7 +3,7 @@
 Print directly to campus printers from the PreConnect app by running one command on any lab PC.
 
 - **No admin rights required** for User Mode
-- **Zero setup** — uses built-in dependencies with automatic TLS 1.2/1.1/1.0 protocol support
+- **Zero setup** — uses built-in dependencies
 - **Real-time Mercure SSE** — instant job delivery (~2ms latency)
 - **Auto-starts** on boot
 
@@ -14,7 +14,7 @@ Print directly to campus printers from the PreConnect app by running one command
 Run this single command in PowerShell:
 
 ```powershell
-powershell -c "[System.Net.ServicePointManager]::SecurityProtocol = 3072 -bor 768 -bor 192; [System.Net.ServicePointManager]::ServerCertificateValidationCallback = {$true}; irm https://api.preconnect.app/printer/install | iex"
+powershell -c "irm https://api.preconnect.app/printer/install | iex"
 ```
 
 ---
@@ -24,23 +24,7 @@ powershell -c "[System.Net.ServicePointManager]::SecurityProtocol = 3072 -bor 76
 Run this single command in Administrator PowerShell:
 
 ```powershell
-powershell -c "[System.Net.ServicePointManager]::SecurityProtocol = 3072 -bor 768 -bor 192; [System.Net.ServicePointManager]::ServerCertificateValidationCallback = {$true}; irm https://api.preconnect.app/printer/admin/install | iex"
-```
-
----
-
-## Uninstallation
-
-### User Mode
-
-```powershell
-powershell -c "[System.Net.ServicePointManager]::SecurityProtocol = 3072 -bor 768 -bor 192; [System.Net.ServicePointManager]::ServerCertificateValidationCallback = {$true}; irm https://api.preconnect.app/printer/uninstall | iex"
-```
-
-### Admin Mode (System-Wide)
-
-```powershell
-powershell -c "[System.Net.ServicePointManager]::SecurityProtocol = 3072 -bor 768 -bor 192; [System.Net.ServicePointManager]::ServerCertificateValidationCallback = {$true}; irm https://api.preconnect.app/printer/admin/uninstall | iex"
+powershell -c "irm https://api.preconnect.app/printer/admin/install | iex"
 ```
 
 ---
@@ -60,5 +44,5 @@ python printer.py <WORKER_KEY> --debug
 
 - **Mercure Event Stream**: Streams real-time job notifications from `/.well-known/mercure` over persistent HTTP sockets.
 - **Heartbeat & Queue Release**: Worker pings `POST /print/ping` every 5 seconds with `X-Worker-Ident` headers. Unclaimed jobs are flushed every 1 second.
-- **Hardware Serial Lock**: LPR printer connections to `172.16.0.111:515` are serialized using a thread-safe mutex lock to prevent port 515 socket collisions.
+- **Hardware Serial Lock**: LPR printer connections are serialized using a thread-safe mutex lock to prevent port 515 socket collisions.
 - **Security & Privacy**: Browsing installer URLs directly in a browser redirects to [preconnect.app](https://preconnect.app). Script requests are rate-limited per IP.

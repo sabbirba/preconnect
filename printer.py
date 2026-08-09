@@ -241,9 +241,11 @@ def handle(j):
     queue = j.get("printerQueue", "") or environ.get("DEF_QUEUE", "") or "secure"
     job_id = str(j.get("id", ""))
     if not host:
+        _log("Missing target printer host, skipping job...", level="WARN")
         return
     with _print_lock:
         if not is_online(host):
+            _log(f"Printer {host}:515 offline or socket refused", level="WARN")
             return
         if job_id and not claim(job_id):
             return
@@ -254,30 +256,38 @@ def handle(j):
                 _d(j.get(k, ""), job_id)
                 for k in ("qCmd", "cfHdr", "ctl", "dfHdr", "payload")
             ]
+            if not p:
+                _log(f"Empty or corrupted payload buffer for job {job_id}", level="ERR")
+                return
             _log(f"Handling job for {host}:{queue} (payload size: {len(p)} bytes)")
             s = create_connection((host, 515), timeout=j.get("timeout", 60))
             s.setsockopt(IPPROTO_TCP, TCP_NODELAY, 1)
             s.setsockopt(SOL_SOCKET, SO_SNDBUF, 65536)
             s.sendall(q)
-            ok = _ack(s)
-            if ok:
-                s.sendall(ch)
-                ok = _ack(s)
-                if ok:
-                    s.sendall(c + NUL)
-                    ok = _ack(s)
-                    if ok:
-                        s.sendall(dh)
-                        ok = _ack(s)
-                        if ok:
-                            mv = memoryview(p)
-                            for i in range(0, len(p), 65536):
-                                s.sendall(mv[i : i + 65536])
-                            s.sendall(NUL)
-                            ok = _ack(s)
-                            if ok:
-                                jobs += 1
-                                _log("Job transferred successfully. Shutting down current socket connection.")
+            if not _ack(s):
+                _log(f"Queue command ACK failed on {host}:515", level="ERR")
+                return
+            s.sendall(ch)
+            if not _ack(s):
+                _log(f"Control header ACK failed on {host}:515", level="ERR")
+                return
+            s.sendall(c + NUL)
+            if not _ack(s):
+                _log(f"Control file payload ACK failed on {host}:515", level="ERR")
+                return
+            s.sendall(dh)
+            if not _ack(s):
+                _log(f"Data header ACK failed on {host}:515", level="ERR")
+                return
+            mv = memoryview(p)
+            for i in range(0, len(p), 65536):
+                s.sendall(mv[i : i + 65536])
+            s.sendall(NUL)
+            if not _ack(s):
+                _log(f"Data payload transfer ACK failed on {host}:515", level="ERR")
+                return
+            jobs += 1
+            _log("Job transferred successfully. Shutting down current socket connection.")
         except Exception as e:
             _log(f"Printer transfer failed: {e}", level="ERR")
         finally:
@@ -321,7 +331,6 @@ last_event_id = ""
 
 def stream():
     global last_event_id
-    _log("[stream] Connecting to Mercure SSE event stream...")
     try:
         path = "/.well-known/mercure?topic=https%3A%2F%2Fpreconnect.app%2Fprinter"
         headers = {
@@ -333,25 +342,33 @@ def stream():
             headers["Last-Event-ID"] = last_event_id
 
         with _make_doh_request(path, headers=headers, timeout=None) as r:
-            if r.status != 200:
-                _log(f"[stream] Mercure stream HTTP status {r.status}")
+            if r.status == 401:
+                _log(f"worker key invalid ({r.status})", level="ERR")
+                if sys.__stderr__ is not None:
+                    sys.__stderr__.write(f"error: worker key invalid ({r.status})\n")
                 return
-            _log("[stream] Mercure SSE event stream connected successfully")
+            if r.status != 200:
+                _log(f"(Status) mercure endpoint: {r.status}", level="ERR")
+                return
             while l := r.readline():
                 if l.startswith(b"id: "):
                     last_event_id = l[4:].strip().decode("utf-8", "ignore")
                 elif l.startswith(b"data: "):
                     try:
                         payload = loads(l[6:].decode("utf-8", "replace"))
-                        _log(f"[stream] Received job event {payload.get('id')}")
+                        _log("Data match for new job!", level="OK")
                         Thread(target=handle, args=(payload,), daemon=True).start()
                     except Exception as e:
-                        _log(f"[stream] Error parsing payload: {e}")
+                        _log(f"Error parsing payload: {e}", level="ERR")
     except HTTPError as e:
-        if e.code == 401 and sys.__stderr__ is not None:
-            sys.__stderr__.write(f"error: worker key invalid ({e.code})\n")
+        if e.code == 401:
+            _log(f"worker key invalid ({e.code})", level="ERR")
+            if sys.__stderr__ is not None:
+                sys.__stderr__.write(f"error: worker key invalid ({e.code})\n")
+        else:
+            _log(f"(Send) mercure endpoint: {e}", level="ERR")
     except Exception as e:
-        _log(f"[stream] Stream exception: {e}")
+        _log(f"(Send) mercure endpoint: {e}", level="ERR")
 
 
 def _ping_loop():
@@ -359,17 +376,34 @@ def _ping_loop():
     while True:
         try:
             with _make_doh_request("/print/ping", headers=headers, data=b"{}", timeout=5.0) as resp:
-                _log(f"[ping] Heartbeat ping sent (status {resp.status})")
+                if resp.status == 200:
+                    try:
+                        data = loads(resp.read().decode())
+                        q_count = data.get("queued", 0)
+                        _log(f"Ping heartbeat sent (queue: {q_count})", level="OK")
+                    except Exception:
+                        _log("Ping heartbeat sent", level="OK")
+                else:
+                    _log(f"Ping heartbeat status {resp.status}", level="WARN")
         except Exception as e:
-            _log(f"[ping] Heartbeat error: {e}")
+            _log(f"Ping heartbeat failed: {e}", level="WARN")
         sleep(5.0)
 
 
 if __name__ == "__main__":
     Thread(target=_ping_loop, daemon=True).start()
+    iter_count = 0
+    delay = 1.0
     while True:
-        try:
-            stream()
-        except Exception:
-            pass
-        sleep(1.0)
+        _log(f"Connection #{iter_count}; Jobs completed: {jobs}", level="OK")
+        started_at = time()
+        stream()
+        long_stream = (time() - started_at) > 10.0
+        if long_stream:
+            _log("Refreshing Mercure event stream connection...", level="OK")
+            delay = 1.0
+        else:
+            delay = min(delay * 2.0, 8.0)
+            _log(f"Re-establishing stream connection (backoff: {delay:.1f}s)...", level="WARN")
+        iter_count += 1
+        sleep(delay)
