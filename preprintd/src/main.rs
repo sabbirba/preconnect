@@ -384,7 +384,10 @@ fn stream() -> Result<()> {
 
 fn ping() -> Result<()> {
     loop {
-        let _ = client().post("/print/ping").headers(hdrs()?).send()?;
+        let _ = client()
+            .post(format!("{BASE_URL}/print/ping"))
+            .headers(hdrs()?)
+            .send()?;
         debug_log!(LogLevel::Ok, "PING sent!");
         std::thread::sleep(Duration::from_millis(5000));
     }
