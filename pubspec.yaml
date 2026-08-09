@@ -32,10 +32,10 @@ dependencies:
   chrome_extension: ^0.4.0
   web: ^1.1.1
   http: ^1.6.0
-  flutter_secure_storage: ^10.3.1
+  flutter_secure_storage: ^11.0.0
   firebase_core: ^4.13.0
   firebase_messaging: ^16.5.0
-  flutter_local_notifications: ^22.2.0
+  flutter_local_notifications: ^22.3.0
   flutter_cache_manager: ^3.4.2
   package_info_plus: ^10.2.0
   device_info_plus: ^13.2.0
