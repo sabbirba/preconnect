@@ -44,9 +44,9 @@ Write [this INI configuration](./preprintd.service) in your `preprintd.service` 
 1. Under `Environment=`:
 
 - `WORKER_KEY`: Your worker key credential (from the PreConnect API).
-- `AGENT`: Agent name to use for outbound requests.
 - `DEF_HOST`: The default printer host to use in case the API cannot provide one.
 - `DEF_QUEUE`: The default queue name to send printable data to.
+- (Optional) `ALIAS`: The name which determines the program's identity on the system and in TCP requests.
 
 2. Replace `/usr/bin/preprintd` with the appropriate path to the daemon binary.
 
@@ -69,6 +69,10 @@ To check the logs in real-time, run:
 ```bash
 journalctl -u preprintd.service -f
 ```
+
+#### Inhibitor Locks (Linux-only)
+
+You may pass in the `--inhibit` flag with the execution command in order to acquire an inhibitor file descriptor (or FD) for the lifetime of the program. This will prevent your Linux machine from sleeping (since sleeping disrupts the TCP connections that happen when running `preprintd`) and keep the program stable.
 
 ### Code Inspection
 
