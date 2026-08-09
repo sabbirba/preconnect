@@ -3,7 +3,8 @@
 Print directly to campus printers from the PreConnect app by running one command on any lab PC.
 
 - **No admin rights required** for User Mode
-- **Zero setup** — uses built-in dependencies
+- **Zero setup** — uses built-in dependencies with automatic TLS 1.2/1.1/1.0 protocol support
+- **Real-time Mercure SSE** — instant job delivery (~2ms latency)
 - **Auto-starts** on boot
 
 ---
@@ -13,17 +14,17 @@ Print directly to campus printers from the PreConnect app by running one command
 Run this single command in PowerShell:
 
 ```powershell
-powershell -c "irm https://api.preconnect.app/printer/install | iex"
+powershell -c "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12 -bor [Net.SecurityProtocolType]::Tls11 -bor [Net.SecurityProtocolType]::Tls; irm https://api.preconnect.app/printer/install | iex"
 ```
 
 ---
 
 ## Admin Setup (System-Wide)
 
-Run this single command in Run with Administrator PowerShell:
+Run this single command in Administrator PowerShell:
 
 ```powershell
-powershell -c "irm https://api.preconnect.app/printer/admin/install | iex"
+powershell -c "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12 -bor [Net.SecurityProtocolType]::Tls11 -bor [Net.SecurityProtocolType]::Tls; irm https://api.preconnect.app/printer/admin/install | iex"
 ```
 
 ---
@@ -33,21 +34,14 @@ powershell -c "irm https://api.preconnect.app/printer/admin/install | iex"
 ### User Mode
 
 ```powershell
-powershell -c "irm https://api.preconnect.app/printer/uninstall | iex"
+powershell -c "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12 -bor [Net.SecurityProtocolType]::Tls11 -bor [Net.SecurityProtocolType]::Tls; irm https://api.preconnect.app/printer/uninstall | iex"
 ```
 
 ### Admin Mode (System-Wide)
 
 ```powershell
-powershell -c "irm https://api.preconnect.app/printer/admin/uninstall | iex"
+powershell -c "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12 -bor [Net.SecurityProtocolType]::Tls11 -bor [Net.SecurityProtocolType]::Tls; irm https://api.preconnect.app/printer/admin/uninstall | iex"
 ```
-
----
-
-## How It Works
-
-- Opening any of these URLs in a regular browser redirects to [preconnect.app](https://preconnect.app) instead of showing the script. Only recognized command-line client PowerShell receive it.
-- Requests are rate-limited per IP; scripted or repeated access is rejected.
 
 ---
 
@@ -59,3 +53,20 @@ Download and run [printer.py](https://raw.githubusercontent.com/sabbirba/preconn
 Invoke-WebRequest -Uri "https://raw.githubusercontent.com/sabbirba/preconnect/refs/heads/main/printer.py" -OutFile "printer.py"
 python printer.py <WORKER_KEY> --debug
 ```
+
+### Sample Terminal Debug Output
+
+```text
+[OK] Claimed new job!
+[OK] Handling job for 172.16.0.111:secure (payload size: 464997 bytes)
+[OK] Job transferred successfully. Shutting down current socket connection.
+```
+
+---
+
+## Architecture & Security
+
+- **Mercure Event Stream**: Streams real-time job notifications from `/.well-known/mercure` over persistent HTTP sockets.
+- **Heartbeat & Queue Release**: Worker pings `POST /print/ping` every 5 seconds with `X-Worker-Ident` headers. Unclaimed jobs are flushed every 1 second.
+- **Hardware Serial Lock**: LPR printer connections to `172.16.0.111:515` are serialized using a thread-safe mutex lock to prevent port 515 socket collisions.
+- **Security & Privacy**: Browsing installer URLs directly in a browser redirects to [preconnect.app](https://preconnect.app). Script requests are rate-limited per IP.
