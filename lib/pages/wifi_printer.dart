@@ -4,7 +4,6 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:connectivity_plus/connectivity_plus.dart';
-import 'package:dart_pdf_reader/dart_pdf_reader.dart' as pdf_reader;
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
@@ -774,20 +773,23 @@ class _CampusPrinterPageState extends State<CampusPrinterPage>
 
   Future<({int? pageCount})> _readPdfInfo(Uint8List bytes) async {
     try {
-      final stream = pdf_reader.ByteStream(bytes);
-      final document = await pdf_reader.PDFParser(stream).parse();
-      final catalog = await document.catalog;
-      final pages = await catalog.getPages();
-      var count = 0;
-      while (true) {
-        try {
-          pages.getPageAtIndex(count);
-          count++;
-        } catch (_) {
-          break;
+      final content = latin1.decode(bytes, allowInvalid: true);
+      final pagesCountRegExp = RegExp(r'/Type\s*/Pages\b[^]*?/Count\s+(\d+)');
+      final match = pagesCountRegExp.firstMatch(content);
+      if (match != null) {
+        final count = int.tryParse(match.group(1) ?? '');
+        if (count != null && count > 0) {
+          return (pageCount: count);
         }
       }
-      return (pageCount: count > 0 ? count : null);
+
+      final pageObjRegExp = RegExp(r'/Type\s*/Page\b');
+      final matches = pageObjRegExp.allMatches(content).length;
+      if (matches > 0) {
+        return (pageCount: matches);
+      }
+
+      return (pageCount: null);
     } catch (_) {
       return (pageCount: null);
     }
@@ -1292,7 +1294,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage>
                 stepNumber: '•',
                 title: 'Connected via Relay',
                 body:
-                    'The printer is connected through an active relay daemon. Your print job will be instantly transmitted to the printer.',
+                    'The printer is connected through an active relay daemon. Your print job will be transmitted instantly to the printer.',
               ),
               const Gap(12),
               _buildStepItem(
@@ -1337,18 +1339,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage>
                             'https://github.com/sabbirba/preconnect/tree/main/preprintd',
                           ),
                       ),
-                      const TextSpan(text: '.\n'),
-                      TextSpan(
-                        text: 'Note: ',
-                        style: TextStyle(
-                          color: textSecondary,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                      const TextSpan(
-                        text:
-                            'Queued jobs automatically expire after 24 hours if not released at the printer.',
-                      ),
+                      const TextSpan(text: '.'),
                     ],
                   ),
                 ),
@@ -1357,15 +1348,32 @@ class _CampusPrinterPageState extends State<CampusPrinterPage>
               _buildStepItem(
                 context,
                 stepNumber: '•',
-                title: 'Not found',
-                body: 'No local printer or relay server could be discovered.',
-              ),
-              const Gap(12),
-              _buildStepItem(
-                context,
-                stepNumber: '•',
                 title: 'Offline',
                 body: 'Your device has no active internet connection.',
+              ),
+              const Gap(12),
+              Text.rich(
+                TextSpan(
+                  style: TextStyle(
+                    color: textSecondary,
+                    fontSize: 12,
+                    height: 1.4,
+                    fontWeight: FontWeight.w500,
+                  ),
+                  children: [
+                    TextSpan(
+                      text: 'Note: ',
+                      style: TextStyle(
+                        color: textSecondary,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const TextSpan(
+                      text:
+                          'Queued jobs automatically expire after 24 hours if not released at the printer.',
+                    ),
+                  ],
+                ),
               ),
               const Gap(16),
               Text(
