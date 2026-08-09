@@ -66,6 +66,7 @@ pub fn decrypt(opt: Option<&str>, job_id: &str) -> Result<Vec<u8>> {
     Ok(output)
 }
 
+#[allow(dead_code)]
 pub fn encrypt(plaintext: &str, job_id: &str) -> Result<String> {
     let mut iv = [0u8; 16];
     rand::rng().fill_bytes(&mut iv);

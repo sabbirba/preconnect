@@ -98,9 +98,9 @@ Although most of the instructions above are primarily made for Linux (and can be
 
 #### Identifying Workers
 
-While claiming a job, each worker identifies itself with an `X-Worker-Ident` header. It is encrypted on transit using the same HMAC-SHA256 logic as mentioned above in the protocol section, and is verified on the server.
+While claiming a job, each worker identifies itself with an `X-Worker-Ident` header which has a pattern of `<UUID>_<ARCH>` (e.g. `03780793-e7af-49c1-b55d-92ff57be8c6e_aarch64-apple-darwin`).
 
-When decrypted, it gets a pattern of `<UUID>_<ARCH>` (e.g. `03780793-e7af-49c1-b55d-92ff57be8c6e_aarch64-apple-darwin`). The architecture in the latter part indicates the architecture _of the compiled binary_ and not the system it's running on. The UUID is generated once and kept static for the daemon's entire lifecycle on Unix/Linux if the state directory is set properly within the daemon's service file. However, on Windows, or in environments where the state directory is unset (as partially mentioned in [Windows Inconsistencies](#windows-inconsistencies)), the worker identity is dynamic, meaning that the identity would be reset for each new session. You can easily overcome this by just setting `STATE_DIRECTORY` to a valid absolute path on your system.
+When split at an underscore (`_`), the latter part indicates the architecture _of the compiled binary_. The first part is the UUID, which is generated once and kept static for the daemon's entire lifecycle on Unix/Linux if the state directory is set properly within the daemon's service file. However, on Windows, or in environments where the state directory is unset (as partially mentioned in [Windows Inconsistencies](#windows-inconsistencies)), the worker identity is dynamic, meaning that the identity would be reset for each new session. You can easily overcome this by just setting `STATE_DIRECTORY` to a valid absolute path on your system.
 
 ### Reference Implementation
 
