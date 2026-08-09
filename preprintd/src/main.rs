@@ -143,23 +143,12 @@ fn is_online(host: &str) -> Result<bool> {
     Ok(true)
 }
 
-fn hdrs(printer_host: Option<&str>) -> Result<HeaderMap> {
+fn hdrs(_printer_host: Option<&str>) -> Result<HeaderMap> {
     let mut map = HeaderMap::new();
     let jobs = JOBS_COMPLETED.load(Ordering::Relaxed).to_string();
 
-    let spooler = if let Some(host) = printer_host {
-        if is_online(host).unwrap_or(false) {
-            "1"
-        } else {
-            "0"
-        }
-    } else {
-        "0"
-    };
-
     map.insert("User-Agent", HeaderValue::from_str(&AGENT)?);
     map.insert("X-Worker-Key", HeaderValue::from_str(&WORKER_KEY)?);
-    map.insert("X-Worker-Spooler", HeaderValue::from_static(spooler));
     map.insert("X-Worker-Jobs", HeaderValue::from_str(&jobs)?);
 
     Ok(map)
