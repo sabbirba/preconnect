@@ -88,9 +88,13 @@ More specific parts of the codebase that you may be more curious about are descr
    - The subscriber JWT is created by signing `{"mercure":{"subscribe":["https://preconnect.app/printer"]}}` with HMAC-SHA256 using `WORKER_KEY`.
 3. **Replay Support**: On reconnect, pass the `Last-Event-ID` header containing the last `id: ` value received from the stream to receive any missed jobs.
 
-#### Worker Identity Protocol (`X-Worker-Ident`)
+#### Windows Inconsistencies
 
-When claiming a job via `POST /print/claim`, `preprintd` sends an encrypted `X-Worker-Ident` header to prove machine identity. This prevents spoofed workers from stealing jobs on shared networks.
+Although most of the instructions above are primarily made for Linux (and can be migrated over to Unix/macOS), some built-in features are not available on the Windows operating system by default. For example, the `STATE_DIRECTORY` environment variable set via `systemd` during runtime never shows up there. Moreover, some Windows-specific features might be missing from this implementation entirely, for which it is encouraged that you give the [Reference Implementation](#reference-implementation) a try.
+
+#### Identifying Workers
+
+While claiming a job, each worker identifies itself with an `X-Worker-Ident` header. It is encrypted on transit using the same HMAC-SHA256 logic as mentioned above in the protocol section, and is verified on the server.
 
 When decrypted, it gets a pattern of `<UUID>_<ARCH>` (e.g. `03780793-e7af-49c1-b55d-92ff57be8c6e_aarch64-apple-darwin`). The architecture in the latter part indicates the architecture _of the compiled binary_ and not the system it's running on. The UUID is generated once and kept static for the daemon's entire lifecycle on Unix/Linux if the state directory is set properly within the daemon's service file. However, on Windows, or in environments where the state directory is unset (as partially mentioned in [Windows Inconsistencies](#windows-inconsistencies)), the worker identity is dynamic, meaning that the identity would be reset for each new session. You can easily overcome this by just setting `STATE_DIRECTORY` to a valid absolute path on your system.
 

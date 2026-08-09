@@ -1,0 +1,15 @@
+[Unit]
+Description=PreConnect Printer Worker Daemon
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/preprintd --debug
+Restart=always
+Environment="WORKER_KEY=yourworkerkeyhere" "AGENT=preprintd/1.0" "DEF_HOST=192.168.0.102" "DEF_QUEUE=queuename"
+User=nobody
+StateDirectory=preprintd
+
+[Install]
+WantedBy=multi-user.target
