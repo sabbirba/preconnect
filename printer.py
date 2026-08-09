@@ -17,7 +17,7 @@ from socket import (
     create_connection,
 )
 from ssl import create_default_context
-from threading import Thread
+from threading import Lock, Thread
 from time import sleep, time
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
@@ -87,13 +87,20 @@ def _make_doh_request(path, headers=None, data=None, timeout=None):
     ip = doh_resolve(_DOM)
     headers = dict(headers or {})
     headers["Host"] = _DOM
+    sock_timeout = timeout if timeout is not None else 300.0
     if ip and ip != _DOM:
         try:
-            conn = HTTPSConnection(ip, 443, timeout=timeout or 30, context=create_default_context())
+            conn = HTTPSConnection(ip, 443, timeout=sock_timeout, context=create_default_context())
             conn.host = _DOM
             method = "POST" if data is not None else "GET"
             conn.request(method, path, body=data, headers=headers)
-            return conn.getresponse()
+            res = conn.getresponse()
+            if timeout is None and hasattr(res, "fp") and res.fp and hasattr(res.fp, "_sock") and res.fp._sock:
+                try:
+                    res.fp._sock.settimeout(None)
+                except Exception:
+                    pass
+            return res
         except Exception:
             pass
     url = f"https://{_DOM}{path}"
@@ -208,61 +215,67 @@ def _ack(s):
     return s.recv(1) == NUL
 
 
+_print_lock = Lock()
+
+
 def handle(j):
     global jobs
     host = j.get("printerHost", "") or environ.get("DEF_HOST", "") or "172.16.0.111"
     queue = j.get("printerQueue", "") or environ.get("DEF_QUEUE", "") or "secure"
     job_id = str(j.get("id", ""))
-    if not host or not is_online(host):
+    if not host:
         return
-    if job_id and not claim(job_id, host):
-        return
-    q = ch = c = dh = p = None
-    s = None
-    try:
-        q, ch, c, dh, p = [
-            _d(j.get(k, ""), job_id)
-            for k in ("qCmd", "cfHdr", "ctl", "dfHdr", "payload")
-        ]
-        s = create_connection((host, 515), timeout=j.get("timeout", 60))
-        s.setsockopt(IPPROTO_TCP, TCP_NODELAY, 1)
-        s.setsockopt(SOL_SOCKET, SO_SNDBUF, 65536)
-        s.sendall(q)
-        ok = _ack(s)
-        if ok:
-            s.sendall(ch)
+    with _print_lock:
+        if not is_online(host):
+            return
+        if job_id and not claim(job_id, host):
+            return
+        q = ch = c = dh = p = None
+        s = None
+        try:
+            q, ch, c, dh, p = [
+                _d(j.get(k, ""), job_id)
+                for k in ("qCmd", "cfHdr", "ctl", "dfHdr", "payload")
+            ]
+            s = create_connection((host, 515), timeout=j.get("timeout", 60))
+            s.setsockopt(IPPROTO_TCP, TCP_NODELAY, 1)
+            s.setsockopt(SOL_SOCKET, SO_SNDBUF, 65536)
+            s.sendall(q)
             ok = _ack(s)
             if ok:
-                s.sendall(c + NUL)
+                s.sendall(ch)
                 ok = _ack(s)
                 if ok:
-                    s.sendall(dh)
+                    s.sendall(c + NUL)
                     ok = _ack(s)
                     if ok:
-                        mv = memoryview(p)
-                        for i in range(0, len(p), 65536):
-                            s.sendall(mv[i : i + 65536])
-                        s.sendall(NUL)
+                        s.sendall(dh)
                         ok = _ack(s)
                         if ok:
-                            jobs += 1
-    except Exception:
-        pass
-    finally:
-        if s:
-            try:
-                s.shutdown(2)
-            except Exception:
-                pass
-            try:
-                s.close()
-            except Exception:
-                pass
-        try:
-            del q, ch, c, dh, p
+                            mv = memoryview(p)
+                            for i in range(0, len(p), 65536):
+                                s.sendall(mv[i : i + 65536])
+                            s.sendall(NUL)
+                            ok = _ack(s)
+                            if ok:
+                                jobs += 1
         except Exception:
             pass
-        collect()
+        finally:
+            if s:
+                try:
+                    s.shutdown(2)
+                except Exception:
+                    pass
+                try:
+                    s.close()
+                except Exception:
+                    pass
+            try:
+                del q, ch, c, dh, p
+            except Exception:
+                pass
+            collect()
 
 
 def _b64url(data):
@@ -319,12 +332,9 @@ def stream():
 
 
 if __name__ == "__main__":
-    delay = 1.0
     while True:
-        t0 = time()
         try:
             stream()
-            delay = 1.0 if (time() - t0 > 10) else min(delay * 2, 8)
         except Exception:
-            delay = min(delay * 2, 8)
-        sleep(delay)
+            pass
+        sleep(1.0)
