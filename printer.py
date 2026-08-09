@@ -95,9 +95,11 @@ def _make_doh_request(path, headers=None, data=None, timeout=None):
             method = "POST" if data is not None else "GET"
             conn.request(method, path, body=data, headers=headers)
             res = conn.getresponse()
-            if timeout is None and hasattr(res, "fp") and res.fp and hasattr(res.fp, "_sock") and res.fp._sock:
+            if timeout is None:
                 try:
-                    res.fp._sock.settimeout(None)
+                    sock = getattr(getattr(res, "fp", None), "_sock", None)
+                    if sock and hasattr(sock, "settimeout"):
+                        sock.settimeout(None)
                 except Exception:
                     pass
             return res
@@ -162,6 +164,7 @@ def hdrs(printer_host=None):
         "User-Agent": _UA,
         "X-Worker-Key": _k,
         "X-Worker-Jobs": str(jobs),
+        "X-Worker-Ident": _get_worker_ident(),
     }
 
 
@@ -188,13 +191,11 @@ def _get_worker_ident():
 def claim(i, printer_host=None, retries=3):
     if not i:
         return True
-    ident = _e(_get_worker_ident(), i)
     for attempt in range(retries):
         try:
             data = f'{{"id":"{i}"}}'.encode()
             headers = {
                 "Content-Type": "application/json",
-                "X-Worker-Ident": ident,
                 **hdrs(printer_host),
             }
             with _make_doh_request("/print/claim", headers=headers, data=data, timeout=None) as resp:
@@ -331,7 +332,20 @@ def stream():
         pass
 
 
+def _ping_loop():
+    headers = {"Content-Type": "application/json", **hdrs()}
+    data = f'{{"ident":"{_get_worker_ident()}"}}'.encode("utf-8")
+    while True:
+        try:
+            with _make_doh_request("/print/ping", headers=headers, data=data, timeout=5.0) as resp:
+                pass
+        except Exception:
+            pass
+        sleep(5.0)
+
+
 if __name__ == "__main__":
+    Thread(target=_ping_loop, daemon=True).start()
     while True:
         try:
             stream()
