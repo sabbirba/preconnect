@@ -9,7 +9,7 @@ edition = "2024"
 
 [dependencies]
 anyhow = "1.0.104"
-base64 = "0.23.0"
+base64 = "0.23.1"
 hmac = "0.13.0"
 rand = "0.10.2"
 reqwest = { version = "0.13.4", features = ["blocking", "rustls", "json"] }

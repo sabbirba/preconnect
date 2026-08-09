@@ -2,6 +2,10 @@
 
 Active since `v0.1.0`.
 
+### v0.3.3
+
+- Add support for the `X-Worker-Spooler` header again, which tells the server a job is ongoing for any given worker instance.
+
 ### v0.3.2
 
 - Working version; reverted some `LazyLock` shenanigans back to the old version.
