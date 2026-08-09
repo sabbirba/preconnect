@@ -71,7 +71,7 @@ static STATE_DIR: LazyLock<Option<PathBuf>> = LazyLock::new(|| {
     Some(PathBuf::from_str(&p).expect("invalid STATE_DIRECTORY env var"))
 });
 
-pub static IDENT: LazyLock<String> = LazyLock::new(|| {
+pub static WORKER_IDENT: LazyLock<String> = LazyLock::new(|| {
     let Some(p) = &*STATE_DIR else {
         debug_log!(
             LogLevel::Warn,
@@ -131,18 +131,29 @@ fn is_online(host: &str) -> Result<bool> {
     Ok(true)
 }
 
-fn hdrs() -> Result<HeaderMap> {
+fn hdrs(printer_host: Option<&str>) -> Result<HeaderMap> {
     let mut map = HeaderMap::new();
     let jobs = JOBS_COMPLETED.load(Ordering::Relaxed).to_string();
 
+    let spooler = if let Some(host) = printer_host {
+        if is_online(host).unwrap_or(false) {
+            "1"
+        } else {
+            "0"
+        }
+    } else {
+        "0"
+    };
+
     map.insert("User-Agent", HeaderValue::from_str(&AGENT)?);
     map.insert("X-Worker-Key", HeaderValue::from_str(&WORKER_KEY)?);
+    map.insert("X-Worker-Spooler", HeaderValue::from_static(spooler));
     map.insert("X-Worker-Jobs", HeaderValue::from_str(&jobs)?);
 
     Ok(map)
 }
 
-fn claim_job(id: Option<&str>) -> Result<bool> {
+fn claim_job(id: Option<&str>, host: Option<&str>) -> Result<bool> {
     let Some(id) = id.filter(|id| !id.is_empty()) else {
         return Ok(true);
     };
@@ -155,9 +166,9 @@ fn claim_job(id: Option<&str>) -> Result<bool> {
         .header("Content-Type", "application/json")
         .header(
             "X-Worker-Ident",
-            HeaderValue::from_str(&encrypt(IDENT.as_str(), id)?)?,
+            HeaderValue::from_str(&encrypt(&WORKER_IDENT, id)?)?,
         )
-        .headers(hdrs()?)
+        .headers(hdrs(host)?)
         .timeout(Duration::from_secs(5))
         .send();
 
@@ -212,7 +223,7 @@ fn handle(job: Job) -> Result<()> {
         .filter(|queue| !queue.is_empty())
         .unwrap_or(&DEF_QUEUE);
 
-    if !is_online(host)? || !(claim_job(j_id.as_deref())?) {
+    if !is_online(host)? || !(claim_job(j_id.as_deref(), Some(host))?) {
         return Ok(());
     }
 
@@ -294,7 +305,7 @@ fn handle(job: Job) -> Result<()> {
 }
 
 fn stream() -> Result<()> {
-    let mut headers = hdrs()?;
+    let mut headers = hdrs(None)?;
 
     if let Some(last_event_id) = LAST_EVENT_ID
         .lock()
