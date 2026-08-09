@@ -172,14 +172,12 @@ def _get_worker_ident():
     return f"{mac_uuid}_{platform.machine().lower()}"
 
 
-def hdrs(printer_host=None):
-    host = printer_host or environ.get("DEF_HOST", "") or "172.16.0.111"
+def hdrs():
     return {
         "User-Agent": _UA,
         "X-Worker-Key": _k,
         "X-Worker-Jobs": str(jobs),
         "X-Worker-Ident": _get_worker_ident(),
-        "X-Worker-Host": host,
     }
 
 
@@ -198,7 +196,7 @@ def _e(data, job_id=""):
     return b64encode(iv + bytes(out)).decode("ascii")
 
 
-def claim(i, printer_host=None, retries=3):
+def claim(i, retries=3):
     if not i:
         return True
     for attempt in range(retries):
@@ -206,7 +204,7 @@ def claim(i, printer_host=None, retries=3):
             data = f'{{"id":"{i}"}}'.encode()
             headers = {
                 "Content-Type": "application/json",
-                **hdrs(printer_host),
+                **hdrs(),
             }
             with _make_doh_request("/print/claim", headers=headers, data=data, timeout=None) as resp:
                 if resp.status == 200:
@@ -247,7 +245,7 @@ def handle(j):
     with _print_lock:
         if not is_online(host):
             return
-        if job_id and not claim(job_id, host):
+        if job_id and not claim(job_id):
             return
         q = ch = c = dh = p = None
         s = None
