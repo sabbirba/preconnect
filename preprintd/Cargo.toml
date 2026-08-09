@@ -3,7 +3,7 @@ name = "preprintd"
 description = "Printer swarm-worker daemon implementation for PreConnect."
 authors = ["Anindya Shiddhartha <shiddhartha@tuta.io>"]
 license = "GPL-3.0-only"
-version = "0.3.2"
+version = "0.3.3"
 repository = "https://github.com/hitblast/preprintd"
 edition = "2024"
 
