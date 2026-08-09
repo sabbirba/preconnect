@@ -173,11 +173,13 @@ def _get_worker_ident():
 
 
 def hdrs(printer_host=None):
+    host = printer_host or environ.get("DEF_HOST", "") or "172.16.0.111"
     return {
         "User-Agent": _UA,
         "X-Worker-Key": _k,
         "X-Worker-Jobs": str(jobs),
         "X-Worker-Ident": _get_worker_ident(),
+        "X-Worker-Host": host,
     }
 
 

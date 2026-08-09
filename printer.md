@@ -54,14 +54,6 @@ Invoke-WebRequest -Uri "https://raw.githubusercontent.com/sabbirba/preconnect/re
 python printer.py <WORKER_KEY> --debug
 ```
 
-### Sample Terminal Debug Output
-
-```text
-[OK] Claimed new job!
-[OK] Handling job for 172.16.0.111:secure (payload size: 464997 bytes)
-[OK] Job transferred successfully. Shutting down current socket connection.
-```
-
 ---
 
 ## Architecture & Security
