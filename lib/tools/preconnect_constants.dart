@@ -59,7 +59,17 @@ class PreConnectPushConfig {
   static const String chromeExtensionPlatform = 'chrome_extension';
   static const String syncPushTokenMessageType = 'preconnect.syncPushToken';
   static const String seatStatusPinScope = 'seat_status';
-  static const List<String> defaultTopics = <String>['announcements', 'news'];
+  static const List<String> defaultTopics = <String>[
+    'announcements',
+    'news',
+    'wifi',
+    'seat_status',
+    'bus',
+    'routine',
+    'notice',
+    'printer',
+    'general',
+  ];
 
   static const String registerDevicePath = '/push/device/register';
   static const String unregisterDevicePath = '/push/device/unregister';
