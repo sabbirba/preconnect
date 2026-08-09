@@ -611,11 +611,26 @@ class FCMService {
 
   Future<void> _initWeb() async {
     final token = await _getToken();
-    if (token == null) {
-      return;
-    }
+    if (token == null) return;
 
-    for (final topic in PreConnectPushConfig.defaultTopics) {
+    final topicsToSubscribe = <String>{...PreConnectPushConfig.defaultTopics};
+
+    try {
+      final url = Uri.parse('${ApiConfig.realtimeApiBase}/push/topics');
+      final response = await http.get(url).timeout(const Duration(seconds: 3));
+      if (response.statusCode == 200) {
+        final decoded = jsonDecode(response.body);
+        if (decoded is List) {
+          for (final item in decoded) {
+            if (item is String && item.trim().isNotEmpty) {
+              topicsToSubscribe.add(item.trim());
+            }
+          }
+        }
+      }
+    } catch (_) {}
+
+    for (final topic in topicsToSubscribe) {
       await _subscribeToTopicWeb(token, topic);
     }
 
@@ -643,22 +658,35 @@ class FCMService {
 
   Future<void> _subscribeToDefaultTopics() async {
     final token = await _getToken();
-    try {
-      for (final topic in PreConnectPushConfig.defaultTopics) {
-        await _subscribeToTopicInternal(topic, cachedToken: token);
-      }
+    final topicsToSubscribe = <String>{...PreConnectPushConfig.defaultTopics};
 
-      final Set<String> pinnedSeats = await CoursePinStore.load(
-        PreConnectPushConfig.seatStatusPinScope,
-      );
-      for (final String seat in pinnedSeats) {
-        await _subscribeToTopicInternal(
-          PreConnectPushConfig.seatTopic(seat),
-          cachedToken: token,
-        );
+    try {
+      final url = Uri.parse('${ApiConfig.realtimeApiBase}/push/topics');
+      final response = await http.get(url).timeout(const Duration(seconds: 3));
+      if (response.statusCode == 200) {
+        final decoded = jsonDecode(response.body);
+        if (decoded is List) {
+          for (final item in decoded) {
+            if (item is String && item.trim().isNotEmpty) {
+              topicsToSubscribe.add(item.trim());
+            }
+          }
+        }
       }
-    } catch (error) {
-      unawaited(AppLog.write('Default FCM topic subscription failed: $error'));
+    } catch (_) {}
+
+    for (final topic in topicsToSubscribe) {
+      await _subscribeToTopicInternal(topic, cachedToken: token);
+    }
+
+    final Set<String> pinnedSeats = await CoursePinStore.load(
+      PreConnectPushConfig.seatStatusPinScope,
+    );
+    for (final String seat in pinnedSeats) {
+      await _subscribeToTopicInternal(
+        PreConnectPushConfig.seatTopic(seat),
+        cachedToken: token,
+      );
     }
   }
 
@@ -770,33 +798,40 @@ class FCMService {
 
   void _showLocalNotification(RemoteMessage message) {
     if (kIsWeb) return;
-    final notification = message.notification;
-    if (notification != null) {
-      _localNotifications.show(
-        id: notification.hashCode & 0x7FFFFFFF,
-        title: notification.title,
-        body: notification.body,
-        payload: jsonEncode(message.data),
-        notificationDetails: const NotificationDetails(
-          android: AndroidNotificationDetails(
-            'high_importance_channel',
-            'High Importance Notifications',
-            importance: Importance.max,
-            priority: Priority.high,
-            icon: 'status_icon',
+    final title =
+        message.notification?.title ?? message.data['title']?.toString();
+    final body = message.notification?.body ?? message.data['body']?.toString();
+    if (title != null && title.isNotEmpty) {
+      final notifId = (title.hashCode ^ (body?.hashCode ?? 0)) & 0x7FFFFFFF;
+      try {
+        _localNotifications.show(
+          id: notifId,
+          title: title,
+          body: body ?? '',
+          payload: jsonEncode(message.data),
+          notificationDetails: const NotificationDetails(
+            android: AndroidNotificationDetails(
+              'high_importance_channel',
+              'High Importance Notifications',
+              importance: Importance.max,
+              priority: Priority.high,
+              icon: 'status_icon',
+            ),
+            iOS: DarwinNotificationDetails(
+              presentAlert: true,
+              presentBadge: true,
+              presentSound: true,
+            ),
+            macOS: DarwinNotificationDetails(
+              presentAlert: true,
+              presentBadge: true,
+              presentSound: true,
+            ),
           ),
-          iOS: DarwinNotificationDetails(
-            presentAlert: true,
-            presentBadge: true,
-            presentSound: true,
-          ),
-          macOS: DarwinNotificationDetails(
-            presentAlert: true,
-            presentBadge: true,
-            presentSound: true,
-          ),
-        ),
-      );
+        );
+      } catch (error) {
+        unawaited(AppLog.write('Local notification display error: $error'));
+      }
     }
   }
 

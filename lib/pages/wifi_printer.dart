@@ -273,7 +273,6 @@ class _CampusPrinterPageState extends State<CampusPrinterPage>
   bool _busy = false;
   bool _discovering = false;
   bool _relayAvailable = false;
-  bool _cloudQueueReachable = false;
   bool _loadingPreset = false;
   bool _syncingCopiesController = false;
   bool _hasInternet = true;
@@ -285,7 +284,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage>
     text: '1',
   );
   final TextEditingController _studentIdController = TextEditingController();
-  void _prewarmCloudRelay() {
+  void _prewarmPrintRelay() {
     unawaited(
       HttpUtils.client
           .head(Uri.parse('${ApiConfig.realtimeApiBase}/print'))
@@ -299,14 +298,14 @@ class _CampusPrinterPageState extends State<CampusPrinterPage>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _prewarmCloudRelay();
+    _prewarmPrintRelay();
     _copiesController.addListener(_handleCopiesControllerChanged);
     _studentIdController.addListener(_handleStudentIdControllerChanged);
     if (AndroidNetworkAssist.isSupported) {
       _networkStatusSubscription = AndroidNetworkAssist.statusStream.listen((
         status,
       ) {
-        _prewarmCloudRelay();
+        _prewarmPrintRelay();
         unawaited(_handleNetworkStatusChanged(status));
       });
     }
@@ -320,12 +319,11 @@ class _CampusPrinterPageState extends State<CampusPrinterPage>
           if (!hasNet) {
             _printerHost = '';
             _relayAvailable = false;
-            _cloudQueueReachable = false;
           }
         });
       }
       if (hasNet) {
-        _prewarmCloudRelay();
+        _prewarmPrintRelay();
       }
     });
     _refreshBusSubscription = RefreshBus.instance.stream.listen((reason) {
@@ -457,7 +455,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage>
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
-      _prewarmCloudRelay();
+      _prewarmPrintRelay();
     }
   }
 
@@ -471,7 +469,6 @@ class _CampusPrinterPageState extends State<CampusPrinterPage>
         _hasInternet = false;
         _printerHost = '';
         _relayAvailable = false;
-        _cloudQueueReachable = false;
       });
       return;
     }
@@ -540,7 +537,6 @@ class _CampusPrinterPageState extends State<CampusPrinterPage>
 
   Future<void> _checkRelayHealth() async {
     var workerOnline = false;
-    var queueReachable = false;
     try {
       final url = Uri.parse(
         '${ApiConfig.realtimeApiBase}/print/stats?_t=${DateTime.now().millisecondsSinceEpoch}',
@@ -553,7 +549,6 @@ class _CampusPrinterPageState extends State<CampusPrinterPage>
         },
       );
       if (response.statusCode == 200) {
-        queueReachable = true;
         final decoded = jsonDecode(response.body);
         if (decoded is Map) {
           workerOnline = decoded['status']?.toString() == 'online';
@@ -563,7 +558,6 @@ class _CampusPrinterPageState extends State<CampusPrinterPage>
     if (mounted) {
       setState(() {
         _relayAvailable = workerOnline;
-        _cloudQueueReachable = queueReachable;
       });
     }
   }
@@ -876,14 +870,14 @@ class _CampusPrinterPageState extends State<CampusPrinterPage>
               : 'Sent';
           final messageLabel = result.isQueued
               ? (result.queueNumber.isNotEmpty
-                    ? 'Queued in cloud (#${result.queueNumber})'
-                    : 'Queued in cloud')
+                    ? 'Queued #${result.queueNumber}'
+                    : 'Queued')
               : 'Sent to campus printer';
 
           await _addHistory(
             _PrintHistoryEntry(
               fileName: file.name,
-              printerHost: host.isNotEmpty ? host : 'Cloud Queue',
+              printerHost: host.isNotEmpty ? host : 'Relay',
               copies: copies,
               status: statusLabel,
               message: messageLabel,
@@ -931,7 +925,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage>
         final snackMessage = hasQueuedJob
             ? (queueNum.isNotEmpty
                   ? 'Queue #$queueNum: Will print automatically when printer comes online.'
-                  : 'Queued in cloud. Will print automatically when printer comes online.')
+                  : 'Queued. Will print automatically when printer comes online.')
             : _snackPrintSent;
         showAppSnackBar(context, snackMessage);
       }
@@ -983,8 +977,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage>
 
   @override
   Widget build(BuildContext context) {
-    final hasConnection =
-        _printerHost.isNotEmpty || _relayAvailable || _cloudQueueReachable;
+    final hasConnection = _printerHost.isNotEmpty || _relayAvailable;
     final canPrint =
         _hasInternet &&
         !_busy &&
@@ -1004,13 +997,10 @@ class _CampusPrinterPageState extends State<CampusPrinterPage>
       printerSubtitle = 'Scanning..';
       subtitleColor = null;
     } else if (_printerHost.isNotEmpty) {
-      printerSubtitle = 'Connected (Wi-Fi)';
+      printerSubtitle = 'Connected via Wi-Fi';
       subtitleColor = const Color(0xFF22B573);
     } else if (_relayAvailable) {
-      printerSubtitle = 'Connected (Relay)';
-      subtitleColor = const Color(0xFF22B573);
-    } else if (_cloudQueueReachable) {
-      printerSubtitle = 'Connected (Cloud)';
+      printerSubtitle = 'Connected via Relay';
       subtitleColor = const Color(0xFF22B573);
     } else {
       printerSubtitle = 'Not found';
@@ -1293,23 +1283,22 @@ class _CampusPrinterPageState extends State<CampusPrinterPage>
               _buildStepItem(
                 context,
                 stepNumber: '•',
-                title: 'Connected (Wi-Fi)',
+                title: 'Connected via Wi-Fi',
                 body:
                     'The printer has been found directly on your local Wi-Fi network. Your print job is processed instantly.',
               ),
-              const Gap(12),
               _buildStepItem(
                 context,
                 stepNumber: '•',
-                title: 'Connected (Relay)',
+                title: 'Connected via Relay',
                 body:
-                    'Connected via active campus relay. Print jobs are relayed directly to the printer.',
+                    'The printer is connected through an active relay daemon. Your print job will be instantly transmitted to the printer.',
               ),
               const Gap(12),
               _buildStepItem(
                 context,
                 stepNumber: '•',
-                title: 'Connected (Cloud)',
+                title: 'Not found',
                 bodyWidget: Text.rich(
                   TextSpan(
                     style: TextStyle(
@@ -1321,18 +1310,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage>
                     children: [
                       const TextSpan(
                         text:
-                            'The printer was not found locally or on active relay. Your print job will be uploaded to the cloud queue and will print when the printer comes online.\n',
-                      ),
-                      TextSpan(
-                        text: 'Instant Print on Lab PCs: ',
-                        style: TextStyle(
-                          color: textPrimary,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                      const TextSpan(
-                        text:
-                            'Run a one line command on any lab PC to enable instant printing directly from your phone. See ',
+                            'No printer found on Wi-Fi or relay. Run a one line command on any lab PC to help enable instant printing directly from your phone. See ',
                       ),
                       TextSpan(
                         text: 'printer.py',
@@ -1380,8 +1358,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage>
                 context,
                 stepNumber: '•',
                 title: 'Not found',
-                body:
-                    'No local printer or cloud relay server could be discovered.',
+                body: 'No local printer or relay server could be discovered.',
               ),
               const Gap(12),
               _buildStepItem(
@@ -1411,9 +1388,9 @@ class _CampusPrinterPageState extends State<CampusPrinterPage>
               _buildStepItem(
                 context,
                 stepNumber: '•',
-                title: 'Duplex Mode (One/Both Side)',
+                title: 'Duplex Mode - One or Both Side',
                 body:
-                    'Toggle between single-sided or double-sided (both sides) printing to save paper.',
+                    'Toggle between single-sided or double-sided printing to save paper.',
               ),
               const Gap(12),
               _buildStepItem(
@@ -1421,7 +1398,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage>
                 stepNumber: '•',
                 title: 'Collate Mode',
                 body:
-                    'Sort pages in multi-page documents sequentially (1-2-3, 1-2-3) instead of grouping identical pages.',
+                    'Sort pages in multi-page documents sequentially instead of grouping identical pages.',
               ),
               const Gap(12),
               _buildStepItem(
@@ -1445,7 +1422,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage>
                 stepNumber: '•',
                 title: 'Stapling & Hole Punching',
                 body:
-                    'Configure staple location (Left Corner / Right Corner) or punch hole counts (2 Holes / 3 Holes) for automatic document binding.',
+                    'Configure staple location or punch hole counts for automatic document binding.',
               ),
               const Gap(12),
               _buildStepItem(
