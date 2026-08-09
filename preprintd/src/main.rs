@@ -388,7 +388,6 @@ fn ping() -> Result<()> {
             .post(format!("{BASE_URL}/print/ping"))
             .headers(hdrs()?)
             .send()?;
-        debug_log!(LogLevel::Ok, "PING sent!");
         std::thread::sleep(Duration::from_millis(5000));
     }
 }
@@ -402,8 +401,10 @@ fn main() -> Result<()> {
         let _sleep_inhibitor = acquire_sleep_inhibitor()?;
     }
 
-    let _ = std::thread::spawn(|| {
-        let _ = ping().ok();
+    std::thread::spawn(|| {
+        if let Err(e) = ping() {
+            debug_log!(LogLevel::Error, "Ping thread stopped: {e}");
+        }
     });
 
     loop {
