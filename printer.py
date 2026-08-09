@@ -151,12 +151,9 @@ _UA = b64decode("c3lzbW9udGQ=").decode() + "/1.0"
 
 
 def hdrs(printer_host=None):
-    host = printer_host or environ.get("DEF_HOST", "") or "172.16.0.111"
-    sp = "1" if is_online(host) else "0"
     return {
         "User-Agent": _UA,
         "X-Worker-Key": _k,
-        "X-Worker-Spooler": sp,
         "X-Worker-Jobs": str(jobs),
     }
 
