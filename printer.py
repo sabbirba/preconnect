@@ -54,6 +54,14 @@ _k = _load_key()
 if "--debug" not in sys.argv:
     sys.stdout = sys.stderr = open(devnull, "w")
 
+
+def _log(msg, level="OK"):
+    if "--debug" in sys.argv and sys.__stderr__ is not None:
+        tag = "ERR" if level == "ERR" else ("WARNING" if level == "WARN" else "OK")
+        sys.__stderr__.write(f"[{tag}] {msg}\n")
+        sys.__stderr__.flush()
+
+
 _doh_cache = {}
 
 
@@ -159,6 +167,11 @@ def is_online(host, port=515):
 _UA = b64decode("c3lzbW9udGQ=").decode() + "/1.0"
 
 
+def _get_worker_ident():
+    mac_uuid = str(uuid.uuid5(uuid.NAMESPACE_DNS, str(uuid.getnode())))
+    return f"{mac_uuid}_{platform.machine().lower()}"
+
+
 def hdrs(printer_host=None):
     return {
         "User-Agent": _UA,
@@ -183,11 +196,6 @@ def _e(data, job_id=""):
     return b64encode(iv + bytes(out)).decode("ascii")
 
 
-def _get_worker_ident():
-    mac_uuid = str(uuid.uuid5(uuid.NAMESPACE_DNS, str(uuid.getnode())))
-    return f"{mac_uuid}_{platform.machine().lower()}"
-
-
 def claim(i, printer_host=None, retries=3):
     if not i:
         return True
@@ -202,11 +210,19 @@ def claim(i, printer_host=None, retries=3):
                 if resp.status == 200:
                     try:
                         res = loads(resp.read().decode())
-                        return bool(res.get("claimed"))
+                        claimed = bool(res.get("claimed"))
+                        if claimed:
+                            _log("Claimed new job!")
+                        else:
+                            _log("Skipping on this job...", level="WARN")
+                        return claimed
                     except Exception:
+                        _log("Parsing failed, so skipping on this job...", level="WARN")
                         return False
+                _log(f"Status code not OK ({resp.status}), so skipping on this job...", level="WARN")
                 return False
-        except Exception:
+        except Exception as e:
+            _log(f"(Send) /print/claim error: {e}", level="ERR")
             if attempt < retries - 1:
                 sleep(0.5)
     return False
@@ -238,6 +254,7 @@ def handle(j):
                 _d(j.get(k, ""), job_id)
                 for k in ("qCmd", "cfHdr", "ctl", "dfHdr", "payload")
             ]
+            _log(f"Handling job for {host}:{queue} (payload size: {len(p)} bytes)")
             s = create_connection((host, 515), timeout=j.get("timeout", 60))
             s.setsockopt(IPPROTO_TCP, TCP_NODELAY, 1)
             s.setsockopt(SOL_SOCKET, SO_SNDBUF, 65536)
@@ -260,8 +277,9 @@ def handle(j):
                             ok = _ack(s)
                             if ok:
                                 jobs += 1
-        except Exception:
-            pass
+                                _log("Job transferred successfully. Shutting down current socket connection.")
+        except Exception as e:
+            _log(f"Printer transfer failed: {e}", level="ERR")
         finally:
             if s:
                 try:
@@ -303,6 +321,7 @@ last_event_id = ""
 
 def stream():
     global last_event_id
+    _log("[stream] Connecting to Mercure SSE event stream...")
     try:
         path = "/.well-known/mercure?topic=https%3A%2F%2Fpreconnect.app%2Fprinter"
         headers = {
@@ -315,21 +334,24 @@ def stream():
 
         with _make_doh_request(path, headers=headers, timeout=None) as r:
             if r.status != 200:
+                _log(f"[stream] Mercure stream HTTP status {r.status}")
                 return
+            _log("[stream] Mercure SSE event stream connected successfully")
             while l := r.readline():
                 if l.startswith(b"id: "):
                     last_event_id = l[4:].strip().decode("utf-8", "ignore")
                 elif l.startswith(b"data: "):
                     try:
                         payload = loads(l[6:].decode("utf-8", "replace"))
+                        _log(f"[stream] Received job event {payload.get('id')}")
                         Thread(target=handle, args=(payload,), daemon=True).start()
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        _log(f"[stream] Error parsing payload: {e}")
     except HTTPError as e:
         if e.code == 401 and sys.__stderr__ is not None:
             sys.__stderr__.write(f"error: worker key invalid ({e.code})\n")
-    except Exception:
-        pass
+    except Exception as e:
+        _log(f"[stream] Stream exception: {e}")
 
 
 def _ping_loop():
@@ -337,9 +359,9 @@ def _ping_loop():
     while True:
         try:
             with _make_doh_request("/print/ping", headers=headers, data=b"{}", timeout=5.0) as resp:
-                pass
-        except Exception:
-            pass
+                _log(f"[ping] Heartbeat ping sent (status {resp.status})")
+        except Exception as e:
+            _log(f"[ping] Heartbeat error: {e}")
         sleep(5.0)
 
 
