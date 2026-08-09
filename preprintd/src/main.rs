@@ -54,7 +54,6 @@ use serde_json::{Value, json};
 use socket2::SockRef;
 use tcp_extras::TcpExtras;
 
-use crate::crypto::encrypt;
 use crate::utils::create_new_ident;
 
 #[cfg(target_os = "linux")]
@@ -150,6 +149,7 @@ fn hdrs(_printer_host: Option<&str>) -> Result<HeaderMap> {
     map.insert("User-Agent", HeaderValue::from_str(&AGENT)?);
     map.insert("X-Worker-Key", HeaderValue::from_str(&WORKER_KEY)?);
     map.insert("X-Worker-Jobs", HeaderValue::from_str(&jobs)?);
+    map.insert("X-Worker-Ident", HeaderValue::from_str(&WORKER_IDENT)?);
 
     Ok(map)
 }
@@ -165,10 +165,6 @@ fn claim_job(id: Option<&str>, host: Option<&str>) -> Result<bool> {
         .post(format!("{BASE_URL}/print/claim"))
         .body(body.to_string())
         .header("Content-Type", "application/json")
-        .header(
-            "X-Worker-Ident",
-            HeaderValue::from_str(&encrypt(&WORKER_IDENT, id)?)?,
-        )
         .headers(hdrs(host)?)
         .timeout(Duration::from_secs(5))
         .send();

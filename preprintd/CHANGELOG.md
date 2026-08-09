@@ -2,6 +2,13 @@
 
 Active since `v0.1.0`.
 
+### v0.3.4
+
+- Removed `X-Worker-Spooler`, since we do not need it anymore from the server-level.
+- Removed encryption for `X-Worker-Ident`, it now passes a raw UUID (v4) every time a new worker instance boots up.
+- Added support for inhibitor FD locks using the `--inhibit` flag to disable sleeping on Linux machines while the program is running. The `org.freedesktop.login1*` D-Bus interfaces are used for this function.
+- Minor code optimizations have been done.
+
 ### v0.3.3
 
 - Add support for the `X-Worker-Spooler` header again, which tells the server a job is ongoing for any given worker instance.
