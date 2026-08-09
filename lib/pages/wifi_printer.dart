@@ -542,8 +542,16 @@ class _CampusPrinterPageState extends State<CampusPrinterPage>
     var workerOnline = false;
     var queueReachable = false;
     try {
-      final url = Uri.parse('${ApiConfig.realtimeApiBase}/print/stats');
-      final response = await HttpUtils.client.get(url);
+      final url = Uri.parse(
+        '${ApiConfig.realtimeApiBase}/print/stats?_t=${DateTime.now().millisecondsSinceEpoch}',
+      );
+      final response = await HttpUtils.client.get(
+        url,
+        headers: const <String, String>{
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+        },
+      );
       if (response.statusCode == 200) {
         queueReachable = true;
         final decoded = jsonDecode(response.body);
@@ -1918,29 +1926,20 @@ class _LprPrintClient {
                 body: gzippedPayload,
               )
               .timeout(const Duration(minutes: 3));
-          if (response.statusCode != 200) {
+          final Map<String, dynamic> data = response.body.isNotEmpty
+              ? (jsonDecode(response.body) as Map<String, dynamic>)
+              : <String, dynamic>{};
+          if (response.statusCode != 200 || data['success'] == false) {
+            final serverErr = data['error']?.toString().trim() ?? '';
+            if (serverErr.isNotEmpty) {
+              throw _LprPrintException(serverErr);
+            }
             throw const _LprPrintException(
               _CampusPrinterPageState._snackPrinterConnectionFailed,
             );
           }
-          try {
-            final Map<String, dynamic> data = jsonDecode(response.body);
-            var queueId = data['id']?.toString() ?? '';
-            if (queueId.isEmpty) {
-              final queueRes = await HttpUtils.client
-                  .get(Uri.parse('${ApiConfig.realtimeApiBase}/print/queue'))
-                  .timeout(const Duration(seconds: 3));
-              if (queueRes.statusCode == 200) {
-                final List<dynamic> queueList = jsonDecode(queueRes.body);
-                if (queueList.isNotEmpty && queueList.last is Map) {
-                  queueId = queueList.last['id']?.toString() ?? '';
-                }
-              }
-            }
-            return _PrintJobResult(isQueued: true, queueNumber: queueId);
-          } catch (_) {
-            return const _PrintJobResult(isQueued: true, queueNumber: '');
-          }
+          final queueId = data['id']?.toString() ?? '';
+          return _PrintJobResult(isQueued: true, queueNumber: queueId);
         } catch (e) {
           if (e is _LprPrintException) rethrow;
           throw const _LprPrintException(
