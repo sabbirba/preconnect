@@ -7,7 +7,7 @@ After=network-online.target
 Type=simple
 ExecStart=/usr/bin/preprintd --debug
 Restart=always
-Environment="WORKER_KEY=yourworkerkeyhere" "AGENT=preprintd/1.0" "DEF_HOST=192.168.0.102" "DEF_QUEUE=queuename"
+Environment="WORKER_KEY=yourworkerkeyhere" "ALIAS=preprintd" "DEF_HOST=192.168.0.102" "DEF_QUEUE=queuename"
 User=nobody
 StateDirectory=preprintd
 

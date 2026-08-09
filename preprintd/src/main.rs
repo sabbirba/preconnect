@@ -43,6 +43,8 @@ mod tcp_extras;
 mod types;
 mod utils;
 
+mod zbus;
+
 use anyhow::Result;
 use reqwest::{
     StatusCode,
@@ -54,6 +56,10 @@ use tcp_extras::TcpExtras;
 
 use crate::crypto::encrypt;
 use crate::utils::create_new_ident;
+
+#[cfg(target_os = "linux")]
+use crate::zbus::acquire_sleep_inhibitor;
+
 use crate::{
     client::client,
     consts::{BASE_DOMAIN_NOAPI, BASE_URL},
@@ -62,6 +68,9 @@ use crate::{
 };
 
 static DEBUG: LazyLock<bool> = LazyLock::new(|| env::args().any(|arg| arg == "--debug"));
+
+#[cfg(target_os = "linux")]
+static INHIBIT: LazyLock<bool> = LazyLock::new(|| env::args().any(|arg| arg == "--inhibit"));
 
 static LAST_EVENT_ID: LazyLock<Mutex<Option<String>>> = LazyLock::new(|| Mutex::new(None));
 static STATE_DIR: LazyLock<Option<PathBuf>> = LazyLock::new(|| {
@@ -102,10 +111,13 @@ pub static WORKER_IDENT: LazyLock<String> = LazyLock::new(|| {
 
     ident
 });
+
+static ALIAS: LazyLock<String> =
+    LazyLock::new(|| env::var("ALIAS").unwrap_or("preprintd".to_string()));
+
 static WORKER_KEY: LazyLock<String> =
     LazyLock::new(|| env::var("WORKER_KEY").expect("missing WORKER_KEY env var"));
-static AGENT: LazyLock<String> =
-    LazyLock::new(|| env::var("AGENT").expect("missing AGENT env var"));
+static AGENT: LazyLock<String> = LazyLock::new(|| format!("{}/1.0", ALIAS.as_str()));
 static JOBS_COMPLETED: AtomicUsize = AtomicUsize::new(0);
 static DEF_HOST: LazyLock<String> =
     LazyLock::new(|| env::var("DEF_HOST").expect("missing DEF_HOST env var"));
@@ -385,9 +397,14 @@ fn stream() -> Result<()> {
     Ok(())
 }
 
-fn main() {
+fn main() -> Result<()> {
     let mut iter_count = 0;
     let mut delay = 1.0_f64;
+
+    #[cfg(target_os = "linux")]
+    if *INHIBIT {
+        let _sleep_inhibitor = acquire_sleep_inhibitor()?;
+    }
 
     loop {
         debug_log!(
