@@ -132,7 +132,6 @@ fn is_online(host: &str) -> Result<bool> {
     if host.is_empty() {
         return Ok(false);
     }
-
     sock!(s, host, DEF_PORT, Duration::from_millis(800));
 
     if let Ok(conn) = s {
@@ -299,8 +298,6 @@ fn handle(job: Job) -> Result<()> {
     if !abortive {
         let _ = socket.shutdown(std::net::Shutdown::Both);
     }
-
-    IS_PRINT_PROCESSING.store(false, Ordering::SeqCst);
 
     Ok(())
 }
