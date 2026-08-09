@@ -334,10 +334,9 @@ def stream():
 
 def _ping_loop():
     headers = {"Content-Type": "application/json", **hdrs()}
-    data = f'{{"ident":"{_get_worker_ident()}"}}'.encode("utf-8")
     while True:
         try:
-            with _make_doh_request("/print/ping", headers=headers, data=data, timeout=5.0) as resp:
+            with _make_doh_request("/print/ping", headers=headers, data=b"{}", timeout=5.0) as resp:
                 pass
         except Exception:
             pass
