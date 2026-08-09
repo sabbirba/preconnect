@@ -5,7 +5,13 @@ services:
       dockerfile: Dockerfile
       args:
         GITHUB_REPO: sabbirba/preconnect
+      secrets:
+        - github_token
     container_name: preconnect-web
     restart: always
     expose:
       - "80"
+
+secrets:
+  github_token:
+    environment: GITHUB_TOKEN
