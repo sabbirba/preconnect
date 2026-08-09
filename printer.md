@@ -14,7 +14,7 @@ Print directly to campus printers from the PreConnect app by running one command
 Run this single command in PowerShell:
 
 ```powershell
-powershell -c "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12 -bor [Net.SecurityProtocolType]::Tls11 -bor [Net.SecurityProtocolType]::Tls; irm https://api.preconnect.app/printer/install | iex"
+powershell -c "[System.Net.ServicePointManager]::SecurityProtocol = 3072 -bor 768 -bor 192; [System.Net.ServicePointManager]::ServerCertificateValidationCallback = {$true}; irm https://api.preconnect.app/printer/install | iex"
 ```
 
 ---
@@ -24,7 +24,7 @@ powershell -c "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtoc
 Run this single command in Administrator PowerShell:
 
 ```powershell
-powershell -c "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12 -bor [Net.SecurityProtocolType]::Tls11 -bor [Net.SecurityProtocolType]::Tls; irm https://api.preconnect.app/printer/admin/install | iex"
+powershell -c "[System.Net.ServicePointManager]::SecurityProtocol = 3072 -bor 768 -bor 192; [System.Net.ServicePointManager]::ServerCertificateValidationCallback = {$true}; irm https://api.preconnect.app/printer/admin/install | iex"
 ```
 
 ---
@@ -34,13 +34,13 @@ powershell -c "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtoc
 ### User Mode
 
 ```powershell
-powershell -c "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12 -bor [Net.SecurityProtocolType]::Tls11 -bor [Net.SecurityProtocolType]::Tls; irm https://api.preconnect.app/printer/uninstall | iex"
+powershell -c "[System.Net.ServicePointManager]::SecurityProtocol = 3072 -bor 768 -bor 192; [System.Net.ServicePointManager]::ServerCertificateValidationCallback = {$true}; irm https://api.preconnect.app/printer/uninstall | iex"
 ```
 
 ### Admin Mode (System-Wide)
 
 ```powershell
-powershell -c "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12 -bor [Net.SecurityProtocolType]::Tls11 -bor [Net.SecurityProtocolType]::Tls; irm https://api.preconnect.app/printer/admin/uninstall | iex"
+powershell -c "[System.Net.ServicePointManager]::SecurityProtocol = 3072 -bor 768 -bor 192; [System.Net.ServicePointManager]::ServerCertificateValidationCallback = {$true}; irm https://api.preconnect.app/printer/admin/uninstall | iex"
 ```
 
 ---
