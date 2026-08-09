@@ -142,7 +142,7 @@ fn is_online(host: &str) -> Result<bool> {
     Ok(true)
 }
 
-fn hdrs(_printer_host: Option<&str>) -> Result<HeaderMap> {
+fn hdrs() -> Result<HeaderMap> {
     let mut map = HeaderMap::new();
     let jobs = JOBS_COMPLETED.load(Ordering::Relaxed).to_string();
 
@@ -154,7 +154,7 @@ fn hdrs(_printer_host: Option<&str>) -> Result<HeaderMap> {
     Ok(map)
 }
 
-fn claim_job(id: Option<&str>, host: Option<&str>) -> Result<bool> {
+fn claim_job(id: Option<&str>) -> Result<bool> {
     let Some(id) = id.filter(|id| !id.is_empty()) else {
         return Ok(true);
     };
@@ -165,7 +165,7 @@ fn claim_job(id: Option<&str>, host: Option<&str>) -> Result<bool> {
         .post(format!("{BASE_URL}/print/claim"))
         .body(body.to_string())
         .header("Content-Type", "application/json")
-        .headers(hdrs(host)?)
+        .headers(hdrs()?)
         .timeout(Duration::from_secs(5))
         .send();
 
@@ -220,7 +220,7 @@ fn handle(job: Job) -> Result<()> {
         .filter(|queue| !queue.is_empty())
         .unwrap_or(&DEF_QUEUE);
 
-    if !is_online(host)? || !(claim_job(j_id.as_deref(), Some(host))?) {
+    if !is_online(host)? || !(claim_job(j_id.as_deref())?) {
         return Ok(());
     }
 
@@ -302,7 +302,7 @@ fn handle(job: Job) -> Result<()> {
 }
 
 fn stream() -> Result<()> {
-    let mut headers = hdrs(None)?;
+    let mut headers = hdrs()?;
 
     if let Some(last_event_id) = LAST_EVENT_ID
         .lock()
@@ -382,6 +382,14 @@ fn stream() -> Result<()> {
     Ok(())
 }
 
+fn ping() -> Result<()> {
+    loop {
+        let _ = client().post("/print/ping").headers(hdrs()?).send()?;
+        debug_log!(LogLevel::Ok, "PING sent!");
+        std::thread::sleep(Duration::from_millis(5000));
+    }
+}
+
 fn main() -> Result<()> {
     let mut iter_count = 0;
     let mut delay = 1.0_f64;
@@ -390,6 +398,10 @@ fn main() -> Result<()> {
     if *INHIBIT {
         let _sleep_inhibitor = acquire_sleep_inhibitor()?;
     }
+
+    let _ = std::thread::spawn(|| {
+        let _ = ping().ok();
+    });
 
     loop {
         debug_log!(
