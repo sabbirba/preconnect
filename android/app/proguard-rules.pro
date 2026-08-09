@@ -28,9 +28,8 @@
     public static java.lang.String getStackTraceString(java.lang.Throwable);
 }
 
-# ── Remove source file names from stack traces (smaller + obfuscated) ────────
--renamesourcefileattribute SourceFile
--keepattributes SourceFile,LineNumberTable
+# ── Remove source file names and line numbers from release dex (smaller) ───
+-renamesourcefileattribute ""
 
 # ── Parcelables ───────────────────────────────────────────────────────────────
 -keepclassmembers class * implements android.os.Parcelable {

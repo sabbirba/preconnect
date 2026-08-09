@@ -128,7 +128,7 @@ android {
                 "proguard-rules.pro",
             )
             ndk {
-                debugSymbolLevel = "SYMBOL_TABLE"
+                debugSymbolLevel = "NONE"
             }
         }
     }
@@ -136,7 +136,7 @@ android {
     packaging {
         jniLibs {
             useLegacyPackaging = false
-            excludes += setOf("lib/x86_64/**")
+            excludes += setOf("lib/x86/**", "lib/x86_64/**")
         }
     }
 }

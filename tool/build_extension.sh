@@ -157,7 +157,7 @@ perl -0pi -e 's#https://www\.gstatic\.com/firebasejs/#firebase/#g' \
 
 dart compile js \
   "${ROOT_DIR}/web/background.dart" \
-  -O2 \
+  -O4 \
   -o "${COMMON_DIR}/background.dart.js"
 
 if remote_code_match="$(grep -n -r --include="*.js" -E \
@@ -238,11 +238,11 @@ with open(manifest_path, 'w') as f:
 
 mkdir -p "$(dirname "${ZIP_OUT}")"
 rm -f "${ZIP_OUT}"
-(cd "${OUT_DIR}" && zip -qr "${ZIP_OUT}" .)
+(cd "${OUT_DIR}" && zip -9 -qr "${ZIP_OUT}" .)
 
 mkdir -p "$(dirname "${FIREFOX_ZIP}")"
 rm -f "${FIREFOX_ZIP}"
-(cd "${FIREFOX_DIR}" && zip -qr "${FIREFOX_ZIP}" .)
+(cd "${FIREFOX_DIR}" && zip -9 -qr "${FIREFOX_ZIP}" .)
 
 echo "Build complete!"
 echo "Chrome extension: ${OUT_DIR} (Archive: ${ZIP_OUT})"
