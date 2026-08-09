@@ -1,0 +1,10 @@
+.git
+.github
+.idea
+.vscode
+build/
+android/
+ios/
+macos/
+lib/
+test/

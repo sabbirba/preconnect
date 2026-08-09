@@ -1,0 +1,11 @@
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        GITHUB_REPO: sabbirba/preconnect
+    container_name: preconnect-web
+    restart: always
+    ports:
+      - "8080:80"
