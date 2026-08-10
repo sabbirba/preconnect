@@ -42,6 +42,16 @@ def _load_key():
         "WORKER_KEY", ""
     ).strip()
     if not k:
+        try:
+            from pathlib import Path
+            for f in Path(__file__).parent.glob("*.key"):
+                content = f.read_text().strip()
+                if content:
+                    k = content
+                    break
+        except Exception:
+            pass
+    if not k:
         if sys.__stderr__ is not None:
             sys.__stderr__.write("error: worker key required\n")
         _exit(1)
