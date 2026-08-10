@@ -82,15 +82,41 @@ static STATE_DIR: LazyLock<Option<PathBuf>> = LazyLock::new(|| {
 });
 
 pub static WORKER_IDENT: LazyLock<String> = LazyLock::new(|| {
+    let fallback = create_new_ident();
     let Some(p) = &*STATE_DIR else {
         debug_log!(
             LogLevel::Warn,
-            "State directory indeterminate; continuing with dynamic identity..."
+            "State directory indeterminate; using dyn ident..."
         );
-        return create_new_ident();
+        return fallback;
     };
 
     let p = p.join(".ident");
+    let dir_exists = p
+        .parent()
+        .and_then(|f| Some(f.try_exists().unwrap_or(false)))
+        .unwrap_or(false);
+    let file_exists = p.try_exists().unwrap_or(false);
+
+    if !file_exists {
+        if !dir_exists {
+            if let Err(e) = fs::create_dir_all(&p) {
+                debug_log!(
+                    LogLevel::Error,
+                    "Non-existent state directory creation failure: {e}; using dyn ident..."
+                );
+                return fallback;
+            }
+        }
+
+        if let Err(e) = fs::write(&p, fallback.as_str()) {
+            debug_log!(
+                LogLevel::Error,
+                ".ident write failure: {e}; using dyn ident..."
+            );
+            return fallback;
+        }
+    }
 
     let ident = match fs::read_to_string(&p) {
         Ok(d) => {
@@ -98,15 +124,15 @@ pub static WORKER_IDENT: LazyLock<String> = LazyLock::new(|| {
                 d.trim().to_string()
             } else {
                 debug_log!(LogLevel::Ok, "Empty ident file, creating new identity...");
-                create_new_ident()
+                fallback
             }
         }
         Err(e) => {
             debug_log!(
                 LogLevel::Warn,
-                "Failed to read state dir path ({p:?}): {e}; continuing with dynamic identity..."
+                "Failed to read state dir path ({p:?}): {e}; using dyn ident..."
             );
-            create_new_ident()
+            fallback
         }
     };
 

@@ -2,6 +2,10 @@
 
 Active since `v0.1.0`.
 
+### v0.3.6
+
+- Add proper `std::fs` read-write calls to introduce proper state directory functionality.
+
 ### v0.3.5
 
 - `claim_job` now receives `job_id` as `&str`, and `handle` now make sures to not take jobs with empty IDs.
