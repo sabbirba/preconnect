@@ -2,6 +2,10 @@
 
 Active since `v0.1.0`.
 
+### v0.3.7
+
+- Set default target for Linux builds to: `x86_64-unknown-linux-musl`
+
 ### v0.3.6
 
 - Add proper `std::fs` read-write calls to introduce proper state directory functionality.
