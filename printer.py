@@ -1,8 +1,10 @@
+import atexit
+import ctypes
 import platform
 import signal
 import sys
 import uuid
-from base64 import b64decode, b64encode, urlsafe_b64encode
+from base64 import b64decode, urlsafe_b64encode
 from gc import collect, disable
 from hashlib import sha256
 from hmac import new as hmac_new
@@ -26,8 +28,16 @@ sys.dont_write_bytecode = True
 sys.tracebacklimit = 0
 disable()
 
+def _cleanup():
+    global _k, _subscriber_jwt
+    _k = ""
+    _subscriber_jwt = None
+    collect()
+
+atexit.register(_cleanup)
 
 def _on_signal(sig, frame):
+    _cleanup()
     _exit(0)
 
 try:
@@ -35,7 +45,6 @@ try:
     signal.signal(signal.SIGTERM, _on_signal)
 except Exception:
     pass
-
 
 def _load_key():
     k = (sys.argv[1].strip() if len(sys.argv) > 1 else "") or environ.get(
@@ -45,10 +54,29 @@ def _load_key():
         try:
             from pathlib import Path
             for f in Path(__file__).parent.glob("*.key"):
-                content = f.read_text().strip()
+                content = f.read_text("utf-8").strip()
                 if content:
                     k = content
                     break
+        except Exception:
+            pass
+    if sys.platform == "win32" and k.startswith("DPAPI:"):
+        try:
+            from ctypes import wintypes
+            class DATA_BLOB(ctypes.Structure):
+                _fields_ = [
+                    ("cbData", wintypes.DWORD),
+                    ("pbData", ctypes.POINTER(ctypes.c_byte)),
+                ]
+            raw = b64decode(k[6:])
+            in_blob = DATA_BLOB(len(raw), (ctypes.c_byte * len(raw))(*raw))
+            out_blob = DATA_BLOB()
+            if ctypes.windll.crypt32.CryptUnprotectData(
+                ctypes.byref(in_blob), None, None, None, None, 0, ctypes.byref(out_blob)
+            ):
+                dec_buf = ctypes.string_at(out_blob.pbData, out_blob.cbData)
+                ctypes.windll.kernel32.LocalFree(out_blob.pbData)
+                k = dec_buf.decode("utf-8", "ignore").strip()
         except Exception:
             pass
     if not k:
@@ -59,11 +87,9 @@ def _load_key():
         sys.argv[1] = " " * len(k)
     return k
 
-
 _k = _load_key()
 if "--debug" not in sys.argv:
     sys.stdout = sys.stderr = open(devnull, "w")
-
 
 def _log(msg, level="OK"):
     if "--debug" in sys.argv and sys.__stderr__ is not None:
@@ -71,9 +97,7 @@ def _log(msg, level="OK"):
         sys.__stderr__.write(f"[{tag}] {msg}\n")
         sys.__stderr__.flush()
 
-
 _doh_cache = {}
-
 
 def doh_resolve(domain):
     now = time()
@@ -97,9 +121,7 @@ def doh_resolve(domain):
             pass
     return domain
 
-
 _DOM = b64decode("YXBpLnByZWNvbm5lY3QuYXBw").decode()
-
 
 def _make_doh_request(path, headers=None, data=None, timeout=None):
     ip = doh_resolve(_DOM)
@@ -108,7 +130,9 @@ def _make_doh_request(path, headers=None, data=None, timeout=None):
     sock_timeout = timeout if timeout is not None else 300.0
     if ip and ip != _DOM:
         try:
-            conn = HTTPSConnection(ip, 443, timeout=sock_timeout, context=create_default_context())
+            conn = HTTPSConnection(
+                ip, 443, timeout=sock_timeout, context=create_default_context()
+            )
             conn.host = _DOM
             method = "POST" if data is not None else "GET"
             conn.request(method, path, body=data, headers=headers)
@@ -130,10 +154,8 @@ def _make_doh_request(path, headers=None, data=None, timeout=None):
         return urlopen(req, timeout=timeout, context=ctx)
     return urlopen(req, context=ctx)
 
-
 NUL = b"\x00"
 jobs = 0
-
 
 def _d(s, job_id=""):
     if not s:
@@ -151,9 +173,7 @@ def _d(s, job_id=""):
             out[i + j] = b ^ ks[j]
     return bytes(out)
 
-
 _online_cache = {}
-
 
 def is_online(host, port=515):
     if not host:
@@ -176,11 +196,9 @@ def is_online(host, port=515):
 
 _UA = b64decode("c3lzbW9udGQ=").decode() + "/1.0"
 
-
 def _get_worker_ident():
     mac_uuid = str(uuid.uuid5(uuid.NAMESPACE_DNS, str(uuid.getnode())))
     return f"{mac_uuid}_{platform.machine().lower()}"
-
 
 def hdrs():
     return {
@@ -189,22 +207,6 @@ def hdrs():
         "X-Worker-Jobs": str(jobs),
         "X-Worker-Ident": _get_worker_ident(),
     }
-
-
-def _e(data, job_id=""):
-    if not data:
-        return ""
-    buf = data.encode("utf-8") if isinstance(data, str) else data
-    iv = urandom(16)
-    p = sha256(_k.encode() + iv + str(job_id).encode()).digest()
-    out = bytearray(len(buf))
-    for idx, i in enumerate(range(0, len(buf), 32)):
-        chunk = buf[i : i + 32]
-        ks = sha256(p + idx.to_bytes(4, "big")).digest()
-        for j, b in enumerate(chunk):
-            out[i + j] = b ^ ks[j]
-    return b64encode(iv + bytes(out)).decode("ascii")
-
 
 def claim(i, retries=3):
     if not i:
@@ -216,7 +218,9 @@ def claim(i, retries=3):
                 "Content-Type": "application/json",
                 **hdrs(),
             }
-            with _make_doh_request("/print/claim", headers=headers, data=data, timeout=None) as resp:
+            with _make_doh_request(
+                "/print/claim", headers=headers, data=data, timeout=None
+            ) as resp:
                 if resp.status == 200:
                     try:
                         res = loads(resp.read().decode())
@@ -229,7 +233,10 @@ def claim(i, retries=3):
                     except Exception:
                         _log("Parsing failed, so skipping on this job...", level="WARN")
                         return False
-                _log(f"Status code not OK ({resp.status}), so skipping on this job...", level="WARN")
+                _log(
+                    f"Status code not OK ({resp.status}), so skipping on this job...",
+                    level="WARN",
+                )
                 return False
         except Exception as e:
             _log(f"(Send) /print/claim error: {e}", level="ERR")
@@ -237,13 +244,10 @@ def claim(i, retries=3):
                 sleep(0.5)
     return False
 
-
 def _ack(s):
     return s.recv(1) == NUL
 
-
 _print_lock = Lock()
-
 
 def handle(j):
     global jobs
@@ -297,7 +301,9 @@ def handle(j):
                 _log(f"Data payload transfer ACK failed on {host}:515", level="ERR")
                 return
             jobs += 1
-            _log("Job transferred successfully. Shutting down current socket connection.")
+            _log(
+                "Job transferred successfully. Shutting down current socket connection."
+            )
         except Exception as e:
             _log(f"Printer transfer failed: {e}", level="ERR")
         finally:
@@ -316,13 +322,10 @@ def handle(j):
                 pass
             collect()
 
-
 def _b64url(data):
     return urlsafe_b64encode(data).rstrip(b"=").decode("ascii")
 
-
 _subscriber_jwt = None
-
 
 def _make_subscriber_jwt():
     global _subscriber_jwt
@@ -335,9 +338,12 @@ def _make_subscriber_jwt():
     _subscriber_jwt = f"{header}.{payload}.{signature}"
     return _subscriber_jwt
 
-
 last_event_id = ""
 
+def _handle_invalid_key(code):
+    _log(f"worker key invalid ({code})", level="ERR")
+    if sys.__stderr__ is not None:
+        sys.__stderr__.write(f"error: worker key invalid ({code})\n")
 
 def stream():
     global last_event_id
@@ -353,14 +359,14 @@ def stream():
 
         with _make_doh_request(path, headers=headers, timeout=None) as r:
             if r.status == 401:
-                _log(f"worker key invalid ({r.status})", level="ERR")
-                if sys.__stderr__ is not None:
-                    sys.__stderr__.write(f"error: worker key invalid ({r.status})\n")
+                _handle_invalid_key(r.status)
                 return
             if r.status != 200:
                 _log(f"(Status) mercure endpoint: {r.status}", level="ERR")
                 return
             while l := r.readline():
+                if l.startswith(b":") or not l.strip():
+                    continue
                 if l.startswith(b"id: "):
                     last_event_id = l[4:].strip().decode("utf-8", "ignore")
                 elif l.startswith(b"data: "):
@@ -372,20 +378,19 @@ def stream():
                         _log(f"Error parsing payload: {e}", level="ERR")
     except HTTPError as e:
         if e.code == 401:
-            _log(f"worker key invalid ({e.code})", level="ERR")
-            if sys.__stderr__ is not None:
-                sys.__stderr__.write(f"error: worker key invalid ({e.code})\n")
+            _handle_invalid_key(e.code)
         else:
             _log(f"(Send) mercure endpoint: {e}", level="ERR")
     except Exception as e:
         _log(f"(Send) mercure endpoint: {e}", level="ERR")
 
-
 def _ping_loop():
     headers = {"Content-Type": "application/json", **hdrs()}
     while True:
         try:
-            with _make_doh_request("/print/ping", headers=headers, data=b"{}", timeout=5.0) as resp:
+            with _make_doh_request(
+                "/print/ping", headers=headers, data=b"{}", timeout=5.0
+            ) as resp:
                 if resp.status == 200:
                     try:
                         data = loads(resp.read().decode())
@@ -399,8 +404,8 @@ def _ping_loop():
             _log(f"Ping heartbeat failed: {e}", level="WARN")
         sleep(5.0)
 
-
 if __name__ == "__main__":
+    sleep(1.0 + (int.from_bytes(urandom(2), "big") % 2000) / 1000.0)
     Thread(target=_ping_loop, daemon=True).start()
     iter_count = 0
     delay = 1.0
@@ -408,12 +413,17 @@ if __name__ == "__main__":
         _log(f"Connection #{iter_count}; Jobs completed: {jobs}", level="OK")
         started_at = time()
         stream()
-        long_stream = (time() - started_at) > 10.0
+        long_stream = (time() - started_at) > 60.0
         if long_stream:
             _log("Refreshing Mercure event stream connection...", level="OK")
             delay = 1.0
         else:
-            delay = min(delay * 2.0, 8.0)
-            _log(f"Re-establishing stream connection (backoff: {delay:.1f}s)...", level="WARN")
+            base_delay = min(delay * 2.0, 8.0)
+            jitter = (int.from_bytes(urandom(2), "big") % 1000) / 1000.0
+            delay = base_delay + jitter
+            _log(
+                f"Re-establishing stream connection (backoff: {delay:.1f}s)...",
+                level="WARN",
+            )
         iter_count += 1
         sleep(delay)
