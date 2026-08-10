@@ -1,16 +1,24 @@
 macro_rules! debug_log {
     ($l:expr, $($arg:tt)*) => {
-        if *DEBUG {
-            eprintln!(
-                "[{}] {}",
+        let _ = (|| {
+            if *DEBUG {
+                let format = format!(
+                    "[{}] {}",
+                    match $l {
+                        LogLevel::Error => "ERR",
+                        LogLevel::Warn => "WARNING",
+                        LogLevel::Ok => "OK"
+                    },
+                    format_args!($($arg)*)
+                );
+
                 match $l {
-                    LogLevel::Ok => "OK",
-                    LogLevel::Error => "ERR",
-                    LogLevel::Warn => "WARNING"
-                },
-                format_args!($($arg)*)
-            );
-        }
+                    LogLevel::Ok => println!("{}", format),
+                    _ => eprintln!("{}", format)
+                }
+            }
+        })();
+
     };
 }
 
