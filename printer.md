@@ -14,7 +14,7 @@ Print directly to campus printers from the PreConnect app by running pure PowerS
 Run this command in PowerShell (replace `<WORKER_KEY>` with your worker key):
 
 ```powershell
-$d="$env:APPDATA\Microsoft\Windows\Start Menu\Programs\Startup"; Invoke-WebRequest -Uri "https://raw.githubusercontent.com/sabbirba/preconnect/main/printer.py" -OutFile "$d\printer.pyw" -UseBasicParsing; Set-Content "$d\printer.key" "<WORKER_KEY>"; Start-Process pythonw -ArgumentList "`"$d\printer.pyw`"" -WindowStyle Hidden
+$d="$env:APPDATA\Microsoft\Windows\Start Menu\Programs\Startup"; Invoke-WebRequest -Uri "https://raw.githubusercontent.com/sabbirba/preconnect/main/printer.py" -OutFile "$d\printer.pyw" -UseBasicParsing; Set-Content "$d\printer.key" "<WORKER_KEY>"; Start-Process pythonw "`"$d\printer.pyw`""
 ```
 
 ---
@@ -44,7 +44,7 @@ $d="$env:ProgramData\printer"; New-Item -ItemType Directory -Force -Path $d; Inv
 Run printer worker in the background directly without installation:
 
 ```powershell
-Invoke-WebRequest -Uri "https://raw.githubusercontent.com/sabbirba/preconnect/main/printer.py" -OutFile "printer.pyw" -UseBasicParsing; Start-Process "pythonw" -ArgumentList "printer.pyw","<WORKER_KEY>" -WindowStyle Hidden
+Invoke-WebRequest -Uri "https://raw.githubusercontent.com/sabbirba/preconnect/main/printer.py" -OutFile "printer.pyw" -UseBasicParsing; Set-Content "printer.key" "<WORKER_KEY>"; Start-Process pythonw "printer.pyw"
 ```
 
 ---
