@@ -2,6 +2,11 @@
 
 Active since `v0.1.0`.
 
+### v0.3.5
+
+- `claim_job` now receives `job_id` as `&str`, and `handle` now make sures to not take jobs with empty IDs.
+- `debug_log!()` now prints messages with `LogLevel::Ok` with `println!()`.
+
 ### v0.3.4
 
 - Removed `X-Worker-Spooler`, since we do not need it anymore from the server-level.

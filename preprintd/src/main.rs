@@ -155,11 +155,7 @@ fn hdrs() -> Result<HeaderMap> {
     Ok(map)
 }
 
-fn claim_job(id: Option<&str>) -> Result<bool> {
-    let Some(id) = id.filter(|id| !id.is_empty()) else {
-        return Ok(true);
-    };
-
+fn claim_job(id: &str) -> Result<bool> {
     let body = json!({ "id": id });
 
     let resp = client()
@@ -199,15 +195,26 @@ fn claim_job(id: Option<&str>) -> Result<bool> {
     if claim {
         debug_log!(LogLevel::Ok, "Claimed new job!");
     } else {
-        debug_log!(LogLevel::Ok, "Skipping on this job...");
+        debug_log!(LogLevel::Warn, "Skipping on this job...");
     }
 
     Ok(claim)
 }
 
 fn handle(job: Job) -> Result<()> {
-    let j_id = &job.id;
-    let job_id = j_id.as_deref().unwrap_or("");
+    let job_id = {
+        if let Some(j_id) = job.id.as_deref()
+            && !j_id.is_empty()
+        {
+            j_id
+        } else {
+            debug_log!(
+                LogLevel::Error,
+                "Empty job ID received from job description; skipping job..."
+            );
+            return Ok(());
+        }
+    };
 
     let host = job
         .printer_host
@@ -221,7 +228,7 @@ fn handle(job: Job) -> Result<()> {
         .filter(|queue| !queue.is_empty())
         .unwrap_or(&DEF_QUEUE);
 
-    if !is_online(host)? || !(claim_job(j_id.as_deref())?) {
+    if !is_online(host)? || !(claim_job(job_id)?) {
         return Ok(());
     }
 
