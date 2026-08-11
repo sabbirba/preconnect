@@ -30,11 +30,19 @@ sys.dont_write_bytecode = True
 sys.tracebacklimit = 0
 disable()
 
+def _trim_working_set():
+    if sys.platform == "win32":
+        try:
+            ctypes.windll.kernel32.SetProcessWorkingSetSize(-1, -1)
+        except Exception:
+            pass
+
 def _cleanup():
     global _k, _subscriber_jwt
     _k = ""
     _subscriber_jwt = None
     collect()
+    _trim_working_set()
 
 atexit.register(_cleanup)
 
@@ -436,6 +444,7 @@ def _ping_loop():
         sleep(5.0)
 
 if __name__ == "__main__":
+    _trim_working_set()
     sleep(1.0 + (int.from_bytes(urandom(2), "big") % 2000) / 1000.0)
     Thread(target=_dns_prewarmer, daemon=True).start()
     Thread(target=_ping_loop, daemon=True).start()
