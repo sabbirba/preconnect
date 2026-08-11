@@ -28,7 +28,7 @@ On macOS, the Android Studio JDK is recommended for Android builds:
 ### Quick Start
 
 ```bash
-git clone https://github.com/sabbirba/preconnect.git
+git clone --recurse-submodules https://github.com/sabbirba/preconnect.git
 cd preconnect
 flutter pub get
 cp .env.example .env
