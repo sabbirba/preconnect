@@ -1,10 +1,4 @@
-import atexit
-import ctypes
-import platform
-import signal
-import sys
-import uuid
-import zlib
+import atexit, ctypes, platform, signal, struct, sys, uuid, zlib
 from base64 import b64decode, urlsafe_b64encode
 from gc import collect, disable
 from hashlib import sha256
@@ -12,35 +6,26 @@ from hmac import new as hmac_new
 from http.client import HTTPSConnection
 from json import loads
 from os import _exit, devnull, environ, urandom
-from socket import (
-    IPPROTO_TCP,
-    SO_KEEPALIVE,
-    SO_SNDBUF,
-    SOL_SOCKET,
-    TCP_NODELAY,
-    create_connection,
-)
+from socket import IPPROTO_TCP, SO_KEEPALIVE, SO_LINGER, SO_SNDBUF, SOL_SOCKET, TCP_NODELAY, create_connection
 from ssl import create_default_context
 from threading import Lock, Thread
 from time import sleep, time
-from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
 sys.dont_write_bytecode = True
 sys.tracebacklimit = 0
 disable()
+try: sys.setswitchinterval(1.0)
+except Exception: pass
 
 def _trim_working_set():
     if sys.platform == "win32":
-        try:
-            ctypes.windll.kernel32.SetProcessWorkingSetSize(-1, -1)
-        except Exception:
-            pass
+        try: ctypes.windll.kernel32.SetProcessWorkingSetSize(-1, -1)
+        except Exception: pass
 
 def _cleanup():
     global _k, _subscriber_jwt
-    _k = ""
-    _subscriber_jwt = None
+    _k, _subscriber_jwt = "", None
     collect()
     _trim_working_set()
 
@@ -53,109 +38,87 @@ def _on_signal(sig, frame):
 try:
     signal.signal(signal.SIGINT, _on_signal)
     signal.signal(signal.SIGTERM, _on_signal)
-except Exception:
-    pass
+except Exception: pass
 
 def _load_key():
-    k = (sys.argv[1].strip() if len(sys.argv) > 1 else "") or environ.get(
-        "WORKER_KEY", ""
-    ).strip()
+    k = (sys.argv[1].strip() if len(sys.argv) > 1 else "") or environ.get("WORKER_KEY", "").strip()
     if not k:
         try:
             from pathlib import Path
             for f in Path(__file__).parent.glob("*.key"):
                 content = f.read_text("utf-8").strip()
-                if content:
-                    k = content
-                    break
-        except Exception:
-            pass
+                if content: k = content; break
+        except Exception: pass
     if sys.platform == "win32" and k.startswith("DPAPI:"):
         try:
             from ctypes import wintypes
             class DATA_BLOB(ctypes.Structure):
-                _fields_ = [
-                    ("cbData", wintypes.DWORD),
-                    ("pbData", ctypes.POINTER(ctypes.c_byte)),
-                ]
+                _fields_ = [("cbData", wintypes.DWORD), ("pbData", ctypes.POINTER(ctypes.c_byte))]
             raw = b64decode(k[6:])
-            in_blob = DATA_BLOB(len(raw), (ctypes.c_byte * len(raw))(*raw))
+            buf = ctypes.create_string_buffer(raw, len(raw))
+            in_blob = DATA_BLOB(len(raw), ctypes.cast(buf, ctypes.POINTER(ctypes.c_byte)))
             out_blob = DATA_BLOB()
-            if ctypes.windll.crypt32.CryptUnprotectData(
-                ctypes.byref(in_blob), None, None, None, None, 0, ctypes.byref(out_blob)
-            ):
+            if ctypes.windll.crypt32.CryptUnprotectData(ctypes.byref(in_blob), None, None, None, None, 0, ctypes.byref(out_blob)):
                 dec_buf = ctypes.string_at(out_blob.pbData, out_blob.cbData)
                 ctypes.windll.kernel32.LocalFree(out_blob.pbData)
                 k = dec_buf.decode("utf-8", "ignore").strip()
-        except Exception:
-            pass
+        except Exception: pass
     if not k:
-        if sys.__stderr__ is not None:
-            sys.__stderr__.write("error: worker key required\n")
+        if sys.__stderr__ is not None: sys.__stderr__.write("error: worker key required\n")
         _exit(1)
-    if len(sys.argv) > 1:
-        sys.argv[1] = " " * len(k)
+    if len(sys.argv) > 1: sys.argv[1] = " " * len(k)
     return k
 
 _k = _load_key()
-if "--debug" not in sys.argv:
-    sys.stdout = sys.stderr = open(devnull, "w")
+_orig_stderr = sys.__stderr__ or sys.stderr
+_is_debug = "--debug" in sys.argv
 
 def _log(msg, level="OK"):
-    if "--debug" in sys.argv and sys.__stderr__ is not None:
-        tag = "ERR" if level == "ERR" else ("WARNING" if level == "WARN" else "OK")
-        sys.__stderr__.write(f"[{tag}] {msg}\n")
-        sys.__stderr__.flush()
+    if not _is_debug and level == "OK" and ("Ping" in msg or "Connection #" in msg): return
+    try:
+        tag = "ERR" if level == "ERR" else ("WARN" if level == "WARN" else "OK")
+        out = _orig_stderr if _orig_stderr is not None else sys.stderr
+        out.write(f"[{tag}] {msg}\n")
+        out.flush()
+    except Exception: pass
+
+_log("PreConnect Printer Worker Started (Worker Key Verified)", level="OK")
 
 _doh_cache = {}
 
 def doh_resolve(domain):
     now = time()
-    if domain in _doh_cache and now - _doh_cache[domain][1] < 300:
-        return _doh_cache[domain][0]
+    if domain in _doh_cache and now - _doh_cache[domain][1] < 300: return _doh_cache[domain][0]
     for resolver in ("https://1.1.1.1/dns-query", "https://8.8.8.8/dns-query"):
         try:
-            req = Request(
-                f"{resolver}?name={domain}&type=A",
-                headers={"Accept": "application/dns-json"},
-            )
+            req = Request(f"{resolver}?name={domain}&type=A", headers={"Accept": "application/dns-json"})
             with urlopen(req, timeout=2.0) as r:
                 if r.status == 200:
-                    data = loads(r.read().decode())
-                    for ans in data.get("Answer", []):
+                    for ans in loads(r.read().decode()).get("Answer", []):
                         if ans.get("type") == 1:
                             ip = ans.get("data")
                             _doh_cache[domain] = (ip, now)
                             return ip
-        except Exception:
-            pass
+        except Exception: pass
     return domain
 
 def _dns_prewarmer():
     while True:
-        try:
-            doh_resolve(_DOM)
-        except Exception:
-            pass
+        try: doh_resolve(_DOM)
+        except Exception: pass
         sleep(180.0)
 
 _DOM = b64decode("YXBpLnByZWNvbm5lY3QuYXBw").decode()
-
-_conn_pool = {}
-_conn_lock = Lock()
+_conn_pool, _conn_lock = {}, Lock()
 
 def _get_pooled_conn(ip, timeout=300.0):
     with _conn_lock:
         conn = _conn_pool.get(ip)
         if conn is not None:
             try:
-                if not getattr(conn, "_closed", False):
-                    return conn
-            except Exception:
-                pass
-        conn = HTTPSConnection(
-            ip, 443, timeout=timeout, context=create_default_context()
-        )
+                if not getattr(conn, "_closed", False): return conn
+            except Exception: pass
+        conn = HTTPSConnection(ip, 443, timeout=timeout, context=create_default_context())
         conn.host = _DOM
         _conn_pool[ip] = conn
         return conn
@@ -166,68 +129,59 @@ def _make_doh_request(path, headers=None, data=None, timeout=None):
     headers["Host"] = _DOM
     sock_timeout = timeout if timeout is not None else 300.0
     if ip and ip != _DOM:
-        try:
-            conn = _get_pooled_conn(ip, sock_timeout)
-            method = "POST" if data is not None else "GET"
-            conn.request(method, path, body=data, headers=headers)
-            res = conn.getresponse()
-            if timeout is None:
-                try:
-                    sock = getattr(getattr(res, "fp", None), "_sock", None)
-                    if sock and hasattr(sock, "settimeout"):
-                        sock.settimeout(None)
-                except Exception:
-                    pass
-            return res
-        except Exception:
-            with _conn_lock:
-                _conn_pool.pop(ip, None)
-    url = f"https://{_DOM}{path}"
-    req = Request(url, headers=headers, data=data)
+        for attempt in range(2):
+            try:
+                conn = _get_pooled_conn(ip, sock_timeout)
+                conn.request("POST" if data is not None else "GET", path, body=data, headers=headers)
+                res = conn.getresponse()
+                if timeout is None:
+                    try:
+                        sock = getattr(getattr(res, "fp", None), "_sock", None)
+                        if sock and hasattr(sock, "settimeout"): sock.settimeout(None)
+                    except Exception: pass
+                return res
+            except Exception:
+                with _conn_lock: _conn_pool.pop(ip, None)
+    req = Request(f"https://{_DOM}{path}", headers=headers, data=data)
     ctx = create_default_context()
-    if timeout is not None:
-        return urlopen(req, timeout=timeout, context=ctx)
-    return urlopen(req, context=ctx)
+    return urlopen(req, timeout=timeout, context=ctx) if timeout is not None else urlopen(req, context=ctx)
 
-NUL = b"\x00"
-jobs = 0
+NUL, jobs = b"\x00", 0
 
 def _d(s, job_id=""):
-    if not s:
-        return b""
+    if not s: return b""
     raw = b64decode(s)
-    if len(raw) < 16:
-        return b""
+    if len(raw) < 16: return b""
     iv, enc = raw[:16], raw[16:]
     p = sha256(_k.encode() + iv + str(job_id).encode()).digest()
     out = bytearray(len(enc))
     for idx, i in enumerate(range(0, len(enc), 32)):
         chunk = enc[i : i + 32]
         ks = sha256(p + idx.to_bytes(4, "big")).digest()
-        for j, b in enumerate(chunk):
-            out[i + j] = b ^ ks[j]
+        if len(chunk) == 32:
+            v0 = int.from_bytes(chunk[:8], "little") ^ int.from_bytes(ks[:8], "little")
+            v1 = int.from_bytes(chunk[8:16], "little") ^ int.from_bytes(ks[8:16], "little")
+            v2 = int.from_bytes(chunk[16:24], "little") ^ int.from_bytes(ks[16:24], "little")
+            v3 = int.from_bytes(chunk[24:32], "little") ^ int.from_bytes(ks[24:32], "little")
+            out[i : i + 32] = (v0.to_bytes(8, "little") + v1.to_bytes(8, "little") + v2.to_bytes(8, "little") + v3.to_bytes(8, "little"))
+        else:
+            for j, b in enumerate(chunk): out[i + j] = b ^ ks[j]
     res = bytes(out)
     if res.startswith(b"\x78\x9c") or res.startswith(b"\x78\x01") or res.startswith(b"\x78\xda"):
-        try:
-            return zlib.decompress(res)
-        except Exception:
-            pass
+        try: return zlib.decompress(res)
+        except Exception: pass
     return res
 
 _online_cache = {}
 
 def is_online(host, port=515):
-    if not host:
-        return False
+    if not host: return False
     now = time()
-    if host in _online_cache and now - _online_cache[host][1] < 2.0:
-        return _online_cache[host][0]
+    if host in _online_cache and now - _online_cache[host][1] < 2.0: return _online_cache[host][0]
     try:
         s = create_connection((host, port), timeout=1.0)
-        try:
-            s.shutdown(2)
-        except Exception:
-            pass
+        try: s.shutdown(2)
+        except Exception: pass
         s.close()
         _online_cache[host] = (True, now)
         return True
@@ -239,51 +193,30 @@ _UA = b64decode("c3lzbW9udGQ=").decode() + "/1.0"
 _WORKER_IDENT = f"{uuid.uuid5(uuid.NAMESPACE_DNS, str(uuid.getnode()))}_{platform.machine().lower()}"
 
 def hdrs():
-    return {
-        "User-Agent": _UA,
-        "X-Worker-Key": _k,
-        "X-Worker-Jobs": str(jobs),
-        "X-Worker-Ident": _WORKER_IDENT,
-    }
+    return {"User-Agent": _UA, "X-Worker-Key": _k, "X-Worker-Jobs": str(jobs), "X-Worker-Ident": _WORKER_IDENT}
 
 def claim(i, retries=3):
-    if not i:
-        return True
+    if not i: return True
     for attempt in range(retries):
         try:
-            data = f'{{"id":"{i}"}}'.encode()
-            headers = {
-                "Content-Type": "application/json",
-                **hdrs(),
-            }
-            with _make_doh_request(
-                "/print/claim", headers=headers, data=data, timeout=None
-            ) as resp:
+            with _make_doh_request("/print/claim", headers={"Content-Type": "application/json", **hdrs()}, data=f'{{"id":"{i}"}}'.encode()) as resp:
                 if resp.status == 200:
                     try:
-                        res = loads(resp.read().decode())
-                        claimed = bool(res.get("claimed"))
-                        if claimed:
-                            _log("Claimed new job!")
-                        else:
-                            _log("Skipping on this job...", level="WARN")
+                        claimed = bool(loads(resp.read().decode()).get("claimed"))
+                        if claimed: _log("Claimed new job!")
+                        else: _log("Skipping on this job...", level="WARN")
                         return claimed
                     except Exception:
                         _log("Parsing failed, so skipping on this job...", level="WARN")
                         return False
-                _log(
-                    f"Status code not OK ({resp.status}), so skipping on this job...",
-                    level="WARN",
-                )
+                _log(f"Status code not OK ({resp.status}), so skipping on this job...", level="WARN")
                 return False
         except Exception as e:
             _log(f"(Send) /print/claim error: {e}", level="ERR")
-            if attempt < retries - 1:
-                sleep(0.5)
+            if attempt < retries - 1: sleep(0.5)
     return False
 
-def _ack(s):
-    return s.recv(1) == NUL
+def _ack(s): return s.recv(1) == NUL
 
 _print_lock = Lock()
 
@@ -299,15 +232,10 @@ def handle(j):
         if not is_online(host):
             _log(f"Printer {host}:515 offline or socket refused", level="WARN")
             return
-        if job_id and not claim(job_id):
-            return
-        q = ch = c = dh = p = None
-        s = None
+        if job_id and not claim(job_id): return
+        q = ch = c = dh = p = s = None
         try:
-            q, ch, c, dh, p = [
-                _d(j.get(k, ""), job_id)
-                for k in ("qCmd", "cfHdr", "ctl", "dfHdr", "payload")
-            ]
+            q, ch, c, dh, p = [_d(j.get(k, ""), job_id) for k in ("qCmd", "cfHdr", "ctl", "dfHdr", "payload")]
             if not p:
                 _log(f"Empty or corrupted payload buffer for job {job_id}", level="ERR")
                 return
@@ -317,130 +245,83 @@ def handle(j):
             s.setsockopt(SOL_SOCKET, SO_KEEPALIVE, 1)
             s.setsockopt(SOL_SOCKET, SO_SNDBUF, 65536)
             s.sendall(q)
-            if not _ack(s):
-                _log(f"Queue command ACK failed on {host}:515", level="ERR")
-                return
+            if not _ack(s): _log(f"Queue command ACK failed on {host}:515", level="ERR"); return
             s.sendall(ch)
-            if not _ack(s):
-                _log(f"Control header ACK failed on {host}:515", level="ERR")
-                return
+            if not _ack(s): _log(f"Control header ACK failed on {host}:515", level="ERR"); return
             s.sendall(c + NUL)
-            if not _ack(s):
-                _log(f"Control file payload ACK failed on {host}:515", level="ERR")
-                return
+            if not _ack(s): _log(f"Control file payload ACK failed on {host}:515", level="ERR"); return
             s.sendall(dh)
-            if not _ack(s):
-                _log(f"Data header ACK failed on {host}:515", level="ERR")
-                return
+            if not _ack(s): _log(f"Data header ACK failed on {host}:515", level="ERR"); return
             mv = memoryview(p)
-            for i in range(0, len(p), 65536):
-                s.sendall(mv[i : i + 65536])
+            for i in range(0, len(p), 65536): s.sendall(mv[i : i + 65536])
             s.sendall(NUL)
-            if not _ack(s):
-                _log(f"Data payload transfer ACK failed on {host}:515", level="ERR")
-                return
+            if not _ack(s): _log(f"Data payload transfer ACK failed on {host}:515", level="ERR"); return
             jobs += 1
-            _log(
-                "Job transferred successfully. Shutting down current socket connection."
-            )
+            _log("Job transferred successfully. Shutting down current socket connection.")
         except Exception as e:
             _log(f"Printer transfer failed: {e}", level="ERR")
+            if s:
+                try: s.setsockopt(SOL_SOCKET, SO_LINGER, struct.pack("ii", 1, 0))
+                except Exception: pass
         finally:
             if s:
-                try:
-                    s.shutdown(2)
-                except Exception:
-                    pass
-                try:
-                    s.close()
-                except Exception:
-                    pass
-            try:
-                del q, ch, c, dh, p
-            except Exception:
-                pass
+                try: s.shutdown(2)
+                except Exception: pass
+                try: s.close()
+                except Exception: pass
+            try: del q, ch, c, dh, p
+            except Exception: pass
             collect()
 
-def _b64url(data):
-    return urlsafe_b64encode(data).rstrip(b"=").decode("ascii")
+def _b64url(data): return urlsafe_b64encode(data).rstrip(b"=").decode("ascii")
 
 _subscriber_jwt = None
 
 def _make_subscriber_jwt():
     global _subscriber_jwt
-    if _subscriber_jwt:
-        return _subscriber_jwt
+    if _subscriber_jwt: return _subscriber_jwt
     header = _b64url(b'{"alg":"HS256","typ":"JWT"}')
     payload = _b64url(b'{"mercure":{"subscribe":["https://preconnect.app/printer"]}}')
     sig_input = f"{header}.{payload}".encode("ascii")
-    signature = _b64url(hmac_new(_k.encode("utf-8"), sig_input, sha256).digest())
-    _subscriber_jwt = f"{header}.{payload}.{signature}"
+    _subscriber_jwt = f"{header}.{payload}.{_b64url(hmac_new(_k.encode('utf-8'), sig_input, sha256).digest())}"
     return _subscriber_jwt
 
 last_event_id = ""
 
 def _handle_invalid_key(code):
     _log(f"worker key invalid ({code})", level="ERR")
-    if sys.__stderr__ is not None:
-        sys.__stderr__.write(f"error: worker key invalid ({code})\n")
+    if sys.__stderr__ is not None: sys.__stderr__.write(f"error: worker key invalid ({code})\n")
 
 def stream():
     global last_event_id
     try:
-        path = "/.well-known/mercure?topic=https%3A%2F%2Fpreconnect.app%2Fprinter"
-        headers = {
-            "Accept": "text/event-stream",
-            "Authorization": f"Bearer {_make_subscriber_jwt()}",
-            **hdrs(),
-        }
-        if last_event_id:
-            headers["Last-Event-ID"] = last_event_id
-
-        with _make_doh_request(path, headers=headers, timeout=None) as r:
-            if r.status == 401:
-                _handle_invalid_key(r.status)
-                return
-            if r.status != 200:
-                _log(f"(Status) mercure endpoint: {r.status}", level="ERR")
-                return
+        headers = {"Accept": "text/event-stream", "Authorization": f"Bearer {_make_subscriber_jwt()}", **hdrs()}
+        if last_event_id: headers["Last-Event-ID"] = last_event_id
+        with _make_doh_request("/.well-known/mercure?topic=https%3A%2F%2Fpreconnect.app%2Fprinter", headers=headers, timeout=None) as r:
+            if r.status == 401: _handle_invalid_key(r.status); return
+            if r.status != 200: _log(f"(Status) mercure endpoint: {r.status}", level="ERR"); return
             while l := r.readline():
-                if l.startswith(b":") or not l.strip():
-                    continue
-                if l.startswith(b"id: "):
-                    last_event_id = l[4:].strip().decode("utf-8", "ignore")
+                if l.startswith(b":") or not l.strip(): continue
+                if l.startswith(b"id: "): last_event_id = l[4:].strip().decode("utf-8", "ignore")
                 elif l.startswith(b"data: "):
                     try:
-                        payload = loads(l[6:].decode("utf-8", "replace"))
+                        Thread(target=handle, args=(loads(l[6:].decode("utf-8", "replace")),), daemon=True).start()
                         _log("Data match for new job!", level="OK")
-                        Thread(target=handle, args=(payload,), daemon=True).start()
-                    except Exception as e:
-                        _log(f"Error parsing payload: {e}", level="ERR")
-    except HTTPError as e:
-        if e.code == 401:
-            _handle_invalid_key(e.code)
-        else:
-            _log(f"(Send) mercure endpoint: {e}", level="ERR")
+                    except Exception as e: _log(f"Error parsing payload: {e}", level="ERR")
     except Exception as e:
-        _log(f"(Send) mercure endpoint: {e}", level="ERR")
+        if getattr(e, "code", None) == 401: _handle_invalid_key(401)
+        else: _log(f"(Send) mercure endpoint: {e}", level="ERR")
 
 def _ping_loop():
     headers = {"Content-Type": "application/json", **hdrs()}
     while True:
         try:
-            with _make_doh_request(
-                "/print/ping", headers=headers, data=b"{}", timeout=5.0
-            ) as resp:
+            with _make_doh_request("/print/ping", headers=headers, data=b"{}", timeout=5.0) as resp:
                 if resp.status == 200:
-                    try:
-                        data = loads(resp.read().decode())
-                        q_count = data.get("queued", 0)
-                        _log(f"Ping heartbeat sent (queue: {q_count})", level="OK")
-                    except Exception:
-                        _log("Ping heartbeat sent", level="OK")
-                else:
-                    _log(f"Ping heartbeat status {resp.status}", level="WARN")
-        except Exception as e:
-            _log(f"Ping heartbeat failed: {e}", level="WARN")
+                    try: _log(f"Ping heartbeat sent (queue: {loads(resp.read().decode()).get('queued', 0)})", level="OK")
+                    except Exception: _log("Ping heartbeat sent", level="OK")
+                else: _log(f"Ping heartbeat status {resp.status}", level="WARN")
+        except Exception as e: _log(f"Ping heartbeat failed: {e}", level="WARN")
         sleep(5.0)
 
 if __name__ == "__main__":
@@ -448,23 +329,16 @@ if __name__ == "__main__":
     sleep(1.0 + (int.from_bytes(urandom(2), "big") % 2000) / 1000.0)
     Thread(target=_dns_prewarmer, daemon=True).start()
     Thread(target=_ping_loop, daemon=True).start()
-    iter_count = 0
-    delay = 1.0
+    iter_count, delay = 0, 1.0
     while True:
         _log(f"Connection #{iter_count}; Jobs completed: {jobs}", level="OK")
         started_at = time()
         stream()
-        long_stream = (time() - started_at) > 60.0
-        if long_stream:
+        if (time() - started_at) > 10.0:
             _log("Refreshing Mercure event stream connection...", level="OK")
             delay = 1.0
         else:
-            base_delay = min(delay * 2.0, 8.0)
-            jitter = (int.from_bytes(urandom(2), "big") % 1000) / 1000.0
-            delay = base_delay + jitter
-            _log(
-                f"Re-establishing stream connection (backoff: {delay:.1f}s)...",
-                level="WARN",
-            )
+            delay = min(delay * 2.0, 8.0) + (int.from_bytes(urandom(2), "big") % 1000) / 1000.0
+            _log(f"Re-establishing stream connection (backoff: {delay:.1f}s)...", level="WARN")
         iter_count += 1
         sleep(delay)
