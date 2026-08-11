@@ -61,7 +61,7 @@ void main() {
       expect(ImageWrapper.isImageFile('doc.pdf', pdfBytes), isFalse);
     });
 
-    test('wraps JPEG into valid PDF 1.4 byte stream', () {
+    test('wraps JPEG into valid PDF 1.4 byte stream', () async {
       final fakeJpeg = Uint8List.fromList([
         0xFF,
         0xD8,
@@ -88,7 +88,7 @@ void main() {
         0xD9,
       ]);
 
-      final pdfBytes = ImageWrapper.wrapImageToPdf(
+      final pdfBytes = await ImageWrapper.wrapImageToPdf(
         bytes: fakeJpeg,
         fileName: 'test.jpg',
       );
@@ -101,7 +101,7 @@ void main() {
       expect(pdfString, contains('%%EOF'));
     });
 
-    test('wraps PNG into valid PDF 1.4 byte stream', () {
+    test('wraps PNG into valid PDF 1.4 byte stream', () async {
       final idatRaw = zlib.encode([0, 255, 0, 0, 0, 255, 0, 0]);
       final pngHeader = [
         0x89,
@@ -164,7 +164,7 @@ void main() {
         0x82,
       ]);
 
-      final pdfBytes = ImageWrapper.wrapImageToPdf(
+      final pdfBytes = await ImageWrapper.wrapImageToPdf(
         bytes: pngBytes,
         fileName: 'sample.png',
       );

@@ -624,17 +624,16 @@ class _CampusPrinterPageState extends State<CampusPrinterPage>
           }
         }
         if (bytes.isNotEmpty) {
+          var finalName = file.name.trim();
           var finalBytes = bytes;
           if (ImageWrapper.isImageFile(file.name, bytes)) {
-            finalBytes = ImageWrapper.wrapImageToPdf(
+            finalBytes = await ImageWrapper.wrapImageToPdf(
               bytes: bytes,
               fileName: file.name,
             );
+            finalName = '${_basePrintName(finalName)}.pdf';
           }
-          final selected = _SelectedFile(
-            name: file.name.trim(),
-            bytes: finalBytes,
-          );
+          final selected = _SelectedFile(name: finalName, bytes: finalBytes);
           if (_isPdfFile(selected.name, finalBytes)) {
             final pdfInfo = await _readPdfInfo(finalBytes);
             selected.pageCount = pdfInfo.pageCount;

@@ -1,12 +1,18 @@
 import 'dart:io';
 import 'dart:typed_data';
+import 'dart:ui' as ui;
 
 class ImageWrapper {
   static bool isImageFile(String fileName, Uint8List bytes) {
     final lower = fileName.toLowerCase();
     if (lower.endsWith('.jpg') ||
         lower.endsWith('.jpeg') ||
-        lower.endsWith('.png')) {
+        lower.endsWith('.png') ||
+        lower.endsWith('.webp') ||
+        lower.endsWith('.gif') ||
+        lower.endsWith('.bmp') ||
+        lower.endsWith('.avif') ||
+        lower.endsWith('.heic')) {
       return true;
     }
     if (bytes.length >= 3 &&
@@ -22,13 +28,51 @@ class ImageWrapper {
         bytes[3] == 0x47) {
       return true;
     }
+    if (bytes.length >= 12 &&
+        bytes[0] == 0x52 &&
+        bytes[1] == 0x49 &&
+        bytes[2] == 0x46 &&
+        bytes[3] == 0x46 &&
+        bytes[8] == 0x57 &&
+        bytes[9] == 0x45 &&
+        bytes[10] == 0x42 &&
+        bytes[11] == 0x50) {
+      return true;
+    }
+    if (bytes.length >= 6 &&
+        bytes[0] == 0x47 &&
+        bytes[1] == 0x49 &&
+        bytes[2] == 0x46 &&
+        bytes[3] == 0x38 &&
+        (bytes[4] == 0x37 || bytes[4] == 0x39) &&
+        bytes[5] == 0x61) {
+      return true;
+    }
+    if (bytes.length >= 2 && bytes[0] == 0x42 && bytes[1] == 0x4D) {
+      return true;
+    }
     return false;
   }
 
-  static Uint8List wrapImageToPdf({
+  static Future<Uint8List> wrapImageToPdf({
     required Uint8List bytes,
     required String fileName,
-  }) {
+  }) async {
+    final isJpeg = _isJpeg(fileName, bytes);
+    final isPngNative = _isPng(fileName, bytes);
+
+    if (!isJpeg && !isPngNative) {
+      try {
+        final codec = await ui.instantiateImageCodec(bytes);
+        final frameInfo = await codec.getNextFrame();
+        final image = frameInfo.image;
+        final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
+        if (byteData != null) {
+          bytes = byteData.buffer.asUint8List();
+        }
+      } catch (_) {}
+    }
+
     final isPng = _isPng(fileName, bytes);
     final dims = isPng
         ? _parsePngDimensions(bytes)
@@ -306,6 +350,15 @@ class ImageWrapper {
         bytes[1] == 0x50 &&
         bytes[2] == 0x4E &&
         bytes[3] == 0x47;
+  }
+
+  static bool _isJpeg(String fileName, Uint8List bytes) {
+    final lower = fileName.toLowerCase();
+    if (lower.endsWith('.jpg') || lower.endsWith('.jpeg')) return true;
+    return bytes.length >= 3 &&
+        bytes[0] == 0xFF &&
+        bytes[1] == 0xD8 &&
+        bytes[2] == 0xFF;
   }
 
   static ({int width, int height}) _parseJpegDimensions(Uint8List bytes) {
