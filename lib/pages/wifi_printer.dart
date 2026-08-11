@@ -14,7 +14,6 @@ import 'package:preconnect/api/auth.dart';
 import 'package:preconnect/api/profile.dart';
 import 'package:preconnect/pages/card_section.dart';
 import 'package:preconnect/pages/ui_kit.dart';
-import 'package:preconnect/tools/network_assist.dart';
 import 'package:preconnect/tools/app_storage.dart';
 import 'package:preconnect/tools/http/http_utils.dart';
 import 'package:preconnect/tools/storage_keys.dart';
@@ -256,7 +255,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage>
   String? _photoUrl;
   String _studentId = '';
   String _studentName = '';
-  String _wifiName = '';
+  String _wifiName = 'Student Wi-Fi';
   String _duplexMode = 'OFF';
   String _collateMode = 'OFF';
   String _pagesPerSheet = '1-in-1';
@@ -289,13 +288,6 @@ class _CampusPrinterPageState extends State<CampusPrinterPage>
     WidgetsBinding.instance.addObserver(this);
     _copiesController.addListener(_handleCopiesControllerChanged);
     _studentIdController.addListener(_handleStudentIdControllerChanged);
-    if (AndroidNetworkAssist.isSupported) {
-      _networkStatusSubscription = AndroidNetworkAssist.statusStream.listen((
-        status,
-      ) {
-        unawaited(_handleNetworkStatusChanged(status));
-      });
-    }
     _connectivitySubscription = Connectivity().onConnectivityChanged.listen((
       results,
     ) {
@@ -433,42 +425,13 @@ class _CampusPrinterPageState extends State<CampusPrinterPage>
     super.dispose();
   }
 
-  Future<void> _handleNetworkStatusChanged(AndroidNetworkStatus status) async {
-    if (!mounted) return;
-    _setWifiNameFromStatus(status);
-    final transport = status.transport.trim().toLowerCase();
-    final connected = status.connected;
-    if (!connected) {
-      setState(() {
-        _hasInternet = false;
-        _printerHost = '';
-      });
-      return;
-    }
-    if (transport != 'wifi') {
-      if (_printerHost.isNotEmpty) {
-        setState(() {
-          _printerHost = '';
-        });
-      }
-    }
-    unawaited(_discoverPrinter());
-  }
-
   Future<void> _discoverPrinter() async {
     if (_discovering) return;
     setState(() {
       _discovering = true;
     });
     try {
-      String wifiName = 'Wi-Fi Network';
-
-      if (AndroidNetworkAssist.isSupported) {
-        final wifiStatus = await AndroidNetworkAssist.getNetworkStatus();
-        if (wifiStatus != null && wifiStatus.connected) {
-          wifiName = (wifiStatus.ssid ?? 'Wi-Fi Network').trim();
-        }
-      }
+      const String wifiName = 'Student Wi-Fi';
 
       if (mounted) {
         setState(() {
@@ -570,26 +533,12 @@ class _CampusPrinterPageState extends State<CampusPrinterPage>
   }
 
   Future<void> _refreshWifiName() async {
-    if (AndroidNetworkAssist.isSupported) {
-      final status = await AndroidNetworkAssist.getNetworkStatus();
-      if (!mounted || status == null) return;
-      _setWifiNameFromStatus(status);
-    } else {
-      final subnets = await _currentNetworkFingerprint();
-      if (mounted && subnets.isNotEmpty && _wifiName.isEmpty) {
-        setState(() {
-          _wifiName = 'Wi-Fi Network';
-        });
-      }
+    final subnets = await _currentNetworkFingerprint();
+    if (mounted && subnets.isNotEmpty && _wifiName.isEmpty) {
+      setState(() {
+        _wifiName = 'Student Wi-Fi';
+      });
     }
-  }
-
-  void _setWifiNameFromStatus(AndroidNetworkStatus status) {
-    final wifiName = (status.ssid ?? '').trim();
-    if (!mounted || wifiName == _wifiName) return;
-    setState(() {
-      _wifiName = wifiName;
-    });
   }
 
   Future<List<String>> _currentLocalIpv4Prefixes() async {
@@ -1044,12 +993,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage>
               ],
             ),
           ),
-          const Gap(8),
-          BracuLocationPermissionBanner(
-            onFixed: () {
-              unawaited(_discoverPrinter());
-            },
-          ),
+
           const Gap(8),
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -1276,48 +1220,23 @@ class _CampusPrinterPageState extends State<CampusPrinterPage>
                 context,
                 stepNumber: '•',
                 title: 'Connected',
-                body:
-                    'The printer is connected and ready. Your print job will be sent instantly.',
+                body: 'Your print job will be sent instantly.',
               ),
               const Gap(12),
               _buildStepItem(
                 context,
                 stepNumber: '•',
                 title: 'Not found',
-                body: 'No printer found on your network.',
+                body: 'No active printer found on campus network.',
               ),
               const Gap(12),
               _buildStepItem(
                 context,
                 stepNumber: '•',
                 title: 'Offline',
-                body: 'Your device has no active internet connection.',
+                body: 'Your device has no internet connection.',
               ),
               const Gap(12),
-              Text.rich(
-                TextSpan(
-                  style: TextStyle(
-                    color: textSecondary,
-                    fontSize: 12,
-                    height: 1.4,
-                    fontWeight: FontWeight.w500,
-                  ),
-                  children: [
-                    TextSpan(
-                      text: 'Note: ',
-                      style: TextStyle(
-                        color: textSecondary,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                    const TextSpan(
-                      text:
-                          'Print jobs are sent directly over local Wi-Fi to the printer.',
-                    ),
-                  ],
-                ),
-              ),
-              const Gap(16),
               Text(
                 'Layout & Print Options',
                 style: TextStyle(
