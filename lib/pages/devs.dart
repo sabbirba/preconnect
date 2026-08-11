@@ -14,7 +14,6 @@ import 'package:preconnect/tools/build_info.dart';
 import 'package:preconnect/tools/cached_image.dart';
 import 'package:preconnect/tools/cdn_cache.dart';
 import 'package:preconnect/tools/preconnect_constants.dart';
-import 'package:preconnect/tools/token_storage.dart';
 
 const String _githubToken = String.fromEnvironment('GITHUB_TOKEN');
 const String _contributorsRosterUrl =
@@ -335,15 +334,6 @@ class _DevsPageState extends State<DevsPage> {
     _secretTapCount = 0;
     if (!mounted) return;
 
-    final lockService = AppLockService();
-    final isBiometricAvailable = await lockService.isBiometricAvailable();
-    if (!isBiometricAvailable) {
-      return;
-    }
-    final verified = await lockService.authenticateBiometricOnly();
-    if (!verified) return;
-
-    if (!mounted) return;
     await Navigator.of(context).push(
       MaterialPageRoute(
         settings: const RouteSettings(

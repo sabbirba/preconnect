@@ -20,6 +20,7 @@ import 'package:preconnect/tools/http/http_utils.dart';
 import 'package:preconnect/tools/storage_keys.dart';
 import 'package:preconnect/tools/app_log.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
+import 'package:preconnect/tools/image_wrapper.dart';
 
 part 'wifi_printer_sections/printer_models.dart';
 
@@ -277,33 +278,21 @@ class _CampusPrinterPageState extends State<CampusPrinterPage>
   StreamSubscription? _networkStatusSubscription;
   StreamSubscription? _connectivitySubscription;
   StreamSubscription? _refreshBusSubscription;
-  String _lastNetworkFingerprint = '';
   final TextEditingController _copiesController = TextEditingController(
     text: '1',
   );
   final TextEditingController _studentIdController = TextEditingController();
-  void _prewarmPrintWorker() {
-    unawaited(
-      HttpUtils.client
-          .head(Uri.parse('${ApiConfig.realtimeApiBase}/print'))
-          .timeout(const Duration(seconds: 2))
-          .then((_) {})
-          .catchError((_) {}),
-    );
-  }
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _prewarmPrintWorker();
     _copiesController.addListener(_handleCopiesControllerChanged);
     _studentIdController.addListener(_handleStudentIdControllerChanged);
     if (AndroidNetworkAssist.isSupported) {
       _networkStatusSubscription = AndroidNetworkAssist.statusStream.listen((
         status,
       ) {
-        _prewarmPrintWorker();
         unawaited(_handleNetworkStatusChanged(status));
       });
     }
@@ -316,19 +305,13 @@ class _CampusPrinterPageState extends State<CampusPrinterPage>
           _hasInternet = hasNet;
           if (!hasNet) {
             _printerHost = '';
-            _workerAvailable = false;
           }
         });
-      }
-      if (hasNet) {
-        _prewarmPrintWorker();
       }
     });
     _refreshBusSubscription = RefreshBus.instance.stream.listen((reason) {
       final r = (reason ?? '').toString();
-      if (r == 'printer') {
-        unawaited(_checkWorkerHealth());
-      } else if (r == 'mercure_event') {
+      if (r == 'mercure_event' || r == 'printer') {
         _refreshPrinterInfo();
       }
     });
@@ -450,13 +433,6 @@ class _CampusPrinterPageState extends State<CampusPrinterPage>
     super.dispose();
   }
 
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) {
-      _prewarmPrintWorker();
-    }
-  }
-
   Future<void> _handleNetworkStatusChanged(AndroidNetworkStatus status) async {
     if (!mounted) return;
     _setWifiNameFromStatus(status);
@@ -466,7 +442,6 @@ class _CampusPrinterPageState extends State<CampusPrinterPage>
       setState(() {
         _hasInternet = false;
         _printerHost = '';
-        _workerAvailable = false;
       });
       return;
     }
@@ -477,12 +452,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage>
         });
       }
     }
-    final currentNetworkFingerprint = await _currentNetworkFingerprint();
-    if (currentNetworkFingerprint.isEmpty ||
-        currentNetworkFingerprint == _lastNetworkFingerprint) {
-      return;
-    }
-    _lastNetworkFingerprint = currentNetworkFingerprint;
+    unawaited(_discoverPrinter());
   }
 
   Future<void> _discoverPrinter() async {
@@ -506,22 +476,42 @@ class _CampusPrinterPageState extends State<CampusPrinterPage>
         });
       }
 
-      final networkKey = await _currentNetworkFingerprint();
-      _lastNetworkFingerprint = networkKey;
+      var foundDirectHost = '';
+      var foundWorkerOnline = false;
 
-      await Future.wait([
-        _WifiPrinterDiscovery.findLprPrinters(
-          port: _CampusPrinterConfig.current.port,
-          campusHosts: _CampusPrinterConfig.current.hosts,
-        ).then((printers) {
-          if (mounted) {
+      final tcpProbe =
+          _probeDirectTcpHost(
+            _CampusPrinterConfig.current.hosts.first,
+            _CampusPrinterConfig.current.port,
+            const Duration(milliseconds: 2500),
+          ).then((connected) {
+            if (connected && mounted) {
+              foundDirectHost = _CampusPrinterConfig.current.hosts.first;
+              setState(() {
+                _printerHost = foundDirectHost;
+              });
+            }
+          });
+
+      final workerProbe = _checkWorkerHealth().then((online) {
+        if (online && mounted) {
+          foundWorkerOnline = true;
+          if (_printerHost.isEmpty) {
             setState(() {
-              _printerHost = printers.isNotEmpty ? printers.first.address : '';
+              _workerAvailable = true;
             });
           }
-        }),
-        _checkWorkerHealth(),
-      ]);
+        }
+      });
+
+      await Future.wait([tcpProbe, workerProbe]);
+
+      if (mounted) {
+        setState(() {
+          _printerHost = foundDirectHost;
+          _workerAvailable = foundDirectHost.isEmpty && foundWorkerOnline;
+        });
+      }
     } catch (e) {
       await AppLog.write('Printer discovery failed: $e');
     } finally {
@@ -533,31 +523,44 @@ class _CampusPrinterPageState extends State<CampusPrinterPage>
     }
   }
 
-  Future<void> _checkWorkerHealth() async {
-    var workerOnline = false;
+  Future<bool> _probeDirectTcpHost(
+    String host,
+    int port,
+    Duration timeout,
+  ) async {
+    Socket? socket;
+    try {
+      socket = await Socket.connect(host, port, timeout: timeout);
+      return true;
+    } catch (_) {
+      return false;
+    } finally {
+      socket?.destroy();
+    }
+  }
+
+  Future<bool> _checkWorkerHealth() async {
     try {
       final url = Uri.parse(
         '${ApiConfig.realtimeApiBase}/print/stats?_t=${DateTime.now().millisecondsSinceEpoch}',
       );
-      final response = await HttpUtils.client.get(
-        url,
-        headers: const <String, String>{
-          'Cache-Control': 'no-cache, no-store, must-revalidate',
-          'Pragma': 'no-cache',
-        },
-      );
+      final response = await HttpUtils.client
+          .get(
+            url,
+            headers: const <String, String>{
+              'Cache-Control': 'no-cache, no-store, must-revalidate',
+              'Pragma': 'no-cache',
+            },
+          )
+          .timeout(const Duration(milliseconds: 2500));
       if (response.statusCode == 200) {
         final decoded = jsonDecode(response.body);
-        if (decoded is Map) {
-          workerOnline = decoded['status']?.toString() == 'online';
+        if (decoded is Map<String, dynamic>) {
+          return decoded['status']?.toString().toLowerCase() == 'online';
         }
       }
     } catch (_) {}
-    if (mounted) {
-      setState(() {
-        _workerAvailable = workerOnline;
-      });
-    }
+    return false;
   }
 
   Future<String> _currentNetworkFingerprint() async {
@@ -590,7 +593,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage>
   }
 
   Future<List<String>> _currentLocalIpv4Prefixes() async {
-    final subnets = await _WifiPrinterDiscovery._localIpv4Subnets();
+    final subnets = await _localIpv4Subnets();
     final prefixes = subnets.map((subnet) => subnet.prefix).toSet().toList()
       ..sort();
     return prefixes;
@@ -672,9 +675,19 @@ class _CampusPrinterPageState extends State<CampusPrinterPage>
           }
         }
         if (bytes.isNotEmpty) {
-          final selected = _SelectedFile(name: file.name.trim(), bytes: bytes);
-          if (_isPdfFile(selected.name, bytes)) {
-            final pdfInfo = await _readPdfInfo(bytes);
+          var finalBytes = bytes;
+          if (ImageWrapper.isImageFile(file.name, bytes)) {
+            finalBytes = ImageWrapper.wrapImageToPdf(
+              bytes: bytes,
+              fileName: file.name,
+            );
+          }
+          final selected = _SelectedFile(
+            name: file.name.trim(),
+            bytes: finalBytes,
+          );
+          if (_isPdfFile(selected.name, finalBytes)) {
+            final pdfInfo = await _readPdfInfo(finalBytes);
             selected.pageCount = pdfInfo.pageCount;
           }
           nextFiles.add(selected);
@@ -771,27 +784,8 @@ class _CampusPrinterPageState extends State<CampusPrinterPage>
   }
 
   Future<({int? pageCount})> _readPdfInfo(Uint8List bytes) async {
-    try {
-      final content = latin1.decode(bytes, allowInvalid: true);
-      final pagesCountRegExp = RegExp(r'/Type\s*/Pages\b[^]*?/Count\s+(\d+)');
-      final match = pagesCountRegExp.firstMatch(content);
-      if (match != null) {
-        final count = int.tryParse(match.group(1) ?? '');
-        if (count != null && count > 0) {
-          return (pageCount: count);
-        }
-      }
-
-      final pageObjRegExp = RegExp(r'/Type\s*/Page\b');
-      final matches = pageObjRegExp.allMatches(content).length;
-      if (matches > 0) {
-        return (pageCount: matches);
-      }
-
-      return (pageCount: null);
-    } catch (_) {
-      return (pageCount: null);
-    }
+    final count = ImageWrapper.readPdfPageCount(bytes);
+    return (pageCount: count > 0 ? count : null);
   }
 
   Future<void> _sendToPrinter() async {
@@ -994,19 +988,19 @@ class _CampusPrinterPageState extends State<CampusPrinterPage>
     if (!_hasInternet) {
       printerSubtitle = 'Offline';
       subtitleColor = null;
-    } else if (_discovering) {
-      printerSubtitle = 'Scanning..';
-      subtitleColor = null;
     } else if (_printerHost.isNotEmpty || _workerAvailable) {
       printerSubtitle = 'Connected';
       subtitleColor = const Color(0xFF22B573);
+    } else if (_discovering) {
+      printerSubtitle = 'Scanning..';
+      subtitleColor = null;
     } else {
       printerSubtitle = 'Not found';
       subtitleColor = null;
     }
 
     return BracuPageScaffold(
-      title: 'Campus Printer',
+      title: 'Printer',
       subtitle: printerSubtitle,
       subtitleColor: subtitleColor,
       icon: Icons.local_printshop_outlined,
@@ -1318,7 +1312,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage>
                     ),
                     const TextSpan(
                       text:
-                          'Queued jobs automatically expire after 24 hours if not released at the printer.',
+                          'Print jobs are sent directly over local Wi-Fi to the printer.',
                     ),
                   ],
                 ),
@@ -1785,7 +1779,7 @@ class _LprPrintClient {
             connectedSocket = await Socket.connect(
               printerHost,
               port,
-              timeout: const Duration(seconds: 1),
+              timeout: const Duration(seconds: 5),
             );
           } catch (_) {}
         }
@@ -2358,139 +2352,37 @@ class _LprAckReader {
   Future<void> cancel() => _iterator.cancel();
 }
 
-class _WifiPrinterCandidate {
-  const _WifiPrinterCandidate({
-    required this.address,
-    required this.interfaceName,
-  });
-
-  final String address;
-  final String interfaceName;
-}
-
-class _WifiPrinterDiscovery {
-  _WifiPrinterDiscovery._();
-
-  static Future<List<_WifiPrinterCandidate>> findLprPrinters({
-    int port = 515,
-    Duration timeout = const Duration(milliseconds: 250),
-    int concurrency = 64,
-    int limit = 3,
-    int maxSubnets = 2,
-    List<String> preferredHosts = const <String>[],
-    List<String> campusHosts = const <String>['172.16.0.111'],
-  }) async {
-    final subnets = await _localIpv4Subnets();
-    final found = <_WifiPrinterCandidate>[];
-    final seen = <String>{};
-    final targets = <Map<String, dynamic>>[];
-
-    for (final host in preferredHosts) {
-      final h = host.trim();
-      if (h.isNotEmpty && seen.add(h)) {
-        targets.add({'address': h, 'type': 'saved', 'timeout': timeout});
+Future<List<_Ipv4Subnet>> _localIpv4Subnets() async {
+  if (kIsWeb) return <_Ipv4Subnet>[];
+  final subnets = <_Ipv4Subnet>[];
+  final seen = <String>{};
+  try {
+    final interfaces = await NetworkInterface.list(
+      type: InternetAddressType.IPv4,
+      includeLoopback: false,
+    );
+    for (final interface in interfaces) {
+      for (final address in interface.addresses) {
+        final parts = address.address.split('.');
+        if (parts.length != 4) continue;
+        final octets = parts.map(int.tryParse).toList();
+        if (octets.any((part) => part == null)) continue;
+        final first = octets[0]!;
+        final second = octets[1]!;
+        if (first == 127 || first == 169 && second == 254) continue;
+        final prefix = '${octets[0]}.${octets[1]}.${octets[2]}';
+        if (!seen.add(prefix)) continue;
+        subnets.add(
+          _Ipv4Subnet(
+            prefix: prefix,
+            hostOctet: octets[3]!,
+            interfaceName: interface.name,
+          ),
+        );
       }
     }
-    for (final host in campusHosts) {
-      final h = host.trim();
-      if (h.isNotEmpty && seen.add(h)) {
-        targets.add({
-          'address': h,
-          'type': 'campus',
-          'timeout': const Duration(milliseconds: 500),
-        });
-      }
-    }
-
-    var subnetCount = 0;
-    for (final subnet in subnets) {
-      subnetCount++;
-      if (subnetCount > maxSubnets) break;
-      for (var host = 1; host <= 254; host++) {
-        if (host == subnet.hostOctet) continue;
-        final address = '${subnet.prefix}.$host';
-        if (seen.add(address)) {
-          targets.add({
-            'address': address,
-            'type': subnet.interfaceName,
-            'timeout': timeout,
-          });
-        }
-      }
-    }
-
-    final active = <Future<void>>{};
-    for (final target in targets) {
-      if (found.length >= limit) break;
-      final address = target['address'] as String;
-      final type = target['type'] as String;
-      final probeTimeout = target['timeout'] as Duration;
-
-      late Future<void> probe;
-      probe = _probe(address, port, probeTimeout)
-          .then((open) {
-            if (open && found.length < limit) {
-              found.add(
-                _WifiPrinterCandidate(address: address, interfaceName: type),
-              );
-            }
-          })
-          .whenComplete(() => active.remove(probe));
-
-      active.add(probe);
-      if (active.length >= concurrency) {
-        await Future.any(active);
-      }
-    }
-
-    await Future.wait(active);
-    return found;
-  }
-
-  static Future<bool> _probe(String address, int port, Duration timeout) async {
-    Socket? socket;
-    try {
-      socket = await Socket.connect(address, port, timeout: timeout);
-      return true;
-    } catch (_) {
-      return false;
-    } finally {
-      socket?.destroy();
-    }
-  }
-
-  static Future<List<_Ipv4Subnet>> _localIpv4Subnets() async {
-    if (kIsWeb) return <_Ipv4Subnet>[];
-    final subnets = <_Ipv4Subnet>[];
-    final seen = <String>{};
-    try {
-      final interfaces = await NetworkInterface.list(
-        type: InternetAddressType.IPv4,
-        includeLoopback: false,
-      );
-      for (final interface in interfaces) {
-        for (final address in interface.addresses) {
-          final parts = address.address.split('.');
-          if (parts.length != 4) continue;
-          final octets = parts.map(int.tryParse).toList();
-          if (octets.any((part) => part == null)) continue;
-          final first = octets[0]!;
-          final second = octets[1]!;
-          if (first == 127 || first == 169 && second == 254) continue;
-          final prefix = '${octets[0]}.${octets[1]}.${octets[2]}';
-          if (!seen.add(prefix)) continue;
-          subnets.add(
-            _Ipv4Subnet(
-              prefix: prefix,
-              hostOctet: octets[3]!,
-              interfaceName: interface.name,
-            ),
-          );
-        }
-      }
-    } catch (_) {}
-    return subnets;
-  }
+  } catch (_) {}
+  return subnets;
 }
 
 class _Ipv4Subnet {

@@ -5,6 +5,12 @@ Entries are written for students, not developers — plain language, no commit h
 
 ## [Unreleased]
 
+## [2.0.6] — 2026-08-12
+
+- Improved Image Printing: Fixed image printing errors with automatic PDF conversion.
+- Accurate Page Counting: Seamlessly supports single and multi-page documents (1 to 100+ pages).
+- Faster Realtime Printer Status: Instant connection status checks with direct Wi-Fi and relay worker.
+
 ## [2.0.5] — 2026-08-02
 
 - Optimize schedule handling and improve connectivity status management.
