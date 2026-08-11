@@ -1,0 +1,3 @@
+[submodule "vendor/preprintd"]
+	path = vendor/preprintd
+	url = https://github.com/hitblast/preprintd.git
