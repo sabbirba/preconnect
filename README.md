@@ -130,7 +130,7 @@ Want to build, test, or contribute locally? Follow the full setup guide in [CONT
 1. Clone and install packages:
 
 ```bash
-git clone --recurse-submodules https://github.com/sabbirba/preconnect.git
+git clone https://github.com/sabbirba/preconnect.git
 cd preconnect
 flutter pub get
 cp .env.example .env

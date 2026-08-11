@@ -28,7 +28,7 @@ On macOS, the Android Studio JDK is recommended for Android builds:
 ### Quick Start
 
 ```bash
-git clone --recurse-submodules https://github.com/sabbirba/preconnect.git
+git clone https://github.com/sabbirba/preconnect.git
 cd preconnect
 flutter pub get
 cp .env.example .env
@@ -43,6 +43,16 @@ flutter devices
 ```
 
 Fix the Flutter Doctor items for the platform you want to run. It is okay if iOS or macOS checks fail when you only plan to work on Android or a browser extension.
+
+### Daemon/Library Development
+
+If you specifically want to work on the daemons or the custom libraries PreConnect uses, then make sure to change the clone command to:
+
+```bash
+git clone --recurse-submodules https://github.com/sabbirba/preconnect.git
+```
+
+This will add the detached custom dependencies under `vendor/`.
 
 ## Agent Tooling
 
