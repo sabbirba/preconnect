@@ -577,6 +577,7 @@ jobs:
 
       - name: Configure Xcode Parallel Builds
         run: |
+          git config --global http.sslVerify false
           defaults write com.apple.dt.Xcode IDEBuildOperationMaxNumberOfConcurrentCompileJobs 4
           defaults write com.apple.dt.Xcode-CLT IDEBuildOperationMaxNumberOfConcurrentCompileJobs 4
 
@@ -761,6 +762,7 @@ jobs:
 
       - name: Configure Xcode Parallel Builds
         run: |
+          git config --global http.sslVerify false
           defaults write com.apple.dt.Xcode IDEBuildOperationMaxNumberOfConcurrentCompileJobs 4
           defaults write com.apple.dt.Xcode-CLT IDEBuildOperationMaxNumberOfConcurrentCompileJobs 4
 
