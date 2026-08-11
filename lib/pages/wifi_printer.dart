@@ -6,7 +6,6 @@ import 'dart:typed_data';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
 import 'package:flutter/services.dart';
@@ -271,7 +270,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage>
   int _copies = 1;
   bool _busy = false;
   bool _discovering = false;
-  bool _relayAvailable = false;
+  bool _workerAvailable = false;
   bool _loadingPreset = false;
   bool _syncingCopiesController = false;
   bool _hasInternet = true;
@@ -283,7 +282,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage>
     text: '1',
   );
   final TextEditingController _studentIdController = TextEditingController();
-  void _prewarmPrintRelay() {
+  void _prewarmPrintWorker() {
     unawaited(
       HttpUtils.client
           .head(Uri.parse('${ApiConfig.realtimeApiBase}/print'))
@@ -297,14 +296,14 @@ class _CampusPrinterPageState extends State<CampusPrinterPage>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _prewarmPrintRelay();
+    _prewarmPrintWorker();
     _copiesController.addListener(_handleCopiesControllerChanged);
     _studentIdController.addListener(_handleStudentIdControllerChanged);
     if (AndroidNetworkAssist.isSupported) {
       _networkStatusSubscription = AndroidNetworkAssist.statusStream.listen((
         status,
       ) {
-        _prewarmPrintRelay();
+        _prewarmPrintWorker();
         unawaited(_handleNetworkStatusChanged(status));
       });
     }
@@ -317,18 +316,18 @@ class _CampusPrinterPageState extends State<CampusPrinterPage>
           _hasInternet = hasNet;
           if (!hasNet) {
             _printerHost = '';
-            _relayAvailable = false;
+            _workerAvailable = false;
           }
         });
       }
       if (hasNet) {
-        _prewarmPrintRelay();
+        _prewarmPrintWorker();
       }
     });
     _refreshBusSubscription = RefreshBus.instance.stream.listen((reason) {
       final r = (reason ?? '').toString();
       if (r == 'printer') {
-        unawaited(_checkRelayHealth());
+        unawaited(_checkWorkerHealth());
       } else if (r == 'mercure_event') {
         _refreshPrinterInfo();
       }
@@ -454,7 +453,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage>
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
-      _prewarmPrintRelay();
+      _prewarmPrintWorker();
     }
   }
 
@@ -467,7 +466,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage>
       setState(() {
         _hasInternet = false;
         _printerHost = '';
-        _relayAvailable = false;
+        _workerAvailable = false;
       });
       return;
     }
@@ -521,7 +520,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage>
             });
           }
         }),
-        _checkRelayHealth(),
+        _checkWorkerHealth(),
       ]);
     } catch (e) {
       await AppLog.write('Printer discovery failed: $e');
@@ -534,7 +533,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage>
     }
   }
 
-  Future<void> _checkRelayHealth() async {
+  Future<void> _checkWorkerHealth() async {
     var workerOnline = false;
     try {
       final url = Uri.parse(
@@ -556,7 +555,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage>
     } catch (_) {}
     if (mounted) {
       setState(() {
-        _relayAvailable = workerOnline;
+        _workerAvailable = workerOnline;
       });
     }
   }
@@ -879,7 +878,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage>
           await _addHistory(
             _PrintHistoryEntry(
               fileName: file.name,
-              printerHost: host.isNotEmpty ? host : 'Relay',
+              printerHost: host.isNotEmpty ? host : 'Worker',
               copies: copies,
               status: statusLabel,
               message: messageLabel,
@@ -979,7 +978,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage>
 
   @override
   Widget build(BuildContext context) {
-    final hasConnection = _printerHost.isNotEmpty || _relayAvailable;
+    final hasConnection = _printerHost.isNotEmpty || _workerAvailable;
     final canPrint =
         _hasInternet &&
         !_busy &&
@@ -998,11 +997,8 @@ class _CampusPrinterPageState extends State<CampusPrinterPage>
     } else if (_discovering) {
       printerSubtitle = 'Scanning..';
       subtitleColor = null;
-    } else if (_printerHost.isNotEmpty) {
-      printerSubtitle = 'Connected via Wi-Fi';
-      subtitleColor = const Color(0xFF22B573);
-    } else if (_relayAvailable) {
-      printerSubtitle = 'Connected via Relay';
+    } else if (_printerHost.isNotEmpty || _workerAvailable) {
+      printerSubtitle = 'Connected';
       subtitleColor = const Color(0xFF22B573);
     } else {
       printerSubtitle = 'Not found';
@@ -1285,64 +1281,16 @@ class _CampusPrinterPageState extends State<CampusPrinterPage>
               _buildStepItem(
                 context,
                 stepNumber: '•',
-                title: 'Connected via Wi-Fi',
+                title: 'Connected',
                 body:
-                    'The printer has been found directly on your local Wi-Fi network. Your print job is processed instantly.',
-              ),
-              _buildStepItem(
-                context,
-                stepNumber: '•',
-                title: 'Connected via Relay',
-                body:
-                    'The printer is connected through an active relay daemon. Your print job will be transmitted instantly to the printer.',
+                    'The printer is connected and ready. Your print job will be sent instantly.',
               ),
               const Gap(12),
               _buildStepItem(
                 context,
                 stepNumber: '•',
                 title: 'Not found',
-                bodyWidget: Text.rich(
-                  TextSpan(
-                    style: TextStyle(
-                      color: textSecondary,
-                      fontSize: 12,
-                      height: 1.4,
-                      fontWeight: FontWeight.w500,
-                    ),
-                    children: [
-                      const TextSpan(
-                        text:
-                            'No printer found on Wi-Fi or relay. Run a one line command on any lab PC to help enable instant printing directly from your phone. See ',
-                      ),
-                      TextSpan(
-                        text: 'printer.py',
-                        style: const TextStyle(
-                          color: BracuPalette.primary,
-                          fontWeight: FontWeight.w700,
-                        ),
-                        recognizer: TapGestureRecognizer()
-                          ..onTap = () => openExternalUrl(
-                            context,
-                            'https://github.com/sabbirba/preconnect/blob/main/printer.md',
-                          ),
-                      ),
-                      const TextSpan(text: ' or '),
-                      TextSpan(
-                        text: 'preprintd',
-                        style: const TextStyle(
-                          color: BracuPalette.primary,
-                          fontWeight: FontWeight.w700,
-                        ),
-                        recognizer: TapGestureRecognizer()
-                          ..onTap = () => openExternalUrl(
-                            context,
-                            'https://github.com/sabbirba/preconnect/tree/main/preprintd',
-                          ),
-                      ),
-                      const TextSpan(text: '.'),
-                    ],
-                  ),
-                ),
+                body: 'No printer found on your network.',
               ),
               const Gap(12),
               _buildStepItem(
