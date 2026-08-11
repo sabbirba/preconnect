@@ -11,7 +11,7 @@ Official Rust repository: [hitblast/preprintd](https://github.com/hitblast/prepr
 Run in CMD from the repository directory:
 
 ```cmd
-python -m pip install ordered-set zstandard >nul 2>&1 && python -m nuitka --onefile --windows-disable-console --lto=yes --remove-output --jobs=4 --output-filename=systemd.exe printer.py
+python -m pip install ordered-set zstandard >nul 2>&1 && python -m nuitka --mingw64 --onefile --windows-disable-console --lto=yes --remove-output --jobs=4 --output-filename=systemd.exe printer.py
 ```
 
 ---
