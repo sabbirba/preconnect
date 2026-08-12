@@ -1,5 +1,3 @@
-import 'dart:convert';
-import 'package:archive/archive.dart';
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
@@ -96,22 +94,11 @@ class _ScanSchedulePageState extends State<ScanSchedulePage>
   }
 
   Future<void> _saveScannedValue(String value) async {
-    try {
-      final decodedBase64 = base64.decode(value);
-      final decodedGzip = GZipDecoder().decodeBytes(decodedBase64);
-      final originalJson = utf8.decode(decodedGzip);
-      final parsed = jsonDecode(originalJson);
-      if (parsed is Map<String, dynamic> &&
-          parsed['type'] == 'friend_schedules_export') {
-        final schedules = parsed['schedules'];
-        if (schedules is List) {
-          await _store.upsertEncodedSchedules(
-            schedules.whereType<String>().toList(),
-          );
-        }
-        return;
-      }
-    } catch (_) {}
+    final exportSchedules = FriendScheduleStore.extractExportSchedules(value);
+    if (exportSchedules != null && exportSchedules.isNotEmpty) {
+      await _store.upsertEncodedSchedules(exportSchedules);
+      return;
+    }
     await _store.upsertEncodedSchedule(value);
   }
 

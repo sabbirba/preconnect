@@ -144,32 +144,24 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage>
           });
         }
       } else {
-        AndroidNetworkStatus? status;
-        Uri? captiveWifiUrl;
-        for (var i = 0; i < 5; i++) {
-          status = await AndroidNetworkAssist.getNetworkStatus();
-          if (status != null) {
-            if (mounted) {
-              setState(() {
-                _currentStatus = status;
-              });
-            }
-            final isCaptive = status.captive || !status.validated;
-            if (!isCaptive) {
-              break;
-            }
-            captiveWifiUrl = CaptiveWifiHttp.resolvePortalUri(status);
-            if (captiveWifiUrl != null) {
-              if (mounted) {
-                setState(() {
-                  _extractedParams = captiveWifiUrl!.queryParameters;
-                });
-              }
-              break;
-            }
-          }
-          await Future<void>.delayed(const Duration(milliseconds: 600));
-        }
+        final status =
+            await CaptiveWifiHttp.retryOperation<AndroidNetworkStatus>(
+              () async {
+                final st = await AndroidNetworkAssist.getNetworkStatus();
+                if (st != null && mounted) {
+                  setState(() => _currentStatus = st);
+                  final captiveWifiUrl = CaptiveWifiHttp.resolvePortalUri(st);
+                  if (captiveWifiUrl != null &&
+                      captiveWifiUrl != CaptiveWifiHttp.defaultProbeUri) {
+                    setState(
+                      () => _extractedParams = captiveWifiUrl.queryParameters,
+                    );
+                  }
+                }
+                return st;
+              },
+              isSuccess: (st) => st != null && (!st.captive && st.validated),
+            );
 
         if (status != null) {
           if (status.transport == 'wifi' && status.connected) {
@@ -1120,19 +1112,17 @@ class _CaptivePortalWebViewState extends State<CaptivePortalWebView> {
 
   Future<void> _checkForLoginSuccess() async {
     if (_successHandled || !mounted) return;
-    for (var attempt = 0; attempt < 4; attempt++) {
-      await Future<void>.delayed(Duration(milliseconds: 1500 + attempt * 1000));
-      if (_successHandled || !mounted) return;
-      final stillCaptive = await CaptiveWifiHttp.detectCaptivePortal() != null;
-      if (_successHandled || !mounted) return;
-      if (!stillCaptive) {
-        _successHandled = true;
-        unawaited(AndroidNetworkAssist.reportCaptivePortalDismissed());
-        if (!mounted) return;
-        showAppSnackBar(context, 'Connected to the internet.');
-        Navigator.of(context).pop(true);
-        return;
-      }
+    final isOnline = await CaptiveWifiHttp.retryOperation<bool>(() async {
+      if (_successHandled || !mounted) return true;
+      final portal = await CaptiveWifiHttp.detectCaptivePortal();
+      return portal == null;
+    }, isSuccess: (online) => online == true);
+
+    if (isOnline == true && !_successHandled && mounted) {
+      _successHandled = true;
+      unawaited(AndroidNetworkAssist.reportCaptivePortalDismissed());
+      showAppSnackBar(context, 'Connected to the internet.');
+      Navigator.of(context).pop(true);
     }
   }
 
