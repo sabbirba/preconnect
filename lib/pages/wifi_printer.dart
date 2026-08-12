@@ -61,36 +61,34 @@ class CampusPrinterPage extends StatefulWidget {
     invalidateCache();
   }
 
-  static Future<void> _preloadBlankPage() async {
-    if (cachedBlankPageBytes != null) return;
-    try {
-      final cachedBase64 = await AppStorage.instance.getString(
-        cachedBlankPagePdfKey,
-      );
-      if (cachedBase64 != null && cachedBase64.isNotEmpty) {
-        cachedBlankPageBytes = base64Decode(cachedBase64);
-        return;
-      }
-    } catch (e) {
-      await AppLog.write('Failed to read cached blank-page PDF: $e');
-    }
+  static Uint8List _createLocalBlankPdf() {
+    const pdfString = '''%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [3 0 R] /Count 1 >>
+endobj
+3 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595.28 841.89] /Resources <<>> >>
+endobj
+xref
+0 4
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000115 00000 n 
+trailer
+<< /Size 4 /Root 1 0 R >>
+startxref
+211
+%%EOF
+''';
+    return Uint8List.fromList(utf8.encode(pdfString));
+  }
 
-    try {
-      final uri = Uri.parse(blankPageUrl);
-      final response = await HttpUtils.client
-          .get(uri, headers: const <String, String>{'Accept-Encoding': 'gzip'})
-          .timeout(const Duration(seconds: 5));
-      if (response.statusCode == 200 && response.bodyBytes.isNotEmpty) {
-        final bytes = response.bodyBytes;
-        cachedBlankPageBytes = bytes;
-        await AppStorage.instance.setString(
-          cachedBlankPagePdfKey,
-          base64Encode(bytes),
-        );
-      }
-    } catch (e) {
-      await AppLog.write('Failed to fetch/cache blank-page PDF: $e');
-    }
+  static Future<void> _preloadBlankPage() async {
+    cachedBlankPageBytes ??= _createLocalBlankPdf();
   }
 
   static Future<_CampusPrinterBootstrap> _preloadBootstrap() async {
@@ -239,8 +237,6 @@ class _CampusPrinterPageState extends State<CampusPrinterPage>
       'Unable to read the selected file. Please select a valid document.';
   static const String _snackChooseFile =
       'Please select a document file to print.';
-  static const String _snackBlankPageLoadFailed =
-      'Unable to load blank page. Please check your internet connection.';
   static const String _snackIdentityRequired =
       'Student ID and profile data are required to submit print jobs.';
   static const String _snackPrintSent =
@@ -271,7 +267,6 @@ class _CampusPrinterPageState extends State<CampusPrinterPage>
   bool _busy = false;
   bool _discovering = false;
   bool _workerAvailable = false;
-  bool _loadingPreset = false;
   bool _syncingCopiesController = false;
   bool _hasInternet = true;
   StreamSubscription? _networkStatusSubscription;
@@ -282,15 +277,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage>
     text: '1',
   );
   final TextEditingController _studentIdController = TextEditingController();
-  void _prewarmPrintWorker() {
-    unawaited(
-      HttpUtils.client
-          .head(Uri.parse('${ApiConfig.realtimeApiBase}/print'))
-          .timeout(const Duration(seconds: 2))
-          .then((_) {})
-          .catchError((_) {}),
-    );
-  }
+  void _prewarmPrintWorker() {}
 
   @override
   void initState() {
@@ -534,28 +521,9 @@ class _CampusPrinterPageState extends State<CampusPrinterPage>
   }
 
   Future<void> _checkWorkerHealth() async {
-    var workerOnline = false;
-    try {
-      final url = Uri.parse(
-        '${ApiConfig.realtimeApiBase}/print/stats?_t=${DateTime.now().millisecondsSinceEpoch}',
-      );
-      final response = await HttpUtils.client.get(
-        url,
-        headers: const <String, String>{
-          'Cache-Control': 'no-cache, no-store, must-revalidate',
-          'Pragma': 'no-cache',
-        },
-      );
-      if (response.statusCode == 200) {
-        final decoded = jsonDecode(response.body);
-        if (decoded is Map) {
-          workerOnline = decoded['status']?.toString() == 'online';
-        }
-      }
-    } catch (_) {}
     if (mounted) {
       setState(() {
-        _workerAvailable = workerOnline;
+        _workerAvailable = false;
       });
     }
   }
@@ -694,56 +662,17 @@ class _CampusPrinterPageState extends State<CampusPrinterPage>
   }
 
   Future<void> _loadBlankPage() async {
-    if (_busy || _loadingPreset) return;
+    if (_busy) return;
 
-    final cached = CampusPrinterPage.cachedBlankPageBytes;
-    if (cached != null && cached.isNotEmpty) {
-      setState(() {
-        _selectedFiles = [
-          _SelectedFile(name: 'Blank Page.pdf', bytes: cached, pageCount: 1),
-        ];
-      });
-      return;
-    }
-
+    final cached =
+        CampusPrinterPage.cachedBlankPageBytes ??
+        CampusPrinterPage._createLocalBlankPdf();
+    CampusPrinterPage.cachedBlankPageBytes = cached;
     setState(() {
-      _loadingPreset = true;
+      _selectedFiles = [
+        _SelectedFile(name: 'Blank Page.pdf', bytes: cached, pageCount: 1),
+      ];
     });
-    try {
-      final uri = Uri.parse(CampusPrinterPage.blankPageUrl);
-      final response = await HttpUtils.client
-          .get(uri, headers: const <String, String>{'Accept-Encoding': 'gzip'})
-          .timeout(const Duration(seconds: 5));
-      if (response.statusCode != 200 || response.bodyBytes.isEmpty) {
-        throw const FormatException('Unexpected response');
-      }
-
-      final bytes = response.bodyBytes;
-      CampusPrinterPage.cachedBlankPageBytes = bytes;
-      unawaited(
-        AppStorage.instance.setString(
-          CampusPrinterPage.cachedBlankPagePdfKey,
-          base64Encode(bytes),
-        ),
-      );
-
-      if (!mounted) return;
-      setState(() {
-        _selectedFiles = [
-          _SelectedFile(name: 'Blank Page.pdf', bytes: bytes, pageCount: 1),
-        ];
-      });
-    } catch (_) {
-      if (mounted) {
-        showAppSnackBar(context, _snackBlankPageLoadFailed);
-      }
-    } finally {
-      if (mounted) {
-        setState(() {
-          _loadingPreset = false;
-        });
-      }
-    }
   }
 
   void _clearFileAt(int index) {
@@ -868,7 +797,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage>
           await _addHistory(
             _PrintHistoryEntry(
               fileName: file.name,
-              printerHost: host.isNotEmpty ? host : 'Worker',
+              printerHost: host,
               copies: copies,
               status: statusLabel,
               message: messageLabel,
@@ -1058,12 +987,9 @@ class _CampusPrinterPageState extends State<CampusPrinterPage>
                         fit: BoxFit.scaleDown,
                         alignment: Alignment.centerRight,
                         child: BracuActionButton(
-                          onPressed: (_busy || _loadingPreset)
-                              ? null
-                              : _loadBlankPage,
+                          onPressed: _busy ? null : _loadBlankPage,
                           label: 'Blank Page',
                           icon: Icons.download_rounded,
-                          isLoading: _loadingPreset,
                           iconGap: 0,
                           foregroundColor: BracuPalette.textPrimary(context),
                           padding: const EdgeInsets.symmetric(
@@ -1816,45 +1742,11 @@ class _LprPrintClient {
         await ackReader.cancel();
         await socket.close();
         return const _PrintJobResult(isQueued: false, queueNumber: '');
-      } catch (_) {
-        try {
-          final url = Uri.parse('${ApiConfig.realtimeApiBase}/print');
-          final gzippedPayload = GZipCodec().encode(payload);
-          final response = await HttpUtils.client
-              .post(
-                url,
-                headers: <String, String>{
-                  'Content-Type': 'application/octet-stream',
-                  'Content-Encoding': 'gzip',
-                  'X-Control-File': base64Encode(control),
-                  'X-Printer-Host': printerHost,
-                  'X-Printer-Queue': printerQueue,
-                  'X-Worker-OS': kIsWeb ? 'web' : Platform.operatingSystem,
-                  'X-Device-OS': kIsWeb ? 'web' : Platform.operatingSystem,
-                  if (studentId.isNotEmpty) 'X-Student-ID': studentId,
-                },
-                body: gzippedPayload,
-              )
-              .timeout(const Duration(minutes: 3));
-          final Map<String, dynamic> data = response.body.isNotEmpty
-              ? (jsonDecode(response.body) as Map<String, dynamic>)
-              : <String, dynamic>{};
-          if (response.statusCode != 200 || data['success'] == false) {
-            final serverErr = data['error']?.toString().trim() ?? '';
-            if (serverErr.isNotEmpty) {
-              throw _LprPrintException(serverErr);
-            }
-            throw const _LprPrintException(
-              _CampusPrinterPageState._snackPrinterConnectionFailed,
-            );
-          }
-          return const _PrintJobResult(isQueued: false, queueNumber: '');
-        } catch (e) {
-          if (e is _LprPrintException) rethrow;
-          throw const _LprPrintException(
-            _CampusPrinterPageState._snackPrinterConnectionFailed,
-          );
-        }
+      } catch (e) {
+        if (e is _LprPrintException) rethrow;
+        throw const _LprPrintException(
+          _CampusPrinterPageState._snackPrinterConnectionFailed,
+        );
       }
     } finally {
       await ackReader?.cancel();
