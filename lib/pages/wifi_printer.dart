@@ -17,7 +17,6 @@ import 'package:preconnect/tools/app_storage.dart';
 import 'package:preconnect/tools/http/http_utils.dart';
 import 'package:preconnect/tools/storage_keys.dart';
 import 'package:preconnect/tools/app_log.dart';
-import 'package:preconnect/tools/refresh_bus.dart';
 
 part 'wifi_printer_sections/printer_models.dart';
 
@@ -58,6 +57,9 @@ class CampusPrinterPage extends StatefulWidget {
     invalidateCache();
   }
 
+  @visibleForTesting
+  static Uint8List createLocalBlankPdfForTesting() => _createLocalBlankPdf();
+
   static Uint8List _createLocalBlankPdf() {
     const pdfString = '''%PDF-1.4
 1 0 obj
@@ -67,18 +69,25 @@ endobj
 << /Type /Pages /Kids [3 0 R] /Count 1 >>
 endobj
 3 0 obj
-<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595.28 841.89] /Resources <<>> >>
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595.28 841.89] /Contents 4 0 R /Resources <<>> >>
+endobj
+4 0 obj
+<< /Length 23 >>
+stream
+0 0 0 rg 590 835 1 1 re f
+endstream
 endobj
 xref
-0 4
+0 5
 0000000000 65535 f 
 0000000009 00000 n 
 0000000058 00000 n 
 0000000115 00000 n 
+0000000227 00000 n 
 trailer
-<< /Size 4 /Root 1 0 R >>
+<< /Size 5 /Root 1 0 R >>
 startxref
-211
+299
 %%EOF
 ''';
     return Uint8List.fromList(utf8.encode(pdfString));
@@ -277,11 +286,12 @@ class _CampusPrinterPageState extends State<CampusPrinterPage>
   int _copies = 1;
   bool _busy = false;
   bool _discovering = false;
+  bool _workerAvailable = false;
   bool _syncingCopiesController = false;
   bool _hasInternet = true;
   StreamSubscription? _networkStatusSubscription;
   StreamSubscription? _connectivitySubscription;
-  StreamSubscription? _refreshBusSubscription;
+
   String _lastNetworkFingerprint = '';
   final TextEditingController _copiesController = TextEditingController(
     text: '1',
@@ -301,12 +311,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage>
         unawaited(_handleNetworkStatusChanged(status));
       });
     }
-    _refreshBusSubscription = RefreshBus.instance.stream.listen((reason) {
-      final r = (reason ?? '').toString();
-      if (r == 'mercure_event') {
-        _refreshPrinterInfo();
-      }
-    });
+
     _bootstrap();
   }
 
@@ -417,7 +422,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage>
     WidgetsBinding.instance.removeObserver(this);
     _networkStatusSubscription?.cancel().catchError((_) {});
     _connectivitySubscription?.cancel().catchError((_) {});
-    _refreshBusSubscription?.cancel();
+
     _copiesController.removeListener(_handleCopiesControllerChanged);
     _copiesController.dispose();
     _studentIdController.removeListener(_handleStudentIdControllerChanged);
@@ -479,11 +484,35 @@ class _CampusPrinterPageState extends State<CampusPrinterPage>
       await _WifiPrinterDiscovery.findLprPrinters(
         port: _CampusPrinterConfig.current.port,
         campusHosts: _CampusPrinterConfig.current.hosts,
-      ).then((printers) {
-        if (mounted) {
-          setState(() {
-            _printerHost = printers.isNotEmpty ? printers.first.address : '';
-          });
+      ).then((printers) async {
+        if (printers.isNotEmpty) {
+          if (mounted) {
+            setState(() {
+              _printerHost = printers.first.address;
+              _workerAvailable = false;
+            });
+          }
+        } else {
+          bool workerOnline = false;
+          try {
+            final url = Uri.parse('${ApiConfig.realtimeApiBase}/print/stats');
+            final response = await HttpUtils.client
+                .get(url)
+                .timeout(const Duration(seconds: 3));
+            if (response.statusCode == 200) {
+              final Map<String, dynamic> data =
+                  jsonDecode(response.body) as Map<String, dynamic>;
+              workerOnline = data['status'] == 'online';
+            }
+          } catch (_) {
+            workerOnline = false;
+          }
+          if (mounted) {
+            setState(() {
+              _printerHost = '';
+              _workerAvailable = workerOnline;
+            });
+          }
         }
       });
     } catch (e) {
@@ -859,7 +888,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage>
 
   @override
   Widget build(BuildContext context) {
-    final hasConnection = _printerHost.isNotEmpty;
+    final hasConnection = _printerHost.isNotEmpty || _workerAvailable;
     final canPrint =
         _hasInternet &&
         !_busy &&
@@ -878,7 +907,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage>
     } else if (_discovering) {
       printerSubtitle = 'Scanning';
       subtitleColor = null;
-    } else if (_printerHost.isNotEmpty) {
+    } else if (_printerHost.isNotEmpty || _workerAvailable) {
       printerSubtitle = 'Connected';
       subtitleColor = const Color(0xFF22B573);
     } else {
@@ -887,7 +916,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage>
     }
 
     return BracuPageScaffold(
-      title: 'Campus Printer',
+      title: 'Printer',
       subtitle: printerSubtitle,
       subtitleColor: subtitleColor,
       icon: Icons.local_printshop_outlined,
@@ -1506,13 +1535,6 @@ class _LprPrintException implements Exception {
   String toString() => message;
 }
 
-class _PrintJobResult {
-  const _PrintJobResult({this.isQueued = false, this.queueNumber = ''});
-
-  final bool isQueued;
-  final String queueNumber;
-}
-
 class _LprPrintClient {
   const _LprPrintClient({
     required this.host,
@@ -1528,7 +1550,7 @@ class _LprPrintClient {
       'Printer connection timed out';
   static const String _errPrinterRejectedJob = 'Printer rejected the job';
 
-  Future<_PrintJobResult> sendFile({
+  Future<void> sendFile({
     required Uint8List bytes,
     required String fileName,
     required String user,
@@ -1595,7 +1617,7 @@ class _LprPrintClient {
       );
       final payload = _buildPjlPayload(bytes: sendBytes, prefix: pjlPrefix);
 
-      return await _sendLprJob(
+      await _sendLprJob(
         printerHost: printerHost,
         printerQueue: printerQueue,
         controlFileName: controlFileName,
@@ -1638,7 +1660,7 @@ class _LprPrintClient {
     return number.toString().padLeft(3, '0');
   }
 
-  Future<_PrintJobResult> _sendLprJob({
+  Future<void> _sendLprJob({
     required String printerHost,
     required String printerQueue,
     required String controlFileName,
@@ -1662,7 +1684,41 @@ class _LprPrintClient {
           } catch (_) {}
         }
         if (connectedSocket == null) {
-          throw const _LprPrintException(_errPrinterConnectionTimedOut);
+          final url = Uri.parse('${ApiConfig.realtimeApiBase}/print');
+          final gzippedPayload = GZipCodec().encode(payload);
+          final response = await HttpUtils.client
+              .post(
+                url,
+                headers: <String, String>{
+                  'Content-Type': 'application/octet-stream',
+                  'Content-Encoding': 'gzip',
+                  'X-Control-File': base64Encode(control),
+                  'X-Printer-Host': printerHost.trim().isNotEmpty
+                      ? printerHost.trim()
+                      : _CampusPrinterConfig.current.hosts.first,
+                  'X-Printer-Queue': printerQueue.trim().isNotEmpty
+                      ? printerQueue.trim()
+                      : _CampusPrinterConfig.current.queue,
+                  'X-Worker-OS': kIsWeb ? 'web' : Platform.operatingSystem,
+                  'X-Device-OS': kIsWeb ? 'web' : Platform.operatingSystem,
+                  if (studentId.isNotEmpty) 'X-Student-ID': studentId,
+                },
+                body: gzippedPayload,
+              )
+              .timeout(const Duration(minutes: 3));
+          final Map<String, dynamic> data = response.body.isNotEmpty
+              ? (jsonDecode(response.body) as Map<String, dynamic>)
+              : <String, dynamic>{};
+          if (response.statusCode != 200 || data['success'] == false) {
+            final serverErr = data['error']?.toString().trim() ?? '';
+            if (serverErr.isNotEmpty) {
+              throw _LprPrintException(serverErr);
+            }
+            throw const _LprPrintException(
+              _CampusPrinterPageState._snackPrinterConnectionFailed,
+            );
+          }
+          return;
         }
         final activeSocket = connectedSocket;
         socket = activeSocket;
@@ -1710,7 +1766,7 @@ class _LprPrintClient {
         }
         await ackReader.cancel();
         await socket.close();
-        return const _PrintJobResult(isQueued: false, queueNumber: '');
+        return;
       } catch (e) {
         if (e is _LprPrintException) rethrow;
         throw const _LprPrintException(
