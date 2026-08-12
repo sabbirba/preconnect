@@ -1343,7 +1343,7 @@ class _PrintHistoryRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final copiesLabel = entry.copies == 1 ? '1 copy' : '${entry.copies} copies';
+    final copiesLabel = entry.copies == 1 ? '1 Copy' : '${entry.copies} Copies';
     return _PrinterFileCard(
       title: entry.fileName,
       subtitle:
