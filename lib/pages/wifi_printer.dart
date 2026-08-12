@@ -271,7 +271,6 @@ class _CampusPrinterPageState extends State<CampusPrinterPage>
   String? _photoUrl;
   String _studentId = '';
   String _studentName = '';
-  String _wifiName = '';
   String _duplexMode = 'OFF';
   String _collateMode = 'OFF';
   String _pagesPerSheet = '1-in-1';
@@ -290,7 +289,6 @@ class _CampusPrinterPageState extends State<CampusPrinterPage>
   bool _syncingCopiesController = false;
   bool _hasInternet = true;
   StreamSubscription? _networkStatusSubscription;
-  StreamSubscription? _connectivitySubscription;
 
   String _lastNetworkFingerprint = '';
   final TextEditingController _copiesController = TextEditingController(
@@ -378,7 +376,6 @@ class _CampusPrinterPageState extends State<CampusPrinterPage>
       _booklet = bootstrap.booklet;
     });
     _setCopiesControllerText(bootstrap.copies);
-    unawaited(_refreshWifiName());
     unawaited(_discoverPrinter().catchError((e) {}));
   }
 
@@ -402,7 +399,6 @@ class _CampusPrinterPageState extends State<CampusPrinterPage>
       _booklet = bootstrap.booklet;
     });
     _setCopiesControllerText(bootstrap.copies);
-    unawaited(_refreshWifiName());
     await _discoverPrinter();
   }
 
@@ -421,7 +417,6 @@ class _CampusPrinterPageState extends State<CampusPrinterPage>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _networkStatusSubscription?.cancel().catchError((_) {});
-    _connectivitySubscription?.cancel().catchError((_) {});
 
     _copiesController.removeListener(_handleCopiesControllerChanged);
     _copiesController.dispose();
@@ -432,7 +427,6 @@ class _CampusPrinterPageState extends State<CampusPrinterPage>
 
   Future<void> _handleNetworkStatusChanged(AndroidNetworkStatus status) async {
     if (!mounted) return;
-    _setWifiNameFromStatus(status);
     final transport = status.transport.trim().toLowerCase();
     final connected = status.connected;
     if (!connected) {
@@ -443,11 +437,9 @@ class _CampusPrinterPageState extends State<CampusPrinterPage>
       return;
     }
     if (transport != 'wifi') {
-      if (_printerHost.isNotEmpty) {
-        setState(() {
-          _printerHost = '';
-        });
-      }
+      setState(() {
+        _printerHost = '';
+      });
     }
     final currentNetworkFingerprint = await _currentNetworkFingerprint();
     if (currentNetworkFingerprint.isEmpty ||
@@ -463,58 +455,49 @@ class _CampusPrinterPageState extends State<CampusPrinterPage>
       _discovering = true;
     });
     try {
-      String wifiName = 'Wi-Fi Network';
+      final networkKey = await _currentNetworkFingerprint();
+      _lastNetworkFingerprint = networkKey;
 
-      if (AndroidNetworkAssist.isSupported) {
-        final wifiStatus = await AndroidNetworkAssist.getNetworkStatus();
-        if (wifiStatus != null && wifiStatus.connected) {
-          wifiName = (wifiStatus.ssid ?? 'Wi-Fi Network').trim();
+      final printers = await _WifiPrinterDiscovery.findLprPrinters(
+        port: _CampusPrinterConfig.current.port,
+        campusHosts: _CampusPrinterConfig.current.hosts,
+      );
+
+      if (printers.isNotEmpty) {
+        if (mounted) {
+          setState(() {
+            _printerHost = printers.first.address;
+            _workerAvailable = false;
+          });
         }
+        return;
+      }
+
+      bool workerOnline = false;
+      try {
+        final url = Uri.parse('${ApiConfig.realtimeApiBase}/print/stats');
+        final response = await HttpUtils.client.get(
+          url,
+          headers: const <String, String>{
+            'Accept': 'application/json',
+            'Connection': 'keep-alive',
+          },
+        );
+        if (response.statusCode == 200) {
+          final Map<String, dynamic> data =
+              jsonDecode(response.body) as Map<String, dynamic>;
+          workerOnline = data['status'] == 'online';
+        }
+      } catch (_) {
+        workerOnline = false;
       }
 
       if (mounted) {
         setState(() {
-          _wifiName = wifiName;
+          _printerHost = '';
+          _workerAvailable = workerOnline;
         });
       }
-
-      final networkKey = await _currentNetworkFingerprint();
-      _lastNetworkFingerprint = networkKey;
-
-      await _WifiPrinterDiscovery.findLprPrinters(
-        port: _CampusPrinterConfig.current.port,
-        campusHosts: _CampusPrinterConfig.current.hosts,
-      ).then((printers) async {
-        if (printers.isNotEmpty) {
-          if (mounted) {
-            setState(() {
-              _printerHost = printers.first.address;
-              _workerAvailable = false;
-            });
-          }
-        } else {
-          bool workerOnline = false;
-          try {
-            final url = Uri.parse('${ApiConfig.realtimeApiBase}/print/stats');
-            final response = await HttpUtils.client
-                .get(url)
-                .timeout(const Duration(seconds: 3));
-            if (response.statusCode == 200) {
-              final Map<String, dynamic> data =
-                  jsonDecode(response.body) as Map<String, dynamic>;
-              workerOnline = data['status'] == 'online';
-            }
-          } catch (_) {
-            workerOnline = false;
-          }
-          if (mounted) {
-            setState(() {
-              _printerHost = '';
-              _workerAvailable = workerOnline;
-            });
-          }
-        }
-      });
     } catch (e) {
       await AppLog.write('Printer discovery failed: $e');
     } finally {
@@ -530,29 +513,6 @@ class _CampusPrinterPageState extends State<CampusPrinterPage>
     final prefixes = await _currentLocalIpv4Prefixes();
     if (prefixes.isEmpty) return '';
     return prefixes.join('|');
-  }
-
-  Future<void> _refreshWifiName() async {
-    if (AndroidNetworkAssist.isSupported) {
-      final status = await AndroidNetworkAssist.getNetworkStatus();
-      if (!mounted || status == null) return;
-      _setWifiNameFromStatus(status);
-    } else {
-      final subnets = await _currentNetworkFingerprint();
-      if (mounted && subnets.isNotEmpty && _wifiName.isEmpty) {
-        setState(() {
-          _wifiName = 'Wi-Fi Network';
-        });
-      }
-    }
-  }
-
-  void _setWifiNameFromStatus(AndroidNetworkStatus status) {
-    final wifiName = (status.ssid ?? '').trim();
-    if (!mounted || wifiName == _wifiName) return;
-    setState(() {
-      _wifiName = wifiName;
-    });
   }
 
   Future<List<String>> _currentLocalIpv4Prefixes() async {
@@ -769,10 +729,6 @@ class _CampusPrinterPageState extends State<CampusPrinterPage>
       for (int i = 0; i < _selectedFiles.length; i++) {
         final file = _selectedFiles[i];
         if (!mounted) return;
-        _showPrintProgress(
-          'Sending ${file.name}',
-          duration: const Duration(seconds: 2),
-        );
         try {
           await client.sendFile(
             bytes: file.bytes,
@@ -780,13 +736,6 @@ class _CampusPrinterPageState extends State<CampusPrinterPage>
             user: user,
             clientName: clientName,
             preferences: preferences,
-            onStatus: (message) {
-              if (!mounted) return;
-              _showPrintProgress(
-                message,
-                duration: _progressSnackDuration(copies),
-              );
-            },
           );
           if (!mounted) return;
           const statusLabel = 'Sent';
@@ -849,43 +798,6 @@ class _CampusPrinterPageState extends State<CampusPrinterPage>
     }
   }
 
-  Duration _progressSnackDuration(int copies) {
-    if (copies >= 10) return const Duration(seconds: 5);
-    if (copies >= 5) return const Duration(seconds: 4);
-    if (copies > 1) return const Duration(seconds: 2);
-    return const Duration(seconds: 2);
-  }
-
-  void _showPrintProgress(String message, {required Duration duration}) {
-    if (!mounted) return;
-    final trimmed = _sanitizePrinterMessage(message);
-    if (trimmed.isEmpty) return;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final messenger = ScaffoldMessenger.of(context);
-    messenger.clearSnackBars();
-    messenger.showSnackBar(
-      SnackBar(
-        content: Text(trimmed, style: const TextStyle(color: Colors.white)),
-        backgroundColor: isDark
-            ? const Color(0xFF1E6BE3)
-            : BracuPalette.primary,
-        duration: const Duration(seconds: 2),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-        margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-        action: SnackBarAction(
-          label: 'Close',
-          textColor: Colors.white,
-          onPressed: () {
-            try {
-              messenger.hideCurrentSnackBar();
-            } catch (_) {}
-          },
-        ),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final hasConnection = _printerHost.isNotEmpty || _workerAvailable;
@@ -905,7 +817,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage>
       printerSubtitle = 'Offline';
       subtitleColor = null;
     } else if (_discovering) {
-      printerSubtitle = 'Scanning';
+      printerSubtitle = 'Scanning..';
       subtitleColor = null;
     } else if (_printerHost.isNotEmpty || _workerAvailable) {
       printerSubtitle = 'Connected';
@@ -1556,7 +1468,6 @@ class _LprPrintClient {
     required String user,
     required String clientName,
     required _PrintTicket preferences,
-    void Function(String message)? onStatus,
   }) async {
     final printerHost = host.trim();
 
@@ -1577,7 +1488,6 @@ class _LprPrintClient {
               ...bytes,
             ])
           : bytes;
-      onStatus?.call(_jobStartMessage(copies, duplexMode));
       final jobSuffix = _jobSuffix();
       final controlFileName = HttpUtils.lprJobFileName(
         client,
@@ -1635,15 +1545,6 @@ class _LprPrintClient {
     }
   }
 
-  String _jobStartMessage(int copies, String duplexMode) {
-    final duplex = duplexMode.trim().toUpperCase();
-    final duplexLabel = duplex == 'OFF' ? 'One Side' : 'Both Side';
-    if (copies <= 1) {
-      return 'Sending $duplexLabel print...';
-    }
-    return 'Sending $copies $duplexLabel copies...';
-  }
-
   Uint8List _buildPjlPayload({
     required Uint8List bytes,
     required String prefix,
@@ -1690,6 +1591,8 @@ class _LprPrintClient {
               .post(
                 url,
                 headers: <String, String>{
+                  'Accept': 'application/json',
+                  'Connection': 'keep-alive',
                   'Content-Type': 'application/octet-stream',
                   'Content-Encoding': 'gzip',
                   'X-Control-File': base64Encode(control),
