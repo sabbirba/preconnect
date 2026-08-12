@@ -839,7 +839,6 @@ class _CampusPrinterPageState extends State<CampusPrinterPage>
         booklet: _booklet,
       );
 
-      _PrintJobResult? lastResult;
       for (int i = 0; i < _selectedFiles.length; i++) {
         final file = _selectedFiles[i];
         if (!mounted) return;
@@ -848,7 +847,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage>
           duration: const Duration(seconds: 2),
         );
         try {
-          final result = await client.sendFile(
+          await client.sendFile(
             bytes: file.bytes,
             fileName: file.name,
             user: user,
@@ -862,7 +861,6 @@ class _CampusPrinterPageState extends State<CampusPrinterPage>
               );
             },
           );
-          lastResult = result;
           if (!mounted) return;
           const statusLabel = 'Sent';
           const messageLabel = 'Sent to campus printer.';
