@@ -41,14 +41,12 @@ class CampusPrinterPage extends StatefulWidget {
   static const String historyKey = 'printer_history';
   static const String copiesKey = 'campus_printer_copies';
   static const String lastHostKey = 'campus_printer_last_host';
-  static const String lastWifiKey = 'campus_printer_last_wifi';
   static const String cachedBlankPagePdfKey = 'cached_blank_page_pdf';
 
   static Future<void> clearStoredState() async {
     await AppStorage.instance.remove(copiesKey);
     await AppStorage.instance.remove(historyKey);
     await AppStorage.instance.remove(lastHostKey);
-    await AppStorage.instance.remove(lastWifiKey);
     await AppStorage.instance.remove(StorageKeys.studentId);
     await AppStorage.instance.remove(StorageKeys.fullName);
     await AppStorage.instance.remove(StorageKeys.shortCode);
@@ -60,6 +58,10 @@ class CampusPrinterPage extends StatefulWidget {
   @visibleForTesting
   static Uint8List createLocalBlankPdfForTesting() => _createLocalBlankPdf();
 
+  @visibleForTesting
+  static Uint8List wrapJpegInPdfForTesting(Uint8List jpeg) =>
+      _wrapJpegInPdf(jpeg);
+
   static Uint8List _createLocalBlankPdf() {
     const pdfString = '''%PDF-1.4
 1 0 obj
@@ -69,7 +71,7 @@ endobj
 << /Type /Pages /Kids [3 0 R] /Count 1 >>
 endobj
 3 0 obj
-<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595.28 841.89] /Contents 4 0 R /Resources <<>> >>
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Contents 4 0 R /Resources <<>> >>
 endobj
 4 0 obj
 << /Length 23 >>
@@ -601,6 +603,8 @@ class _CampusPrinterPageState extends State<CampusPrinterPage>
           if (_isPdfFile(selected.name, bytes)) {
             final pdfInfo = await _readPdfInfo(bytes);
             selected.pageCount = pdfInfo.pageCount;
+          } else if (_isJpegFile(selected.name) || _isPngFile(selected.name)) {
+            selected.pageCount = 1;
           }
           nextFiles.add(selected);
         }
@@ -650,10 +654,12 @@ class _CampusPrinterPageState extends State<CampusPrinterPage>
 
   String _fileKindLabelFor(_SelectedFile file) {
     if (file.name.trim().isEmpty) return 'File';
-    if (_isJpegFile(file.name)) return 'JPEG';
-    if (_isPngFile(file.name)) return 'PNG';
-    if (file.pageCount == null) return 'File';
-    return file.pageCount == 1 ? '1 Page' : '${file.pageCount} Pages';
+    if (file.pageCount != null) {
+      return file.pageCount == 1 ? '1 Page' : '${file.pageCount} Pages';
+    }
+    if (_isJpegFile(file.name)) return '1 Page';
+    if (_isPngFile(file.name)) return '1 Page';
+    return '1 Page';
   }
 
   Future<({int? pageCount})> _readPdfInfo(Uint8List bytes) async {
@@ -1476,17 +1482,22 @@ class _LprPrintClient {
     final safeFileName = fileName.trim();
     final printableJobName = _basePrintName(safeFileName);
     final isPostScript = _looksLikePostScript(safeFileName, bytes);
-    final dataCommand = isPostScript ? 'o' : 'l';
+    final dataCommand = isPostScript ? 'o' : 'f';
     final copies = preferences.copies.clamp(0, 999);
     final duplexMode = preferences.duplexMode.trim().toUpperCase();
 
     try {
-      final sendBytes = isPostScript
-          ? Uint8List.fromList([
-              ..._ascii(preferences.postScriptPreamble),
-              ...bytes,
-            ])
-          : bytes;
+      final Uint8List sendBytes;
+      if (isPostScript) {
+        sendBytes = Uint8List.fromList([
+          ..._ascii(preferences.postScriptPreamble),
+          ...bytes,
+        ]);
+      } else if (_isJpegFile(fileName)) {
+        sendBytes = _wrapJpegInPdf(bytes);
+      } else {
+        sendBytes = bytes;
+      }
       final jobSuffix = _jobSuffix();
       final controlFileName = HttpUtils.lprJobFileName(
         client,
@@ -2339,4 +2350,69 @@ bool _looksLikePostScript(String fileName, Uint8List bytes) {
   if (lower.endsWith('.ps') || lower.endsWith('.eps')) return true;
   if (bytes.length >= 2 && bytes[0] == 0x25 && bytes[1] == 0x21) return true;
   return false;
+}
+
+Uint8List _wrapJpegInPdf(Uint8List jpegBytes) {
+  int width = 595;
+  int height = 842;
+
+  if (jpegBytes.length > 4) {
+    for (int i = 0; i < jpegBytes.length - 8; i++) {
+      if (jpegBytes[i] == 0xFF &&
+          (jpegBytes[i + 1] == 0xC0 || jpegBytes[i + 1] == 0xC2)) {
+        height = (jpegBytes[i + 5] << 8) + jpegBytes[i + 6];
+        width = (jpegBytes[i + 7] << 8) + jpegBytes[i + 8];
+        break;
+      }
+    }
+  }
+
+  const obj1 = '1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n';
+  const obj2 = '2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n';
+  const obj3 =
+      '3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Contents 4 0 R /Resources << /XObject << /Im1 5 0 R >> >> >>\nendobj\n';
+  const obj4Stream = 'q 595 0 0 842 0 0 cm /Im1 Do Q\n';
+  final obj4 =
+      '4 0 obj\n<< /Length ${obj4Stream.length} >>\nstream\n${obj4Stream}endstream\nendobj\n';
+
+  final header = ascii.encode('%PDF-1.4\n');
+  final b1 = ascii.encode(obj1);
+  final b2 = ascii.encode(obj2);
+  final b3 = ascii.encode(obj3);
+  final b4 = ascii.encode(obj4);
+
+  final obj5Header = ascii.encode(
+    '5 0 obj\n<< /Type /XObject /Subtype /Image /Width $width /Height $height /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${jpegBytes.length} >>\nstream\n',
+  );
+  final obj5Footer = ascii.encode('\nendstream\nendobj\n');
+
+  final offset1 = header.length;
+  final offset2 = offset1 + b1.length;
+  final offset3 = offset2 + b2.length;
+  final offset4 = offset3 + b3.length;
+  final offset5 = offset4 + b4.length;
+  final startXref =
+      offset5 + obj5Header.length + jpegBytes.length + obj5Footer.length;
+
+  final xrefStr =
+      'xref\n0 6\n0000000000 65535 f \n'
+      '${offset1.toString().padLeft(10, '0')} 00000 n \n'
+      '${offset2.toString().padLeft(10, '0')} 00000 n \n'
+      '${offset3.toString().padLeft(10, '0')} 00000 n \n'
+      '${offset4.toString().padLeft(10, '0')} 00000 n \n'
+      '${offset5.toString().padLeft(10, '0')} 00000 n \n'
+      'trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n$startXref\n%%EOF\n';
+
+  final builder = BytesBuilder(copy: false)
+    ..add(header)
+    ..add(b1)
+    ..add(b2)
+    ..add(b3)
+    ..add(b4)
+    ..add(obj5Header)
+    ..add(jpegBytes)
+    ..add(obj5Footer)
+    ..add(ascii.encode(xrefStr));
+
+  return builder.takeBytes();
 }
