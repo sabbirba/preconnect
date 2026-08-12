@@ -259,8 +259,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage>
       'Please select a document file to print.';
   static const String _snackIdentityRequired =
       'Student ID and profile data are required to submit print jobs.';
-  static const String _snackPrintSent =
-      'Sent to campus printer successfully.';
+  static const String _snackPrintSent = 'Sent to campus printer successfully.';
   static const String _snackPrintFailed =
       'Unable to complete print job. Please check your connection.';
   static const String _snackPrinterConnectionFailed =

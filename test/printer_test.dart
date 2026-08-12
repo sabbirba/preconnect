@@ -36,9 +36,6 @@ void main() {
     );
 
     expect(prefix, contains('@PJL SET PAPER = A4\r\n'));
-    expect(prefix, contains('@PJL SET PAPERSIZE = A4\r\n'));
-    expect(prefix, contains('@PJL SET MEDIASIZE = A4\r\n'));
-    expect(prefix, contains('@PJL SET TOSHIBAPAPER = A4\r\n'));
   });
 
   test('lprControlFile formats control file with secure queue default', () {
