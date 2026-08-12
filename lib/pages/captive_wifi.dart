@@ -557,7 +557,7 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage>
       },
       child: BracuPageScaffold(
         title: 'Captive Wi-Fi',
-        subtitle: _scanning ? 'Scanning...' : 'API Based Session',
+        subtitle: _scanning ? 'Scanning' : 'API Based Session',
         icon: Icons.wifi_rounded,
         actions: [
           IconButton(

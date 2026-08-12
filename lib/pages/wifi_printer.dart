@@ -2,8 +2,6 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
-
-import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -26,7 +24,6 @@ part 'wifi_printer_sections/printer_models.dart';
 class CampusPrinterPage extends StatefulWidget {
   const CampusPrinterPage({super.key});
 
-  static const String blankPageUrl = '${ApiConfig.websiteBase}/WhitePage.pdf';
   static Uint8List? cachedBlankPageBytes;
 
   static _CampusPrinterBootstrap? _cachedBootstrap;
@@ -280,7 +277,6 @@ class _CampusPrinterPageState extends State<CampusPrinterPage>
   int _copies = 1;
   bool _busy = false;
   bool _discovering = false;
-  bool _workerAvailable = false;
   bool _syncingCopiesController = false;
   bool _hasInternet = true;
   StreamSubscription? _networkStatusSubscription;
@@ -291,45 +287,23 @@ class _CampusPrinterPageState extends State<CampusPrinterPage>
     text: '1',
   );
   final TextEditingController _studentIdController = TextEditingController();
-  void _prewarmPrintWorker() {}
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _prewarmPrintWorker();
     _copiesController.addListener(_handleCopiesControllerChanged);
     _studentIdController.addListener(_handleStudentIdControllerChanged);
     if (AndroidNetworkAssist.isSupported) {
       _networkStatusSubscription = AndroidNetworkAssist.statusStream.listen((
         status,
       ) {
-        _prewarmPrintWorker();
         unawaited(_handleNetworkStatusChanged(status));
       });
     }
-    _connectivitySubscription = Connectivity().onConnectivityChanged.listen((
-      results,
-    ) {
-      final hasNet = results.any((r) => r != ConnectivityResult.none);
-      if (mounted) {
-        setState(() {
-          _hasInternet = hasNet;
-          if (!hasNet) {
-            _printerHost = '';
-            _workerAvailable = false;
-          }
-        });
-      }
-      if (hasNet) {
-        _prewarmPrintWorker();
-      }
-    });
     _refreshBusSubscription = RefreshBus.instance.stream.listen((reason) {
       final r = (reason ?? '').toString();
-      if (r == 'printer') {
-        unawaited(_checkWorkerHealth());
-      } else if (r == 'mercure_event') {
+      if (r == 'mercure_event') {
         _refreshPrinterInfo();
       }
     });
@@ -451,13 +425,6 @@ class _CampusPrinterPageState extends State<CampusPrinterPage>
     super.dispose();
   }
 
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) {
-      _prewarmPrintWorker();
-    }
-  }
-
   Future<void> _handleNetworkStatusChanged(AndroidNetworkStatus status) async {
     if (!mounted) return;
     _setWifiNameFromStatus(status);
@@ -467,7 +434,6 @@ class _CampusPrinterPageState extends State<CampusPrinterPage>
       setState(() {
         _hasInternet = false;
         _printerHost = '';
-        _workerAvailable = false;
       });
       return;
     }
@@ -510,19 +476,16 @@ class _CampusPrinterPageState extends State<CampusPrinterPage>
       final networkKey = await _currentNetworkFingerprint();
       _lastNetworkFingerprint = networkKey;
 
-      await Future.wait([
-        _WifiPrinterDiscovery.findLprPrinters(
-          port: _CampusPrinterConfig.current.port,
-          campusHosts: _CampusPrinterConfig.current.hosts,
-        ).then((printers) {
-          if (mounted) {
-            setState(() {
-              _printerHost = printers.isNotEmpty ? printers.first.address : '';
-            });
-          }
-        }),
-        _checkWorkerHealth(),
-      ]);
+      await _WifiPrinterDiscovery.findLprPrinters(
+        port: _CampusPrinterConfig.current.port,
+        campusHosts: _CampusPrinterConfig.current.hosts,
+      ).then((printers) {
+        if (mounted) {
+          setState(() {
+            _printerHost = printers.isNotEmpty ? printers.first.address : '';
+          });
+        }
+      });
     } catch (e) {
       await AppLog.write('Printer discovery failed: $e');
     } finally {
@@ -531,14 +494,6 @@ class _CampusPrinterPageState extends State<CampusPrinterPage>
           _discovering = false;
         });
       }
-    }
-  }
-
-  Future<void> _checkWorkerHealth() async {
-    if (mounted) {
-      setState(() {
-        _workerAvailable = false;
-      });
     }
   }
 
@@ -904,7 +859,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage>
 
   @override
   Widget build(BuildContext context) {
-    final hasConnection = _printerHost.isNotEmpty || _workerAvailable;
+    final hasConnection = _printerHost.isNotEmpty;
     final canPrint =
         _hasInternet &&
         !_busy &&
@@ -921,9 +876,9 @@ class _CampusPrinterPageState extends State<CampusPrinterPage>
       printerSubtitle = 'Offline';
       subtitleColor = null;
     } else if (_discovering) {
-      printerSubtitle = 'Scanning..';
+      printerSubtitle = 'Scanning';
       subtitleColor = null;
-    } else if (_printerHost.isNotEmpty || _workerAvailable) {
+    } else if (_printerHost.isNotEmpty) {
       printerSubtitle = 'Connected';
       subtitleColor = const Color(0xFF22B573);
     } else {
