@@ -78,7 +78,7 @@ class HttpUtils {
     final collate = collateMode.trim().toUpperCase();
     final useDuplex = duplex != 'OFF';
     return [
-      '\x1B%-12345X',
+      '\x1B%-12345X@PJL\r\n',
       '@PJL JOB NAME = "${_escapePjlValue(jobName)}"\r\n',
       '@PJL SET COPIES = $copies\r\n',
       '@PJL SET COLLATE = ${collate == 'OFF' ? 'OFF' : 'ON'}\r\n',
