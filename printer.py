@@ -1,11 +1,10 @@
 import atexit, ctypes, platform, signal, struct, sys, uuid, zlib
-from base64 import b64decode, urlsafe_b64encode
+from base64 import b64decode
 from gc import collect, disable
 from hashlib import sha256
-from hmac import new as hmac_new
 from http.client import HTTPSConnection
 from json import loads
-from os import _exit, devnull, environ, urandom
+from os import _exit, environ, urandom
 from socket import IPPROTO_TCP, SO_KEEPALIVE, SO_LINGER, SO_SNDBUF, SOL_SOCKET, TCP_NODELAY, create_connection
 from ssl import create_default_context
 from threading import Lock, Thread
@@ -24,8 +23,8 @@ def _trim_working_set():
         except Exception: pass
 
 def _cleanup():
-    global _k, _subscriber_jwt
-    _k, _subscriber_jwt = "", None
+    global _k
+    _k = ""
     collect()
     _trim_working_set()
 
@@ -273,19 +272,6 @@ def handle(j):
             except Exception: pass
             collect()
 
-def _b64url(data): return urlsafe_b64encode(data).rstrip(b"=").decode("ascii")
-
-_subscriber_jwt = None
-
-def _make_subscriber_jwt():
-    global _subscriber_jwt
-    if _subscriber_jwt: return _subscriber_jwt
-    header = _b64url(b'{"alg":"HS256","typ":"JWT"}')
-    payload = _b64url(b'{"mercure":{"subscribe":["https://preconnect.app/printer"]}}')
-    sig_input = f"{header}.{payload}".encode("ascii")
-    _subscriber_jwt = f"{header}.{payload}.{_b64url(hmac_new(_k.encode('utf-8'), sig_input, sha256).digest())}"
-    return _subscriber_jwt
-
 last_event_id = ""
 
 def _handle_invalid_key(code):
@@ -295,11 +281,11 @@ def _handle_invalid_key(code):
 def stream():
     global last_event_id
     try:
-        headers = {"Accept": "text/event-stream", "Authorization": f"Bearer {_make_subscriber_jwt()}", **hdrs()}
+        headers = {"Accept": "text/event-stream", **hdrs()}
         if last_event_id: headers["Last-Event-ID"] = last_event_id
-        with _make_doh_request("/.well-known/mercure?topic=https%3A%2F%2Fpreconnect.app%2Fprinter", headers=headers, timeout=None) as r:
+        with _make_doh_request("/printer", headers=headers, timeout=None) as r:
             if r.status == 401: _handle_invalid_key(r.status); return
-            if r.status != 200: _log(f"(Status) mercure endpoint: {r.status}", level="ERR"); return
+            if r.status != 200: _log(f"(Status) printer stream endpoint: {r.status}", level="ERR"); return
             while l := r.readline():
                 if l.startswith(b":") or not l.strip(): continue
                 if l.startswith(b"id: "): last_event_id = l[4:].strip().decode("utf-8", "ignore")
@@ -310,7 +296,7 @@ def stream():
                     except Exception as e: _log(f"Error parsing payload: {e}", level="ERR")
     except Exception as e:
         if getattr(e, "code", None) == 401: _handle_invalid_key(401)
-        else: _log(f"(Send) mercure endpoint: {e}", level="ERR")
+        else: _log(f"(Send) printer stream endpoint: {e}", level="ERR")
 
 def _ping_loop():
     headers = {"Content-Type": "application/json", **hdrs()}
@@ -335,7 +321,7 @@ if __name__ == "__main__":
         started_at = time()
         stream()
         if (time() - started_at) > 10.0:
-            _log("Refreshing Mercure event stream connection...", level="OK")
+            _log("Refreshing printer event stream connection...", level="OK")
             delay = 1.0
         else:
             delay = min(delay * 2.0, 8.0) + (int.from_bytes(urandom(2), "big") % 1000) / 1000.0
