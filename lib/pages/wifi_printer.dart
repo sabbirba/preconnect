@@ -88,7 +88,21 @@ startxref
   }
 
   static Future<void> _preloadBlankPage() async {
-    cachedBlankPageBytes ??= _createLocalBlankPdf();
+    if (cachedBlankPageBytes != null) return;
+    try {
+      final cachedBase64 = await AppStorage.instance.getString(
+        cachedBlankPagePdfKey,
+      );
+      if (cachedBase64 != null && cachedBase64.isNotEmpty) {
+        cachedBlankPageBytes = base64Decode(cachedBase64);
+        return;
+      }
+    } catch (_) {}
+    final bytes = _createLocalBlankPdf();
+    cachedBlankPageBytes = bytes;
+    unawaited(
+      AppStorage.instance.setString(cachedBlankPagePdfKey, base64Encode(bytes)),
+    );
   }
 
   static Future<_CampusPrinterBootstrap> _preloadBootstrap() async {

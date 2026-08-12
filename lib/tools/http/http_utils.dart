@@ -86,6 +86,7 @@ class HttpUtils {
       '@PJL SET PAPERSIZE = A4\r\n',
       '@PJL SET PAGESIZE = A4\r\n',
       '@PJL SET MEDIASIZE = A4\r\n',
+      '@PJL SET TOSHIBAPAPER = A4\r\n',
       '@PJL SET ORIENTATION = PORTRAIT\r\n',
       '@PJL SET RESOLUTION = 600\r\n',
       '@PJL SET MANUALFEED = OFF\r\n',
