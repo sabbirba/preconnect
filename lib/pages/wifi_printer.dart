@@ -864,16 +864,8 @@ class _CampusPrinterPageState extends State<CampusPrinterPage>
           );
           lastResult = result;
           if (!mounted) return;
-          final statusLabel = result.isQueued
-              ? (result.queueNumber.isNotEmpty
-                    ? 'Queue #${result.queueNumber}'
-                    : 'Sent')
-              : 'Sent';
-          final messageLabel = result.isQueued
-              ? (result.queueNumber.isNotEmpty
-                    ? 'Queued #${result.queueNumber}'
-                    : 'Queued')
-              : 'Sent to campus printer';
+          const statusLabel = 'Sent';
+          const messageLabel = 'Sent to campus printer.';
 
           await _addHistory(
             _PrintHistoryEntry(
@@ -921,14 +913,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage>
         }
       }
       if (mounted) {
-        final hasQueuedJob = lastResult?.isQueued ?? false;
-        final queueNum = lastResult?.queueNumber ?? '';
-        final snackMessage = hasQueuedJob
-            ? (queueNum.isNotEmpty
-                  ? 'Queue #$queueNum: Will print automatically when printer comes online.'
-                  : 'Queued. Will print automatically when printer comes online.')
-            : _snackPrintSent;
-        showAppSnackBar(context, snackMessage);
+        showAppSnackBar(context, _snackPrintSent);
       }
     } finally {
       if (mounted) {
@@ -1317,7 +1302,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage>
                     ),
                     const TextSpan(
                       text:
-                          'Queued jobs automatically expire after 24 hours if not released at the printer.',
+                          'Print jobs sent to campus printers will be ready for release.',
                     ),
                   ],
                 ),
@@ -1701,26 +1686,21 @@ class _LprPrintClient {
       final control = _ascii(controlText);
 
       final collateMode = preferences.collateMode.trim().toUpperCase();
-      final Uint8List payload;
-      if (preferences.hasAdvancedFinishingOptions) {
-        final pjlPrefix = HttpUtils.pjlPrefix(
-          jobName: printableJobName,
-          copies: copies,
-          duplexMode: duplexMode,
-          collateMode: collateMode,
-          isPostScript: isPostScript,
-          pagesPerSheet: preferences.pagesPerSheet,
-          fittingMode: preferences.fittingMode,
-          staple: preferences.staple,
-          punch: preferences.punch,
-          jobOffset: preferences.jobOffset,
-          slipSheet: preferences.slipSheet,
-          booklet: preferences.booklet,
-        );
-        payload = _buildPjlPayload(bytes: sendBytes, prefix: pjlPrefix);
-      } else {
-        payload = sendBytes;
-      }
+      final pjlPrefix = HttpUtils.pjlPrefix(
+        jobName: printableJobName,
+        copies: copies,
+        duplexMode: duplexMode,
+        collateMode: collateMode,
+        isPostScript: isPostScript,
+        pagesPerSheet: preferences.pagesPerSheet,
+        fittingMode: preferences.fittingMode,
+        staple: preferences.staple,
+        punch: preferences.punch,
+        jobOffset: preferences.jobOffset,
+        slipSheet: preferences.slipSheet,
+        booklet: preferences.booklet,
+      );
+      final payload = _buildPjlPayload(bytes: sendBytes, prefix: pjlPrefix);
 
       return await _sendLprJob(
         printerHost: printerHost,
@@ -1870,8 +1850,7 @@ class _LprPrintClient {
               _CampusPrinterPageState._snackPrinterConnectionFailed,
             );
           }
-          final queueId = data['id']?.toString() ?? '';
-          return _PrintJobResult(isQueued: true, queueNumber: queueId);
+          return const _PrintJobResult(isQueued: false, queueNumber: '');
         } catch (e) {
           if (e is _LprPrintException) rethrow;
           throw const _LprPrintException(
