@@ -79,7 +79,7 @@ class CampusPrinterPage extends StatefulWidget {
       final uri = Uri.parse(blankPageUrl);
       final response = await HttpUtils.client
           .get(uri, headers: const <String, String>{'Accept-Encoding': 'gzip'})
-          .timeout(const Duration(seconds: 15));
+          .timeout(const Duration(seconds: 5));
       if (response.statusCode == 200 && response.bodyBytes.isNotEmpty) {
         final bytes = response.bodyBytes;
         cachedBlankPageBytes = bytes;
@@ -713,7 +713,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage>
       final uri = Uri.parse(CampusPrinterPage.blankPageUrl);
       final response = await HttpUtils.client
           .get(uri, headers: const <String, String>{'Accept-Encoding': 'gzip'})
-          .timeout(const Duration(seconds: 15));
+          .timeout(const Duration(seconds: 5));
       if (response.statusCode != 200 || response.bodyBytes.isEmpty) {
         throw const FormatException('Unexpected response');
       }
@@ -1257,8 +1257,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage>
                 context,
                 stepNumber: '4',
                 title: 'Send Print Job',
-                body:
-                    'Tap the Print button. Files will be sent sequentially with a 1-second delay.',
+                body: 'Tap the Print button. Files will be sent sequentially ',
               ),
               const Gap(12),
               _buildStepItem(
@@ -1646,7 +1645,7 @@ class _LprPrintClient {
   final String host;
   final int port;
   final String queue;
-  static const Duration _timeout = Duration(seconds: 15);
+  static const Duration _timeout = Duration(seconds: 5);
   static const String _errPrinterConnectionTimedOut =
       'Printer connection timed out';
   static const String _errPrinterRejectedJob = 'Printer rejected the job';
