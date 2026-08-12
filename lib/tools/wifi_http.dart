@@ -35,6 +35,32 @@ class CaptiveWifiHttp {
       'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
       '(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
 
+  static const Duration kRetryDelay = Duration(milliseconds: 1500);
+  static const int kRetryAttempts = 3;
+
+  static Future<T?> retryOperation<T>(
+    Future<T?> Function() action, {
+    int attempts = kRetryAttempts,
+    Duration delay = kRetryDelay,
+    bool Function(T? result)? isSuccess,
+  }) async {
+    T? result;
+    for (var i = 0; i < attempts; i++) {
+      if (i > 0) {
+        await Future<void>.delayed(delay);
+      }
+      try {
+        result = await action();
+        if (isSuccess != null ? isSuccess(result) : result != null) {
+          return result;
+        }
+      } catch (_) {
+        if (i == attempts - 1) rethrow;
+      }
+    }
+    return result;
+  }
+
   static const Duration _connectionTimeout = Duration(seconds: 10);
   final Map<String, Cookie> sessionCookies = {};
 
@@ -475,7 +501,7 @@ class CaptiveWifiHttp {
         assert(true);
       }
 
-      await Future<void>.delayed(const Duration(seconds: 3));
+      await Future<void>.delayed(const Duration(milliseconds: 1500));
 
       final apiLoginUri = loginUri.replace(
         path: '/portalauth/login',
@@ -590,13 +616,18 @@ class CaptiveWifiHttp {
       final encoded = Uri(queryParameters: payload).query;
       lastRequestUrl = _buildDisplayUrl(apiLoginUri, payload);
 
-      final response = await postOnce(
-        client: client,
-        uri: apiLoginUri,
-        body: encoded,
-        cookies: cookies,
-        referer: loginUri,
+      final response = await retryOperation(
+        () => postOnce(
+          client: client,
+          uri: apiLoginUri,
+          body: encoded,
+          cookies: cookies,
+          referer: loginUri,
+        ),
+        isSuccess: (res) => res != null && res.statusCode < 400,
       );
+
+      if (response == null) return false;
 
       lastResponseLog =
           '--- LOGIN RESPONSE ---\n'

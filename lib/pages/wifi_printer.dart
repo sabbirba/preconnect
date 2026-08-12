@@ -477,13 +477,15 @@ class _CampusPrinterPageState extends State<CampusPrinterPage>
       bool workerOnline = false;
       try {
         final url = Uri.parse('${ApiConfig.realtimeApiBase}/print/stats');
-        final response = await HttpUtils.client.get(
-          url,
-          headers: const <String, String>{
-            'Accept': 'application/json',
-            'Connection': 'keep-alive',
-          },
-        );
+        final response = await HttpUtils.client
+            .get(
+              url,
+              headers: const <String, String>{
+                'Accept': 'application/json',
+                'Connection': 'keep-alive',
+              },
+            )
+            .timeout(const Duration(seconds: 2));
         if (response.statusCode == 200) {
           final Map<String, dynamic> data =
               jsonDecode(response.body) as Map<String, dynamic>;
@@ -2191,20 +2193,24 @@ class _WifiPrinterDiscovery {
     final seen = <String>{};
     final targets = <Map<String, dynamic>>[];
 
-    for (final host in preferredHosts) {
+    final priorityHosts = <String>[...preferredHosts, ...campusHosts];
+    for (final host in priorityHosts) {
       final h = host.trim();
-      if (h.isNotEmpty && seen.add(h)) {
-        targets.add({'address': h, 'type': 'saved', 'timeout': timeout});
-      }
-    }
-    for (final host in campusHosts) {
-      final h = host.trim();
-      if (h.isNotEmpty && seen.add(h)) {
-        targets.add({
-          'address': h,
-          'type': 'campus',
-          'timeout': const Duration(milliseconds: 500),
-        });
+      if (h.isEmpty || !seen.add(h)) continue;
+      final isCampus = campusHosts.contains(h);
+      final ok = await _probe(
+        h,
+        port,
+        isCampus ? const Duration(milliseconds: 350) : timeout,
+      );
+      if (ok) {
+        found.add(
+          _WifiPrinterCandidate(
+            address: h,
+            interfaceName: isCampus ? 'campus' : 'saved',
+          ),
+        );
+        if (found.length >= limit) return found;
       }
     }
 

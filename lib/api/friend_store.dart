@@ -17,25 +17,50 @@ class FriendScheduleStore {
     try {
       final prefs = AppStorage.instance;
       final encodedRaw = await prefs.getString(_encodedSchedulesKey);
-      final metadataRaw = await prefs.getString(_metadataKey);
-      final encodedSchedules = encodedRaw == null || encodedRaw.isEmpty
-          ? const <String>[]
-          : (jsonDecode(encodedRaw) as List).whereType<String>().toList(
-              growable: false,
-            );
-      final metadata = <String, FriendMetadata>{};
-      if (metadataRaw != null && metadataRaw.isNotEmpty) {
-        final decoded = jsonDecode(metadataRaw);
-        if (decoded is Map) {
-          for (final entry in decoded.entries) {
-            try {
-              metadata['${entry.key}'] = FriendMetadata.fromJson(
-                Map<String, dynamic>.from(entry.value as Map),
-              );
-            } catch (_) {}
+      final metadataRawPrimary = await prefs.getString(_metadataKey);
+
+      List<String> encodedSchedules = <String>[];
+      if (encodedRaw != null && encodedRaw.isNotEmpty) {
+        try {
+          final parsed = jsonDecode(encodedRaw);
+          if (parsed is List) {
+            encodedSchedules = parsed.whereType<String>().toList();
           }
+        } catch (_) {}
+      }
+
+      if (encodedSchedules.isEmpty) {
+        final legacyList = await prefs.getStringList('friendSchedules');
+        if (legacyList != null && legacyList.isNotEmpty) {
+          encodedSchedules = legacyList;
+          await prefs.setString(
+            _encodedSchedulesKey,
+            jsonEncode(encodedSchedules),
+          );
         }
       }
+
+      final metadata = <String, FriendMetadata>{};
+      final metadataRaw =
+          metadataRawPrimary != null && metadataRawPrimary.isNotEmpty
+          ? metadataRawPrimary
+          : await prefs.getString('friendMetadata');
+
+      if (metadataRaw != null && metadataRaw.isNotEmpty) {
+        try {
+          final decoded = jsonDecode(metadataRaw);
+          if (decoded is Map) {
+            for (final entry in decoded.entries) {
+              try {
+                metadata['${entry.key}'] = FriendMetadata.fromJson(
+                  Map<String, dynamic>.from(entry.value as Map),
+                );
+              } catch (_) {}
+            }
+          }
+        } catch (_) {}
+      }
+
       return FriendScheduleStoreSnapshot(
         encodedSchedules: encodedSchedules,
         metadata: metadata,
@@ -93,18 +118,71 @@ class FriendScheduleStore {
     await AppStorage.instance.remove(_metadataKey);
   }
 
-  String? _extractFriendId(String base64Data) {
+  static FriendSchedule? parseSchedulePayload(String raw) {
+    final trimmed = raw.trim();
+    if (trimmed.isEmpty) return null;
+
     try {
-      final decodedBase64 = base64.decode(base64Data);
-      final decodedGzip = GZipDecoder().decodeBytes(decodedBase64);
-      final originalJson = utf8.decode(decodedGzip);
-      final parsed = jsonDecode(originalJson);
-      if (parsed is Map<String, dynamic>) {
-        final id = parsed['id']?.toString().trim() ?? '';
-        return id.isEmpty ? null : id;
+      final decodedBase64 = base64.decode(trimmed);
+      try {
+        final decompressed = GZipDecoder().decodeBytes(decodedBase64);
+        final jsonStr = utf8.decode(decompressed);
+        final parsed = jsonDecode(jsonStr);
+        if (parsed is Map<String, dynamic>) {
+          return FriendSchedule.fromJson(parsed);
+        }
+      } catch (_) {
+        final jsonStr = utf8.decode(decodedBase64);
+        final parsed = jsonDecode(jsonStr);
+        if (parsed is Map<String, dynamic>) {
+          return FriendSchedule.fromJson(parsed);
+        }
       }
     } catch (_) {}
+
+    try {
+      final parsed = jsonDecode(trimmed);
+      if (parsed is Map<String, dynamic>) {
+        return FriendSchedule.fromJson(parsed);
+      }
+    } catch (_) {}
+
     return null;
+  }
+
+  static List<String>? extractExportSchedules(String raw) {
+    final trimmed = raw.trim();
+    if (trimmed.isEmpty) return null;
+
+    dynamic parsed;
+    try {
+      final decodedBase64 = base64.decode(trimmed);
+      try {
+        final decompressed = GZipDecoder().decodeBytes(decodedBase64);
+        parsed = jsonDecode(utf8.decode(decompressed));
+      } catch (_) {
+        parsed = jsonDecode(utf8.decode(decodedBase64));
+      }
+    } catch (_) {
+      try {
+        parsed = jsonDecode(trimmed);
+      } catch (_) {}
+    }
+
+    if (parsed is Map<String, dynamic> &&
+        parsed['type'] == 'friend_schedules_export') {
+      final schedules = parsed['schedules'];
+      if (schedules is List) {
+        return schedules.whereType<String>().toList();
+      }
+    }
+    return null;
+  }
+
+  String? _extractFriendId(String base64Data) {
+    final schedule = parseSchedulePayload(base64Data);
+    final id = schedule?.id.trim() ?? '';
+    return id.isEmpty ? null : id;
   }
 }
 

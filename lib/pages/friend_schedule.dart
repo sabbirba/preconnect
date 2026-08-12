@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
-import 'dart:typed_data';
 import 'package:share_plus/share_plus.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:preconnect/tools/app_paths.dart';
@@ -111,17 +110,11 @@ class _FriendSchedulePageState extends State<FriendSchedulePage>
       final validEntries = <String>[];
 
       for (final base64Json in encodedList) {
-        try {
-          final Uint8List decodeBase64Json = base64.decode(base64Json);
-          final List<int> decodeGzipJson = GZipDecoder().decodeBytes(
-            decodeBase64Json,
-          );
-          final String originalJson = utf8.decode(decodeGzipJson);
-
-          final parsed = jsonDecode(originalJson);
-          final friendSchedule = FriendSchedule.fromJson(parsed);
+        final friendSchedule = FriendScheduleStore.parseSchedulePayload(
+          base64Json,
+        );
+        if (friendSchedule != null && friendSchedule.id.isNotEmpty) {
           final metadata = _metadata[friendSchedule.id];
-
           allSchedules.add(
             FriendScheduleItem(
               encoded: base64Json,
@@ -130,7 +123,7 @@ class _FriendSchedulePageState extends State<FriendSchedulePage>
             ),
           );
           validEntries.add(base64Json);
-        } catch (_) {}
+        }
       }
 
       final invalidEntries = encodedList
