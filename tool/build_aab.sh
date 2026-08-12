@@ -7,7 +7,8 @@ ENV_FILE="${ROOT_DIR}/.env"
 DART_DEFINES=""
 if [[ -f "${ENV_FILE}" ]]; then
   while IFS= read -r definition || [[ -n "${definition}" ]]; do
-    [[ -z "${definition}" ]] && continue
+    definition="$(printf '%s' "${definition}" | tr -d '\r')"
+    [[ -z "${definition}" || "${definition}" =~ ^[[:space:]]*# ]] && continue
     encoded="$(printf '%s' "${definition}" | base64 | tr -d '\n')"
     DART_DEFINES+="${encoded},"
   done <"${ENV_FILE}"

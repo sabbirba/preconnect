@@ -26,7 +26,10 @@ class NativeFile {
   static Future<bool> _openFileUri(String path) async {
     if (Platform.isAndroid) return false;
     try {
-      return launchUrl(Uri.file(path), mode: LaunchMode.externalApplication);
+      return await launchUrl(
+        Uri.file(path),
+        mode: LaunchMode.externalApplication,
+      );
     } catch (_) {
       return false;
     }

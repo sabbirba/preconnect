@@ -4,15 +4,25 @@ on:
   pull_request:
     paths:
       - "**/*.dart"
+      - "**/*.sh"
+      - "web/**"
+      - "tool/**"
+      - ".github/workflows/**"
       - "analysis_options.yaml"
       - "pubspec.yaml"
+      - "pubspec.lock"
   push:
     branches:
       - main
     paths:
       - "**/*.dart"
+      - "**/*.sh"
+      - "web/**"
+      - "tool/**"
+      - ".github/workflows/**"
       - "analysis_options.yaml"
       - "pubspec.yaml"
+      - "pubspec.lock"
   workflow_dispatch:
 
 permissions:
@@ -26,7 +36,7 @@ jobs:
   flutter:
     name: Flutter Checks
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
     steps:
       - name: Checkout
         uses: actions/checkout@v7.0.1
@@ -46,16 +56,17 @@ jobs:
       - name: Audit License Compliance
         run: ./tool/check_licenses.sh
 
+      - name: Verify Version & Store Metadata Sync
+        run: ./tool/sync_versions.sh sync-metadata
+
       - name: Verify Formatting
         run: dart format --output=none --set-exit-if-changed lib web test
 
       - name: Analyze
         run: flutter analyze
 
-      - name: Build & Validate Browser Extensions
-        run: |
-          ./tool/validate_extension.sh
-          ./tool/profile_extension.sh
+      - name: Validate Browser Extension Manifests & CSP
+        run: ./tool/validate_extension.sh
 
       - name: Test
         run: flutter test

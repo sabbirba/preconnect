@@ -123,7 +123,7 @@ class ProgressService {
       if (majorMinors == null ||
           completedCourses == null ||
           curriculum == null) {
-        return getProgress(fromFetch: true);
+        return await getProgress(fromFetch: true);
       }
 
       final payload = <String, dynamic>{
