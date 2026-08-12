@@ -133,7 +133,10 @@ class _DevsPageState extends State<DevsPage> {
       if (!forceRefresh) {
         final cached = await _readCachedContributorsStatic();
         if (cached.isNotEmpty) {
-          return _buildContributors(cached, forceRosterRefresh: forceRefresh);
+          return await _buildContributors(
+            cached,
+            forceRosterRefresh: forceRefresh,
+          );
         }
       }
 
@@ -142,14 +145,14 @@ class _DevsPageState extends State<DevsPage> {
       );
       final response = await _githubGet(uri);
       if (response.statusCode < 200 || response.statusCode >= 300) {
-        return _buildContributors(
+        return await _buildContributors(
           const <_ContributorProfile>[],
           forceRosterRefresh: forceRefresh,
         );
       }
       final decoded = jsonDecode(response.body);
       if (decoded is! List) {
-        return _buildContributors(
+        return await _buildContributors(
           const <_ContributorProfile>[],
           forceRosterRefresh: forceRefresh,
         );

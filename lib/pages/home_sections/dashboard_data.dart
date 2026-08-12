@@ -370,7 +370,7 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
         scheduleJson: scheduleJson,
         advisingInfo: advisingInfo,
       );
-      return _withCurrentVisibility(data).catchError((_) => data);
+      return await _withCurrentVisibility(data).catchError((_) => data);
     } catch (error) {
       final fallbackVisibility = await HomeCardPreferences.load().catchError((
         _,
