@@ -96,33 +96,28 @@ class HttpUtils {
         '@PJL SET MULTIPAGE = 4\r\n',
         '@PJL SET NUP = 4\r\n',
       ],
-      if (fittingMode == 'Fit on Printable Area') ...[
+      if (fittingMode == 'Fit on Paper') ...[
+        '@PJL SET FITTOPAGESIZE = ON\r\n',
+        '@PJL SET ZOOM = FIT\r\n',
+      ] else if (fittingMode == 'Fit on Printable Area') ...[
         '@PJL SET FITOPRINTABLE = ON\r\n',
         '@PJL SET ZOOM = FIT\r\n',
         '@PJL SET FITTOPAGESIZE = ON\r\n',
       ] else if (fittingMode == 'Edge-to-Edge') ...[
         '@PJL SET EDGETOEDGE = ON\r\n',
-      ] else ...[
-        '@PJL SET FITOPRINTABLE = OFF\r\n',
-        '@PJL SET FITTOPAGESIZE = OFF\r\n',
-        '@PJL SET EDGETOEDGE = OFF\r\n',
       ],
       if (staple == 'Left Corner') ...[
         '@PJL SET STAPLE = LEFTCORNER\r\n',
       ] else if (staple == 'Right Corner') ...[
         '@PJL SET STAPLE = RIGHTCORNER\r\n',
-      ] else ...[
-        '@PJL SET STAPLE = OFF\r\n',
       ],
       if (punch == '2 Holes') ...[
         '@PJL SET PUNCH = 2HOLE\r\n',
       ] else if (punch == '3 Holes') ...[
         '@PJL SET PUNCH = 3HOLE\r\n',
-      ] else ...[
-        '@PJL SET PUNCH = OFF\r\n',
       ],
-      '@PJL SET JOBOFFSET = ${jobOffset == 'On' ? 'ON' : 'OFF'}\r\n',
-      '@PJL SET SLIPSHEET = ${slipSheet == 'On' ? 'ON' : 'OFF'}\r\n',
+      if (jobOffset == 'On') '@PJL SET JOBOFFSET = ON\r\n',
+      if (slipSheet == 'On') '@PJL SET SLIPSHEET = ON\r\n',
       if (booklet == 'On') ...[
         '@PJL SET MULTIPAGE = BOOKLET\r\n',
         '@PJL SET FOLD = SADDLE\r\n',
