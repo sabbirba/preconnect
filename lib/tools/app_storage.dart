@@ -9,16 +9,6 @@ import 'package:preconnect/tools/platform_stub.dart'
 const int _kLargeValueThreshold = 256 * 1024;
 const String _kFileCacheMarker = '__fscache__:';
 
-class AppStorageException implements Exception {
-  const AppStorageException(this.operation, this.cause);
-
-  final String operation;
-  final Object cause;
-
-  @override
-  String toString() => 'AppStorageException: $operation failed ($cause)';
-}
-
 class AppStorage {
   AppStorage._();
 
@@ -29,13 +19,17 @@ class AppStorage {
 
   static Future<void> initialize() async {
     if (kIsWeb) {
-      final all = await webExtensionStorageGetAll();
-      _webCache.addAll(all);
+      try {
+        final all = await webExtensionStorageGetAll();
+        _webCache.addAll(all);
+      } catch (_) {}
       return;
     }
-    _prefs = await SharedPreferences.getInstance();
-    await _initCacheDir();
-    await _migrateLargeEntries();
+    try {
+      _prefs = await SharedPreferences.getInstance();
+      await _initCacheDir();
+      await _migrateLargeEntries();
+    } catch (_) {}
   }
 
   static Future<void> _initCacheDir() async {
@@ -47,28 +41,26 @@ class AppStorage {
         _cacheDir!.createSync(recursive: true);
       }
     } catch (error) {
-      throw AppStorageException('Initialize file cache', error);
+      _cacheDir = null;
     }
   }
 
   static Future<void> _migrateLargeEntries() async {
     final prefs = _prefs;
     if (prefs == null) return;
-    final keys = prefs.getKeys().toList();
-    for (final key in keys) {
-      final val = prefs.getString(key);
-      if (val == null || val.startsWith(_kFileCacheMarker)) continue;
-      if (val.length > _kLargeValueThreshold) {
-        await _writeToFile(key, val);
-        final persisted = await prefs.setString(key, '$_kFileCacheMarker$key');
-        if (!persisted) {
-          throw AppStorageException(
-            'Migrate "$key" to the file cache',
-            StateError('SharedPreferences rejected the marker write'),
-          );
-        }
+    try {
+      final keys = prefs.getKeys().toList();
+      for (final key in keys) {
+        try {
+          final val = prefs.getString(key);
+          if (val == null || val.startsWith(_kFileCacheMarker)) continue;
+          if (val.length > _kLargeValueThreshold) {
+            await _writeToFile(key, val);
+            await prefs.setString(key, '$_kFileCacheMarker$key');
+          }
+        } catch (_) {}
       }
-    }
+    } catch (_) {}
   }
 
   static Future<SharedPreferences> _getInstance() async {
@@ -89,17 +81,11 @@ class AppStorage {
         await _initCacheDir();
       }
       final file = _fileForKey(key);
-      if (file == null) {
-        throw StateError('File cache directory is unavailable');
-      }
+      if (file == null) return;
       final bytes = utf8.encode(value);
       final compressed = gzip.encode(bytes);
       await file.writeAsBytes(compressed, flush: true);
-    } on AppStorageException {
-      rethrow;
-    } catch (error) {
-      throw AppStorageException('Write "$key" to the file cache', error);
-    }
+    } catch (_) {}
   }
 
   static Future<String?> _readFromFile(String key) async {
@@ -108,12 +94,16 @@ class AppStorage {
       if (file == null || !file.existsSync()) return null;
       final bytes = await file.readAsBytes();
       if (bytes.length >= 2 && bytes[0] == 0x1f && bytes[1] == 0x8b) {
-        final decompressed = gzip.decode(bytes);
-        return utf8.decode(decompressed);
+        try {
+          final decompressed = gzip.decode(bytes);
+          return utf8.decode(decompressed);
+        } catch (_) {
+          return null;
+        }
       }
       return utf8.decode(bytes);
-    } catch (error) {
-      throw AppStorageException('Read "$key" from the file cache', error);
+    } catch (_) {
+      return null;
     }
   }
 
@@ -123,12 +113,16 @@ class AppStorage {
       if (file == null || !file.existsSync()) return null;
       final bytes = file.readAsBytesSync();
       if (bytes.length >= 2 && bytes[0] == 0x1f && bytes[1] == 0x8b) {
-        final decompressed = gzip.decode(bytes);
-        return utf8.decode(decompressed);
+        try {
+          final decompressed = gzip.decode(bytes);
+          return utf8.decode(decompressed);
+        } catch (_) {
+          return null;
+        }
       }
       return utf8.decode(bytes);
-    } catch (error) {
-      throw AppStorageException('Read "$key" from the file cache', error);
+    } catch (_) {
+      return null;
     }
   }
 
@@ -138,9 +132,7 @@ class AppStorage {
       if (file != null && file.existsSync()) {
         await file.delete();
       }
-    } catch (error) {
-      throw AppStorageException('Delete "$key" from the file cache', error);
-    }
+    } catch (_) {}
   }
 
   Future<String?> getString(String key) async {
@@ -160,26 +152,16 @@ class AppStorage {
       await webExtensionStorageSet(key, value);
       return;
     }
-    final prefs = await _getInstance();
-    if (value.length > _kLargeValueThreshold) {
-      await _writeToFile(key, value);
-      final persisted = await prefs.setString(key, '$_kFileCacheMarker$key');
-      if (!persisted) {
-        throw AppStorageException(
-          'Persist marker for "$key"',
-          StateError('SharedPreferences rejected the write'),
-        );
+    try {
+      final prefs = await _getInstance();
+      if (value.length > _kLargeValueThreshold) {
+        await _writeToFile(key, value);
+        await prefs.setString(key, '$_kFileCacheMarker$key');
+      } else {
+        await _deleteFile(key);
+        await prefs.setString(key, value);
       }
-    } else {
-      await _deleteFile(key);
-      final persisted = await prefs.setString(key, value);
-      if (!persisted) {
-        throw AppStorageException(
-          'Persist "$key"',
-          StateError('SharedPreferences rejected the write'),
-        );
-      }
-    }
+    } catch (_) {}
   }
 
   Future<bool?> getBool(String key) async {
@@ -219,8 +201,12 @@ class AppStorage {
 
   Future<bool> containsKey(String key) async {
     if (kIsWeb) return _webCache.containsKey(key);
-    final prefs = await _getInstance();
-    return prefs.containsKey(key);
+    try {
+      final prefs = await _getInstance();
+      return prefs.containsKey(key);
+    } catch (_) {
+      return false;
+    }
   }
 
   Future<void> remove(String key) async {
@@ -229,14 +215,11 @@ class AppStorage {
       await webExtensionStorageSet(key, null);
       return;
     }
-    final prefs = await _getInstance();
-    await _deleteFile(key);
-    if (!await prefs.remove(key)) {
-      throw AppStorageException(
-        'Remove "$key"',
-        StateError('SharedPreferences rejected the removal'),
-      );
-    }
+    try {
+      final prefs = await _getInstance();
+      await _deleteFile(key);
+      await prefs.remove(key);
+    } catch (_) {}
   }
 
   Future<void> clear() async {
@@ -246,18 +229,13 @@ class AppStorage {
       await webExtensionStorageRemoveKeys(keys);
       return;
     }
-    final prefs = await _getInstance();
-    final keys = prefs.getKeys().toList();
-    for (final key in keys) {
-      await _deleteFile(key);
-    }
-    if (!await prefs.clear()) {
-      throw AppStorageException(
-        'Clear preferences',
-        StateError('SharedPreferences rejected the clear'),
-      );
-    }
     try {
+      final prefs = await _getInstance();
+      final keys = prefs.getKeys().toList();
+      for (final key in keys) {
+        await _deleteFile(key);
+      }
+      await prefs.clear();
       final cacheDir = _cacheDir;
       if (cacheDir != null && cacheDir.existsSync()) {
         for (final entity in cacheDir.listSync()) {
@@ -265,9 +243,7 @@ class AppStorage {
         }
       }
       await _initCacheDir();
-    } catch (error) {
-      throw AppStorageException('Clear file cache', error);
-    }
+    } catch (_) {}
   }
 
   String? getStringSync(String key) {

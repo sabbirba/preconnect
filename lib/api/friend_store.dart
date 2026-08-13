@@ -29,26 +29,10 @@ class FriendScheduleStore {
         } catch (_) {}
       }
 
-      if (encodedSchedules.isEmpty) {
-        final legacyList = await prefs.getStringList('friendSchedules');
-        if (legacyList != null && legacyList.isNotEmpty) {
-          encodedSchedules = legacyList;
-          await prefs.setString(
-            _encodedSchedulesKey,
-            jsonEncode(encodedSchedules),
-          );
-        }
-      }
-
       final metadata = <String, FriendMetadata>{};
-      final metadataRaw =
-          metadataRawPrimary != null && metadataRawPrimary.isNotEmpty
-          ? metadataRawPrimary
-          : await prefs.getString('friendMetadata');
-
-      if (metadataRaw != null && metadataRaw.isNotEmpty) {
+      if (metadataRawPrimary != null && metadataRawPrimary.isNotEmpty) {
         try {
-          final decoded = jsonDecode(metadataRaw);
+          final decoded = jsonDecode(metadataRawPrimary);
           if (decoded is Map) {
             for (final entry in decoded.entries) {
               try {

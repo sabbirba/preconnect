@@ -515,7 +515,13 @@ class _MyAppState extends State<MyApp>
     }
   }
 
-  void _onConnectivityChanged(List<ConnectivityResult> results) {}
+  void _onConnectivityChanged(List<ConnectivityResult> results) {
+    final isOnline =
+        results.isNotEmpty && results.any((r) => r != ConnectivityResult.none);
+    if (isOnline) {
+      unawaited(triggerAppRefresh(forceRefresh: true));
+    }
+  }
 
   Future<void> triggerAppRefresh({bool forceRefresh = false}) async {
     if (_appRefreshInFlight) return;
