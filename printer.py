@@ -41,14 +41,7 @@ try:
 except Exception: pass
 
 def _load_key():
-    k = (sys.argv[1].strip() if len(sys.argv) > 1 else "") or environ.get("WORKER_KEY", "").strip()
-    if not k:
-        try:
-            from pathlib import Path
-            for f in Path(__file__).parent.glob("*.key"):
-                content = f.read_text("utf-8").strip()
-                if content: k = content; break
-        except Exception: pass
+    k = (sys.argv[1].strip() if len(sys.argv) > 1 and not sys.argv[1].startswith("-") else "")
     if sys.platform == "win32" and k.startswith("DPAPI:"):
         try:
             from ctypes import wintypes
@@ -66,23 +59,22 @@ def _load_key():
     if not k:
         if sys.__stderr__ is not None: sys.__stderr__.write("error: worker key required\n")
         _exit(1)
-    if len(sys.argv) > 1: sys.argv[1] = " " * len(k)
+    if len(sys.argv) > 1: sys.argv[1] = " " * len(sys.argv[1])
     return k
+
 
 _k = _load_key()
 _orig_stderr = sys.__stderr__ or sys.stderr
 _is_debug = "--debug" in sys.argv
 
 def _log(msg, level="OK"):
-    if not _is_debug and level == "OK" and ("Ping" in msg or "Connection #" in msg): return
+    if not _is_debug and level == "OK": return
     try:
         tag = "ERR" if level == "ERR" else ("WARN" if level == "WARN" else "OK")
         out = _orig_stderr if _orig_stderr is not None else sys.stderr
         out.write(f"[{tag}] {msg}\n")
         out.flush()
     except Exception: pass
-
-_log("PreConnect Printer Worker Started (Worker Key Verified)", level="OK")
 
 _doh_cache = {}
 
@@ -158,14 +150,7 @@ def _d(s, job_id=""):
     for idx, i in enumerate(range(0, len(enc), 32)):
         chunk = enc[i : i + 32]
         ks = sha256(p + idx.to_bytes(4, "big")).digest()
-        if len(chunk) == 32:
-            v0 = int.from_bytes(chunk[:8], "little") ^ int.from_bytes(ks[:8], "little")
-            v1 = int.from_bytes(chunk[8:16], "little") ^ int.from_bytes(ks[8:16], "little")
-            v2 = int.from_bytes(chunk[16:24], "little") ^ int.from_bytes(ks[16:24], "little")
-            v3 = int.from_bytes(chunk[24:32], "little") ^ int.from_bytes(ks[24:32], "little")
-            out[i : i + 32] = (v0.to_bytes(8, "little") + v1.to_bytes(8, "little") + v2.to_bytes(8, "little") + v3.to_bytes(8, "little"))
-        else:
-            for j, b in enumerate(chunk): out[i + j] = b ^ ks[j]
+        out[i : i + len(chunk)] = (int.from_bytes(chunk, "big") ^ int.from_bytes(ks[:len(chunk)], "big")).to_bytes(len(chunk), "big")
     res = bytes(out)
     if res.startswith(b"\x78\x9c") or res.startswith(b"\x78\x01") or res.startswith(b"\x78\xda"):
         try: return zlib.decompress(res)
