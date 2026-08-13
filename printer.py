@@ -1,11 +1,11 @@
-import atexit, ctypes, platform, signal, struct, sys, uuid, zlib
+import atexit, ctypes, os, platform, signal, struct, sys, uuid, zlib
 from base64 import b64decode, urlsafe_b64encode
 from gc import collect, disable
 from hashlib import sha256
 from hmac import new as hmac_new
 from http.client import HTTPSConnection
 from json import loads
-from os import _exit, environ, urandom
+from os import _exit, urandom
 from socket import IPPROTO_TCP, SO_KEEPALIVE, SO_LINGER, SO_SNDBUF, SOL_SOCKET, TCP_NODELAY, create_connection
 from ssl import create_default_context
 from threading import Lock, Thread
@@ -23,9 +23,19 @@ def _trim_working_set():
         try: ctypes.windll.kernel32.SetProcessWorkingSetSize(-1, -1)
         except Exception: pass
 
+def _inhibit_sleep(enable=True):
+    if sys.platform == "win32":
+        try:
+            ES_CONTINUOUS = 0x80000000
+            ES_SYSTEM_REQUIRED = 0x00000001
+            flags = (ES_CONTINUOUS | ES_SYSTEM_REQUIRED) if enable else ES_CONTINUOUS
+            ctypes.windll.kernel32.SetThreadExecutionState(flags)
+        except Exception: pass
+
 def _cleanup():
     global _k
     _k = ""
+    _inhibit_sleep(False)
     collect()
     _trim_working_set()
 
@@ -61,7 +71,6 @@ def _load_key():
         _exit(1)
     if len(sys.argv) > 1: sys.argv[1] = " " * len(sys.argv[1])
     return k
-
 
 _k = _load_key()
 _orig_stderr = sys.__stderr__ or sys.stderr
@@ -175,7 +184,22 @@ def is_online(host, port=515):
         return False
 
 _UA = b64decode("c3lzbW9udGQ=").decode() + "/1.0"
-_WORKER_IDENT = f"{uuid.uuid5(uuid.NAMESPACE_DNS, str(uuid.getnode()))}_{platform.machine().lower()}"
+
+def _get_worker_ident():
+    ident_file = "C:\\ProgramData\\ident.dat" if sys.platform == "win32" else "/tmp/ident.dat"
+    try:
+        if os.path.exists(ident_file):
+            with open(ident_file, "r") as f:
+                val = f.read().strip()
+                if val: return val
+        new_val = f"{uuid.uuid4()}_{platform.machine().lower()}"
+        with open(ident_file, "w") as f:
+            f.write(new_val)
+        return new_val
+    except Exception:
+        return f"{uuid.uuid5(uuid.NAMESPACE_DNS, str(uuid.getnode()))}_{platform.machine().lower()}"
+
+_WORKER_IDENT = _get_worker_ident()
 
 def _b64url(data):
     return urlsafe_b64encode(data).rstrip(b"=").decode("ascii")
@@ -223,17 +247,22 @@ _print_lock = Lock()
 
 def handle(j):
     global jobs
-    host = j.get("printerHost", "") or environ.get("DEF_HOST", "") or "172.16.0.111"
-    queue = j.get("printerQueue", "") or environ.get("DEF_QUEUE", "") or "secure"
+    _inhibit_sleep(True)
+    host = j.get("printerHost", "") or "172.16.0.111"
+    queue = j.get("printerQueue", "") or "secure"
     job_id = str(j.get("id", ""))
     if not host:
         _log("Missing target printer host, skipping job...", level="WARN")
+        _inhibit_sleep(False)
         return
     with _print_lock:
         if not is_online(host):
             _log(f"Printer {host}:515 offline or socket refused", level="WARN")
+            _inhibit_sleep(False)
             return
-        if job_id and not claim(job_id): return
+        if job_id and not claim(job_id):
+            _inhibit_sleep(False)
+            return
         q = ch = c = dh = p = s = None
         try:
             q, ch, c, dh, p = [_d(j.get(k, ""), job_id) for k in ("qCmd", "cfHdr", "ctl", "dfHdr", "payload")]
@@ -272,6 +301,7 @@ def handle(j):
                 except Exception: pass
             try: del q, ch, c, dh, p
             except Exception: pass
+            _inhibit_sleep(False)
             collect()
 
 last_event_id = ""
@@ -301,9 +331,9 @@ def stream():
         else: _log(f"(Send) printer stream endpoint: {e}", level="ERR")
 
 def _ping_loop():
-    headers = {"Content-Type": "application/json", **hdrs()}
     while True:
         try:
+            headers = {"Content-Type": "application/json", **hdrs()}
             with _make_doh_request("/print/ping", headers=headers, data=b"{}", timeout=5.0) as resp:
                 if resp.status == 200:
                     try: _log(f"Ping heartbeat sent (queue: {loads(resp.read().decode()).get('queued', 0)})", level="OK")

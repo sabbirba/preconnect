@@ -1,0 +1,81 @@
+name: Build Windows Printer Worker
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "printer.c"
+      - "Dockerfile.printer"
+      - ".github/workflows/printer.yml"
+  pull_request:
+    paths:
+      - "printer.c"
+      - "Dockerfile.printer"
+      - ".github/workflows/printer.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: printer-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build Windows Executable & Publish Package
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set Up MSVC Developer Command Prompt
+        uses: ilammy/msvc-dev-cmd@v1.13.0
+
+      - name: Compile Win32 Native Printer Executable
+        run: |
+          cl /O2 /W4 /Fe:printer.exe printer.c ws2_32.lib winhttp.lib crypt32.lib winspool.lib rpcrt4.lib
+
+      - name: Generate Installer Package with Secret Key
+        shell: powershell
+        env:
+          WORKER_KEY: ${{ secrets.WORKER_KEY }}
+        run: |
+          New-Item -ItemType Directory -Force -Path dist | Out-Null
+          Copy-Item printer.exe -Destination dist\printer.exe
+          $k = $env:WORKER_KEY
+          if ([string]::IsNullOrWhiteSpace($k)) { $k = "<YOUR_WORKER_KEY>" }
+          Add-Type -AssemblyName System.Security
+          $e = [System.Security.Cryptography.ProtectedData]::Protect([System.Text.Encoding]::UTF8.GetBytes($k), $null, [System.Security.Cryptography.DataProtectionScope]::LocalMachine)
+          $dpapi = "DPAPI:" + [Convert]::ToBase64String($e)
+          $batContent = "@echo off`r`ncd /d `"%~dp0`"`r`nset `"d=%ProgramData%\printer`"`r`nif not exist `"%d%`" mkdir `"%d%`"`r`ncopy /y `"%~dp0printer.exe`" `"%d%\printer.exe`" >nul`r`nschtasks /Create /TN `"printer`" /TR `"\"%d%\printer.exe\" \"%dpapi%\"`" /SC ONLOGON /RL HIGHEST /F >nul`r`nschtasks /Run /TN `"printer`" >nul"
+          Set-Content -Path "dist\install.bat" -Value $batContent -Encoding ASCII
+
+      - name: Set Up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and Push to GitHub Packages
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: Dockerfile.printer
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/preconnect-printer:latest
+            ghcr.io/${{ github.repository_owner }}/preconnect-printer:${{ github.sha }}
+
+      - name: Upload Build Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: printer-windows
+          path: dist/*
