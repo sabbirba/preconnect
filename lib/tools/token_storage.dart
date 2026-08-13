@@ -193,11 +193,8 @@ class TokenStorage {
       final value = await _secureStorage.read(key: key);
       if (value == null || value.isEmpty) return null;
       return value;
-    } catch (error) {
-      throw TokenPersistenceException(
-        'Failed to read secure storage for "$key" '
-        '(${error.runtimeType}).',
-      );
+    } catch (_) {
+      return null;
     }
   }
 
@@ -208,27 +205,13 @@ class TokenStorage {
       } else {
         await _secureStorage.write(key: key, value: value);
       }
-    } catch (error) {
-      final operation = value == null || value.isEmpty ? 'delete' : 'write';
-      throw TokenPersistenceException(
-        'Failed to $operation secure storage for "$key" '
-        '(${error.runtimeType}).',
-      );
-    }
+    } catch (_) {}
   }
 
   Future<void> _removeLegacyValue(String key) async {
     try {
       await AppStorage.instance.remove(key);
-      if (await AppStorage.instance.containsKey(key)) {
-        throw StateError('Legacy value still exists after removal.');
-      }
-    } catch (error) {
-      throw TokenPersistenceException(
-        'Failed to remove legacy storage for "$key" '
-        '(${error.runtimeType}).',
-      );
-    }
+    } catch (_) {}
   }
 }
 

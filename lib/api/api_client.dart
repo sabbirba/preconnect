@@ -22,10 +22,8 @@ class ApiClient {
   final Map<String, _CachedHttpResponse> _cachedResponses =
       <String, _CachedHttpResponse>{};
   static const Duration _requestTimeout = Duration(seconds: 12);
-  static const Duration _connectivityProbeTimeout = Duration(seconds: 2);
   static const Duration _defaultGetCacheTtl = Duration(seconds: 2);
   static const Duration _accessTokenCacheTtl = Duration(seconds: 2);
-  static const Duration _connectionCacheTtl = Duration(seconds: 5);
 
   String? _cachedAccessToken;
   DateTime? _cachedAccessTokenAt;
@@ -75,38 +73,16 @@ class ApiClient {
   }
 
   Future<bool> hasConnection({bool forceRefresh = false}) async {
-    if (!forceRefresh) {
-      final cached = _cachedHasConnection;
-      final cachedAt = _cachedHasConnectionAt;
-      if (cached != null &&
-          cachedAt != null &&
-          DateTime.now().difference(cachedAt) <= _connectionCacheTtl) {
-        return cached;
-      }
-    }
-
     try {
       final connectivityResult = await Connectivity().checkConnectivity();
-      if (connectivityResult.contains(ConnectivityResult.none)) {
-        _cachedHasConnection = false;
-        _cachedHasConnectionAt = DateTime.now();
-        return false;
-      }
-
-      final response = await HttpUtils.client
-          .get(
-            Uri.parse(ApiConfig.connectApiBase),
-            headers: compressionHeaders(),
-          )
-          .timeout(_connectivityProbeTimeout);
-      final connected = response.statusCode < 500;
-      _cachedHasConnection = connected;
+      final isOffline =
+          connectivityResult.isEmpty ||
+          connectivityResult.every((r) => r == ConnectivityResult.none);
+      _cachedHasConnection = !isOffline;
       _cachedHasConnectionAt = DateTime.now();
-      return connected;
+      return !isOffline;
     } catch (_) {
-      _cachedHasConnection = false;
-      _cachedHasConnectionAt = DateTime.now();
-      return false;
+      return true;
     }
   }
 
@@ -585,6 +561,9 @@ class SessionExpiredException extends PreConnectException {
 class ApiException extends PreConnectException {
   const ApiException(this.statusCode, [super.message]);
   final int statusCode;
+
+  bool get isNotFound => statusCode == 404;
+  bool get isServerError => statusCode >= 500;
 
   @override
   String toString() =>

@@ -368,7 +368,9 @@ class _DevsPageState extends State<DevsPage> {
           title: 'Devs & Support',
           subtitle: subtitle,
           icon: Icons.developer_mode_outlined,
+          iconWidget: const PreConnectGitHubIcon(size: 24),
           onHeaderTap: _onHeaderSecretTap,
+
           actions: [
             IconButton(
               tooltip: 'Settings',

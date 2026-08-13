@@ -3,6 +3,7 @@ part of 'package:preconnect/pages/ui_kit.dart';
 class QuickAccessItem {
   const QuickAccessItem({
     required this.icon,
+    this.iconWidget,
     required this.title,
     required this.subtitle,
     required this.color,
@@ -10,6 +11,7 @@ class QuickAccessItem {
   });
 
   final IconData icon;
+  final Widget? iconWidget;
   final String title;
   final String subtitle;
   final Color color;
@@ -70,6 +72,7 @@ List<QuickAccessItem> defaultQuickAccessItems({
   ),
   QuickAccessItem(
     icon: Icons.developer_mode_outlined,
+    iconWidget: const PreConnectGitHubIcon(size: 22, color: Color(0xFF2C9DFF)),
     title: 'Devs',
     subtitle: 'Support',
     color: const Color(0xFF2C9DFF),
@@ -168,6 +171,7 @@ class _QuickAccessGridState extends State<QuickAccessGrid> {
           return QuickAccessCard(
             width: layout.itemWidth,
             icon: item.icon,
+            iconWidget: item.iconWidget,
             title: item.title,
             subtitle: item.subtitle,
             color: item.color,

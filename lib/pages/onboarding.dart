@@ -418,6 +418,10 @@ class _OnboardingPageState extends State<OnboardingPage> {
                               ),
                               _CompactQuickAccessCard(
                                 icon: Icons.developer_mode_outlined,
+                                iconWidget: const PreConnectGitHubIcon(
+                                  size: 24,
+                                  color: Color(0xFF5B8DEF),
+                                ),
                                 color: const Color(0xFF5B8DEF),
                                 onTap: () =>
                                     _openOnboardingQuickPage(const DevsPage()),
@@ -598,11 +602,13 @@ class _InfoCard extends StatelessWidget {
 class _CompactQuickAccessCard extends StatelessWidget {
   const _CompactQuickAccessCard({
     required this.icon,
+    this.iconWidget,
     required this.color,
     required this.onTap,
   });
 
   final IconData icon;
+  final Widget? iconWidget;
   final Color color;
   final VoidCallback onTap;
 
@@ -614,7 +620,7 @@ class _CompactQuickAccessCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 6.0),
-          child: Icon(icon, color: color, size: 24),
+          child: iconWidget ?? Icon(icon, color: color, size: 24),
         ),
       ),
     );

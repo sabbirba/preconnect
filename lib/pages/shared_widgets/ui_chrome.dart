@@ -49,6 +49,7 @@ class BracuPageScaffold extends StatefulWidget {
     required this.title,
     required this.subtitle,
     this.icon,
+    this.iconWidget,
     required this.body,
     this.actions = const [],
     this.showMenu = false,
@@ -60,6 +61,7 @@ class BracuPageScaffold extends StatefulWidget {
   final String title;
   final String subtitle;
   final IconData? icon;
+  final Widget? iconWidget;
   final Widget body;
   final List<Widget> actions;
   final bool showMenu;
@@ -155,6 +157,7 @@ class _BracuPageScaffoldState extends State<BracuPageScaffold> {
                                 title: widget.title,
                                 subtitle: widget.subtitle,
                                 icon: widget.icon,
+                                iconWidget: widget.iconWidget,
                                 actions: widget.actions,
                                 showMenu: widget.showMenu,
                                 showBack: widget.showBack,
@@ -183,6 +186,7 @@ class _PageHeader extends StatelessWidget {
     required this.title,
     required this.subtitle,
     required this.icon,
+    this.iconWidget,
     required this.actions,
     required this.showMenu,
     required this.showBack,
@@ -193,6 +197,7 @@ class _PageHeader extends StatelessWidget {
   final String title;
   final String subtitle;
   final IconData? icon;
+  final Widget? iconWidget;
   final List<Widget> actions;
   final bool showMenu;
   final bool showBack;
@@ -245,18 +250,33 @@ class _PageHeader extends StatelessWidget {
                   color: subtitleColor ?? BracuPalette.textSecondary(context),
                 ),
               ),
-              const Gap(1),
-              Text(
-                title,
-                style: TextStyle(
-                  fontSize: 17,
-                  fontWeight: FontWeight.w600,
-                  color: BracuPalette.textPrimary(context),
-                ),
+              Row(
+                children: [
+                  if (iconWidget != null) ...[
+                    iconWidget!,
+                    const Gap(6),
+                  ] else if (icon != null) ...[
+                    Icon(
+                      icon,
+                      size: 18,
+                      color: BracuPalette.textPrimary(context),
+                    ),
+                    const Gap(6),
+                  ],
+                  Text(
+                    title,
+                    style: TextStyle(
+                      fontSize: 17,
+                      fontWeight: FontWeight.w600,
+                      color: BracuPalette.textPrimary(context),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
         ),
+
         ...actions,
       ],
     );
@@ -936,6 +956,7 @@ class QuickAccessCard extends StatelessWidget {
     super.key,
     required this.width,
     required this.icon,
+    this.iconWidget,
     required this.title,
     required this.subtitle,
     required this.color,
@@ -945,6 +966,7 @@ class QuickAccessCard extends StatelessWidget {
 
   final double width;
   final IconData icon;
+  final Widget? iconWidget;
   final String title;
   final String subtitle;
   final Color color;
@@ -969,8 +991,9 @@ class QuickAccessCard extends StatelessWidget {
               decoration: const BoxDecoration(color: Colors.transparent),
               child: isLoading
                   ? BracuSpinner(size: 22, color: color, strokeWidth: 2.2)
-                  : Icon(icon, color: color, size: 22),
+                  : (iconWidget ?? Icon(icon, color: color, size: 22)),
             ),
+
             const Gap(4),
             SizedBox(
               width: double.infinity,

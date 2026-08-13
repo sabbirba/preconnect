@@ -9,37 +9,40 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   group('FriendScheduleStore', () {
-    test('migrates legacy friendSchedules and friendMetadata keys', () async {
-      final sampleData = jsonEncode({
-        'id': '20101234',
-        'name': 'Test Student',
-        'courses': <Map<String, dynamic>>[],
-      });
-      final gzipped = GZipEncoder().encode(utf8.encode(sampleData));
-      final base64Encoded = base64.encode(gzipped);
+    test(
+      'loads modern friend_schedules_encoded_v1 and metadata_v1 keys',
+      () async {
+        final sampleData = jsonEncode({
+          'id': '20101234',
+          'name': 'Test Student',
+          'courses': <Map<String, dynamic>>[],
+        });
+        final gzipped = GZipEncoder().encode(utf8.encode(sampleData));
+        final base64Encoded = base64.encode(gzipped);
 
-      SharedPreferences.setMockInitialValues(<String, Object>{
-        'friendSchedules': jsonEncode(<String>[base64Encoded]),
-        'friendMetadata': jsonEncode(<String, dynamic>{
-          '20101234': <String, dynamic>{
-            'friendId': '20101234',
-            'nickname': 'Bestie',
-            'isFavorite': true,
-          },
-        }),
-      });
+        SharedPreferences.setMockInitialValues(<String, Object>{
+          'friend_schedules_encoded_v1': jsonEncode(<String>[base64Encoded]),
+          'friend_schedules_metadata_v1': jsonEncode(<String, dynamic>{
+            '20101234': <String, dynamic>{
+              'friendId': '20101234',
+              'nickname': 'Bestie',
+              'isFavorite': true,
+            },
+          }),
+        });
 
-      final store = FriendScheduleStore();
-      final snapshot = await store.loadSnapshot();
+        final store = FriendScheduleStore();
+        final snapshot = await store.loadSnapshot();
 
-      expect(snapshot.encodedSchedules, hasLength(1));
-      expect(snapshot.encodedSchedules.first, equals(base64Encoded));
-      expect(snapshot.metadata, contains('20101234'));
-      expect(snapshot.metadata['20101234']?.nickname, equals('Bestie'));
-      expect(snapshot.metadata['20101234']?.isFavorite, isTrue);
+        expect(snapshot.encodedSchedules, hasLength(1));
+        expect(snapshot.encodedSchedules.first, equals(base64Encoded));
+        expect(snapshot.metadata, contains('20101234'));
+        expect(snapshot.metadata['20101234']?.nickname, equals('Bestie'));
+        expect(snapshot.metadata['20101234']?.isFavorite, isTrue);
 
-      await AppStorage.instance.clear();
-    });
+        await AppStorage.instance.clear();
+      },
+    );
 
     test(
       'parses all schedule payload encodings (Base64+GZip, Base64, raw JSON)',

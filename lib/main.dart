@@ -7,7 +7,9 @@ import 'package:flutter/services.dart';
 import 'package:flutter/foundation.dart';
 import 'package:preconnect/api/fcm.dart';
 import 'package:preconnect/firebase_options.dart';
+import 'package:preconnect/pages/home_tab.dart';
 import 'app.dart';
+
 import 'tools/app_log.dart';
 import 'tools/app_storage.dart';
 
@@ -54,13 +56,30 @@ Future<void> main() async {
         }
       }
 
-      await AppStorage.initialize();
+      try {
+        await AppStorage.initialize();
+      } catch (error, stackTrace) {
+        unawaited(
+          AppLog.write('AppStorage initialization failed: $error\n$stackTrace'),
+        );
+      }
 
       PaintingBinding.instance.imageCache.maximumSize = 200;
       PaintingBinding.instance.imageCache.maximumSizeBytes = 100 << 20;
       SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
 
-      final initialState = MyApp.bootstrapSync();
+      AppBootstrapState initialState;
+      try {
+        initialState = MyApp.bootstrapSync();
+      } catch (error, stackTrace) {
+        unawaited(AppLog.write('Bootstrap sync failed: $error\n$stackTrace'));
+        initialState = AppBootstrapState(
+          themeMode: ThemeMode.system,
+          isLoggedIn: false,
+          canOpenOffline: false,
+          initialHomeTab: HomeTab.dashboard,
+        );
+      }
 
       runApp(MyApp(bootstrapState: initialState));
     },
