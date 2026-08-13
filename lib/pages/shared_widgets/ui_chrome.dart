@@ -250,28 +250,14 @@ class _PageHeader extends StatelessWidget {
                   color: subtitleColor ?? BracuPalette.textSecondary(context),
                 ),
               ),
-              Row(
-                children: [
-                  if (iconWidget != null) ...[
-                    iconWidget!,
-                    const Gap(6),
-                  ] else if (icon != null) ...[
-                    Icon(
-                      icon,
-                      size: 18,
-                      color: BracuPalette.textPrimary(context),
-                    ),
-                    const Gap(6),
-                  ],
-                  Text(
-                    title,
-                    style: TextStyle(
-                      fontSize: 17,
-                      fontWeight: FontWeight.w600,
-                      color: BracuPalette.textPrimary(context),
-                    ),
-                  ),
-                ],
+              const Gap(2),
+              Text(
+                title,
+                style: TextStyle(
+                  fontSize: 17,
+                  fontWeight: FontWeight.w600,
+                  color: BracuPalette.textPrimary(context),
+                ),
               ),
             ],
           ),
