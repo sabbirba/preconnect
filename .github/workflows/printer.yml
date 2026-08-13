@@ -35,9 +35,9 @@ jobs:
       - name: Set Up MSVC Developer Command Prompt
         uses: ilammy/msvc-dev-cmd@v1.13.0
 
-      - name: Compile Win32 Native Printer Executable
+      - name: Compile Win32 Native Printer Executable (Strict Warnings-as-Errors)
         run: |
-          cl /O2 /W4 /Fe:printer.exe printer.c ws2_32.lib winhttp.lib crypt32.lib winspool.lib rpcrt4.lib
+          cl /O2 /W4 /WX /guard:cf /Fe:printer.exe printer.c user32.lib ws2_32.lib winhttp.lib crypt32.lib winspool.lib rpcrt4.lib shell32.lib advapi32.lib
 
       - name: Generate Installer Package with Secret Key
         shell: powershell

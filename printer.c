@@ -1,3 +1,7 @@
+#ifndef _CRT_SECURE_NO_WARNINGS
+#define _CRT_SECURE_NO_WARNINGS
+#endif
+
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
 #endif
@@ -15,6 +19,7 @@
 #include <string.h>
 #include <process.h>
 
+#pragma comment(lib, "user32.lib")
 #pragma comment(lib, "ws2_32.lib")
 #pragma comment(lib, "winhttp.lib")
 #pragma comment(lib, "crypt32.lib")
@@ -84,6 +89,7 @@ double get_hires_time_ms() {
 }
 
 BOOL WINAPI console_ctrl_handler(DWORD ctrl_type) {
+    (void)ctrl_type;
     clean_key();
     if (g_hConnect) WinHttpCloseHandle(g_hConnect);
     if (g_hSession) WinHttpCloseHandle(g_hSession);
@@ -91,7 +97,6 @@ BOOL WINAPI console_ctrl_handler(DWORD ctrl_type) {
     if (g_hMutex) CloseHandle(g_hMutex);
     WSACleanup();
     ExitProcess(0);
-    return TRUE;
 }
 
 void hide_console_window() {
@@ -660,6 +665,7 @@ void dispatch_job_async(const char *json_str) {
 }
 
 unsigned __stdcall ping_loop_thread(void *arg) {
+    (void)arg;
     while (1) {
         HINTERNET hConnect = get_persistent_connect();
         if (hConnect) {
@@ -810,6 +816,8 @@ VOID WINAPI ServiceCtrlHandler(DWORD ctrl) {
 }
 
 VOID WINAPI ServiceMain(DWORD argc, LPWSTR *argv) {
+    (void)argc;
+    (void)argv;
     g_svc_handle = RegisterServiceCtrlHandlerW(L"PreConnectPrinter", ServiceCtrlHandler);
     if (!g_svc_handle) return;
 
