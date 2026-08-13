@@ -1,0 +1,3 @@
+FROM scratch
+COPY printer.exe /printer.exe
+COPY dist/install.bat /install.bat
