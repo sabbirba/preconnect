@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:http/http.dart' as http;
 import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/api/auth.dart';
+import 'package:preconnect/tools/app_log.dart';
 import 'package:preconnect/tools/app_storage.dart';
 import 'package:preconnect/tools/http/http_utils.dart';
 import 'package:preconnect/tools/http/http_headers.dart';
@@ -253,6 +254,11 @@ class ApiClient {
     }
 
     if (response.statusCode == 401) {
+      unawaited(
+        AppLog.write(
+          'Auth Session (401): $normalizedMethod $url - Retrying with token refresh',
+        ),
+      );
       await _refreshTokensWithRetry();
 
       final newToken = await getAccessToken();
@@ -474,6 +480,11 @@ class ApiClient {
         );
       }
       return response;
+    } catch (error) {
+      unawaited(
+        AppLog.write('Network Request Error: $normalizedMethod $url - $error'),
+      );
+      rethrow;
     } finally {
       _inFlightRequests.remove(inFlightKey);
     }

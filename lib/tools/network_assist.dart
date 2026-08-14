@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
+import 'package:preconnect/tools/app_log.dart';
 import 'package:preconnect/tools/platform_channels.dart';
 
 class AndroidNetworkStatus {
@@ -108,10 +109,17 @@ class AndroidNetworkAssist {
     return _events
         .receiveBroadcastStream()
         .where((event) => event is Map<dynamic, dynamic>)
-        .map(
-          (event) =>
-              AndroidNetworkStatus.fromMap(event as Map<dynamic, dynamic>),
-        );
+        .map((event) {
+          final status = AndroidNetworkStatus.fromMap(
+            event as Map<dynamic, dynamic>,
+          );
+          unawaited(
+            AppLog.write(
+              'Network Status: transport=${status.transport}, connected=${status.connected}, validated=${status.validated}, captive=${status.captive}, ssid=${status.ssid ?? "none"}',
+            ),
+          );
+          return status;
+        });
   }
 
   static Future<String> addWifiSuggestion({
