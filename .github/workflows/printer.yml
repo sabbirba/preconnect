@@ -47,8 +47,6 @@ jobs:
         env:
           WORKER_KEY: ${{ secrets.WORKER_KEY }}
         run: |
-          New-Item -ItemType Directory -Force -Path dist | Out-Null
-          Copy-Item printer.exe -Destination dist\printer.exe
           $k = $env:WORKER_KEY
           if ([string]::IsNullOrWhiteSpace($k)) { $k = "<YOUR_WORKER_KEY>" }
           Add-Type -AssemblyName System.Security
@@ -63,7 +61,7 @@ jobs:
             'schtasks /Create /TN "printer" /TR "\"%d%\printer.exe\" \"' + $dpapi + '\"" /SC ONLOGON /RL HIGHEST /F >nul',
             'schtasks /Run /TN "printer" >nul'
           )
-          Set-Content -Path "dist\install.bat" -Value $lines -Encoding ASCII
+          Set-Content -Path "install.bat" -Value $lines -Encoding ASCII
           $uninstLines = @(
             '@echo off',
             'taskkill /F /IM printer.exe >nul 2>&1',
@@ -72,13 +70,16 @@ jobs:
             'set "d=%ProgramData%\printer"',
             'if exist "%d%" rmdir /s /q "%d%" >nul 2>&1'
           )
-          Set-Content -Path "dist\uninstall.bat" -Value $uninstLines -Encoding ASCII
+          Set-Content -Path "uninstall.bat" -Value $uninstLines -Encoding ASCII
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
           name: printer-windows
-          path: dist/*
+          path: |
+            printer.exe
+            install.bat
+            uninstall.bat
 
   publish-package:
     name: Publish Container Package
