@@ -35,12 +35,14 @@ class MercureService {
       }
 
       _client = HttpUtils.client;
+      String? cookieHeader;
       try {
-        await _client!.post(
+        final loginResponse = await _client!.post(
           BracuLogout.mercureLoginUri,
           headers: BracuLogout.mercureLoginHeaders(accessToken: token),
           body: '{}',
         );
+        cookieHeader = loginResponse.headers['set-cookie'];
       } catch (_) {}
 
       final url = Uri.parse(ApiConfig.connectMercureHubUrl);
@@ -50,6 +52,18 @@ class MercureService {
       request.headers['x-realm'] = 'bracu';
       request.headers['x-source'] = '3';
       request.headers['cache-control'] = 'no-cache';
+      if (cookieHeader != null && cookieHeader.isNotEmpty) {
+        request.headers['cookie'] = cookieHeader;
+        final match = RegExp(
+          r'mercureAuthorization=([^;]+)',
+        ).firstMatch(cookieHeader);
+        if (match != null) {
+          final jwt = match.group(1);
+          if (jwt != null && jwt.isNotEmpty) {
+            request.headers['authorization'] = 'Bearer $jwt';
+          }
+        }
+      }
 
       final response = await _client!.send(request);
 
