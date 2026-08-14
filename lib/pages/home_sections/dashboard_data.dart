@@ -433,14 +433,17 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
       return;
     }
 
-    final now = DateTime.now();
-    final lastLoginMs = await CaptiveLoginStore.instance.readLastLoginAt();
-    final lastLoginAt = lastLoginMs != null
-        ? DateTime.fromMillisecondsSinceEpoch(lastLoginMs)
-        : _lastSilentLoginAt;
-    if (lastLoginAt != null &&
-        now.difference(lastLoginAt) < const Duration(hours: 12)) {
-      return;
+    final isCaptiveOrUnvalidated = status.captive || !status.validated;
+    if (!isCaptiveOrUnvalidated) {
+      final now = DateTime.now();
+      final lastLoginMs = await CaptiveLoginStore.instance.readLastLoginAt();
+      final lastLoginAt = lastLoginMs != null
+          ? DateTime.fromMillisecondsSinceEpoch(lastLoginMs)
+          : _lastSilentLoginAt;
+      if (lastLoginAt != null &&
+          now.difference(lastLoginAt) < const Duration(hours: 12)) {
+        return;
+      }
     }
 
     _isAutoExtendingSession = true;
