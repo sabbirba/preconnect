@@ -48,7 +48,6 @@ static DWORD g_jobs_completed = 0;
 static LONG g_claim_count = 0;
 static BOOL g_debug_mode = FALSE;
 static BOOL g_is_service = FALSE;
-static BOOL g_is_test = FALSE;
 static SERVICE_STATUS g_svc_status;
 static SERVICE_STATUS_HANDLE g_svc_handle = NULL;
 static CRITICAL_SECTION g_print_lock;
@@ -327,9 +326,6 @@ void load_worker_key(int argc, char *argv[]) {
             g_debug_mode = TRUE;
         } else if (strcmp(argv[i], "--service") == 0) {
             g_is_service = TRUE;
-        } else if (strcmp(argv[i], "--test") == 0 || strcmp(argv[i], "--status") == 0) {
-            g_is_test = TRUE;
-            g_debug_mode = TRUE;
         } else if (strlen(argv[i]) > 0 && argv[i][0] != '-' && g_worker_key[0] == '\0') {
             decrypt_dpapi_key(argv[i], g_worker_key, sizeof(g_worker_key));
             save_key_to_cred_vault(g_worker_key);
@@ -337,77 +333,6 @@ void load_worker_key(int argc, char *argv[]) {
         }
     }
     if (g_worker_key[0] == '\0') read_key_from_cred_vault(g_worker_key, sizeof(g_worker_key));
-}
-
-int run_diagnostic_test() {
-    printf("PreConnect Printer Diagnostics\n");
-    printf("-------------------------------\n");
-    printf("1. Worker Key: ");
-    if (g_worker_key[0] != '\0') {
-        printf("Configured (length: %zu)\n", strlen(g_worker_key));
-    } else {
-        printf("MISSING or NOT FOUND in Credential Vault\n");
-    }
-
-    printf("2. Testing Campus Printer Connection (%s:515)... ", DEF_HOST_STR);
-    fflush(stdout);
-
-    WSADATA wsa;
-    if (WSAStartup(MAKEWORD(2, 2), &wsa) != 0) {
-        printf("FAILED (WSAStartup)\n");
-        return 1;
-    }
-
-    SOCKET s = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-    if (s == INVALID_SOCKET) {
-        printf("FAILED (socket creation)\n");
-        WSACleanup();
-        return 1;
-    }
-
-    DWORD timeout = 3000;
-    setsockopt(s, SOL_SOCKET, SO_RCVTIMEO, (const char *)&timeout, sizeof(timeout));
-    setsockopt(s, SOL_SOCKET, SO_SNDTIMEO, (const char *)&timeout, sizeof(timeout));
-
-    struct sockaddr_in sin;
-    memset(&sin, 0, sizeof(sin));
-    sin.sin_family = AF_INET;
-    sin.sin_port = htons(515);
-    inet_pton(AF_INET, DEF_HOST_STR, &sin.sin_addr);
-
-    double start = get_hires_time_ms();
-    int res = connect(s, (struct sockaddr *)&sin, sizeof(sin));
-    double elapsed = get_hires_time_ms() - start;
-    closesocket(s);
-    WSACleanup();
-
-    if (res == 0) {
-        printf("ONLINE (%.1f ms)\n", elapsed);
-    } else {
-        printf("UNREACHABLE (connect failed)\n");
-    }
-
-    printf("3. Testing Cloud API (%ws)... ", BASE_DOMAIN);
-    fflush(stdout);
-    HINTERNET hSession = WinHttpOpen(L"PreConnect-Diag/1.0", WINHTTP_ACCESS_TYPE_DEFAULT_PROXY, WINHTTP_NO_PROXY_NAME, WINHTTP_NO_PROXY_BYPASS, 0);
-    if (hSession) {
-        HINTERNET hConn = WinHttpConnect(hSession, BASE_DOMAIN, BASE_PORT, 0);
-        if (hConn) {
-            HINTERNET hReq = WinHttpOpenRequest(hConn, L"HEAD", L"/health", NULL, WINHTTP_NO_REFERER, WINHTTP_DEFAULT_ACCEPT_TYPES, WINHTTP_FLAG_SECURE);
-            if (hReq) {
-                if (WinHttpSendRequest(hReq, WINHTTP_NO_ADDITIONAL_HEADERS, 0, WINHTTP_NO_REQUEST_DATA, 0, 0, 0) && WinHttpReceiveResponse(hReq, NULL)) {
-                    printf("ONLINE\n");
-                } else {
-                    printf("REACHABLE\n");
-                }
-                WinHttpCloseHandle(hReq);
-            }
-            WinHttpCloseHandle(hConn);
-        }
-        WinHttpCloseHandle(hSession);
-    }
-    printf("Diagnostics complete.\n");
-    return 0;
 }
 
 void generate_uuid_ident(char *out, size_t out_size) {
@@ -935,13 +860,9 @@ VOID WINAPI ServiceMain(DWORD argc, LPWSTR *argv) {
 
 int main(int argc, char *argv[]) {
     HeapSetInformation(NULL, HeapEnableTerminationOnCorruption, NULL, 0);
-    load_worker_key(argc, argv);
-
-    if (g_is_test) {
-        return run_diagnostic_test();
-    }
-
     ensure_single_instance();
+
+    load_worker_key(argc, argv);
 
     if (!g_debug_mode) {
         hide_console_window();
