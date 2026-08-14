@@ -1,7 +1,9 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 import 'package:preconnect/api/api_config.dart';
+import 'package:preconnect/tools/app_log.dart';
 import 'package:preconnect/tools/http/http_utils.dart';
 import 'package:preconnect/tools/preconnect_constants.dart';
 import 'package:preconnect/tools/token_storage.dart';
@@ -45,24 +47,37 @@ class OAuthCodeExchange {
 
     final uri = Uri.parse(ApiConfig.tokenEndpoint);
     final normalizedVerifier = verifier?.trim() ?? '';
-    final response = await _client
-        .post(
-          uri,
-          headers: <String, String>{
-            'Content-Type': 'application/x-www-form-urlencoded',
-          },
-          body: HttpUtils.formBody(<String, String>{
-            'grant_type': 'authorization_code',
-            'client_id': ApiConfig.clientId,
-            'code': normalizedCode,
-            'redirect_uri': ApiConfig.redirectUri,
-            if (normalizedVerifier.isNotEmpty)
-              'code_verifier': normalizedVerifier,
-          }),
-        )
-        .timeout(timeout);
+    final http.Response response;
+    try {
+      response = await _client
+          .post(
+            uri,
+            headers: <String, String>{
+              'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: HttpUtils.formBody(<String, String>{
+              'grant_type': 'authorization_code',
+              'client_id': ApiConfig.clientId,
+              'code': normalizedCode,
+              'redirect_uri': ApiConfig.redirectUri,
+              if (normalizedVerifier.isNotEmpty)
+                'code_verifier': normalizedVerifier,
+            }),
+          )
+          .timeout(timeout);
+    } catch (e) {
+      unawaited(
+        AppLog.write('OAuth PKCE Error: Network failure during exchange ($e)'),
+      );
+      rethrow;
+    }
 
     if (response.statusCode != 200) {
+      unawaited(
+        AppLog.write(
+          'OAuth PKCE Error: Token endpoint returned HTTP ${response.statusCode}',
+        ),
+      );
       throw OAuthCodeExchangeException(
         'Token endpoint returned HTTP ${response.statusCode}.',
       );
@@ -90,6 +105,12 @@ class OAuthCodeExchange {
         'Token endpoint omitted required tokens.',
       );
     }
+
+    unawaited(
+      AppLog.write(
+        'OAuth PKCE: Successfully exchanged authorization code for session tokens',
+      ),
+    );
 
     return AuthTokens(
       accessToken: accessToken,

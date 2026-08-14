@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:intl/intl.dart';
@@ -8,6 +9,7 @@ import 'package:preconnect/api/repository_cache.dart';
 import 'package:preconnect/api/schedule.dart';
 import 'package:preconnect/model/calendar_info.dart';
 import 'package:preconnect/features/schedule/application/session_resolver.dart';
+import 'package:preconnect/tools/app_log.dart';
 import 'package:preconnect/tools/app_storage.dart';
 
 class CalendarService {
@@ -25,11 +27,10 @@ class CalendarService {
   static const String _sourceFingerprintKey = 'calendar_source_fingerprint';
 
   Future<CalendarFeed?> getCalendar() async {
-    final cached = await _readCache();
-    if (cached != null) {
-      return cached;
-    }
+    final cached = await getCachedCalendar();
+    if (cached != null) return cached;
     final range = await _resolveRange();
+    if (range.startDate.isEmpty || range.endDate.isEmpty) return null;
     return fetchCalendar(rangeOverride: range);
   }
 
@@ -38,16 +39,13 @@ class CalendarService {
   }
 
   CalendarFeed? getCachedCalendarSync() {
-    try {
-      final raw =
-          AppStorage.instance.getStringSync('repository_cache_$_cacheKey') ??
-          AppStorage.instance.getStringSync(_cacheKey);
-      if (raw == null || raw.isEmpty) return null;
-      final decoded = jsonDecode(raw);
-      if (decoded is Map<String, dynamic>) {
+    final cachedJson = AppStorage.instance.getStringSync(_cacheKey);
+    if (cachedJson != null && cachedJson.trim().isNotEmpty) {
+      try {
+        final decoded = jsonDecode(cachedJson);
         return CalendarFeed.fromJson(decoded);
-      }
-    } catch (_) {}
+      } catch (_) {}
+    }
     return null;
   }
 
@@ -90,8 +88,16 @@ class CalendarService {
         items: items,
       );
       await _writeCache(feed);
+      unawaited(
+        AppLog.write(
+          'Academic Calendar: Synced ${items.length} calendar events',
+        ),
+      );
       return feed;
-    } catch (_) {
+    } catch (e) {
+      unawaited(
+        AppLog.write('Academic Calendar Error: Failed to fetch calendar ($e)'),
+      );
       return fallback ?? await _readCache();
     }
   }

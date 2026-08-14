@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import 'package:preconnect/api/api_client.dart';
 import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/features/schedule/application/session_resolver.dart';
+import 'package:preconnect/tools/app_log.dart';
 import 'package:preconnect/tools/bracu_logout.dart';
 import 'package:preconnect/tools/http/http_utils.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
@@ -55,6 +56,7 @@ class MercureService {
       if (response.statusCode == 200) {
         _isConnected = true;
         _isConnecting = false;
+        unawaited(AppLog.write('Mercure SSE: Hub connected successfully'));
 
         _subscription = response.stream
             .transform(utf8.decoder)
@@ -62,19 +64,29 @@ class MercureService {
             .listen(
               _handleSseLine,
               onError: (error) {
+                unawaited(AppLog.write('Mercure SSE: Stream error ($error)'));
                 _handleDisconnect();
               },
               onDone: () {
+                unawaited(
+                  AppLog.write('Mercure SSE: Stream closed by remote hub'),
+                );
                 _handleDisconnect();
               },
               cancelOnError: true,
             );
       } else {
         _isConnecting = false;
+        unawaited(
+          AppLog.write(
+            'Mercure SSE: Hub returned status ${response.statusCode}',
+          ),
+        );
         _scheduleReconnect();
       }
     } catch (e) {
       _isConnecting = false;
+      unawaited(AppLog.write('Mercure SSE Error: Failed to connect ($e)'));
       _scheduleReconnect();
     }
   }
@@ -99,16 +111,21 @@ class MercureService {
           data.containsKey('activePrinters') ||
           data.containsKey('queuedJobsCount') ||
           data.containsKey('claimedJobsCount')) {
+        unawaited(
+          AppLog.write('Mercure SSE: Received printer status update event'),
+        );
         RefreshBus.instance.notify(reason: 'printer');
         return;
       }
       final type = (data['type'] ?? data['event'] ?? data['topic'] ?? '')
           .toString();
       if (type.isNotEmpty) {
+        unawaited(AppLog.write('Mercure SSE: Received event type: $type'));
         RefreshBus.instance.notify(reason: type);
         return;
       }
     }
+    unawaited(AppLog.write('Mercure SSE: Received generic event'));
     RefreshBus.instance.notify(reason: 'mercure_event');
   }
 

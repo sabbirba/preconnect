@@ -9,6 +9,7 @@ import 'package:preconnect/tools/ramadan.dart';
 import 'package:preconnect/tools/snapshot_store.dart';
 import 'package:preconnect/model/section_info.dart' as section;
 import 'package:preconnect/model/advising_phase.dart';
+import 'package:preconnect/tools/app_log.dart';
 import 'package:preconnect/tools/cache_durations.dart';
 import 'package:preconnect/tools/storage_keys.dart';
 
@@ -129,10 +130,19 @@ class ScheduleService {
           items.sort(
             (a, b) => b.semesterSessionId.compareTo(a.semesterSessionId),
           );
+          unawaited(
+            AppLog.write('Schedule: Fetched ${items.length} semester sessions'),
+          );
           return items;
         }
       }
-    } catch (_) {}
+    } catch (error) {
+      unawaited(
+        AppLog.write(
+          'Schedule Error: Failed to fetch semester sessions ($error)',
+        ),
+      );
+    }
     return const <SemesterSessionItem>[];
   }
 
@@ -258,9 +268,20 @@ class ScheduleService {
         final data = jsonDecode(response.body);
         await repo.writeJson(cacheKey, data);
         await asyncPrefs.setString(cacheKey, response.body);
+        unawaited(
+          AppLog.write(
+            'Schedule: Fetched student schedule for semester $semesterSessionId (${response.body.length} bytes)',
+          ),
+        );
         return response.body;
       }
-    } catch (_) {}
+    } catch (error) {
+      unawaited(
+        AppLog.write(
+          'Schedule Error: Failed to fetch schedule for semester $semesterSessionId ($error)',
+        ),
+      );
+    }
 
     return getStudentScheduleForSemester(
       semesterSessionId: semesterSessionId,

@@ -1,7 +1,9 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:preconnect/tools/app_log.dart';
 import 'package:preconnect/tools/app_paths.dart';
 import 'package:preconnect/tools/platform_stub.dart'
     if (dart.library.js_interop) 'package:preconnect/tools/storage_web.dart';
@@ -85,7 +87,9 @@ class AppStorage {
       final bytes = utf8.encode(value);
       final compressed = gzip.encode(bytes);
       await file.writeAsBytes(compressed, flush: true);
-    } catch (_) {}
+    } catch (e) {
+      unawaited(AppLog.write('AppStorage Write Error ($key): $e'));
+    }
   }
 
   static Future<String?> _readFromFile(String key) async {
@@ -102,7 +106,8 @@ class AppStorage {
         }
       }
       return utf8.decode(bytes);
-    } catch (_) {
+    } catch (e) {
+      unawaited(AppLog.write('AppStorage Read Error ($key): $e'));
       return null;
     }
   }
