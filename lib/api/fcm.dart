@@ -437,10 +437,6 @@ class FCMService {
       return true;
     }
 
-    if (token != null) {
-      unawaited(_subscribeToTopicWeb(token, topic));
-    }
-
     try {
       await FirebaseMessaging.instance.subscribeToTopic(topic);
     } catch (error) {
@@ -474,9 +470,6 @@ class FCMService {
       return true;
     }
 
-    if (token != null) {
-      unawaited(_unsubscribeFromTopicWeb(token, topic));
-    }
     try {
       await FirebaseMessaging.instance.unsubscribeFromTopic(topic);
     } catch (error) {
