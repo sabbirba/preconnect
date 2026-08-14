@@ -21,7 +21,7 @@ import 'package:preconnect/pages/shared_widgets/online_guard.dart';
 import 'package:preconnect/tools/storage_keys.dart';
 import 'package:preconnect/tools/string_utils.dart';
 
-part 'student_profile_sections/progress_helpers.dart';
+part 'profile_sections/progress_helpers.dart';
 
 class DegreeProgressPage extends StatefulWidget {
   const DegreeProgressPage({super.key});
@@ -394,382 +394,298 @@ class _DegreeProgressPageState extends State<DegreeProgressPage>
               .take(_completedVisibleCount)
               .toList();
 
-          return BracuRefreshList(
-            onRefresh: _refresh,
-            padding: kBracuPageListPadding,
-            children: [
-              BracuCard(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      _resolveProgramTitle(info),
-                      style: TextStyle(
-                        color: BracuPalette.textPrimary(context),
-                        fontSize: 15,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    const Gap(12),
-                    SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      child: Row(
-                        children: List.generate(summaryStats.length, (index) {
-                          final item = summaryStats[index];
-                          return Padding(
-                            padding: EdgeInsets.only(
-                              right: index == summaryStats.length - 1 ? 0 : 12,
-                            ),
-                            child: SizedBox(
-                              width: 96,
-                              child: MetricTile(
-                                title: item.title,
-                                value: item.value,
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 8,
-                                  vertical: 8,
-                                ),
-                                borderRadius: 14,
-                              ),
-                            ),
-                          );
-                        }),
-                      ),
-                    ),
-                    const Gap(12),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: SimpleProgressBar(
-                            value: completion,
-                            color: BracuPalette.primary,
-                          ),
-                        ),
-                        const Gap(12),
-                        Text(
-                          '${summaryPercent.toStringAsFixed(1)}%',
-                          style: TextStyle(
-                            color: BracuPalette.textSecondary(context),
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-              const Gap(12),
-              BracuActionBannerCard(
-                icon: Icons.calculate_outlined,
-                title: 'CGPA Calculator',
-                subtitle: 'Estimate your grade point average',
-                onTap: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => CgpaCalculatorPage(
-                        info: info,
-                        currentSections: currentSectionsForDisplay,
-                        currentCgpa: _cgpa,
-                      ),
-                    ),
-                  );
-                },
-              ),
-              const Gap(12),
-              BracuActionBannerCard(
-                icon: Icons.tune,
-                title: 'All Courses',
-                subtitle: 'Browse your full course catalogue',
-                onTap: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => AllCoursesPage(info: info),
-                    ),
-                  );
-                },
-              ),
-              const Gap(12),
-              const GradeSheetCard(),
-              const Gap(12),
-              if (info.headerProgress.isNotEmpty) ...[
-                const BracuSectionTitle(title: 'Requirement Progress'),
-                const Gap(12),
-                ...info.headerProgress.map((item) {
-                  final requiredCredit = item.requiredCredit;
-                  final earnedCredit = item.earnedCredit;
-                  final remainingForHeader = (requiredCredit - earnedCredit)
-                      .clamp(0, double.infinity)
-                      .toDouble();
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 10),
-                    child: InkWell(
-                      borderRadius: BorderRadius.circular(18),
-                      onTap: () {
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) => RequirementCoursesPage(
-                              info: info,
-                              headerTitle: item.title,
-                              currentSemesterCodes: _currentSemesterSections
-                                  .map(
-                                    (section) =>
-                                        section.courseCode.trim().toUpperCase(),
-                                  )
-                                  .where((code) => code.isNotEmpty)
-                                  .toSet(),
-                            ),
-                          ),
-                        );
-                      },
-                      child: BracuCard(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        item.title,
-                                        style: TextStyle(
-                                          color: BracuPalette.textPrimary(
-                                            context,
-                                          ),
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      ),
-                                      const Gap(2),
-                                      Text(
-                                        'Required ${formatCredit(requiredCredit)} Credits • Remaining ${formatCredit(remainingForHeader)} Credits',
-                                        style: TextStyle(
-                                          color: BracuPalette.textSecondary(
-                                            context,
-                                          ),
-                                          fontSize: 10,
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                const Gap(12),
-                                Column(
-                                  crossAxisAlignment: CrossAxisAlignment.end,
-                                  children: [
-                                    Text(
-                                      '${formatCredit(earnedCredit)} credits',
-                                      style: TextStyle(
-                                        color: BracuPalette.textPrimary(
-                                          context,
-                                        ),
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.w700,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                            const Gap(12),
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: SimpleProgressBar(
-                                    value: item.percent,
-                                    color: BracuPalette.accent,
-                                  ),
-                                ),
-                                const Gap(12),
-                                Text(
-                                  '${(item.percent * 100).toStringAsFixed(1)}%',
-                                  style: TextStyle(
-                                    color: BracuPalette.textSecondary(context),
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  );
-                }),
-                const Gap(4),
-              ],
-              if (info.majorOptions.isNotEmpty || info.minorOptions.isNotEmpty)
+          return SelectionArea(
+            child: BracuRefreshList(
+              onRefresh: _refresh,
+              padding: kBracuPageListPadding,
+              children: [
                 BracuCard(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Major / Minor Options',
+                        _resolveProgramTitle(info),
                         style: TextStyle(
                           color: BracuPalette.textPrimary(context),
-                          fontSize: 14,
+                          fontSize: 15,
                           fontWeight: FontWeight.w700,
                         ),
                       ),
-                      if (info.majorOptions.isNotEmpty) ...[
-                        const Gap(12),
-                        _OptionWrap(title: 'Majors', items: info.majorOptions),
-                      ],
-                      if (info.minorOptions.isNotEmpty) ...[
-                        const Gap(12),
-                        _OptionWrap(title: 'Minors', items: info.minorOptions),
-                      ],
-                    ],
-                  ),
-                ),
-              if (info.majorOptions.isNotEmpty || info.minorOptions.isNotEmpty)
-                const Gap(12),
-              const BracuSectionTitle(title: 'Wishlist for Next Semester'),
-              const Gap(12),
-              if (wishlistCourses.isEmpty)
-                BracuCard(
-                  child: Text(
-                    'No next-semester suggestions available yet.',
-                    style: TextStyle(
-                      color: BracuPalette.textSecondary(context),
-                    ),
-                  ),
-                )
-              else ...[
-                ...wishlistCoursesForDisplay.map((course) {
-                  final item = course.course;
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 10),
-                    child: BracuCard(
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.center,
+                      const Gap(12),
+                      SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: Row(
+                          children: List.generate(summaryStats.length, (index) {
+                            final item = summaryStats[index];
+                            return Padding(
+                              padding: EdgeInsets.only(
+                                right: index == summaryStats.length - 1
+                                    ? 0
+                                    : 12,
+                              ),
+                              child: SizedBox(
+                                width: 96,
+                                child: MetricTile(
+                                  title: item.title,
+                                  value: item.value,
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 8,
+                                  ),
+                                  borderRadius: 14,
+                                ),
+                              ),
+                            );
+                          }),
+                        ),
+                      ),
+                      const Gap(12),
+                      Row(
                         children: [
-                          const SectionBadge(
-                            label: 'WL',
-                            color: BracuPalette.primary,
-                            size: 40,
-                            fontSize: 13,
-                          ),
-                          const Gap(12),
                           Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  item.code,
-                                  style: TextStyle(
-                                    color: BracuPalette.textPrimary(context),
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                                const Gap(3),
-                                Text(
-                                  item.title.isEmpty ? item.code : item.title,
-                                  style: TextStyle(
-                                    color: BracuPalette.textSecondary(context),
-                                    fontSize: 11,
-                                  ),
-                                ),
-                              ],
+                            child: SimpleProgressBar(
+                              value: completion,
+                              color: BracuPalette.primary,
                             ),
                           ),
                           const Gap(12),
-                          SizedBox(
-                            width: 108,
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.end,
-                              children: [
-                                Text(
-                                  '${formatCredit(item.credit)} credits',
-                                  style: TextStyle(
-                                    color: BracuPalette.textPrimary(context),
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                                const Gap(2),
-                                Text(
-                                  item.isMandatory ? 'Required' : 'Elective',
-                                  style: TextStyle(
-                                    color: item.isMandatory
-                                        ? BracuPalette.warning
-                                        : BracuPalette.accent,
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                              ],
+                          Text(
+                            '${summaryPercent.toStringAsFixed(1)}%',
+                            style: TextStyle(
+                              color: BracuPalette.textSecondary(context),
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
                             ),
                           ),
                         ],
                       ),
-                    ),
-                  );
-                }),
-                if (wishlistCourses.length > wishlistCoursesForDisplay.length)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 10),
-                    child: ShowMoreButton(
-                      onPressed: () {
-                        setState(() {
-                          _wishlistVisibleCount += _coursesChunkSize;
-                        });
-                      },
+                    ],
+                  ),
+                ),
+                const Gap(12),
+                BracuActionBannerCard(
+                  icon: Icons.calculate_outlined,
+                  title: 'CGPA Calculator',
+                  subtitle: 'Estimate your grade point average',
+                  onTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => CgpaCalculatorPage(
+                          info: info,
+                          currentSections: currentSectionsForDisplay,
+                          currentCgpa: _cgpa,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+                const Gap(12),
+                BracuActionBannerCard(
+                  icon: Icons.tune,
+                  title: 'All Courses',
+                  subtitle: 'Browse your full course catalogue',
+                  onTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => AllCoursesPage(info: info),
+                      ),
+                    );
+                  },
+                ),
+                const Gap(12),
+                const GradeSheetCard(),
+                const Gap(12),
+                if (info.headerProgress.isNotEmpty) ...[
+                  const BracuSectionTitle(title: 'Requirement Progress'),
+                  const Gap(12),
+                  ...info.headerProgress.map((item) {
+                    final requiredCredit = item.requiredCredit;
+                    final earnedCredit = item.earnedCredit;
+                    final remainingForHeader = (requiredCredit - earnedCredit)
+                        .clamp(0, double.infinity)
+                        .toDouble();
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 10),
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(18),
+                        onTap: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => RequirementCoursesPage(
+                                info: info,
+                                headerTitle: item.title,
+                                currentSemesterCodes: _currentSemesterSections
+                                    .map(
+                                      (section) => section.courseCode
+                                          .trim()
+                                          .toUpperCase(),
+                                    )
+                                    .where((code) => code.isNotEmpty)
+                                    .toSet(),
+                              ),
+                            ),
+                          );
+                        },
+                        child: BracuCard(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          item.title,
+                                          style: TextStyle(
+                                            color: BracuPalette.textPrimary(
+                                              context,
+                                            ),
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                        const Gap(2),
+                                        Text(
+                                          'Required ${formatCredit(requiredCredit)} Credits • Remaining ${formatCredit(remainingForHeader)} Credits',
+                                          style: TextStyle(
+                                            color: BracuPalette.textSecondary(
+                                              context,
+                                            ),
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  const Gap(12),
+                                  Column(
+                                    crossAxisAlignment: CrossAxisAlignment.end,
+                                    children: [
+                                      Text(
+                                        '${formatCredit(earnedCredit)} credits',
+                                        style: TextStyle(
+                                          color: BracuPalette.textPrimary(
+                                            context,
+                                          ),
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                              const Gap(12),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: SimpleProgressBar(
+                                      value: item.percent,
+                                      color: BracuPalette.accent,
+                                    ),
+                                  ),
+                                  const Gap(12),
+                                  Text(
+                                    '${(item.percent * 100).toStringAsFixed(1)}%',
+                                    style: TextStyle(
+                                      color: BracuPalette.textSecondary(
+                                        context,
+                                      ),
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    );
+                  }),
+                  const Gap(4),
+                ],
+                if (info.majorOptions.isNotEmpty ||
+                    info.minorOptions.isNotEmpty)
+                  BracuCard(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Major / Minor Options',
+                          style: TextStyle(
+                            color: BracuPalette.textPrimary(context),
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        if (info.majorOptions.isNotEmpty) ...[
+                          const Gap(12),
+                          _OptionWrap(
+                            title: 'Majors',
+                            items: info.majorOptions,
+                          ),
+                        ],
+                        if (info.minorOptions.isNotEmpty) ...[
+                          const Gap(12),
+                          _OptionWrap(
+                            title: 'Minors',
+                            items: info.minorOptions,
+                          ),
+                        ],
+                      ],
                     ),
                   ),
-                const Gap(4),
-              ],
-              if (currentSectionsForDisplay.isNotEmpty) ...[
-                const BracuSectionTitle(title: 'Current Semester Courses'),
+                if (info.majorOptions.isNotEmpty ||
+                    info.minorOptions.isNotEmpty)
+                  const Gap(12),
+                const BracuSectionTitle(title: 'Wishlist for Next Semester'),
                 const Gap(12),
-                ...currentSectionsVisible.map((current) {
-                  final isRequired =
-                      mandatoryByCode[current.courseCode.toUpperCase()] ??
-                      _isLikelyRequired(current.courseType);
-                  final rawSubtitle = _resolveCurrentCourseTitle(
-                    current,
-                    courseTitleByCode,
-                  );
-                  final showSubtitle =
-                      rawSubtitle.isNotEmpty &&
-                      rawSubtitle.toUpperCase() !=
-                          current.courseCode.trim().toUpperCase();
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 12),
-                    child: BracuCard(
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          SectionBadge(
-                            label: formatSectionBadge(current.sectionName),
-                            color: BracuPalette.primary,
-                            size: 40,
-                            fontSize: 13,
-                          ),
-                          const Gap(12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  '${current.courseCode} • ${formatSemesterFromSessionIdInt(current.semesterSessionId)}',
-                                  style: TextStyle(
-                                    color: BracuPalette.textPrimary(context),
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w600,
+                if (wishlistCourses.isEmpty)
+                  BracuCard(
+                    child: Text(
+                      'No next-semester suggestions available yet.',
+                      style: TextStyle(
+                        color: BracuPalette.textSecondary(context),
+                      ),
+                    ),
+                  )
+                else ...[
+                  ...wishlistCoursesForDisplay.map((course) {
+                    final item = course.course;
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 10),
+                      child: BracuCard(
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            const SectionBadge(
+                              label: 'WL',
+                              color: BracuPalette.primary,
+                              size: 40,
+                              fontSize: 13,
+                            ),
+                            const Gap(12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    item.code,
+                                    style: TextStyle(
+                                      color: BracuPalette.textPrimary(context),
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600,
+                                    ),
                                   ),
-                                ),
-                                if (showSubtitle) ...[
                                   const Gap(3),
                                   Text(
-                                    rawSubtitle,
+                                    item.title.isEmpty ? item.code : item.title,
                                     style: TextStyle(
                                       color: BracuPalette.textSecondary(
                                         context,
@@ -778,162 +694,268 @@ class _DegreeProgressPageState extends State<DegreeProgressPage>
                                     ),
                                   ),
                                 ],
-                              ],
+                              ),
                             ),
-                          ),
-                          const Gap(12),
-                          SizedBox(
-                            width: 96,
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.end,
-                              children: [
-                                Text(
-                                  '${current.courseCredit} credits',
-                                  style: TextStyle(
-                                    color: BracuPalette.textPrimary(context),
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w700,
+                            const Gap(12),
+                            SizedBox(
+                              width: 108,
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.end,
+                                children: [
+                                  Text(
+                                    '${formatCredit(item.credit)} credits',
+                                    style: TextStyle(
+                                      color: BracuPalette.textPrimary(context),
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w700,
+                                    ),
                                   ),
-                                ),
-                                const Gap(2),
-                                Text(
-                                  isRequired ? 'Required' : 'Elective',
-                                  style: TextStyle(
-                                    color: isRequired
-                                        ? BracuPalette.warning
-                                        : BracuPalette.accent,
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w700,
+                                  const Gap(2),
+                                  Text(
+                                    item.isMandatory ? 'Required' : 'Elective',
+                                    style: TextStyle(
+                                      color: item.isMandatory
+                                          ? BracuPalette.warning
+                                          : BracuPalette.accent,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w700,
+                                    ),
                                   ),
-                                ),
-                              ],
+                                ],
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
+                      ),
+                    );
+                  }),
+                  if (wishlistCourses.length > wishlistCoursesForDisplay.length)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 10),
+                      child: ShowMoreButton(
+                        onPressed: () {
+                          setState(() {
+                            _wishlistVisibleCount += _coursesChunkSize;
+                          });
+                        },
                       ),
                     ),
-                  );
-                }),
-                if (currentSectionsForDisplay.length >
-                    currentSectionsVisible.length)
+                  const Gap(4),
+                ],
+                if (currentSectionsForDisplay.isNotEmpty) ...[
+                  const BracuSectionTitle(title: 'Current Semester Courses'),
+                  const Gap(12),
+                  ...currentSectionsVisible.map((current) {
+                    final isRequired =
+                        mandatoryByCode[current.courseCode.toUpperCase()] ??
+                        _isLikelyRequired(current.courseType);
+                    final rawSubtitle = _resolveCurrentCourseTitle(
+                      current,
+                      courseTitleByCode,
+                    );
+                    final showSubtitle =
+                        rawSubtitle.isNotEmpty &&
+                        rawSubtitle.toUpperCase() !=
+                            current.courseCode.trim().toUpperCase();
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: BracuCard(
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            SectionBadge(
+                              label: formatSectionBadge(current.sectionName),
+                              color: BracuPalette.primary,
+                              size: 40,
+                              fontSize: 13,
+                            ),
+                            const Gap(12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    '${current.courseCode} • ${formatSemesterFromSessionIdInt(current.semesterSessionId)}',
+                                    style: TextStyle(
+                                      color: BracuPalette.textPrimary(context),
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  if (showSubtitle) ...[
+                                    const Gap(3),
+                                    Text(
+                                      rawSubtitle,
+                                      style: TextStyle(
+                                        color: BracuPalette.textSecondary(
+                                          context,
+                                        ),
+                                        fontSize: 11,
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            ),
+                            const Gap(12),
+                            SizedBox(
+                              width: 96,
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.end,
+                                children: [
+                                  Text(
+                                    '${current.courseCredit} credits',
+                                    style: TextStyle(
+                                      color: BracuPalette.textPrimary(context),
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                  const Gap(2),
+                                  Text(
+                                    isRequired ? 'Required' : 'Elective',
+                                    style: TextStyle(
+                                      color: isRequired
+                                          ? BracuPalette.warning
+                                          : BracuPalette.accent,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  }),
+                  if (currentSectionsForDisplay.length >
+                      currentSectionsVisible.length)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 10),
+                      child: ShowMoreButton(
+                        onPressed: () {
+                          setState(() {
+                            _currentVisibleCount += _coursesChunkSize;
+                          });
+                        },
+                      ),
+                    ),
+                  const Gap(4),
+                ],
+                const BracuSectionTitle(title: 'Completed Courses'),
+                const Gap(12),
+                if (topCourses.isEmpty)
+                  BracuCard(
+                    child: Text(
+                      'No completed course found.',
+                      style: TextStyle(
+                        color: BracuPalette.textSecondary(context),
+                      ),
+                    ),
+                  )
+                else
+                  ...topCoursesVisible.map((course) {
+                    final semester = formatSemesterTitle(
+                      course.semesterSession,
+                    );
+                    final titleLine = semester.isEmpty
+                        ? course.code
+                        : '${course.code} • $semester';
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: BracuCard(
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            SectionBadge(
+                              label: course.grade.isEmpty ? '--' : course.grade,
+                              color: BracuPalette.primary,
+                              size: 40,
+                              fontSize: 13,
+                            ),
+                            const Gap(12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    titleLine,
+                                    style: TextStyle(
+                                      color: BracuPalette.textPrimary(context),
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  const Gap(3),
+                                  Text(
+                                    course.title.isEmpty
+                                        ? course.code
+                                        : course.title,
+                                    style: TextStyle(
+                                      color: BracuPalette.textSecondary(
+                                        context,
+                                      ),
+                                      fontSize: 11,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const Gap(12),
+                            SizedBox(
+                              width: 96,
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.end,
+                                children: [
+                                  Text(
+                                    '${formatCredit(course.credit)} credits',
+                                    style: TextStyle(
+                                      color: BracuPalette.textPrimary(context),
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                  const Gap(2),
+                                  Text(
+                                    (mandatoryByCode[course.code
+                                                .toUpperCase()] ??
+                                            false)
+                                        ? 'Required'
+                                        : 'Elective',
+                                    style: TextStyle(
+                                      color:
+                                          (mandatoryByCode[course.code
+                                                  .toUpperCase()] ??
+                                              false)
+                                          ? BracuPalette.warning
+                                          : BracuPalette.accent,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  }),
+                if (topCourses.length > topCoursesVisible.length)
                   Padding(
                     padding: const EdgeInsets.only(bottom: 10),
                     child: ShowMoreButton(
                       onPressed: () {
                         setState(() {
-                          _currentVisibleCount += _coursesChunkSize;
+                          _completedVisibleCount += _coursesChunkSize;
                         });
                       },
                     ),
                   ),
-                const Gap(4),
               ],
-              const BracuSectionTitle(title: 'Completed Courses'),
-              const Gap(12),
-              if (topCourses.isEmpty)
-                BracuCard(
-                  child: Text(
-                    'No completed course found.',
-                    style: TextStyle(
-                      color: BracuPalette.textSecondary(context),
-                    ),
-                  ),
-                )
-              else
-                ...topCoursesVisible.map((course) {
-                  final semester = formatSemesterTitle(course.semesterSession);
-                  final titleLine = semester.isEmpty
-                      ? course.code
-                      : '${course.code} • $semester';
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 12),
-                    child: BracuCard(
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          SectionBadge(
-                            label: course.grade.isEmpty ? '--' : course.grade,
-                            color: BracuPalette.primary,
-                            size: 40,
-                            fontSize: 13,
-                          ),
-                          const Gap(12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  titleLine,
-                                  style: TextStyle(
-                                    color: BracuPalette.textPrimary(context),
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                                const Gap(3),
-                                Text(
-                                  course.title.isEmpty
-                                      ? course.code
-                                      : course.title,
-                                  style: TextStyle(
-                                    color: BracuPalette.textSecondary(context),
-                                    fontSize: 11,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const Gap(12),
-                          SizedBox(
-                            width: 96,
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.end,
-                              children: [
-                                Text(
-                                  '${formatCredit(course.credit)} credits',
-                                  style: TextStyle(
-                                    color: BracuPalette.textPrimary(context),
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                                const Gap(2),
-                                Text(
-                                  (mandatoryByCode[course.code.toUpperCase()] ??
-                                          false)
-                                      ? 'Required'
-                                      : 'Elective',
-                                  style: TextStyle(
-                                    color:
-                                        (mandatoryByCode[course.code
-                                                .toUpperCase()] ??
-                                            false)
-                                        ? BracuPalette.warning
-                                        : BracuPalette.accent,
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  );
-                }),
-              if (topCourses.length > topCoursesVisible.length)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 10),
-                  child: ShowMoreButton(
-                    onPressed: () {
-                      setState(() {
-                        _completedVisibleCount += _coursesChunkSize;
-                      });
-                    },
-                  ),
-                ),
-            ],
+            ),
           );
         },
       ),

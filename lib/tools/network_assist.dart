@@ -91,43 +91,10 @@ class AndroidNetworkAssist {
     return null;
   }
 
-  static Future<List<String>> getWifiScanResults() async {
-    if (!isSupported) return const [];
-    try {
-      final List<dynamic>? list = await _channel.invokeMethod<List<dynamic>>(
-        'getWifiScanResults',
-      );
-      if (list != null) {
-        return list.map((dynamic e) => '$e').toList();
-      }
-    } catch (_) {}
-    return const [];
-  }
-
   static Future<bool> openWifiSettings() async {
     if (!isSupported) return false;
     try {
       final res = await _channel.invokeMethod<bool>('openWifiSettings');
-      return res == true;
-    } catch (_) {
-      return false;
-    }
-  }
-
-  static Future<bool> isLocationServiceEnabled() async {
-    if (!isSupported) return true;
-    try {
-      final res = await _channel.invokeMethod<bool>('isLocationServiceEnabled');
-      return res == true;
-    } catch (_) {
-      return false;
-    }
-  }
-
-  static Future<bool> openLocationSettings() async {
-    if (!isSupported) return false;
-    try {
-      final res = await _channel.invokeMethod<bool>('openLocationSettings');
       return res == true;
     } catch (_) {
       return false;
@@ -248,17 +215,6 @@ class IosNetworkAssist {
 
   static bool get isSupported =>
       !kIsWeb && defaultTargetPlatform == TargetPlatform.iOS;
-
-  static Future<String?> getCurrentSsid() async {
-    if (!isSupported) return null;
-    try {
-      final raw = await _channel.invokeMethod<String>('getCurrentSsid');
-      final ssid = raw?.trim() ?? '';
-      return ssid.isEmpty ? null : ssid;
-    } catch (_) {
-      return null;
-    }
-  }
 
   static Future<bool> openWifiSettings() async {
     if (!isSupported) return false;

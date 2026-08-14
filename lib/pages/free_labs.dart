@@ -16,7 +16,7 @@ import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/ramadan.dart';
 import 'package:preconnect/tools/time_utils.dart';
 
-part 'free_labs_sections/lab_models.dart';
+part 'labs_sections/lab_models.dart';
 
 class FreeLabsPage extends StatefulWidget {
   const FreeLabsPage({super.key});

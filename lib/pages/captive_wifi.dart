@@ -25,10 +25,8 @@ class CaptiveWifiPage extends StatefulWidget {
   State<CaptiveWifiPage> createState() => _CaptiveWifiPageState();
 }
 
-class _CaptiveWifiPageState extends State<CaptiveWifiPage>
-    with WidgetsBindingObserver {
+class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
   static const Duration _apiLoginTimeout = Duration(seconds: 45);
-  final TextEditingController _ssidController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   final GlobalKey<ScaffoldMessengerState> _pageMessengerKey =
       GlobalKey<ScaffoldMessengerState>();
@@ -45,7 +43,6 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage>
   final TextEditingController _studentIdController = TextEditingController();
   Map<String, String>? _extractedParams;
   AndroidNetworkStatus? _currentStatus;
-  String _savedLoginSsid = '';
   String? _rawResponseLog;
 
   @override
@@ -54,8 +51,6 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage>
     if (identical(openCaptivePortalFlow, null)) {
       assert(true);
     }
-    WidgetsBinding.instance.addObserver(this);
-    _ssidController.text = CaptiveLoginStore.defaultCampusSsid;
     _studentIdController.addListener(_handleStudentIdChanged);
     _passwordController.addListener(_handlePasswordChanged);
     if (AndroidNetworkAssist.isSupported) {
@@ -114,11 +109,9 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage>
         final profile = await ProfileService().getProfile(fromFetch: true);
         studentId = (profile?['studentId'] ?? '').trim();
       }
-      final savedSsid = await CaptiveLoginStore.instance.readSsid();
       if (!mounted) return;
       _studentIdController.text = studentId;
       setState(() {
-        _savedLoginSsid = savedSsid;
         _autoExtendEnabled = autoExtendEnabled;
         if (creds != null) {
           _passwordController.text = creds.password;
@@ -189,8 +182,7 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage>
   }
 
   bool _validateRequiredInputs() {
-    return _ssidController.text.trim().isNotEmpty &&
-        _studentIdController.text.trim().isNotEmpty &&
+    return _studentIdController.text.trim().isNotEmpty &&
         _passwordController.text.isNotEmpty;
   }
 
@@ -206,8 +198,7 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage>
 
   Future<void> _waitForTargetWifiAssociation() async {
     if (!AndroidNetworkAssist.isSupported) return;
-    final targetSsid = _ssidController.text.trim().toLowerCase();
-    if (targetSsid.isEmpty) return;
+    final targetSsid = CaptiveLoginStore.defaultCampusSsid.toLowerCase();
 
     final status = await AndroidNetworkAssist.getNetworkStatus();
     if (status != null) {
@@ -231,7 +222,7 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage>
       );
       return nearbyOk;
     }
-    return _requestPermissionWithUx(permission: Permission.locationWhenInUse);
+    return true;
   }
 
   Future<bool> _requestPermissionWithUx({
@@ -250,10 +241,9 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage>
     final pending = event['pending'] == true;
     if (!pending || !mounted) return;
     final eventSsid = (event['ssid'] as String? ?? '').trim();
-    final savedSsid = _ssidController.text.trim();
     if (eventSsid.isNotEmpty &&
-        savedSsid.isNotEmpty &&
-        eventSsid.toLowerCase() != savedSsid.toLowerCase()) {
+        eventSsid.toLowerCase() !=
+            CaptiveLoginStore.defaultCampusSsid.toLowerCase()) {
       return;
     }
     unawaited(_runOneTapConnect());
@@ -265,7 +255,7 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage>
     }
 
     if (!_validateRequiredInputs()) {
-      _showLocalSnackBar('Required credentials or SSID are missing.');
+      _showLocalSnackBar('Please enter your Student ID and Password.');
       return;
     }
 
@@ -308,11 +298,8 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage>
             : (CaptiveWifiHttp.instance.lastError ?? 'No response received.');
       });
       if (loggedIn) {
-        final currentSsid = _ssidController.text.trim();
-        await CaptiveLoginStore.instance.saveSsid(currentSsid);
         if (mounted) {
           setState(() {
-            _savedLoginSsid = currentSsid;
             _isOnCampusNetwork = true;
             _detectedPortalUri = null;
           });
@@ -384,10 +371,8 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage>
             : (CaptiveWifiHttp.instance.lastError ?? 'No response received.');
       });
       if (loggedOut) {
-        await CaptiveLoginStore.instance.saveSsid('');
         if (mounted) {
           setState(() {
-            _savedLoginSsid = '';
             _isOnCampusNetwork = false;
           });
         }
@@ -519,8 +504,9 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage>
         (_currentStatus != null &&
             _currentStatus!.connected &&
             _currentStatus!.transport == 'wifi' &&
-            _currentStatus!.ssid?.trim().toLowerCase() ==
-                _ssidController.text.trim().toLowerCase());
+            ((_currentStatus!.ssid ?? '').isEmpty ||
+                _currentStatus!.ssid!.trim().toLowerCase() ==
+                    CaptiveLoginStore.defaultCampusSsid.toLowerCase()));
 
     final bool isBehindPortal = AndroidNetworkAssist.isSupported
         ? (isCorrectSsid &&
@@ -532,13 +518,8 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage>
         ? (isCorrectSsid &&
               _currentStatus != null &&
               !_currentStatus!.captive &&
-              _currentStatus!.validated &&
-              _savedLoginSsid.toLowerCase() ==
-                  _ssidController.text.trim().toLowerCase())
-        : (_isOnCampusNetwork &&
-              _detectedPortalUri == null &&
-              _savedLoginSsid.toLowerCase() ==
-                  _ssidController.text.trim().toLowerCase());
+              _currentStatus!.validated)
+        : (_isOnCampusNetwork && _detectedPortalUri == null);
 
     return PopScope(
       canPop: true,
@@ -579,8 +560,8 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage>
                     AutofillGroup(
                       child: Column(
                         children: [
-                          TextField(
-                            controller: _ssidController,
+                          TextFormField(
+                            initialValue: CaptiveLoginStore.defaultCampusSsid,
                             readOnly: true,
                             style: TextStyle(
                               color: BracuPalette.textPrimary(context),
@@ -639,12 +620,6 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage>
                       ),
                     ),
                     const Gap(12),
-                    BracuLocationPermissionBanner(
-                      onFixed: () {
-                        unawaited(_loadStoredCredentials());
-                      },
-                    ),
-                    const Gap(8),
                     Row(
                       children: [
                         Expanded(
@@ -927,17 +902,12 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage>
   }
 
   @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {}
-
-  @override
   void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
     _networkStatusSubscription?.cancel().catchError((_) {});
     _iosProbeTimer?.cancel();
     _studentIdController.removeListener(_handleStudentIdChanged);
     _passwordController.removeListener(_handlePasswordChanged);
     _studentIdController.dispose();
-    _ssidController.dispose();
     _passwordController.dispose();
     super.dispose();
   }

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
 import 'package:intl/intl.dart';
 import 'package:preconnect/api/profile.dart';
-import 'package:preconnect/pages/student_profile_sections/payslip_detail.dart';
+import 'package:preconnect/pages/profile_sections/payslip_detail.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 
 class PaymentList extends StatefulWidget {

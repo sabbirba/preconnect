@@ -1,7 +1,5 @@
 import Flutter
 import Foundation
-import NetworkExtension
-import SystemConfiguration.CaptiveNetwork
 import UIKit
 
 final class IosNetworkAssist {
@@ -12,47 +10,12 @@ final class IosNetworkAssist {
     )
     channel.setMethodCallHandler { call, result in
       switch call.method {
-      case "getCurrentSsid":
-        IosNetworkAssist.getCurrentSsid(result: result)
       case "openWifiSettings":
         IosNetworkAssist.openWifiSettings(result: result)
       default:
         result(FlutterMethodNotImplemented)
       }
     }
-  }
-
-  private static func getCurrentSsid(result: @escaping FlutterResult) {
-    if #available(iOS 14.0, *) {
-      NEHotspotNetwork.fetchCurrent { network in
-        DispatchQueue.main.async {
-          if let ssid = network?.ssid, !ssid.isEmpty {
-            result(ssid)
-          } else {
-            let legacy = legacySsid()
-            result(legacy?.isEmpty == false ? legacy : nil)
-          }
-        }
-      }
-    } else {
-      let ssid = legacySsid()
-      result(ssid?.isEmpty == false ? ssid : nil)
-    }
-  }
-
-  private static func legacySsid() -> String? {
-    guard let interfaces = CNCopySupportedInterfaces() as? [String] else {
-      return nil
-    }
-    for interface in interfaces {
-      guard
-        let info = CNCopyCurrentNetworkInfo(interface as CFString) as? [String: Any],
-        let ssid = info[kCNNetworkInfoKeySSID as String] as? String,
-        !ssid.isEmpty
-      else { continue }
-      return ssid
-    }
-    return nil
   }
 
   private static func openWifiSettings(result: @escaping FlutterResult) {

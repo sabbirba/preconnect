@@ -82,7 +82,6 @@ class HttpUtils {
       '@PJL JOB NAME = "${_escapePjlValue(jobName)}"\r\n',
       '@PJL SET COPIES = $copies\r\n',
       '@PJL SET COLLATE = ${collate == 'OFF' ? 'OFF' : 'ON'}\r\n',
-      '@PJL SET PAPER = A4\r\n',
       '@PJL SET ORIENTATION = PORTRAIT\r\n',
       '@PJL SET RESOLUTION = 600\r\n',
       '@PJL SET MANUALFEED = OFF\r\n',

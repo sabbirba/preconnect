@@ -20,7 +20,7 @@ void main() {
     },
   );
 
-  test('pjlPrefix includes Toshiba e-STUDIO A4 paper size directives', () {
+  test('pjlPrefix includes standard PJL configuration directives', () {
     final prefix = HttpUtils.pjlPrefix(
       jobName: 'Test Job',
       copies: 1,
@@ -36,7 +36,8 @@ void main() {
       booklet: 'OFF',
     );
 
-    expect(prefix, contains('@PJL SET PAPER = A4\r\n'));
+    expect(prefix, contains('@PJL JOB NAME = "Test Job"\r\n'));
+    expect(prefix, contains('@PJL SET COPIES = 1\r\n'));
 
     final fitOnPaperPrefix = HttpUtils.pjlPrefix(
       jobName: 'Test Job',

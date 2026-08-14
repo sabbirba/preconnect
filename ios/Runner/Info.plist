@@ -45,12 +45,7 @@
 	<string>PreConnect uses Face ID to securely authenticate you and unlock your saved student profile.</string>
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>PreConnect requires local network access to discover and connect to campus printing services and sync devices.</string>
-	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>PreConnect requires location access while using the app to detect and connect to campus Wi-Fi networks and display campus maps.</string>
-	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
-	<string>PreConnect requires location access while using the app to detect and connect to campus Wi-Fi networks and display campus maps.</string>
-	<key>NSLocationAlwaysUsageDescription</key>
-	<string>PreConnect requires location access while using the app to detect and connect to campus Wi-Fi networks and display campus maps.</string>
+
 	<key>NSRemindersUsageDescription</key>
 	<string>PreConnect requires permission to set academic reminders, exam alerts, and class schedules in Apple Reminders.</string>
 	<key>NSRemindersFullAccessUsageDescription</key>

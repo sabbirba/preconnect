@@ -692,10 +692,12 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
             ),
           );
 
-          return BracuRefreshList(
-            onRefresh: _handleRefresh,
-            controller: _scrollController,
-            children: children,
+          return SelectionArea(
+            child: BracuRefreshList(
+              onRefresh: _handleRefresh,
+              controller: _scrollController,
+              children: children,
+            ),
           );
         },
       ),

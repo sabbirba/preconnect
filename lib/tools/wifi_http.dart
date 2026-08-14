@@ -564,9 +564,7 @@ class CaptiveWifiHttp {
           ? getParam('ssid')
           : (formInputs['ssid'] ??
                 base64.encode(
-                  utf8.encode(
-                    status?.ssid ?? CaptiveLoginStore.defaultCampusSsid,
-                  ),
+                  utf8.encode(CaptiveLoginStore.defaultCampusSsid),
                 ));
 
       var resolvedUaddress = getParam('uaddress');

@@ -59,8 +59,6 @@ class MainActivity : FlutterFragmentActivity() {
         getSharedPreferences("preconnect.network_assist", Context.MODE_PRIVATE)
     }
 
-    private val locationSettingsRequestCode = 1092
-    private var locationSettingsResult: MethodChannel.Result? = null
     private val mainHandler = android.os.Handler(Looper.getMainLooper())
     private var updateChannel: UpdateChannel? = null
     private var storeChannel: StoreChannel? = null
@@ -72,19 +70,6 @@ class MainActivity : FlutterFragmentActivity() {
         ) { result ->
             updateChannel?.handleActivityResult(result.resultCode)
         }
-
-    override fun onActivityResult(
-        requestCode: Int,
-        resultCode: Int,
-        data: Intent?,
-    ) {
-        super.onActivityResult(requestCode, resultCode, data)
-        if (requestCode == locationSettingsRequestCode) {
-            val success = resultCode == RESULT_OK
-            locationSettingsResult?.success(success)
-            locationSettingsResult = null
-        }
-    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -224,78 +209,7 @@ class MainActivity : FlutterFragmentActivity() {
             MethodChannel.MethodCallHandler { call, result ->
                 when (call.method) {
                     "getNetworkStatus" -> {
-                        getNetworkStatusWithLocationInfo(result)
-                    }
-
-                    "isLocationServiceEnabled" -> {
-                        val lm = getSystemService(Context.LOCATION_SERVICE) as android.location.LocationManager
-                        val enabled =
-                            try {
-                                lm.isProviderEnabled(android.location.LocationManager.GPS_PROVIDER) ||
-                                    lm.isProviderEnabled(android.location.LocationManager.NETWORK_PROVIDER)
-                            } catch (e: Exception) {
-                                false
-                            }
-                        result.success(enabled)
-                    }
-
-                    "openLocationSettings" -> {
-                        try {
-                            locationSettingsResult = result
-                            val locationRequest =
-                                com.google.android.gms.location.LocationRequest
-                                    .Builder(
-                                        com.google.android.gms.location.Priority.PRIORITY_HIGH_ACCURACY,
-                                        5000,
-                                    ).build()
-                            val builder =
-                                com.google.android.gms.location.LocationSettingsRequest
-                                    .Builder()
-                                    .addLocationRequest(locationRequest)
-                            val client =
-                                com.google.android.gms.location.LocationServices
-                                    .getSettingsClient(this)
-                            val task = client.checkLocationSettings(builder.build())
-                            task.addOnCompleteListener { t ->
-                                try {
-                                    t.getResult(com.google.android.gms.common.api.ApiException::class.java)
-                                    result.success(true)
-                                    locationSettingsResult = null
-                                } catch (exception: com.google.android.gms.common.api.ApiException) {
-                                    when (exception.statusCode) {
-                                        com.google.android.gms.location.LocationSettingsStatusCodes.RESOLUTION_REQUIRED -> {
-                                            try {
-                                                val resolvable = exception as com.google.android.gms.common.api.ResolvableApiException
-                                                resolvable.startResolutionForResult(
-                                                    this,
-                                                    locationSettingsRequestCode,
-                                                )
-                                            } catch (e: Exception) {
-                                                result.success(false)
-                                                locationSettingsResult = null
-                                            }
-                                        }
-
-                                        else -> {
-                                            val intent = Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS)
-                                            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                                            startActivity(intent)
-                                            result.success(true)
-                                            locationSettingsResult = null
-                                        }
-                                    }
-                                }
-                            }
-                        } catch (e: Exception) {
-                            try {
-                                val intent = Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS)
-                                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                                startActivity(intent)
-                                result.success(true)
-                            } catch (e2: Exception) {
-                                result.success(false)
-                            }
-                        }
+                        result.success(currentNetworkStatus())
                     }
 
                     "openWifiSettings" -> {
@@ -323,37 +237,7 @@ class MainActivity : FlutterFragmentActivity() {
                         }
                     }
 
-                    "getWifiScanResults" -> {
-                        val hasLocation =
-                            checkSelfPermission(android.Manifest.permission.ACCESS_FINE_LOCATION) ==
-                                PackageManager.PERMISSION_GRANTED
-                        val hasNearby =
-                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                                checkSelfPermission("android.permission.NEARBY_WIFI_DEVICES") == PackageManager.PERMISSION_GRANTED
-                            } else {
-                                true
-                            }
-                        if (hasLocation || hasNearby) {
-                            try {
-                                @Suppress("DEPRECATION")
-                                wifiManager.startScan()
-                            } catch (error: Exception) {
-                                Log.w("PreConnect", "Unable to start a Wi-Fi scan", error)
-                            }
-                            val list =
-                                try {
-                                    wifiManager.scanResults
-                                        .mapNotNull(::scanResultSsid)
-                                        .filter(String::isNotBlank)
-                                        .distinct()
-                                } catch (e: Exception) {
-                                    emptyList<String>()
-                                }
-                            result.success(list)
-                        } else {
-                            result.success(emptyList<String>())
-                        }
-                    }
+
 
                     "addWifiSuggestion" -> {
                         addWifiSuggestion(call, result)
@@ -584,117 +468,26 @@ class MainActivity : FlutterFragmentActivity() {
         return payload
     }
 
-    private fun getNetworkStatusWithLocationInfo(result: MethodChannel.Result) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && hasSsidPermission()) {
-            val network = getWifiNetwork() ?: connectivityManager.activeNetwork
-            if (network != null) {
-                var timeoutRunnable: Runnable? = null
-                val oneShotCallback =
-                    object : ConnectivityManager.NetworkCallback(
-                        ConnectivityManager.NetworkCallback.FLAG_INCLUDE_LOCATION_INFO,
-                    ) {
-                        private var done = false
-
-                        fun finishWith(payload: Map<String, Any>) {
-                            if (done) return
-                            done = true
-                            timeoutRunnable?.let { mainHandler.removeCallbacks(it) }
-                            try {
-                                connectivityManager.unregisterNetworkCallback(this)
-                            } catch (error: Exception) {
-                                Log.w("PreConnect", "Unable to unregister the one-shot network callback", error)
-                            }
-                            mainHandler.post { result.success(payload) }
-                        }
-
-                        override fun onCapabilitiesChanged(
-                            net: Network,
-                            networkCapabilities: NetworkCapabilities,
-                        ) {
-                            val payload =
-                                currentNetworkStatus(
-                                    networkOverride = net,
-                                    capabilitiesOverride = networkCapabilities,
-                                ).toMutableMap()
-                            if (!payload.containsKey("ssid") || payload["ssid"] == null) {
-                                val wifiInfo = networkCapabilities.transportInfo as? WifiInfo
-                                val ssid = normalizeSsid(wifiInfo?.ssid?.trim().orEmpty())
-                                if (ssid != null) payload["ssid"] = ssid
-                            }
-                            finishWith(payload)
-                        }
-
-                        override fun onUnavailable() {
-                            finishWith(currentNetworkStatus())
-                        }
-                    }
-
-                timeoutRunnable =
-                    Runnable {
-                        oneShotCallback.finishWith(currentNetworkStatus())
-                    }
-
-                try {
-                    val request =
-                        NetworkRequest
-                            .Builder()
-                            .addTransportType(NetworkCapabilities.TRANSPORT_WIFI)
-                            .build()
-                    connectivityManager.registerNetworkCallback(request, oneShotCallback)
-                    mainHandler.postDelayed(timeoutRunnable, 150)
-                    return
-                } catch (error: Exception) {
-                    Log.w("PreConnect", "Unable to register the one-shot network callback", error)
-                }
-            }
-        }
-        result.success(currentNetworkStatus())
-    }
-
     private fun registerNetworkCallback() {
         if (networkCallback != null) return
         val callback =
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                object : ConnectivityManager.NetworkCallback(
-                    ConnectivityManager.NetworkCallback.FLAG_INCLUDE_LOCATION_INFO,
-                ) {
-                    override fun onAvailable(network: Network) {
-                        trackWifiNetwork(network)
-                        emitNetworkStatus(network = network)
-                    }
-
-                    override fun onLost(network: Network) {
-                        if (observedWifiNetwork == network) observedWifiNetwork = null
-                        emitNetworkStatus()
-                    }
-
-                    override fun onCapabilitiesChanged(
-                        network: Network,
-                        networkCapabilities: NetworkCapabilities,
-                    ) {
-                        trackWifiNetwork(network, networkCapabilities)
-                        emitNetworkStatus(network = network, capabilities = networkCapabilities)
-                    }
+            object : ConnectivityManager.NetworkCallback() {
+                override fun onAvailable(network: Network) {
+                    trackWifiNetwork(network)
+                    emitNetworkStatus(network = network)
                 }
-            } else {
-                object : ConnectivityManager.NetworkCallback() {
-                    override fun onAvailable(network: Network) {
-                        trackWifiNetwork(network)
-                        emitNetworkStatus(network = network)
-                    }
 
-                    override fun onLost(network: Network) {
-                        if (observedWifiNetwork == network) observedWifiNetwork = null
-                        emitNetworkStatus()
-                    }
+                override fun onLost(network: Network) {
+                    if (observedWifiNetwork == network) observedWifiNetwork = null
+                    emitNetworkStatus()
+                }
 
-                    override fun onCapabilitiesChanged(
-                        network: Network,
-                        networkCapabilities: NetworkCapabilities,
-                    ) {
-                        trackWifiNetwork(network, networkCapabilities)
-                        emitNetworkStatus(network = network, capabilities = networkCapabilities)
-                    }
+                override fun onCapabilitiesChanged(
+                    network: Network,
+                    networkCapabilities: NetworkCapabilities,
+                ) {
+                    trackWifiNetwork(network, networkCapabilities)
+                    emitNetworkStatus(network = network, capabilities = networkCapabilities)
                 }
             }
         val request =
@@ -822,13 +615,7 @@ class MainActivity : FlutterFragmentActivity() {
         }
     }
 
-    private fun scanResultSsid(result: android.net.wifi.ScanResult): String? {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            return result.wifiSsid?.toString()
-        }
-        @Suppress("DEPRECATION")
-        return result.SSID
-    }
+
 
     private fun currentNetworkStatus(
         networkOverride: Network? = null,
@@ -886,7 +673,7 @@ class MainActivity : FlutterFragmentActivity() {
                 payload["clientMac"] = clientMac
             }
         }
-        val captiveWifiData = currentCaptiveWifiData(caps)
+        val captiveWifiData = currentCaptiveWifiData(network, caps)
         if (captiveWifiData.isNotEmpty()) {
             payload.putAll(captiveWifiData)
         }
@@ -906,93 +693,84 @@ class MainActivity : FlutterFragmentActivity() {
         }
     }
 
-    private fun currentCaptiveWifiData(caps: NetworkCapabilities?): Map<String, Any> {
-        if (caps == null) return emptyMap()
-        return try {
-            val getCaptivePortalData =
-                NetworkCapabilities::class.java.methods.firstOrNull { method ->
-                    method.name == "getCaptivePortalData" && method.parameterTypes.isEmpty()
-                } ?: return emptyMap()
-            val captiveWifiData = getCaptivePortalData.invoke(caps) ?: return emptyMap()
-
-            val payload = mutableMapOf<String, Any>()
-
-            val getUserPortalUrl =
-                captiveWifiData.javaClass.methods.firstOrNull { method ->
-                    method.name == "getUserPortalUrl" && method.parameterTypes.isEmpty()
+    private fun currentCaptiveWifiData(network: Network?, caps: NetworkCapabilities?): Map<String, Any> {
+        val payload = mutableMapOf<String, Any>()
+        if (caps == null && network == null) return payload
+        try {
+            var captiveWifiData: Any? = null
+            if (caps != null) {
+                val getCaptivePortalData =
+                    NetworkCapabilities::class.java.methods.firstOrNull { method ->
+                        method.name == "getCaptivePortalData" && method.parameterTypes.isEmpty()
+                    }
+                captiveWifiData = getCaptivePortalData?.invoke(caps)
+            }
+            if (captiveWifiData == null && network != null) {
+                val linkProperties = connectivityManager.getLinkProperties(network)
+                if (linkProperties != null) {
+                    val getCaptivePortalData =
+                        linkProperties.javaClass.methods.firstOrNull { method ->
+                            method.name == "getCaptivePortalData" && method.parameterTypes.isEmpty()
+                        }
+                    captiveWifiData = getCaptivePortalData?.invoke(linkProperties)
                 }
-            val rawUrl =
-                getUserPortalUrl
-                    ?.invoke(captiveWifiData)
-                    ?.toString()
-                    ?.trim()
-                    .orEmpty()
-            if (rawUrl.isNotEmpty()) {
-                payload["captiveWifiUrl"] = rawUrl
             }
 
-            val isSessionExtendable =
-                captiveWifiData.javaClass.methods
-                    .firstOrNull { method ->
-                        method.name == "isSessionExtendable" && method.parameterTypes.isEmpty()
-                    }?.invoke(captiveWifiData) as? Boolean
-            if (isSessionExtendable != null) {
-                payload["canExtendSession"] = isSessionExtendable
-            }
+            if (captiveWifiData != null) {
+                val getUserPortalUrl =
+                    captiveWifiData.javaClass.methods.firstOrNull { method ->
+                        method.name == "getUserPortalUrl" && method.parameterTypes.isEmpty()
+                    }
+                val rawUrl =
+                    getUserPortalUrl
+                        ?.invoke(captiveWifiData)
+                        ?.toString()
+                        ?.trim()
+                        .orEmpty()
+                if (rawUrl.isNotEmpty()) {
+                    payload["captiveWifiUrl"] = rawUrl
+                }
 
-            val expiryMillis =
-                (
+                val isSessionExtendable =
                     captiveWifiData.javaClass.methods
                         .firstOrNull { method ->
-                            method.name == "getExpiryTimeMillis" && method.parameterTypes.isEmpty()
-                        }?.invoke(captiveWifiData) as? Long
-                ) ?: -1L
-            if (expiryMillis > 0L) {
-                payload["sessionExpiryTimeMillis"] = expiryMillis
-            }
+                            method.name == "isSessionExtendable" && method.parameterTypes.isEmpty()
+                        }?.invoke(captiveWifiData) as? Boolean
+                if (isSessionExtendable != null) {
+                    payload["canExtendSession"] = isSessionExtendable
+                }
 
-            payload
-        } catch (_: Exception) {
-            emptyMap()
-        }
+                val expiryMillis =
+                    (
+                        captiveWifiData.javaClass.methods
+                            .firstOrNull { method ->
+                                method.name == "getExpiryTimeMillis" && method.parameterTypes.isEmpty()
+                            }?.invoke(captiveWifiData) as? Long
+                    ) ?: -1L
+                if (expiryMillis > 0L) {
+                    payload["sessionExpiryTimeMillis"] = expiryMillis
+                }
+            }
+        } catch (_: Exception) {}
+        return payload
     }
 
     private fun hasSsidPermission(): Boolean {
-        val hasLocation =
-            checkSelfPermission(android.Manifest.permission.ACCESS_FINE_LOCATION) ==
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            checkSelfPermission("android.permission.NEARBY_WIFI_DEVICES") ==
                 PackageManager.PERMISSION_GRANTED
-        val hasNearby =
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                checkSelfPermission("android.permission.NEARBY_WIFI_DEVICES") ==
-                    PackageManager.PERMISSION_GRANTED
-            } else {
-                false
-            }
-        return hasLocation || hasNearby
+        } else {
+            true
+        }
     }
 
     private fun currentWifiSsid(): String? {
         if (!hasSsidPermission()) return null
         return try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                val network = connectivityManager.activeNetwork ?: return null
-                val caps =
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                        connectivityManager.getNetworkCapabilities(network)
-                    } else {
-                        connectivityManager.getNetworkCapabilities(network)
-                    } ?: return null
-                val wifiInfo = caps.transportInfo as? WifiInfo
-                val fromCaps = normalizeSsid(wifiInfo?.ssid?.trim().orEmpty())
-                if (fromCaps != null) return fromCaps
-                @Suppress("DEPRECATION")
-                val legacyInfo = wifiManager.connectionInfo
-                normalizeSsid(legacyInfo?.ssid?.trim().orEmpty())
-            } else {
-                @Suppress("DEPRECATION")
-                val info = wifiManager.connectionInfo
-                normalizeSsid(info?.ssid?.trim().orEmpty())
-            }
+            val network = connectivityManager.activeNetwork ?: return null
+            val caps = connectivityManager.getNetworkCapabilities(network) ?: return null
+            val wifiInfo = caps.transportInfo as? WifiInfo
+            normalizeSsid(wifiInfo?.ssid?.trim().orEmpty())
         } catch (_: Exception) {
             null
         }

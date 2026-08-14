@@ -427,11 +427,11 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
 
     if (status.transport != 'wifi' || !status.connected) return;
     final currentSsid = (status.ssid ?? '').trim();
-    if (currentSsid.isEmpty) return;
-    final savedSsid = await CaptiveLoginStore.instance.readSsid();
-    if (savedSsid.isEmpty) return;
-    final isCampusSsid = currentSsid.toLowerCase() == savedSsid.toLowerCase();
-    if (!isCampusSsid) return;
+    if (currentSsid.isNotEmpty &&
+        currentSsid.toLowerCase() !=
+            CaptiveLoginStore.defaultCampusSsid.toLowerCase()) {
+      return;
+    }
 
     final now = DateTime.now();
     final lastLoginMs = await CaptiveLoginStore.instance.readLastLoginAt();
@@ -514,8 +514,6 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
   Future<void> _maybeAutoOpenWifiAssistant(AndroidNetworkStatus status) async {
     if (!mounted) return;
     if (status.transport != 'wifi') return;
-    final currentSsid = (status.ssid ?? '').trim();
-    if (currentSsid.isEmpty) return;
 
     final now = DateTime.now();
     if (_lastAutoAssistantOpenAt != null &&

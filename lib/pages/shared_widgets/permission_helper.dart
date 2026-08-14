@@ -7,7 +7,6 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:preconnect/api/fcm.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/app_storage.dart';
-import 'package:preconnect/tools/network_assist.dart';
 import 'package:preconnect/tools/storage_keys.dart';
 
 class PermissionRequirement {
@@ -34,13 +33,6 @@ class PermissionRequirement {
 
 class BracuPermissionHelper {
   static const List<PermissionRequirement> list = [
-    PermissionRequirement(
-      permission: Permission.locationWhenInUse,
-      title: 'Location Services',
-      reason: 'Detect the B-LAN Wi-Fi SSID.',
-      icon: Icons.location_on_rounded,
-      isOptional: true,
-    ),
     PermissionRequirement(
       permission: Permission.nearbyWifiDevices,
       title: 'Nearby Wi-Fi Devices',
@@ -146,13 +138,7 @@ class BracuPermissionHelper {
       }
 
       final status = await req.permission.status;
-      bool isOk = status.isGranted || status.isLimited;
-      if (isOk && req.permission == Permission.locationWhenInUse) {
-        final gpsOn = await AndroidNetworkAssist.isLocationServiceEnabled();
-        if (!gpsOn) {
-          isOk = false;
-        }
-      }
+      final isOk = status.isGranted || status.isLimited;
 
       if (!isOk) {
         allPending.add(req);
@@ -193,13 +179,6 @@ class BracuPermissionHelper {
       if (granted.isGranted || granted.isLimited) {
         unawaited(FCMService.instance.init());
       }
-    }
-
-    final locationStatus = await Permission.locationWhenInUse.status;
-    if (!locationStatus.isGranted &&
-        !locationStatus.isLimited &&
-        !locationStatus.isPermanentlyDenied) {
-      await Permission.locationWhenInUse.request();
     }
 
     final cameraStatus = await Permission.camera.status;
@@ -263,10 +242,7 @@ class _BracuPermissionBottomSheetContentState
       final status = await req.permission.status;
       updatedStatuses[req.permission] = status;
 
-      bool serviceOn = true;
-      if (req.permission == Permission.locationWhenInUse) {
-        serviceOn = await AndroidNetworkAssist.isLocationServiceEnabled();
-      }
+      const serviceOn = true;
       updatedServices[req.permission] = serviceOn;
     }
 
@@ -297,9 +273,6 @@ class _BracuPermissionBottomSheetContentState
     final serviceOn = _services[req.permission] ?? true;
 
     if (isGranted && !serviceOn) {
-      if (req.permission == Permission.locationWhenInUse) {
-        await AndroidNetworkAssist.openLocationSettings();
-      }
       return;
     }
 

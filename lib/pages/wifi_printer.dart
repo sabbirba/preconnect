@@ -7,18 +7,18 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
 import 'package:flutter/services.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/api/auth.dart';
 import 'package:preconnect/api/profile.dart';
 import 'package:preconnect/pages/card_section.dart';
 import 'package:preconnect/pages/ui_kit.dart';
-import 'package:preconnect/tools/network_assist.dart';
 import 'package:preconnect/tools/app_storage.dart';
 import 'package:preconnect/tools/http/http_utils.dart';
 import 'package:preconnect/tools/storage_keys.dart';
 import 'package:preconnect/tools/app_log.dart';
 
-part 'wifi_printer_sections/printer_models.dart';
+part 'printer_sections/printer_models.dart';
 
 class CampusPrinterPage extends StatefulWidget {
   const CampusPrinterPage({super.key});
@@ -250,8 +250,7 @@ startxref
   State<CampusPrinterPage> createState() => _CampusPrinterPageState();
 }
 
-class _CampusPrinterPageState extends State<CampusPrinterPage>
-    with WidgetsBindingObserver {
+class _CampusPrinterPageState extends State<CampusPrinterPage> {
   static const String _historyKey = CampusPrinterPage.historyKey;
   static const int _maxHistoryEntries = 50;
   static const String _copiesKey = CampusPrinterPage.copiesKey;
@@ -300,16 +299,13 @@ class _CampusPrinterPageState extends State<CampusPrinterPage>
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addObserver(this);
     _copiesController.addListener(_handleCopiesControllerChanged);
     _studentIdController.addListener(_handleStudentIdControllerChanged);
-    if (AndroidNetworkAssist.isSupported) {
-      _networkStatusSubscription = AndroidNetworkAssist.statusStream.listen((
-        status,
-      ) {
-        unawaited(_handleNetworkStatusChanged(status));
-      });
-    }
+    _networkStatusSubscription = Connectivity().onConnectivityChanged.listen((
+      results,
+    ) {
+      unawaited(_handleConnectivityChanged(results));
+    });
 
     _bootstrap();
   }
@@ -416,7 +412,6 @@ class _CampusPrinterPageState extends State<CampusPrinterPage>
 
   @override
   void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
     _networkStatusSubscription?.cancel().catchError((_) {});
 
     _copiesController.removeListener(_handleCopiesControllerChanged);
@@ -426,28 +421,50 @@ class _CampusPrinterPageState extends State<CampusPrinterPage>
     super.dispose();
   }
 
-  Future<void> _handleNetworkStatusChanged(AndroidNetworkStatus status) async {
+  Future<void> _handleConnectivityChanged(
+    List<ConnectivityResult> results,
+  ) async {
     if (!mounted) return;
-    final transport = status.transport.trim().toLowerCase();
-    final connected = status.connected;
-    if (!connected) {
+    final isNone =
+        results.isEmpty || results.every((r) => r == ConnectivityResult.none);
+    if (isNone) {
       setState(() {
         _hasInternet = false;
         _printerHost = '';
       });
       return;
     }
-    if (transport != 'wifi') {
-      setState(() {
-        _printerHost = '';
-      });
-    }
+    setState(() {
+      _hasInternet = true;
+    });
     final currentNetworkFingerprint = await _currentNetworkFingerprint();
     if (currentNetworkFingerprint.isEmpty ||
         currentNetworkFingerprint == _lastNetworkFingerprint) {
       return;
     }
     _lastNetworkFingerprint = currentNetworkFingerprint;
+    unawaited(_discoverPrinter());
+  }
+
+  Future<bool> _checkWorkerStatus() async {
+    try {
+      final url = Uri.parse('${ApiConfig.realtimeApiBase}/print/stats');
+      final response = await HttpUtils.client
+          .get(
+            url,
+            headers: const <String, String>{
+              'Accept': 'application/json',
+              'Connection': 'keep-alive',
+            },
+          )
+          .timeout(const Duration(milliseconds: 1500));
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> data =
+            jsonDecode(response.body) as Map<String, dynamic>;
+        return data['status'] == 'online';
+      }
+    } catch (_) {}
+    return false;
   }
 
   Future<void> _discoverPrinter() async {
@@ -459,46 +476,26 @@ class _CampusPrinterPageState extends State<CampusPrinterPage>
       final networkKey = await _currentNetworkFingerprint();
       _lastNetworkFingerprint = networkKey;
 
-      final printers = await _WifiPrinterDiscovery.findLprPrinters(
-        port: _CampusPrinterConfig.current.port,
-        campusHosts: _CampusPrinterConfig.current.hosts,
-      );
+      final results = await Future.wait([
+        _WifiPrinterDiscovery.findLprPrinters(
+          port: _CampusPrinterConfig.current.port,
+          campusHosts: _CampusPrinterConfig.current.hosts,
+        ),
+        _checkWorkerStatus(),
+      ]);
 
-      if (printers.isNotEmpty) {
-        if (mounted) {
-          setState(() {
-            _printerHost = printers.first.address;
-            _workerAvailable = false;
-          });
-        }
-        return;
-      }
-
-      bool workerOnline = false;
-      try {
-        final url = Uri.parse('${ApiConfig.realtimeApiBase}/print/stats');
-        final response = await HttpUtils.client
-            .get(
-              url,
-              headers: const <String, String>{
-                'Accept': 'application/json',
-                'Connection': 'keep-alive',
-              },
-            )
-            .timeout(const Duration(seconds: 2));
-        if (response.statusCode == 200) {
-          final Map<String, dynamic> data =
-              jsonDecode(response.body) as Map<String, dynamic>;
-          workerOnline = data['status'] == 'online';
-        }
-      } catch (_) {
-        workerOnline = false;
-      }
+      final printers = results[0] as List<_WifiPrinterCandidate>;
+      final workerOnline = results[1] as bool;
 
       if (mounted) {
         setState(() {
-          _printerHost = '';
-          _workerAvailable = workerOnline;
+          if (printers.isNotEmpty) {
+            _printerHost = printers.first.address;
+            _workerAvailable = false;
+          } else {
+            _printerHost = '';
+            _workerAvailable = workerOnline;
+          }
         });
       }
     } catch (e) {
@@ -878,12 +875,6 @@ class _CampusPrinterPageState extends State<CampusPrinterPage>
                 ],
               ],
             ),
-          ),
-          const Gap(8),
-          BracuLocationPermissionBanner(
-            onFixed: () {
-              unawaited(_discoverPrinter());
-            },
           ),
           const Gap(8),
           Column(
@@ -2194,14 +2185,14 @@ class _WifiPrinterDiscovery {
     final targets = <Map<String, dynamic>>[];
 
     final priorityHosts = <String>[...preferredHosts, ...campusHosts];
-    for (final host in priorityHosts) {
+    final priorityFutures = priorityHosts.map((host) async {
       final h = host.trim();
-      if (h.isEmpty || !seen.add(h)) continue;
+      if (h.isEmpty || !seen.add(h)) return;
       final isCampus = campusHosts.contains(h);
       final ok = await _probe(
         h,
         port,
-        isCampus ? const Duration(milliseconds: 350) : timeout,
+        isCampus ? const Duration(milliseconds: 300) : timeout,
       );
       if (ok) {
         found.add(
@@ -2210,9 +2201,10 @@ class _WifiPrinterDiscovery {
             interfaceName: isCampus ? 'campus' : 'saved',
           ),
         );
-        if (found.length >= limit) return found;
       }
-    }
+    });
+    await Future.wait(priorityFutures);
+    if (found.isNotEmpty) return found;
 
     var subnetCount = 0;
     for (final subnet in subnets) {

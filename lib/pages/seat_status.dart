@@ -10,7 +10,7 @@ import 'package:preconnect/pages/home_tab.dart';
 import 'package:preconnect/model/section_info.dart' as section;
 import 'package:preconnect/model/seat_timetable.dart';
 import 'package:preconnect/pages/notifications.dart';
-import 'package:preconnect/pages/friend_schedule_sections/friend_header.dart';
+import 'package:preconnect/pages/friend_sections/friend_header.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/preconnect_constants.dart';
 import 'package:preconnect/tools/token_storage.dart';

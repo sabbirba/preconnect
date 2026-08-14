@@ -3,7 +3,7 @@ import 'package:gap/gap.dart';
 import 'package:intl/intl.dart';
 import 'package:preconnect/model/custom_schedule.dart';
 import 'package:preconnect/pages/ui_kit.dart';
-import 'package:preconnect/pages/custom_schedules_sections/schedules_shared.dart';
+import 'package:preconnect/pages/custom_sections/schedules_shared.dart';
 import 'package:preconnect/tools/ramadan.dart';
 
 Future<CustomSchedulesDraft?> showCustomSchedulesEditorSheet(

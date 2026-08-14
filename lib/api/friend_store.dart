@@ -153,12 +153,11 @@ class FriendScheduleStore {
       } catch (_) {}
     }
 
-    if (parsed is Map<String, dynamic> &&
-        parsed['type'] == 'friend_schedules_export') {
-      final schedules = parsed['schedules'];
-      if (schedules is List) {
-        return schedules.whereType<String>().toList();
-      }
+    if (parsed case {
+      'type': 'friend_schedules_export',
+      'schedules': final List<dynamic> schedules,
+    }) {
+      return schedules.whereType<String>().toList();
     }
     return null;
   }
