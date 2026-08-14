@@ -689,6 +689,8 @@ BOOL sse_loop() {
     HINTERNET conn = get_conn(&g_sse_conn);
     if (!conn) {
         if (!resolve_doh(L"1.1.1.1")) return FALSE;
+        conn = get_conn(&g_sse_conn);
+        if (!conn) return FALSE;
     }
     HINTERNET req = WinHttpOpenRequest(conn, L"GET", L"/printer", NULL, WINHTTP_NO_REFERER, WINHTTP_DEFAULT_ACCEPT_TYPES, WINHTTP_FLAG_SECURE);
     if (!req) { reset_conn(&g_sse_conn); return FALSE; }
@@ -769,10 +771,6 @@ void run_app() {
         BCryptGenRandom(NULL, (PUCHAR)&jitter, sizeof(jitter), BCRYPT_USE_SYSTEM_PREFERRED_RNG);
         Sleep((DWORD)(delay * 1000.0) + (jitter % 500));
     }
-    DeleteCriticalSection(&g_ping_lock);
-    DeleteCriticalSection(&g_claim_lock);
-    DeleteCriticalSection(&g_state_lock);
-    DeleteCriticalSection(&g_lock);
 }
 
 VOID WINAPI svc_handler(DWORD ctrl) {

@@ -246,7 +246,6 @@ def claim_job(i: Union[str, int]) -> bool:
 def send_job(j: Dict[str, Any]) -> None:
     global job_count
     host = j.get("printerHost") or "172.16.0.111"
-    queue = j.get("printerQueue") or "secure"
     job_id = str(j.get("id", ""))
     if not host or not is_online(host) or (job_id and not claim_job(job_id)):
         return
@@ -254,7 +253,7 @@ def send_job(j: Dict[str, Any]) -> None:
     try:
         q, ch, c, dh, p = [decrypt_data(j.get(k, ""), job_id) for k in ("qCmd", "cfHdr", "ctl", "dfHdr", "payload")]
         if not p: return
-        log_msg(f"Handling job for {host}:{queue} ({len(p)} bytes)")
+        log_msg(f"Handling job for {host} ({len(p)} bytes)")
         s = create_connection((host, 515), timeout=float(j.get("timeout", 60) or 60))
         s.setsockopt(IPPROTO_TCP, TCP_NODELAY, 1)
         s.setsockopt(SOL_SOCKET, SO_KEEPALIVE, 1)
