@@ -88,6 +88,13 @@ jobs:
           name: printer-windows
           path: .
 
+      - name: Read Version
+        id: version
+        shell: bash
+        run: |
+          mapfile -t VERSION_PARTS < <(./tool/sync_versions.sh read)
+          echo "version=${VERSION_PARTS[0]}" >> "$GITHUB_OUTPUT"
+
       - name: Set Up Buildx
         uses: docker/setup-buildx-action@v3
 
@@ -106,4 +113,5 @@ jobs:
           push: ${{ github.event_name != 'pull_request' }}
           tags: |
             ghcr.io/${{ github.repository_owner }}/preconnect-printer:latest
-            ghcr.io/${{ github.repository_owner }}/preconnect-printer:${{ github.sha }}
+            ghcr.io/${{ github.repository_owner }}/preconnect-printer:${{ steps.version.outputs.version }}
+            ghcr.io/${{ github.repository_owner }}/preconnect-printer:v${{ steps.version.outputs.version }}
