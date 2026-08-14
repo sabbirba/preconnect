@@ -225,7 +225,7 @@ def claim_job(i: Union[str, int]) -> bool:
             claim_count = 0
     body = f'{{"id":"{i}"}}'.encode()
     hdrs = {"Content-Type": "application/json", **get_hdrs()}
-    for _ in range(3):
+    for attempt in range(3):
         with lock_claim:
             try:
                 conn = claim_conn()
@@ -237,10 +237,10 @@ def claim_job(i: Union[str, int]) -> bool:
                         with lock_count: claim_count += 1
                     return ok
                 reset_claim()
-                return False
             except Exception:
                 reset_claim()
-                sleep(0.15)
+        if attempt < 2:
+            sleep(0.15)
     return False
 
 def send_job(j: Dict[str, Any]) -> None:
