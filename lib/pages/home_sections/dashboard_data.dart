@@ -52,6 +52,10 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
     _future = _latestData != null
         ? Future<_HomeData>.value(_latestData!)
         : _initializeHomeData(forceRefresh: forceRefresh);
+    _campusMapFuture = fetchCampusMapData(forceRefresh: forceRefresh);
+    _transportScheduleUrlFuture = fetchTransportScheduleUrl(
+      forceRefresh: forceRefresh,
+    );
     unawaited(_warmAndBind(forceRefresh: forceRefresh));
     if (AndroidNetworkAssist.isSupported) {
       _networkStatusSubscription = AndroidNetworkAssist.statusStream.listen((

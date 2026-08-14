@@ -5,6 +5,7 @@ import 'package:preconnect/api/api_client.dart';
 import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/api/repository_cache.dart';
 import 'package:preconnect/api/fcm.dart';
+import 'package:preconnect/tools/app_log.dart';
 import 'package:preconnect/tools/url_utils.dart';
 import 'package:preconnect/tools/cache_durations.dart';
 
@@ -136,8 +137,16 @@ class ScraperDataService {
         'ts': DateTime.now().millisecondsSinceEpoch,
         'data': decoded,
       });
+      unawaited(
+        AppLog.write(
+          'Public Data: Synced $path (${response.body.length} bytes)',
+        ),
+      );
       return decoded;
-    } catch (_) {
+    } catch (error) {
+      unawaited(
+        AppLog.write('Public Data Error: Failed to sync $path ($error)'),
+      );
       final cached = await _repo.readJsonMap(cacheKey);
       return cached?['data'];
     }

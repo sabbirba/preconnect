@@ -7,6 +7,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:preconnect/api/api_client.dart';
 import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/api/profile.dart';
+import 'package:preconnect/tools/app_log.dart';
 import 'package:preconnect/tools/app_paths.dart';
 import 'package:preconnect/tools/app_storage.dart';
 
@@ -54,9 +55,16 @@ class GradeSheetService {
           await file.parent.create(recursive: true);
           await file.writeAsBytes(bytes, flush: true);
         }
+        unawaited(
+          AppLog.write('Grade Sheet: Downloaded PDF (${bytes.length} bytes)'),
+        );
         return bytes;
       }
-    } catch (_) {}
+    } catch (error) {
+      unawaited(
+        AppLog.write('Grade Sheet Error: Failed to fetch grade sheet ($error)'),
+      );
+    }
 
     return null;
   }

@@ -26,6 +26,7 @@ import 'package:preconnect/pages/home_tab.dart';
 import 'package:preconnect/pages/onboarding.dart';
 import 'package:preconnect/pages/captive_wifi.dart';
 import 'package:preconnect/pages/ui_kit.dart';
+import 'package:preconnect/pages/shared_widgets/map_shared.dart';
 import 'package:preconnect/tools/app_navigator.dart';
 import 'package:preconnect/tools/preconnect_constants.dart';
 import 'package:preconnect/tools/quiet_controller.dart';
@@ -153,6 +154,8 @@ class MyApp extends StatefulWidget {
   static Future<void> _warmStartupCaches({bool forceRefresh = false}) async {
     try {
       unawaited(MercureService().connect());
+      unawaited(fetchCampusMapData(forceRefresh: forceRefresh));
+      unawaited(fetchTransportScheduleUrl(forceRefresh: forceRefresh));
     } catch (_) {}
   }
 

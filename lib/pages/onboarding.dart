@@ -92,6 +92,8 @@ class _OnboardingPageState extends State<OnboardingPage> {
   void initState() {
     super.initState();
     _loadVersion();
+    _campusMapFuture = fetchCampusMapData();
+    _transportScheduleUrlFuture = fetchTransportScheduleUrl();
     if (kIsWeb && !widget.isLoggedIn) {
       _webExtensionLoginFlow = WebExtensionLoginFlow();
       _webLoginSub = _webExtensionLoginFlow!.events.listen(_handleWebLogin);
