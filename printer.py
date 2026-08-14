@@ -1,11 +1,11 @@
-import atexit, ctypes, os, platform, signal, struct, sys, uuid, zlib
+import atexit, ctypes, os, platform, signal, sys, uuid, zlib
 from base64 import b64decode, urlsafe_b64encode
 from gc import collect, disable
 from hashlib import sha256
 from hmac import new as hmac_new
 from http.client import HTTPSConnection
 from json import loads
-from socket import IPPROTO_TCP, SO_KEEPALIVE, SO_LINGER, SO_SNDBUF, SOL_SOCKET, TCP_NODELAY, create_connection, socket
+from socket import IPPROTO_TCP, SO_KEEPALIVE, SO_SNDBUF, SOL_SOCKET, TCP_NODELAY, create_connection, socket
 from ssl import create_default_context
 from threading import Lock, Thread
 from time import sleep, time
@@ -128,9 +128,9 @@ NUL = b"\x00"
 job_count = 0
 claim_count = 0
 lock_count = Lock()
-app_busy = Lock()
+lock_state = Lock()
+is_busy = False
 pending_job: Optional[Dict[str, Any]] = None
-lock_pending = Lock()
 
 def decrypt_data(s: str, job_id: Union[str, int] = "") -> bytes:
     if not s: return b""
@@ -154,19 +154,18 @@ lock_host = Lock()
 
 def is_online(host: str) -> bool:
     if not host: return False
-    now = time()
     with lock_host:
-        if host in host_cache and now - host_cache[host][1] < 3.0:
+        if host in host_cache:
             return host_cache[host][0]
     try:
         s = create_connection((host, 515), timeout=0.5)
         try: s.shutdown(2)
         except Exception: pass
         s.close()
-        with lock_host: host_cache[host] = (True, now)
+        with lock_host: host_cache[host] = (True, time())
         return True
     except Exception:
-        with lock_host: host_cache[host] = (False, now)
+        with lock_host: host_cache[host] = (False, time())
         return False
 
 def probe_loop() -> None:
@@ -174,8 +173,15 @@ def probe_loop() -> None:
         with lock_host:
             hosts = list(host_cache.keys())
         for h in hosts:
-            is_online(h)
-        sleep(3.0)
+            try:
+                s = create_connection((h, 515), timeout=0.5)
+                try: s.shutdown(2)
+                except Exception: pass
+                s.close()
+                with lock_host: host_cache[h] = (True, time())
+            except Exception:
+                with lock_host: host_cache[h] = (False, time())
+        sleep(1.5)
 
 def init_id() -> str:
     path = "C:\\ProgramData\\.ident" if sys.platform == "win32" else "/tmp/.ident"
@@ -272,24 +278,29 @@ def send_job(j: Dict[str, Any]) -> None:
             except Exception: pass
 
 def job_loop(initial_job: Dict[str, Any]) -> None:
-    global pending_job
+    global pending_job, is_busy
     try:
         sleep_block(True)
-        curr = initial_job
+        curr: Optional[Dict[str, Any]] = initial_job
         while curr:
             send_job(curr)
-            with lock_pending:
-                curr, pending_job = pending_job, None
+            with lock_state:
+                if pending_job:
+                    curr = pending_job
+                    pending_job = None
+                else:
+                    is_busy = False
+                    curr = None
     finally:
         sleep_block(False)
-        app_busy.release()
 
 def queue_job(j: Dict[str, Any]) -> None:
-    global pending_job
-    if app_busy.acquire(blocking=False):
-        Thread(target=job_loop, args=(j,), daemon=True).start()
-    else:
-        with lock_pending:
+    global pending_job, is_busy
+    with lock_state:
+        if not is_busy:
+            is_busy = True
+            Thread(target=job_loop, args=(j,), daemon=True).start()
+        else:
             pending_job = j
 
 last_id = ""
