@@ -115,27 +115,17 @@ class BracuTime {
     );
   }
 
-  static int? weekdayFromName(String? day) {
-    if (day == null) return null;
-    switch (day.trim().toUpperCase()) {
-      case 'MONDAY':
-        return DateTime.monday;
-      case 'TUESDAY':
-        return DateTime.tuesday;
-      case 'WEDNESDAY':
-        return DateTime.wednesday;
-      case 'THURSDAY':
-        return DateTime.thursday;
-      case 'FRIDAY':
-        return DateTime.friday;
-      case 'SATURDAY':
-        return DateTime.saturday;
-      case 'SUNDAY':
-        return DateTime.sunday;
-      default:
-        return null;
-    }
-  }
+  static int? weekdayFromName(String? day) =>
+      switch (day?.trim().toUpperCase()) {
+        'MONDAY' => DateTime.monday,
+        'TUESDAY' => DateTime.tuesday,
+        'WEDNESDAY' => DateTime.wednesday,
+        'THURSDAY' => DateTime.thursday,
+        'FRIDAY' => DateTime.friday,
+        'SATURDAY' => DateTime.saturday,
+        'SUNDAY' => DateTime.sunday,
+        _ => null,
+      };
 
   static int shiftWeekday(int weekday, int offset) {
     if (weekday < DateTime.monday || weekday > DateTime.sunday) {

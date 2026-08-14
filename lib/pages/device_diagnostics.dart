@@ -1,11 +1,11 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:package_info_plus/package_info_plus.dart';
-import 'package:permission_handler/permission_handler.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/app_log.dart';
 import 'package:preconnect/tools/app_paths.dart';
@@ -19,8 +19,7 @@ class DeviceDiagnosticsPage extends StatefulWidget {
   State<DeviceDiagnosticsPage> createState() => _DeviceDiagnosticsPageState();
 }
 
-class _DeviceDiagnosticsPageState extends State<DeviceDiagnosticsPage>
-    with WidgetsBindingObserver {
+class _DeviceDiagnosticsPageState extends State<DeviceDiagnosticsPage> {
   Map<String, String> _deviceInfo = <String, String>{};
   Map<String, String> _networkInfo = <String, String>{};
   bool _loading = true;
@@ -28,20 +27,7 @@ class _DeviceDiagnosticsPageState extends State<DeviceDiagnosticsPage>
   @override
   void initState() {
     super.initState();
-    unawaited(_loadAllWithPermissions());
-  }
-
-  Future<void> _loadAllWithPermissions() async {
-    if (mounted) {
-      setState(() => _loading = true);
-    }
-    if (AndroidNetworkAssist.isSupported) {
-      final status = await Permission.locationWhenInUse.status;
-      if (status.isDenied) {
-        await Permission.locationWhenInUse.request();
-      }
-    }
-    await _loadAll();
+    unawaited(_loadAll());
   }
 
   Future<void> _loadAll() async {
@@ -63,86 +49,89 @@ class _DeviceDiagnosticsPageState extends State<DeviceDiagnosticsPage>
       final timeZoneOffset = DateTime.now().timeZoneOffset.toString();
       final docsDir = await AppPaths.documentsDirectory();
       final tempDir = await AppPaths.temporaryDirectory();
-      final Map<String, String> data = <String, String>{
-        'App Name': packageInfo.appName,
-        'Package Name': packageInfo.packageName,
-        'App Version': packageInfo.version,
-        'Build Number': packageInfo.buildNumber,
-        'System Locale': kIsWeb ? 'Web Browser Locale' : Platform.localeName,
-        'Time Zone': '$timeZone (Offset $timeZoneOffset)',
-        'Dart runtime': kIsWeb ? 'Web Engine' : Platform.version,
-        'Documents Path': docsDir.path,
-        'Temporary Path': tempDir.path,
-      };
+      final Map<String, String> data = <String, String>{};
+
+      void put(String key, String? val) {
+        if (val != null) {
+          final trimmed = val.trim();
+          if (trimmed.isNotEmpty &&
+              trimmed != 'Unknown' &&
+              trimmed != 'unknown') {
+            data[key] = trimmed;
+          }
+        }
+      }
+
+      put('App Name', packageInfo.appName);
+      put('Package Name', packageInfo.packageName);
+      put('App Version', packageInfo.version);
+      put('Build Number', packageInfo.buildNumber);
+      put('System Locale', kIsWeb ? null : Platform.localeName);
+      put('Time Zone', '$timeZone (Offset $timeZoneOffset)');
+      put('Documents Path', docsDir.path);
+      put('Temporary Path', tempDir.path);
 
       if (kIsWeb) {
         final webInfo = await deviceInfo.webBrowserInfo;
-        data.addAll(<String, String>{
-          'Platform': 'Web Browser',
-          'Browser': webInfo.browserName.name,
-          'User Agent': webInfo.userAgent ?? 'Unknown',
-          'Language': webInfo.language ?? 'Unknown',
-          'Platform OS': webInfo.platform ?? 'Unknown',
-          'Hardware Concurrency':
-              webInfo.hardwareConcurrency?.toString() ?? 'Unknown',
-          'Device Memory (GB)': webInfo.deviceMemory?.toString() ?? 'Unknown',
-        });
+        put('Platform', 'Web Browser');
+        put('Browser', webInfo.browserName.name);
+        put('User Agent', webInfo.userAgent);
+        put('Language', webInfo.language);
+        put('Platform OS', webInfo.platform);
+        put('Hardware Concurrency', webInfo.hardwareConcurrency?.toString());
+        put('Device Memory (GB)', webInfo.deviceMemory?.toString());
       } else if (Platform.isAndroid) {
         final androidInfo = await deviceInfo.androidInfo;
-        data.addAll(<String, String>{
-          'Platform': 'Android',
-          'OS Version': androidInfo.version.release,
-          'OS Codename': androidInfo.version.codename,
-          'Base OS': androidInfo.version.baseOS ?? 'Unknown',
-          'SDK Level': androidInfo.version.sdkInt.toString(),
-          'Brand': androidInfo.brand,
-          'Manufacturer': androidInfo.manufacturer,
-          'Model': androidInfo.model,
-          'Device ID': androidInfo.id,
-          'Display Build': androidInfo.display,
-          'Board': androidInfo.board,
-          'Hardware': androidInfo.hardware,
-          'Host': androidInfo.host,
-          'Product': androidInfo.product,
-          'CPU Architectures': androidInfo.supportedAbis.join(', '),
-          'Bootloader': androidInfo.bootloader,
-          'Fingerprint': androidInfo.fingerprint,
-          'Security Patch': androidInfo.version.securityPatch ?? 'Unknown',
-          'Type': androidInfo.type,
-          'Tags': androidInfo.tags,
-          'Physical Device': androidInfo.isPhysicalDevice ? 'Yes' : 'No',
-        });
+        put('Platform', 'Android');
+        put('OS Version', androidInfo.version.release);
+        put('OS Codename', androidInfo.version.codename);
+        put('Base OS', androidInfo.version.baseOS);
+        put('SDK Level', androidInfo.version.sdkInt.toString());
+        put('Brand', androidInfo.brand);
+        put('Manufacturer', androidInfo.manufacturer);
+        put('Model', androidInfo.model);
+        put('Device ID', androidInfo.id);
+        put('Display Build', androidInfo.display);
+        put('Board', androidInfo.board);
+        put('Hardware', androidInfo.hardware);
+        put('Host', androidInfo.host);
+        put('Product', androidInfo.product);
+        if (androidInfo.supportedAbis.isNotEmpty) {
+          put('CPU Architectures', androidInfo.supportedAbis.join(', '));
+        }
+        put('Bootloader', androidInfo.bootloader);
+        put('Fingerprint', androidInfo.fingerprint);
+        put('Security Patch', androidInfo.version.securityPatch);
+        put('Type', androidInfo.type);
+        put('Tags', androidInfo.tags);
+        put('Physical Device', androidInfo.isPhysicalDevice ? 'Yes' : 'No');
       } else if (Platform.isIOS) {
         final iosInfo = await deviceInfo.iosInfo;
-        data.addAll(<String, String>{
-          'Platform': 'iOS',
-          'System Name': iosInfo.systemName,
-          'OS Version': iosInfo.systemVersion,
-          'Model': iosInfo.model,
-          'Localized Model': iosInfo.localizedModel,
-          'Device Name': iosInfo.name,
-          'Vendor ID': iosInfo.identifierForVendor ?? 'Unknown',
-          'UTS Machine': iosInfo.utsname.machine,
-          'UTS Release': iosInfo.utsname.release,
-          'UTS Sysname': iosInfo.utsname.sysname,
-          'UTS Version': iosInfo.utsname.version,
-          'Physical Device': iosInfo.isPhysicalDevice ? 'Yes' : 'No',
-        });
+        put('Platform', 'iOS');
+        put('System Name', iosInfo.systemName);
+        put('OS Version', iosInfo.systemVersion);
+        put('Model', iosInfo.model);
+        put('Localized Model', iosInfo.localizedModel);
+        put('Device Name', iosInfo.name);
+        put('Vendor ID', iosInfo.identifierForVendor);
+        put('UTS Machine', iosInfo.utsname.machine);
+        put('UTS Release', iosInfo.utsname.release);
+        put('UTS Sysname', iosInfo.utsname.sysname);
+        put('UTS Version', iosInfo.utsname.version);
+        put('Physical Device', iosInfo.isPhysicalDevice ? 'Yes' : 'No');
       } else if (Platform.isMacOS) {
         final macosInfo = await deviceInfo.macOsInfo;
-        data.addAll(<String, String>{
-          'Platform': 'macOS',
-          'Computer Name': macosInfo.computerName,
-          'Host Name': macosInfo.hostName,
-          'Arch': macosInfo.arch,
-          'Model': macosInfo.model,
-          'OS Release': macosInfo.osRelease,
-          'Kernel Version': macosInfo.kernelVersion,
-          'Active CPUs': macosInfo.activeCPUs.toString(),
-          'Memory Size (Bytes)': macosInfo.memorySize.toString(),
-          'CPU Frequency': macosInfo.cpuFrequency.toString(),
-          'System GUID': macosInfo.systemGUID ?? 'Unknown',
-        });
+        put('Platform', 'macOS');
+        put('Computer Name', macosInfo.computerName);
+        put('Host Name', macosInfo.hostName);
+        put('Arch', macosInfo.arch);
+        put('Model', macosInfo.model);
+        put('OS Release', macosInfo.osRelease);
+        put('Kernel Version', macosInfo.kernelVersion);
+        put('Active CPUs', macosInfo.activeCPUs.toString());
+        put('Memory Size (Bytes)', macosInfo.memorySize.toString());
+        put('CPU Frequency', macosInfo.cpuFrequency.toString());
+        put('System GUID', macosInfo.systemGUID);
       }
       if (mounted) {
         setState(() {
@@ -153,33 +142,34 @@ class _DeviceDiagnosticsPageState extends State<DeviceDiagnosticsPage>
   }
 
   Future<void> _loadNetworkInfo() async {
-    final Map<String, String> netData = <String, String>{
-      'Transport': 'Unknown',
-      'Connected': 'Unknown',
-      'Validated': 'Unknown',
-      'Captive Portal': 'Unknown',
-      'SSID': 'Unknown',
-      'Gateway IP': 'Unknown',
-      'Local IP': 'Unknown',
-      'AP BSSID': 'Unknown',
-      'Client MAC': 'Unknown',
-    };
+    final Map<String, String> netData = <String, String>{};
+
+    void putNet(String key, String? val) {
+      if (val != null) {
+        final trimmed = val.trim();
+        if (trimmed.isNotEmpty &&
+            trimmed != 'Unknown' &&
+            trimmed != 'unknown' &&
+            trimmed != 'Android only') {
+          netData[key] = trimmed;
+        }
+      }
+    }
+
     try {
       if (AndroidNetworkAssist.isSupported) {
         final status = await AndroidNetworkAssist.getNetworkStatus();
         if (status != null) {
-          netData['Transport'] = status.transport.toUpperCase();
-          netData['Connected'] = status.connected ? 'Yes' : 'No';
-          netData['Validated'] = status.validated ? 'Yes' : 'No';
-          netData['Captive Portal'] = status.captive ? 'Yes' : 'No';
-          netData['SSID'] = (status.ssid ?? 'Unknown').trim();
-          netData['Gateway IP'] = status.gatewayAddress ?? 'Unknown';
-          netData['Local IP'] = status.ipAddress ?? 'Unknown';
-          netData['AP BSSID'] = status.apMac ?? 'Unknown';
-          netData['Client MAC'] = status.clientMac ?? 'Unknown';
+          putNet('Transport', status.transport.toUpperCase());
+          putNet('Connected', status.connected ? 'Yes' : 'No');
+          putNet('Validated', status.validated ? 'Yes' : 'No');
+          putNet('Captive Portal', status.captive ? 'Yes' : 'No');
+          putNet('SSID', status.ssid);
+          putNet('Gateway IP', status.gatewayAddress);
+          putNet('Local IP', status.ipAddress);
+          putNet('AP BSSID', status.apMac);
+          putNet('Client MAC', status.clientMac);
         }
-      } else {
-        netData['Transport'] = 'Android only';
       }
       if (mounted) {
         setState(() {
@@ -191,30 +181,52 @@ class _DeviceDiagnosticsPageState extends State<DeviceDiagnosticsPage>
 
   Future<void> _shareLogs() async {
     try {
-      final file = await AppLog.getFile();
-      final StringBuffer summary = StringBuffer();
+      final summary = StringBuffer();
       summary.writeln('=== PreConnect System Diagnostics ===');
       summary.writeln(
         'Generated on: ${DateTime.now().toUtc().toIso8601String()}',
       );
       summary.writeln();
       summary.writeln('--- Device Info ---');
-      _deviceInfo.forEach((key, val) {
-        summary.writeln('$key: $val');
-      });
+      for (final entry in _deviceInfo.entries) {
+        summary.writeln('${entry.key}: ${entry.value}');
+      }
       summary.writeln();
-      summary.writeln('--- Network Info ---');
-      _networkInfo.forEach((key, val) {
-        summary.writeln('$key: $val');
-      });
-      summary.writeln();
+      if (_networkInfo.isNotEmpty) {
+        summary.writeln('--- Network Info ---');
+        for (final entry in _networkInfo.entries) {
+          summary.writeln('${entry.key}: ${entry.value}');
+        }
+        summary.writeln();
+      }
+      summary.writeln('--- Debug Logs ---');
+      final logs = await AppLog.read();
+      summary.writeln(logs.trim().isEmpty ? 'No logs recorded.' : logs.trim());
 
-      if (!kIsWeb && await file.exists()) {
-        await SharePlus.instance.share(
-          ShareParams(files: [XFile(file.path)], text: summary.toString()),
+      final content = summary.toString();
+      if (kIsWeb) {
+        final bytes = Uint8List.fromList(utf8.encode(content));
+        final xfile = XFile.fromData(
+          bytes,
+          mimeType: 'text/plain',
+          name: 'preconnect_diagnostics.txt',
         );
+        await SharePlus.instance.share(ShareParams(files: [xfile]));
       } else {
-        await SharePlus.instance.share(ShareParams(text: summary.toString()));
+        final tempDir = await AppPaths.temporaryDirectory();
+        final exportFile = File('${tempDir.path}/preconnect_diagnostics.txt');
+        await exportFile.writeAsString(content, flush: true);
+        await SharePlus.instance.share(
+          ShareParams(
+            files: [
+              XFile(
+                exportFile.path,
+                mimeType: 'text/plain',
+                name: 'preconnect_diagnostics.txt',
+              ),
+            ],
+          ),
+        );
       }
     } catch (_) {}
   }
@@ -269,122 +281,91 @@ class _DeviceDiagnosticsPageState extends State<DeviceDiagnosticsPage>
 
   @override
   Widget build(BuildContext context) {
-    final mq = MediaQuery.of(context);
-    final width = mq.size.width.toInt();
-    final height = mq.size.height.toInt();
-    final ratio = mq.devicePixelRatio;
-    final textScale = mq.textScaler.scale(1.0);
-    final padding = mq.padding;
-    final orientation = mq.orientation.toString().split('.').last;
+    final size = MediaQuery.sizeOf(context);
+    final width = size.width.toInt();
+    final height = size.height.toInt();
+    final ratio = MediaQuery.devicePixelRatioOf(context);
+    final textScale = MediaQuery.textScalerOf(context).scale(1.0);
+    final padding = MediaQuery.paddingOf(context);
+    final orientation = MediaQuery.orientationOf(
+      context,
+    ).toString().split('.').last;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     final List<Widget> items = [];
 
     if (!_loading) {
-      items.addAll([
-        _buildInfoRow('Device Model', _deviceInfo['Model'] ?? 'Unknown'),
-        _buildDivider(isDark),
-        _buildInfoRow(
+      void addRow(String label, String? value) {
+        if (value != null) {
+          final trimmed = value.trim();
+          if (trimmed.isNotEmpty &&
+              trimmed != 'Unknown' &&
+              trimmed != 'unknown') {
+            if (items.isNotEmpty) {
+              items.add(_buildDivider(isDark));
+            }
+            items.add(_buildInfoRow(label, trimmed));
+          }
+        }
+      }
+
+      addRow('Device Model', _deviceInfo['Model']);
+      if (_deviceInfo['Platform'] != null &&
+          _deviceInfo['OS Version'] != null) {
+        addRow(
           'Operating System',
           '${_deviceInfo['Platform']} (Version ${_deviceInfo['OS Version']})',
-        ),
-        _buildDivider(isDark),
-        _buildInfoRow('Brand / Maker', _deviceInfo['Brand'] ?? 'Unknown'),
-        _buildDivider(isDark),
-        _buildInfoRow('SDK version', _deviceInfo['SDK Level'] ?? 'Unknown'),
-        _buildDivider(isDark),
-        _buildInfoRow(
-          'Physical Hardware',
-          _deviceInfo['Physical Device'] ?? 'Yes',
-        ),
-        _buildDivider(isDark),
-        _buildInfoRow('Bracu Card ID', _deviceInfo['Device ID'] ?? 'Unknown'),
-        _buildDivider(isDark),
-        if (Platform.isAndroid && _deviceInfo['CPU Architectures'] != null) ...[
-          _buildInfoRow('OS Codename', _deviceInfo['OS Codename'] ?? 'Unknown'),
-          _buildDivider(isDark),
-          _buildInfoRow('Base OS', _deviceInfo['Base OS'] ?? 'Unknown'),
-          _buildDivider(isDark),
-          _buildInfoRow('CPU Architectures', _deviceInfo['CPU Architectures']!),
-          _buildDivider(isDark),
-          _buildInfoRow('Security Patch level', _deviceInfo['Security Patch']!),
-          _buildDivider(isDark),
-          _buildInfoRow('Fingerprint Signature', _deviceInfo['Fingerprint']!),
-          _buildDivider(isDark),
-          _buildInfoRow('Device Host', _deviceInfo['Host'] ?? 'Unknown'),
-          _buildDivider(isDark),
-          _buildInfoRow('Device Product', _deviceInfo['Product'] ?? 'Unknown'),
-          _buildDivider(isDark),
-        ],
-        _buildInfoRow(
-          'Documents Path',
-          _deviceInfo['Documents Path'] ?? 'Unknown',
-        ),
-        _buildDivider(isDark),
-        _buildInfoRow(
-          'Temporary Path',
-          _deviceInfo['Temporary Path'] ?? 'Unknown',
-        ),
-        _buildDivider(isDark),
-        _buildInfoRow('Resolution (logical)', '${width}x$height'),
-        _buildDivider(isDark),
-        _buildInfoRow('Device Pixel Ratio', ratio.toStringAsFixed(2)),
-        _buildDivider(isDark),
-        _buildInfoRow('Orientation state', orientation),
-        _buildDivider(isDark),
-        _buildInfoRow('Font Scale Factor', textScale.toStringAsFixed(2)),
-        _buildDivider(isDark),
-        _buildInfoRow(
-          'Safe Area Insets',
-          'Top: ${padding.top.toInt()}, Bottom: ${padding.bottom.toInt()}',
-        ),
-        _buildDivider(isDark),
-        _buildInfoRow(
-          'Active Connection',
-          _networkInfo['Transport'] ?? 'Unknown',
-        ),
-        _buildDivider(isDark),
-        _buildInfoRow('SSID name', _networkInfo['SSID'] ?? 'Unknown'),
-        _buildDivider(isDark),
-        _buildInfoRow(
-          'Gateway IP Address',
-          _networkInfo['Gateway IP'] ?? 'Unknown',
-        ),
-        _buildDivider(isDark),
-        _buildInfoRow(
-          'Local IP Address',
-          _networkInfo['Local IP'] ?? 'Unknown',
-        ),
-        _buildDivider(isDark),
-        _buildInfoRow(
-          'Access Point BSSID MAC',
-          _networkInfo['AP BSSID'] ?? 'Unknown',
-        ),
-        _buildDivider(isDark),
-        _buildInfoRow(
+        );
+      } else {
+        addRow('Operating System', _deviceInfo['Platform']);
+      }
+      addRow('Brand / Maker', _deviceInfo['Brand']);
+      addRow('SDK version', _deviceInfo['SDK Level']);
+      addRow('Physical Hardware', _deviceInfo['Physical Device']);
+      addRow('Device Build ID', _deviceInfo['Device ID']);
+      addRow('OS Codename', _deviceInfo['OS Codename']);
+      addRow('Base OS', _deviceInfo['Base OS']);
+      addRow('CPU Architectures', _deviceInfo['CPU Architectures']);
+      addRow('Security Patch level', _deviceInfo['Security Patch']);
+      addRow('Fingerprint Signature', _deviceInfo['Fingerprint']);
+      addRow('Device Host', _deviceInfo['Host']);
+      addRow('Device Product', _deviceInfo['Product']);
+      addRow('Documents Path', _deviceInfo['Documents Path']);
+      addRow('Temporary Path', _deviceInfo['Temporary Path']);
+      addRow('Resolution (logical)', '${width}x$height');
+      addRow('Device Pixel Ratio', ratio.toStringAsFixed(2));
+      addRow('Orientation state', orientation);
+      addRow('Font Scale Factor', textScale.toStringAsFixed(2));
+      addRow(
+        'Safe Area Insets',
+        'Top: ${padding.top.toInt()}, Bottom: ${padding.bottom.toInt()}',
+      );
+      addRow('Active Connection', _networkInfo['Transport']);
+      addRow('SSID name', _networkInfo['SSID']);
+      addRow('Gateway IP Address', _networkInfo['Gateway IP']);
+      addRow('Local IP Address', _networkInfo['Local IP']);
+      addRow('Access Point BSSID MAC', _networkInfo['AP BSSID']);
+      addRow('Client MAC Address', _networkInfo['Client MAC']);
+      if (_networkInfo['Validated'] != null) {
+        addRow(
           'Internet Connectivity',
           _networkInfo['Validated'] == 'Yes' ? 'Connected' : 'Portal / Offline',
-        ),
-        _buildDivider(isDark),
-        _buildInfoRow(
-          'Application Name',
-          _deviceInfo['App Name'] ?? 'PreConnect',
-        ),
-        _buildDivider(isDark),
-        _buildInfoRow(
-          'Release Version',
-          '${_deviceInfo['App Version']} (${_deviceInfo['Build Number']})',
-        ),
-        _buildDivider(isDark),
-        _buildInfoRow(
-          'Package Name',
-          _deviceInfo['Package Name'] ?? 'com.sabbirba.preconnect',
-        ),
-        _buildDivider(isDark),
-        _buildInfoRow('System Locale', _deviceInfo['System Locale'] ?? 'en_US'),
-        _buildDivider(isDark),
-        _buildInfoRow('Local Time Zone', _deviceInfo['Time Zone'] ?? 'UTC'),
-        const Gap(24),
+        );
+      }
+      addRow('Application Name', _deviceInfo['App Name']);
+      if (_deviceInfo['App Version'] != null) {
+        final buildNum = _deviceInfo['Build Number'];
+        final versionStr = buildNum != null && buildNum.isNotEmpty
+            ? '${_deviceInfo['App Version']} ($buildNum)'
+            : _deviceInfo['App Version']!;
+        addRow('Release Version', versionStr);
+      }
+      addRow('Package Name', _deviceInfo['Package Name']);
+      addRow('System Locale', _deviceInfo['System Locale']);
+      addRow('Local Time Zone', _deviceInfo['Time Zone']);
+
+      items.add(const Gap(24));
+      items.add(
         BracuActionBannerCard(
           icon: Icons.bug_report_outlined,
           title: 'Export Debug Logs',
@@ -392,7 +373,7 @@ class _DeviceDiagnosticsPageState extends State<DeviceDiagnosticsPage>
           showTrailingIcon: true,
           onTap: _shareLogs,
         ),
-      ]);
+      );
     }
 
     return BracuPageScaffold(
@@ -402,7 +383,7 @@ class _DeviceDiagnosticsPageState extends State<DeviceDiagnosticsPage>
       actions: [
         BracuRefreshButton(
           onPressed: () {
-            unawaited(_loadAllWithPermissions());
+            unawaited(_loadAll());
           },
           isLoading: _loading,
         ),

@@ -184,24 +184,26 @@ class ScheduleService {
     }
     try {
       final decoded = jsonDecode(scheduleJson);
-      if (decoded is! List<dynamic>) return const <section.Section>[];
-      final sections = decoded
-          .whereType<Map>()
-          .map((e) => e.cast<String, dynamic>())
-          .map(section.Section.fromJson)
-          .toList();
-      if (semesterSessionId != null && semesterSessionId > 0) {
-        final filtered = sections
-            .where(
-              (s) =>
-                  s.semesterSessionId == semesterSessionId ||
-                  s.semesterSessionId == 0,
-            )
+      if (decoded case final List<dynamic> list) {
+        final sections = list
+            .whereType<Map>()
+            .map((e) => e.cast<String, dynamic>())
+            .map(section.Section.fromJson)
             .toList();
-        if (filtered.isNotEmpty) return filtered;
+        if (semesterSessionId != null && semesterSessionId > 0) {
+          final filtered = sections
+              .where(
+                (s) =>
+                    s.semesterSessionId == semesterSessionId ||
+                    s.semesterSessionId == 0,
+              )
+              .toList();
+          if (filtered.isNotEmpty) return filtered;
+        }
+        return sections;
       }
-      return sections;
-    } catch (e) {
+      return const <section.Section>[];
+    } catch (_) {
       return const <section.Section>[];
     }
   }

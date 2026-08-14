@@ -5,6 +5,13 @@ Entries are written for students, not developers — plain language, no commit h
 
 ## [Unreleased]
 
+## [2.0.6] — 2026-08-14
+
+- Campus Wi-Fi: Enhanced Captive Wi-Fi login reliability with a dedicated campus network field and improved gateway connection handling.
+- Performance & Size Optimizations: App binaries and memory footprints streamlined across all platforms with faster data decoding and optimized background caching.
+- Direct Developer Access: Quick-access developer utilities now open smoothly and directly.
+
+
 ## [2.0.5] — 2026-08-02
 
 - Optimize schedule handling and improve connectivity status management.

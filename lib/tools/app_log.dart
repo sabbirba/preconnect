@@ -24,4 +24,14 @@ class AppLog {
       );
     } catch (_) {}
   }
+
+  static Future<String> read() async {
+    try {
+      final f = await getFile();
+      if (await f.exists()) {
+        return await f.readAsString();
+      }
+    } catch (_) {}
+    return '';
+  }
 }

@@ -16,7 +16,7 @@ description: Investigate, implement, validate, or review contributions to the re
   - Keep domain models in `lib/model/` pure and independent of `package:flutter/material.dart` or `dart:ui`.
   - Maintain API services (`ApiConfig`, `ScheduleService`, `ProfileService`, `PaymentService`, `FundingService`, `FcmService`) decoupled from presentation.
 - **Presentation (`lib/pages`)**:
-  - `home_sections/`, `student_profile_sections/`, `custom_schedules_sections/`, `notifications_sections/`, `bus/`.
+  - `home_sections/`, `profile_sections/`, `custom_sections/`, `notifications_sections/`, `bus/`.
   - Shared UI system in `lib/pages/ui_kit.dart` (`BracuPageScaffold`, `BracuPalette`, `BracuActionButton`, `BracuRefreshList`).
   - Virtual ID card rendering in `lib/pages/card_section.dart`.
   - Contributor layout and adaptive grids in `lib/pages/devs.dart`.

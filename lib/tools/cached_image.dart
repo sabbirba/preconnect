@@ -164,7 +164,7 @@ class _CachedImageState extends State<CachedImage> {
       return widget.error ?? const SizedBox.shrink();
     }
 
-    final dpr = MediaQuery.of(context).devicePixelRatio;
+    final dpr = MediaQuery.devicePixelRatioOf(context);
     final maxDim = (widget.width != null && widget.height != null)
         ? (widget.width! > widget.height! ? widget.width! : widget.height!)
         : (widget.width ?? widget.height);

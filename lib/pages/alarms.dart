@@ -15,7 +15,7 @@ import 'package:preconnect/pages/shared_widgets/scroll_helper.dart';
 import 'package:preconnect/pages/shared_widgets/exam_filter.dart';
 import 'package:preconnect/pages/shared_widgets/entry_card.dart';
 import 'package:preconnect/pages/ui_kit.dart';
-import 'package:preconnect/pages/custom_schedules_sections/schedules_shared.dart';
+import 'package:preconnect/pages/custom_sections/schedules_shared.dart';
 import 'package:preconnect/api/profile.dart';
 import 'package:preconnect/tools/snapshot_store.dart';
 import 'package:preconnect/tools/preload_cache.dart';

@@ -151,7 +151,7 @@ class _BracuPageScaffoldState extends State<BracuPageScaffold> {
                           children: [
                             Padding(
                               padding: widget.showBack
-                                  ? const EdgeInsets.fromLTRB(4, 2, 14, 2)
+                                  ? const EdgeInsets.fromLTRB(10, 2, 14, 2)
                                   : const EdgeInsets.fromLTRB(14, 2, 14, 2),
                               child: _PageHeader(
                                 title: widget.title,
@@ -215,30 +215,27 @@ class _PageHeader extends StatelessWidget {
       children: [
         if (showMenu) const SizedBox(width: 0, height: 0),
         if (hasBack)
-          Transform.translate(
-            offset: const Offset(-2, 0),
-            child: GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              onTap: () {
-                if (canScopeBack && backScope != null) {
-                  backScope.onBack();
-                  return;
-                }
-                if (canPop && navigator != null) {
-                  navigator.maybePop();
-                }
-              },
-              child: Padding(
-                padding: const EdgeInsets.all(2),
-                child: Icon(
-                  Icons.chevron_left_rounded,
-                  size: 28,
-                  color: BracuPalette.textPrimary(context),
-                ),
+          GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: () {
+              if (canScopeBack && backScope != null) {
+                backScope.onBack();
+                return;
+              }
+              if (canPop && navigator != null) {
+                navigator.maybePop();
+              }
+            },
+            child: Padding(
+              padding: const EdgeInsets.all(2),
+              child: Icon(
+                Icons.chevron_left_rounded,
+                size: 28,
+                color: BracuPalette.textPrimary(context),
               ),
             ),
           ),
-        const Gap(8),
+        if (hasBack) const Gap(3),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,

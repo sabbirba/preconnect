@@ -15,8 +15,10 @@ class JsonSnapshotStore {
       final raw = await AppStorage.instance.getString(key);
       if (raw == null || raw.trim().isEmpty) return null;
       final decoded = jsonDecode(raw);
-      if (decoded is! Map<String, dynamic>) return null;
-      return decode(decoded);
+      if (decoded case final Map<String, dynamic> map) {
+        return decode(map);
+      }
+      return null;
     } catch (_) {
       return null;
     }
@@ -35,12 +37,13 @@ class JsonSnapshotStore {
     return read<List<Section>>(
       key: StorageKeys.alarmsSnapshot,
       decode: (decoded) {
-        final sectionsRaw = decoded['sections'];
-        if (sectionsRaw is! List) return null;
-        return sectionsRaw
-            .whereType<Map>()
-            .map((entry) => Section.fromJson(entry.cast<String, dynamic>()))
-            .toList(growable: false);
+        if (decoded['sections'] case final List<dynamic> sectionsRaw) {
+          return sectionsRaw
+              .whereType<Map>()
+              .map((entry) => Section.fromJson(entry.cast<String, dynamic>()))
+              .toList(growable: false);
+        }
+        return null;
       },
     );
   }

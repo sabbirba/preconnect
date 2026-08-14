@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:isolate';
 import 'package:preconnect/api/api_client.dart';
 import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/model/section_info.dart' show SectionFaculty;
@@ -55,7 +56,9 @@ class SeatStatusService {
       );
       if (cachedJson != null && cachedJson.trim().isNotEmpty) {
         try {
-          final parsed = await compute(_parseJsonStringInIsolate, cachedJson);
+          final parsed = kIsWeb
+              ? _parseJsonStringInIsolate(cachedJson)
+              : await Isolate.run(() => _parseJsonStringInIsolate(cachedJson));
           _cachedDetails = parsed;
           return parsed;
         } catch (_) {}
@@ -119,16 +122,19 @@ class SeatStatusService {
   }
 
   Map<int, SeatStatusDetailsResponse> _parseConnectJson(dynamic raw) {
-    if (raw is! List) return const <int, SeatStatusDetailsResponse>{};
-    final result = <int, SeatStatusDetailsResponse>{};
-    for (final item in raw.whereType<Map>()) {
-      final map = item.cast<String, dynamic>();
-      try {
-        final parsed = SeatStatusDetailsResponse.fromJson(map);
-        result[parsed.sectionId] = parsed;
-      } catch (_) {}
+    if (raw case final List<dynamic> list) {
+      final result = <int, SeatStatusDetailsResponse>{};
+      for (final item in list.whereType<Map>()) {
+        try {
+          final parsed = SeatStatusDetailsResponse.fromJson(
+            item.cast<String, dynamic>(),
+          );
+          result[parsed.sectionId] = parsed;
+        } catch (_) {}
+      }
+      return result;
     }
-    return result;
+    return const <int, SeatStatusDetailsResponse>{};
   }
 }
 

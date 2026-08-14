@@ -10,9 +10,9 @@ import 'package:preconnect/api/schedule.dart';
 import 'package:preconnect/api/custom_schedules.dart';
 import 'package:preconnect/model/custom_schedule.dart';
 import 'package:preconnect/pages/ui_kit.dart';
-import 'package:preconnect/pages/custom_schedules_sections/editor_sheet.dart'
+import 'package:preconnect/pages/custom_sections/editor_sheet.dart'
     show showCustomSchedulesEditorSheet;
-import 'package:preconnect/pages/custom_schedules_sections/schedules_shared.dart';
+import 'package:preconnect/pages/custom_sections/schedules_shared.dart';
 import 'package:preconnect/features/schedule/application/session_resolver.dart';
 import 'package:preconnect/tools/preload_cache.dart';
 import 'package:preconnect/tools/refresh_bus.dart';

@@ -33,7 +33,6 @@ An initiative run by [BRAC University](https://bracu.ac.bd) students.
 ## Table of Contents
 
 - [Overview](#overview)
-  - [Key Features](#key-features)
 - [Installation](#installation)
 - [Documentation](#documentation)
 - [Screenshots](#screenshots)

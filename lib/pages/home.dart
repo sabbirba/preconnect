@@ -23,7 +23,7 @@ import 'package:preconnect/pages/calendar.dart';
 import 'package:preconnect/pages/bus.dart';
 import 'package:preconnect/pages/seat_status.dart';
 import 'package:preconnect/pages/custom_schedules.dart';
-import 'package:preconnect/pages/custom_schedules_sections/schedules_shared.dart';
+import 'package:preconnect/pages/custom_sections/schedules_shared.dart';
 import 'package:preconnect/pages/notifications.dart';
 import 'package:preconnect/pages/settings.dart';
 import 'package:preconnect/pages/wifi_printer.dart';

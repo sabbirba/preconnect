@@ -119,30 +119,32 @@ class _AllCoursesPageState extends State<AllCoursesPage> {
       title: 'All Courses',
       subtitle: 'Search & Filter',
       icon: Icons.menu_book_outlined,
-      body: ListView.builder(
-        padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
-        itemCount: 1 + (filtered.isEmpty ? 1 : filtered.length),
-        itemBuilder: (context, index) {
-          if (index == 0) {
-            return _buildHeader(context, query);
-          }
-          if (filtered.isEmpty) {
-            return const BracuCard(
-              child: BracuEmptyState(message: 'No course found.'),
+      body: SelectionArea(
+        child: ListView.builder(
+          padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
+          itemCount: 1 + (filtered.isEmpty ? 1 : filtered.length),
+          itemBuilder: (context, index) {
+            if (index == 0) {
+              return _buildHeader(context, query);
+            }
+            if (filtered.isEmpty) {
+              return const BracuCard(
+                child: BracuEmptyState(message: 'No course found.'),
+              );
+            }
+            final course = filtered[index - 1];
+            final isPinned = _pinnedCodes.contains(course.code.toUpperCase());
+            return CourseTile(
+              code: course.code,
+              title: course.title,
+              credit: course.credit,
+              isMandatory: course.isMandatory,
+              isPinned: isPinned,
+              onTogglePin: () => _togglePin(course.code),
+              codeFontFamily: 'Outfit',
             );
-          }
-          final course = filtered[index - 1];
-          final isPinned = _pinnedCodes.contains(course.code.toUpperCase());
-          return CourseTile(
-            code: course.code,
-            title: course.title,
-            credit: course.credit,
-            isMandatory: course.isMandatory,
-            isPinned: isPinned,
-            onTogglePin: () => _togglePin(course.code),
-            codeFontFamily: 'Outfit',
-          );
-        },
+          },
+        ),
       ),
     );
   }
