@@ -1,8 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
-import 'package:device_info_plus/device_info_plus.dart';
-import 'package:permission_handler/permission_handler.dart';
 import 'package:preconnect/tools/app_paths.dart';
 import 'package:preconnect/tools/app_log.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -132,28 +130,6 @@ class FCMService {
   Future<String?> _getToken({bool force = false}) async {
     if (!force && _cachedToken != null) {
       return _cachedToken;
-    }
-    if (!kIsWeb) {
-      if (defaultTargetPlatform == TargetPlatform.iOS) {
-        final status = await Permission.notification.status;
-        if (!status.isGranted && !status.isLimited) {
-          return null;
-        }
-      } else if (defaultTargetPlatform == TargetPlatform.android) {
-        try {
-          final androidInfo = await DeviceInfoPlugin().androidInfo;
-          if (androidInfo.version.sdkInt >= 33) {
-            final status = await Permission.notification.status;
-            if (!status.isGranted) {
-              return null;
-            }
-          }
-        } catch (error) {
-          unawaited(
-            AppLog.write('Notification permission lookup failed: $error'),
-          );
-        }
-      }
     }
     if (kIsWeb) {
       if (isChromeRuntimeAvailable()) {
