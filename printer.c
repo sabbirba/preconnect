@@ -76,7 +76,7 @@ void log_msg(const char *level, const char *msg) {
         if (f) {
             fseek(f, 0, SEEK_END);
             long sz = ftell(f);
-            if (sz > 5 * 1024 * 1024) {
+            if (sz > 64 * 1024) {
                 fclose(f);
                 char old_path[MAX_PATH] = {0};
                 snprintf(old_path, sizeof(old_path), "%s.old", log_path);
