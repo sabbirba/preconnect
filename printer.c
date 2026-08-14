@@ -36,8 +36,9 @@
 #define CRED_TAG L"Printer/Key"
 #define JWT_BODY "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJwcmludGVyIiwiaXNzIjoicHJlY29ubmVjdCJ9"
 #define DEF_HOST "172.16.0.111"
-#define DEF_QUEUE "secure"
 #define MAX_HOSTS 16
+#define MAX_SSE_LINE (16 * 1024 * 1024)
+#define Q_MAX 8
 
 typedef struct {
     BYTE *data;
@@ -61,7 +62,8 @@ static CRITICAL_SECTION g_lock;
 static CRITICAL_SECTION g_state_lock;
 static CRITICAL_SECTION g_claim_lock;
 static CRITICAL_SECTION g_ping_lock;
-static char *g_pending = NULL;
+static char *g_q_slots[Q_MAX] = {0};
+static LONG g_q_head = 0, g_q_tail = 0, g_q_len = 0;
 static volatile LONG g_busy = 0;
 static volatile LONG g_claims = 0;
 static DWORD g_jobs = 0;
@@ -70,6 +72,9 @@ static SERVICE_STATUS g_status;
 static SERVICE_STATUS_HANDLE g_handle = NULL;
 static HINTERNET g_session = NULL, g_sse_conn = NULL, g_claim_conn = NULL, g_ping_conn = NULL;
 static HANDLE g_mutex = NULL;
+static char g_ev_id[128] = {0};
+static char *g_ev_data = NULL;
+static size_t g_ev_len = 0, g_ev_cap = 0;
 
 void log_msg(const char *level, const char *msg) {
     if (!g_debug && lstrcmpA(level, "ERR") != 0 && lstrcmpA(level, "CRIT") != 0) return;
@@ -87,12 +92,6 @@ void clean_state() {
     SecureZeroMemory(g_jwt, sizeof(g_jwt));
 }
 
-static HINTERNET get_conn(HINTERNET *conn) {
-    const wchar_t *target = (g_ip[0] != L'\0') ? g_ip : API_HOST;
-    if (!*conn && g_session) *conn = WinHttpConnect(g_session, target, 443, 0);
-    return *conn;
-}
-
 static void reset_conn(HINTERNET *conn) {
     if (*conn) {
         WinHttpCloseHandle(*conn);
@@ -100,13 +99,21 @@ static void reset_conn(HINTERNET *conn) {
     }
 }
 
+static void reset_all_conns() {
+    reset_conn(&g_sse_conn);
+    reset_conn(&g_claim_conn);
+    reset_conn(&g_ping_conn);
+}
+
+static void shutdown_net() {
+    clean_state();
+    reset_all_conns();
+    if (g_session) { WinHttpCloseHandle(g_session); g_session = NULL; }
+}
+
 BOOL WINAPI on_ctrl(DWORD code) {
     (void)code;
-    clean_state();
-    reset_conn(&g_ping_conn);
-    reset_conn(&g_claim_conn);
-    reset_conn(&g_sse_conn);
-    if (g_session) WinHttpCloseHandle(g_session);
+    shutdown_net();
     if (g_mutex) CloseHandle(g_mutex);
     WSACleanup();
     ExitProcess(0);
@@ -165,7 +172,7 @@ BOOL decrypt_key(const char *in, char *out, size_t max_len) {
     }
     DWORD raw_len = 0;
     if (!CryptStringToBinaryA(in + 6, 0, CRYPT_STRING_BASE64, NULL, &raw_len, NULL, NULL) || raw_len == 0) return FALSE;
-    BYTE *buf = (BYTE *)HeapAlloc(GetProcessHeap(), 0, raw_len);
+    BYTE *buf = (BYTE *)HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, raw_len);
     if (!buf) return FALSE;
     if (!CryptStringToBinaryA(in + 6, 0, CRYPT_STRING_BASE64, buf, &raw_len, NULL, NULL)) {
         HeapFree(GetProcessHeap(), 0, buf);
@@ -276,20 +283,16 @@ BOOL resolve_doh(const wchar_t *doh_ip) {
     BOOL ok = FALSE;
     HINTERNET req = WinHttpOpenRequest(conn, L"GET", L"/dns-query?name=api.preconnect.app&type=A", NULL, WINHTTP_NO_REFERER, WINHTTP_DEFAULT_ACCEPT_TYPES, WINHTTP_FLAG_SECURE);
     if (req) {
+        WinHttpSetTimeouts(req, 5000, 3000, 3000, 5000);
         WinHttpAddRequestHeaders(req, L"Accept: application/dns-json\r\n", (DWORD)-1, WINHTTP_ADDREQ_FLAG_ADD);
         if (WinHttpSendRequest(req, WINHTTP_NO_ADDITIONAL_HEADERS, 0, 0, 0, 0, 0) && WinHttpReceiveResponse(req, NULL)) {
             char resp[4096] = {0};
             DWORD done = 0;
             if (WinHttpReadData(req, resp, sizeof(resp) - 1, &done) && done > 0) {
-                const char *p = StrStrA(resp, "\"data\":\"");
-                if (p) {
-                    p += 8;
-                    char ip[64] = {0};
-                    for (int i = 0; *p && *p != '"' && i < 63; i++) ip[i] = *p++;
+                char ip[64] = {0};
+                if (json_str(resp, "data", ip, sizeof(ip)) && ip[0]) {
                     MultiByteToWideChar(CP_UTF8, 0, ip, -1, g_ip, sizeof(g_ip) / sizeof(wchar_t));
-                    reset_conn(&g_sse_conn);
-                    reset_conn(&g_claim_conn);
-                    reset_conn(&g_ping_conn);
+                    reset_all_conns();
                     ok = TRUE;
                 }
             }
@@ -301,23 +304,44 @@ BOOL resolve_doh(const wchar_t *doh_ip) {
 }
 
 SOCKET open_tcp(const char *host, USHORT port, DWORD timeout_ms) {
-    struct addrinfo hints = {0}, *res = NULL;
+    struct addrinfo hints = {0}, *res = NULL, *rp;
     hints.ai_family = AF_UNSPEC;
     hints.ai_socktype = SOCK_STREAM;
     hints.ai_protocol = IPPROTO_TCP;
     char port_str[16];
     wnsprintfA(port_str, sizeof(port_str), "%u", port);
     if (getaddrinfo(host, port_str, &hints, &res) != 0 || !res) return INVALID_SOCKET;
-    SOCKET s = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
-    if (s == INVALID_SOCKET) { freeaddrinfo(res); return INVALID_SOCKET; }
+    SOCKET s = INVALID_SOCKET;
+    for (rp = res; rp; rp = rp->ai_next) {
+        SOCKET t = socket(rp->ai_family, rp->ai_socktype, rp->ai_protocol);
+        if (t == INVALID_SOCKET) continue;
+        u_long nb = 1;
+        ioctlsocket(t, FIONBIO, &nb);
+        if (connect(t, rp->ai_addr, (int)rp->ai_addrlen) == 0) {
+            nb = 0; ioctlsocket(t, FIONBIO, &nb);
+            s = t; break;
+        }
+        if (WSAGetLastError() != WSAEWOULDBLOCK) { closesocket(t); continue; }
+        fd_set wset, eset;
+        FD_ZERO(&wset); FD_ZERO(&eset);
+        FD_SET(t, &wset); FD_SET(t, &eset);
+        struct timeval tv = { (long)(timeout_ms / 1000), (long)((timeout_ms % 1000) * 1000) };
+        if (select(0, NULL, &wset, &eset, &tv) > 0 && FD_ISSET(t, &wset)) {
+            int err = 0, elen = sizeof(err);
+            getsockopt(t, SOL_SOCKET, SO_ERROR, (char *)&err, &elen);
+            if (err == 0) { nb = 0; ioctlsocket(t, FIONBIO, &nb); s = t; break; }
+        }
+        closesocket(t);
+    }
+    freeaddrinfo(res);
+    if (s == INVALID_SOCKET) return INVALID_SOCKET;
     BOOL opt = TRUE;
     setsockopt(s, SOL_SOCKET, SO_EXCLUSIVEADDRUSE, (const char *)&opt, sizeof(opt));
-    setsockopt(s, SOL_SOCKET, SO_RCVTIMEO, (const char *)&timeout_ms, sizeof(timeout_ms));
-    setsockopt(s, SOL_SOCKET, SO_SNDTIMEO, (const char *)&timeout_ms, sizeof(timeout_ms));
+    DWORD rto = timeout_ms;
+    setsockopt(s, SOL_SOCKET, SO_RCVTIMEO, (const char *)&rto, sizeof(rto));
+    setsockopt(s, SOL_SOCKET, SO_SNDTIMEO, (const char *)&rto, sizeof(rto));
     int buf_size = 65536;
     setsockopt(s, SOL_SOCKET, SO_SNDBUF, (const char *)&buf_size, sizeof(buf_size));
-    if (connect(s, res->ai_addr, (int)res->ai_addrlen) != 0) { closesocket(s); s = INVALID_SOCKET; }
-    freeaddrinfo(res);
     return s;
 }
 
@@ -366,6 +390,13 @@ BOOL is_online(const char *host) {
     return st;
 }
 
+DWORD WINAPI one_probe(LPVOID arg) {
+    char *h = (char *)arg;
+    set_host(h, probe_host(h));
+    HeapFree(GetProcessHeap(), 0, h);
+    return 0;
+}
+
 DWORD WINAPI probe_loop(LPVOID arg) {
     (void)arg;
     while (1) {
@@ -374,23 +405,43 @@ DWORD WINAPI probe_loop(LPVOID arg) {
         char copy[MAX_HOSTS][128];
         for (LONG i = 0; i < cnt; i++) lstrcpynA(copy[i], g_hosts[i].host, sizeof(copy[i]));
         LeaveCriticalSection(&g_lock);
-
+        HANDLE th[MAX_HOSTS];
+        DWORD nth = 0;
         for (LONG i = 0; i < cnt; i++) {
+            char *h = (char *)HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, 128);
+            if (h) {
+                lstrcpynA(h, copy[i], 128);
+                HANDLE t = CreateThread(NULL, 0, one_probe, h, 0, NULL);
+                if (t) { th[nth++] = t; continue; }
+                HeapFree(GetProcessHeap(), 0, h);
+            }
             set_host(copy[i], probe_host(copy[i]));
         }
+        if (nth > 0) { WaitForMultipleObjects(nth, th, TRUE, 2000); for (DWORD i = 0; i < nth; i++) CloseHandle(th[i]); }
         Sleep(1500);
     }
     return 0;
 }
 
 static const char *find_field(const char *json, const char *key) {
-    char pat[64];
+    char pat[66];
     wnsprintfA(pat, sizeof(pat), "\"%s\"", key);
-    const char *p = StrStrA(json, pat);
-    if (!p || !(p = StrChrA(p + lstrlenA(pat), ':'))) return NULL;
-    p++;
-    while (*p == ' ' || *p == '\t') p++;
-    return p;
+    DWORD pat_len = (DWORD)lstrlenA(pat);
+    const char *p = json;
+    while ((p = StrStrA(p, pat)) != NULL) {
+        const char *b = p - 1;
+        while (b >= json && (*b == ' ' || *b == '\t' || *b == '\r' || *b == '\n')) b--;
+        if (b < json || *b == '{' || *b == ',') {
+            p += pat_len;
+            while (*p == ' ' || *p == '\t' || *p == '\r' || *p == '\n') p++;
+            if (*p != ':') continue;
+            p++;
+            while (*p == ' ' || *p == '\t' || *p == '\r' || *p == '\n') p++;
+            return p;
+        }
+        p += pat_len;
+    }
+    return NULL;
 }
 
 static BOOL json_str(const char *json, const char *key, char *out, size_t max_len) {
@@ -399,8 +450,17 @@ static BOOL json_str(const char *json, const char *key, char *out, size_t max_le
     p++;
     size_t i = 0;
     while (*p && *p != '"' && i < max_len - 1) {
-        if (*p == '\\' && *(p + 1)) p++;
-        out[i++] = *p++;
+        if (*p == '\\' && *(p + 1)) {
+            p++;
+            switch (*p) {
+                case 'n': out[i++] = '\n'; p++; break;
+                case 'r': out[i++] = '\r'; p++; break;
+                case 't': out[i++] = '\t'; p++; break;
+                default: out[i++] = *p++; break;
+            }
+        } else {
+            out[i++] = *p++;
+        }
     }
     out[i] = '\0';
     return TRUE;
@@ -434,7 +494,7 @@ static DWORD json_timeout(const char *json) {
 static BYTE *decrypt_data(const char *b64, size_t b64_len, const char *job_id, DWORD *out_len) {
     DWORD raw_len = 0;
     if (!CryptStringToBinaryA(b64, (DWORD)b64_len, CRYPT_STRING_BASE64, NULL, &raw_len, NULL, NULL) || raw_len < 16) return NULL;
-    BYTE *raw = (BYTE *)HeapAlloc(GetProcessHeap(), 0, raw_len);
+    BYTE *raw = (BYTE *)HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, raw_len);
     if (!raw) return NULL;
     if (!CryptStringToBinaryA(b64, (DWORD)b64_len, CRYPT_STRING_BASE64, raw, &raw_len, NULL, NULL)) {
         HeapFree(GetProcessHeap(), 0, raw);
@@ -442,20 +502,21 @@ static BYTE *decrypt_data(const char *b64, size_t b64_len, const char *job_id, D
     }
     BYTE *enc = raw + 16;
     DWORD enc_len = raw_len - 16;
+    DWORD id_len = (DWORD)lstrlenA(job_id);
     char seed_buf[1024];
     int seed_len = wnsprintfA(seed_buf, sizeof(seed_buf), "%s", g_key);
-    if (seed_len <= 0 || (size_t)seed_len + 16 + lstrlenA(job_id) >= sizeof(seed_buf)) {
+    if (seed_len <= 0 || (size_t)seed_len + 16 + id_len >= sizeof(seed_buf)) {
         HeapFree(GetProcessHeap(), 0, raw);
         return NULL;
     }
     RtlCopyMemory(seed_buf + seed_len, raw, 16);
-    RtlCopyMemory(seed_buf + seed_len + 16, job_id, lstrlenA(job_id));
-    seed_len += 16 + lstrlenA(job_id);
+    RtlCopyMemory(seed_buf + seed_len + 16, job_id, id_len);
+    seed_len += 16 + (int)id_len;
 
     BYTE p_hash[32];
     BCryptHash(BCRYPT_SHA256_ALG_HANDLE, NULL, 0, (PUCHAR)seed_buf, (ULONG)seed_len, p_hash, 32);
 
-    BYTE *dec = (BYTE *)HeapAlloc(GetProcessHeap(), 0, (size_t)enc_len + 1);
+    BYTE *dec = (BYTE *)HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, (size_t)enc_len + 1);
     if (!dec) {
         HeapFree(GetProcessHeap(), 0, raw);
         return NULL;
@@ -499,6 +560,12 @@ static BOOL send_all(SOCKET s, const char *buf, size_t len) {
     return TRUE;
 }
 
+static HINTERNET get_conn(HINTERNET *conn) {
+    const wchar_t *target = (g_ip[0] != L'\0') ? g_ip : API_HOST;
+    if (!*conn && g_session) *conn = WinHttpConnect(g_session, target, 443, 0);
+    return *conn;
+}
+
 static BOOL http_post(HINTERNET *conn, CRITICAL_SECTION *lock, const wchar_t *path, const char *body, char *resp, DWORD resp_max) {
     EnterCriticalSection(lock);
     HINTERNET c = get_conn(conn);
@@ -512,6 +579,7 @@ static BOOL http_post(HINTERNET *conn, CRITICAL_SECTION *lock, const wchar_t *pa
         LeaveCriticalSection(lock);
         return FALSE;
     }
+    WinHttpSetTimeouts(req, 10000, 5000, 5000, 5000);
     add_auth(req, L"application/json");
     DWORD b_len = (DWORD)lstrlenA(body), code = 0, sz = sizeof(code);
     BOOL ok = FALSE;
@@ -579,44 +647,41 @@ static void free_chunks(Chunk *c) {
 
 void run_job(const char *json) {
     SetThreadExecutionState(ES_CONTINUOUS | ES_SYSTEM_REQUIRED);
-    char host[128] = DEF_HOST, queue[64] = DEF_QUEUE, id[128] = {0};
+    char host[128] = DEF_HOST, id[128] = {0};
     json_str(json, "printerHost", host, sizeof(host));
-    json_str(json, "printerQueue", queue, sizeof(queue));
     json_str(json, "id", id, sizeof(id));
     DWORD timeout_ms = json_timeout(json);
-
+    Chunk chunks[5] = {0};
     if (!is_online(host) || (*id && !claim_job(id))) {
         log_msg("WARN", "Printer offline or claim skipped");
-        SetThreadExecutionState(ES_CONTINUOUS);
-        return;
+        goto done;
     }
-    const char *keys[5] = {"qCmd", "cfHdr", "ctl", "dfHdr", "payload"};
-    Chunk chunks[5] = {0};
-    for (int i = 0; i < 5; i++) {
-        const char *slice = NULL;
-        size_t len = 0;
-        if (json_slice(json, keys[i], &slice, &len)) {
-            chunks[i].data = decrypt_data(slice, len, id, &chunks[i].len);
+    {
+        const char *keys[5] = {"qCmd", "cfHdr", "ctl", "dfHdr", "payload"};
+        for (int i = 0; i < 5; i++) {
+            const char *slice = NULL;
+            size_t len = 0;
+            if (json_slice(json, keys[i], &slice, &len))
+                chunks[i].data = decrypt_data(slice, len, id, &chunks[i].len);
+        }
+        if (!chunks[4].data || chunks[4].len == 0) {
+            log_msg("ERR", "Empty payload");
+            goto done;
+        }
+        SOCKET s = open_tcp(host, 515, timeout_ms);
+        if (s != INVALID_SOCKET) {
+            BOOL opt = TRUE;
+            setsockopt(s, IPPROTO_TCP, TCP_NODELAY, (const char *)&opt, sizeof(opt));
+            setsockopt(s, SOL_SOCKET, SO_KEEPALIVE, (const char *)&opt, sizeof(opt));
+            if (send_lpr(s, chunks)) {
+                InterlockedIncrement((LONG *)&g_jobs);
+                log_msg("OK", "Job transferred successfully");
+            }
+            shutdown(s, SD_BOTH);
+            closesocket(s);
         }
     }
-    if (!chunks[4].data || chunks[4].len == 0) {
-        log_msg("ERR", "Empty payload");
-        free_chunks(chunks);
-        SetThreadExecutionState(ES_CONTINUOUS);
-        return;
-    }
-    SOCKET s = open_tcp(host, 515, timeout_ms);
-    if (s != INVALID_SOCKET) {
-        BOOL opt = TRUE;
-        setsockopt(s, IPPROTO_TCP, TCP_NODELAY, (const char *)&opt, sizeof(opt));
-        setsockopt(s, SOL_SOCKET, SO_KEEPALIVE, (const char *)&opt, sizeof(opt));
-        if (send_lpr(s, chunks)) {
-            InterlockedIncrement((LONG *)&g_jobs);
-            log_msg("OK", "Job transferred successfully");
-        }
-        shutdown(s, SD_BOTH);
-        closesocket(s);
-    }
+done:
     free_chunks(chunks);
     SetThreadExecutionState(ES_CONTINUOUS);
 }
@@ -627,9 +692,11 @@ DWORD WINAPI job_thread(LPVOID arg) {
         run_job(curr);
         HeapFree(GetProcessHeap(), 0, curr);
         EnterCriticalSection(&g_state_lock);
-        if (g_pending) {
-            curr = g_pending;
-            g_pending = NULL;
+        if (g_q_len > 0) {
+            curr = g_q_slots[g_q_head];
+            g_q_slots[g_q_head] = NULL;
+            g_q_head = (g_q_head + 1) % Q_MAX;
+            g_q_len--;
             LeaveCriticalSection(&g_state_lock);
         } else {
             g_busy = 0;
@@ -642,21 +709,38 @@ DWORD WINAPI job_thread(LPVOID arg) {
 
 void queue_job(const char *json) {
     size_t len = lstrlenA(json);
-    char *copy = (char *)HeapAlloc(GetProcessHeap(), 0, len + 1);
+    char *copy = (char *)HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, len + 1);
     if (!copy) return;
     RtlCopyMemory(copy, json, len + 1);
-
+    char jid[128] = {0};
+    json_str(copy, "id", jid, sizeof(jid));
     EnterCriticalSection(&g_state_lock);
+    if (jid[0]) {
+        for (LONG i = 0; i < g_q_len; i++) {
+            LONG idx = (g_q_head + i) % Q_MAX;
+            char eid[128] = {0};
+            if (g_q_slots[idx]) json_str(g_q_slots[idx], "id", eid, sizeof(eid));
+            if (lstrcmpA(jid, eid) == 0) {
+                LeaveCriticalSection(&g_state_lock);
+                HeapFree(GetProcessHeap(), 0, copy);
+                return;
+            }
+        }
+    }
     if (!g_busy) {
         g_busy = 1;
         LeaveCriticalSection(&g_state_lock);
         HANDLE th = CreateThread(NULL, 0, job_thread, copy, 0, NULL);
         if (th) CloseHandle(th);
         else job_thread(copy);
-    } else {
-        if (g_pending) HeapFree(GetProcessHeap(), 0, g_pending);
-        g_pending = copy;
+    } else if (g_q_len < Q_MAX) {
+        g_q_slots[g_q_tail] = copy;
+        g_q_tail = (g_q_tail + 1) % Q_MAX;
+        g_q_len++;
         LeaveCriticalSection(&g_state_lock);
+    } else {
+        LeaveCriticalSection(&g_state_lock);
+        HeapFree(GetProcessHeap(), 0, copy);
     }
 }
 
@@ -670,25 +754,48 @@ DWORD WINAPI ping_loop(LPVOID arg) {
 }
 
 void parse_sse(const char *line) {
+    if (line[0] == '\0') {
+        if (g_ev_data && g_ev_len > 0) {
+            if (g_ev_data[g_ev_len - 1] == '\n') g_ev_data[--g_ev_len] = '\0';
+            else g_ev_data[g_ev_len] = '\0';
+            log_msg("OK", "SSE event dispatch");
+            queue_job(g_ev_data);
+            if (g_ev_id[0]) {
+                lstrcpynA(g_last_id, g_ev_id, sizeof(g_last_id));
+                g_ev_id[0] = '\0';
+            }
+            g_ev_len = 0;
+        }
+        return;
+    }
     if (line[0] == ':') return;
     if (StrCmpNIA(line, "id: ", 4) == 0) {
-        const char *v = line + 4;
-        size_t l = lstrlenA(v);
-        while (l > 0 && (v[l - 1] == '\r' || v[l - 1] == '\n' || v[l - 1] == ' ')) l--;
-        if (l < sizeof(g_last_id)) {
-            RtlCopyMemory(g_last_id, v, l);
-            g_last_id[l] = '\0';
-        }
+        lstrcpynA(g_ev_id, line + 4, sizeof(g_ev_id));
+        size_t l = lstrlenA(g_ev_id);
+        while (l > 0 && (g_ev_id[l - 1] == '\r' || g_ev_id[l - 1] == '\n' || g_ev_id[l - 1] == ' ')) g_ev_id[--l] = '\0';
     } else if (StrCmpNIA(line, "data: ", 6) == 0) {
-        log_msg("OK", "Data match for new job!");
-        queue_job(line + 6);
+        const char *d = line + 6;
+        size_t dlen = lstrlenA(d);
+        size_t need = g_ev_len + dlen + 2;
+        if (need > g_ev_cap) {
+            size_t nc = (g_ev_cap == 0) ? (dlen + 4096) : g_ev_cap;
+            while (nc < need) nc *= 2;
+            char *nb = g_ev_data ? (char *)HeapReAlloc(GetProcessHeap(), 0, g_ev_data, nc)
+                                 : (char *)HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, nc);
+            if (!nb) return;
+            g_ev_data = nb;
+            g_ev_cap = nc;
+        }
+        if (g_ev_len > 0) g_ev_data[g_ev_len++] = '\n';
+        RtlCopyMemory(g_ev_data + g_ev_len, d, dlen);
+        g_ev_len += dlen;
     }
 }
 
 BOOL sse_loop() {
     HINTERNET conn = get_conn(&g_sse_conn);
     if (!conn) {
-        if (!resolve_doh(L"1.1.1.1")) return FALSE;
+        if (!resolve_doh(L"1.1.1.1") && !resolve_doh(L"8.8.8.8")) return FALSE;
         conn = get_conn(&g_sse_conn);
         if (!conn) return FALSE;
     }
@@ -696,6 +803,8 @@ BOOL sse_loop() {
     if (!req) { reset_conn(&g_sse_conn); return FALSE; }
     add_auth(req, NULL);
     BOOL res = FALSE;
+    g_ev_id[0] = '\0';
+    g_ev_len = 0;
     if (WinHttpSendRequest(req, WINHTTP_NO_ADDITIONAL_HEADERS, 0, 0, 0, 0, 0) && WinHttpReceiveResponse(req, NULL)) {
         DWORD code = 0, sz = sizeof(code);
         WinHttpQueryHeaders(req, WINHTTP_QUERY_STATUS_CODE | WINHTTP_QUERY_FLAG_NUMBER, WINHTTP_HEADER_NAME_BY_INDEX, &code, &sz, WINHTTP_NO_HEADER_INDEX);
@@ -705,7 +814,8 @@ BOOL sse_loop() {
             ExitProcess(1);
         }
         size_t cap = 65536, pos = 0;
-        char *line = (char *)HeapAlloc(GetProcessHeap(), 0, cap);
+        BOOL discard = FALSE;
+        char *line = (char *)HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, cap);
         if (!line) {
             WinHttpCloseHandle(req);
             return FALSE;
@@ -716,18 +826,28 @@ BOOL sse_loop() {
             for (DWORD i = 0; i < done; i++) {
                 char c = chunk[i];
                 if (c == '\n') {
-                    line[pos] = '\0';
-                    if (pos > 0 && line[pos - 1] == '\r') line[pos - 1] = '\0';
-                    if (line[0]) parse_sse(line);
-                    pos = 0;
-                } else {
-                    if (pos + 2 >= cap) {
-                        cap *= 2;
-                        char *next = (char *)HeapReAlloc(GetProcessHeap(), 0, line, cap);
-                        if (!next) { pos = 0; break; }
-                        line = next;
+                    if (!discard) {
+                        line[pos] = '\0';
+                        if (pos > 0 && line[pos - 1] == '\r') line[pos - 1] = '\0';
+                        parse_sse(line);
                     }
-                    line[pos++] = c;
+                    pos = 0;
+                    discard = FALSE;
+                } else if (!discard) {
+                    if (pos + 2 >= cap) {
+                        if (cap >= MAX_SSE_LINE) {
+                            discard = TRUE;
+                            pos = 0;
+                        } else {
+                            size_t new_cap = cap * 2;
+                            if (new_cap > MAX_SSE_LINE) new_cap = MAX_SSE_LINE;
+                            char *next = (char *)HeapReAlloc(GetProcessHeap(), 0, line, new_cap);
+                            if (!next) { discard = TRUE; pos = 0; }
+                            else { line = next; cap = new_cap; line[pos++] = c; }
+                        }
+                    } else {
+                        line[pos++] = c;
+                    }
                 }
             }
         }
@@ -777,11 +897,7 @@ VOID WINAPI svc_handler(DWORD ctrl) {
     if (ctrl == SERVICE_CONTROL_STOP || ctrl == SERVICE_CONTROL_SHUTDOWN) {
         g_status.dwCurrentState = SERVICE_STOP_PENDING;
         SetServiceStatus(g_handle, &g_status);
-        clean_state();
-        reset_conn(&g_ping_conn);
-        reset_conn(&g_claim_conn);
-        reset_conn(&g_sse_conn);
-        if (g_session) WinHttpCloseHandle(g_session);
+        shutdown_net();
         g_status.dwCurrentState = SERVICE_STOPPED;
         SetServiceStatus(g_handle, &g_status);
         ExitProcess(0);
