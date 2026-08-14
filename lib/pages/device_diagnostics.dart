@@ -9,7 +9,9 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/app_log.dart';
 import 'package:preconnect/tools/app_paths.dart';
+import 'package:preconnect/tools/app_storage.dart';
 import 'package:preconnect/tools/network_assist.dart';
+import 'package:preconnect/tools/storage_keys.dart';
 import 'package:share_plus/share_plus.dart';
 
 class DeviceDiagnosticsPage extends StatefulWidget {
@@ -181,11 +183,22 @@ class _DeviceDiagnosticsPageState extends State<DeviceDiagnosticsPage> {
 
   Future<void> _shareLogs() async {
     try {
+      final studentId =
+          (await AppStorage.instance.getString(
+            StorageKeys.studentId,
+          ))?.trim() ??
+          '';
+      final fileName = studentId.isNotEmpty
+          ? '${studentId}_diagnostics.txt'
+          : 'diagnostics.txt';
       final summary = StringBuffer();
       summary.writeln('=== PreConnect System Diagnostics ===');
       summary.writeln(
         'Generated on: ${DateTime.now().toUtc().toIso8601String()}',
       );
+      if (studentId.isNotEmpty) {
+        summary.writeln('Student ID: $studentId');
+      }
       summary.writeln();
       summary.writeln('--- Device Info ---');
       for (final entry in _deviceInfo.entries) {
@@ -209,21 +222,17 @@ class _DeviceDiagnosticsPageState extends State<DeviceDiagnosticsPage> {
         final xfile = XFile.fromData(
           bytes,
           mimeType: 'text/plain',
-          name: 'preconnect_diagnostics.txt',
+          name: fileName,
         );
         await SharePlus.instance.share(ShareParams(files: [xfile]));
       } else {
         final tempDir = await AppPaths.temporaryDirectory();
-        final exportFile = File('${tempDir.path}/preconnect_diagnostics.txt');
+        final exportFile = File('${tempDir.path}/$fileName');
         await exportFile.writeAsString(content, flush: true);
         await SharePlus.instance.share(
           ShareParams(
             files: [
-              XFile(
-                exportFile.path,
-                mimeType: 'text/plain',
-                name: 'preconnect_diagnostics.txt',
-              ),
+              XFile(exportFile.path, mimeType: 'text/plain', name: fileName),
             ],
           ),
         );

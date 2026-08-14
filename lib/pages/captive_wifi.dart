@@ -772,28 +772,14 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: borderColor),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Raw Response',
-            style: TextStyle(
-              color: BracuPalette.textPrimary(context),
-              fontSize: 14,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const Gap(12),
-          SelectableText(
-            _rawResponseLog ?? '',
-            style: TextStyle(
-              color: BracuPalette.textPrimary(context),
-              fontSize: 12,
-              fontFamily: 'monospace',
-              height: 1.4,
-            ),
-          ),
-        ],
+      child: SelectableText(
+        _rawResponseLog ?? '',
+        style: TextStyle(
+          color: BracuPalette.textPrimary(context),
+          fontSize: 12,
+          fontFamily: 'monospace',
+          height: 1.4,
+        ),
       ),
     );
   }
@@ -847,15 +833,6 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Captured Portal Parameters',
-            style: TextStyle(
-              color: BracuPalette.textPrimary(context),
-              fontSize: 14,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const Gap(12),
           for (var i = 0; i < rows.length; i++) ...[
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
