@@ -57,38 +57,9 @@ static HCRYPTPROV g_hProv = 0;
 static HANDLE g_hMutex = NULL;
 
 void log_msg(const char *level, const char *msg) {
-    SYSTEMTIME st;
-    GetLocalTime(&st);
-    char time_str[64];
-    snprintf(time_str, sizeof(time_str), "%04d-%02d-%02d %02d:%02d:%02d",
-             st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute, st.wSecond);
-
-    if (g_debug_mode || strcmp(level, "ERR") == 0 || strcmp(level, "CRIT") == 0) {
-        fprintf(stderr, "[%s] [%s] %s\n", time_str, level, msg);
-        fflush(stderr);
-    }
-
-    char log_path[MAX_PATH] = {0};
-    if (SUCCEEDED(SHGetFolderPathA(NULL, CSIDL_COMMON_APPDATA, NULL, 0, log_path))) {
-        strcat(log_path, "\\printer\\printer.log");
-        FILE *f = fopen(log_path, "a+");
-        if (f) {
-            fseek(f, 0, SEEK_END);
-            long sz = ftell(f);
-            if (sz > 64 * 1024) {
-                fclose(f);
-                char old_path[MAX_PATH] = {0};
-                snprintf(old_path, sizeof(old_path), "%s.old", log_path);
-                DeleteFileA(old_path);
-                MoveFileA(log_path, old_path);
-                f = fopen(log_path, "w");
-            }
-            if (f) {
-                fprintf(f, "[%s] [%s] %s\n", time_str, level, msg);
-                fclose(f);
-            }
-        }
-    }
+    if (!g_debug_mode && strcmp(level, "ERR") != 0 && strcmp(level, "CRIT") != 0) return;
+    fprintf(stderr, "[%s] %s\n", level, msg);
+    fflush(stderr);
 }
 
 void clean_key() {
@@ -703,7 +674,7 @@ unsigned __stdcall ping_loop_thread(void *arg) {
                 add_worker_auth_headers(hRequest, L"application/json");
                 const char *body = "{}";
                 if (WinHttpSendRequest(hRequest, WINHTTP_NO_ADDITIONAL_HEADERS, 0, (LPVOID)body, (DWORD)strlen(body), (DWORD)strlen(body), 0)) {
-                    if (WinHttpReceiveResponse(hRequest, NULL)) log_msg("OK", "Ping heartbeat sent");
+                    WinHttpReceiveResponse(hRequest, NULL);
                 }
                 WinHttpCloseHandle(hRequest);
             } else {
