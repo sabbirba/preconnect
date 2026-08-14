@@ -2172,8 +2172,8 @@ class _WifiPrinterDiscovery {
 
   static Future<List<_WifiPrinterCandidate>> findLprPrinters({
     int port = 515,
-    Duration timeout = const Duration(milliseconds: 250),
-    int concurrency = 64,
+    Duration timeout = const Duration(seconds: 3),
+    int concurrency = 128,
     int limit = 3,
     int maxSubnets = 2,
     List<String> preferredHosts = const <String>[],
@@ -2185,26 +2185,16 @@ class _WifiPrinterDiscovery {
     final targets = <Map<String, dynamic>>[];
 
     final priorityHosts = <String>[...preferredHosts, ...campusHosts];
-    final priorityFutures = priorityHosts.map((host) async {
+    for (final host in priorityHosts) {
       final h = host.trim();
-      if (h.isEmpty || !seen.add(h)) return;
-      final isCampus = campusHosts.contains(h);
-      final ok = await _probe(
-        h,
-        port,
-        isCampus ? const Duration(milliseconds: 300) : timeout,
-      );
-      if (ok) {
-        found.add(
-          _WifiPrinterCandidate(
-            address: h,
-            interfaceName: isCampus ? 'campus' : 'saved',
-          ),
-        );
+      if (h.isNotEmpty && seen.add(h)) {
+        targets.add({
+          'address': h,
+          'type': campusHosts.contains(h) ? 'campus' : 'saved',
+          'timeout': timeout,
+        });
       }
-    });
-    await Future.wait(priorityFutures);
-    if (found.isNotEmpty) return found;
+    }
 
     var subnetCount = 0;
     for (final subnet in subnets) {
