@@ -15,6 +15,7 @@
 #include <shlobj.h>
 #include <shlwapi.h>
 
+#ifdef _MSC_VER
 #pragma comment(lib, "user32.lib")
 #pragma comment(lib, "ws2_32.lib")
 #pragma comment(lib, "winhttp.lib")
@@ -24,6 +25,7 @@
 #pragma comment(lib, "shell32.lib")
 #pragma comment(lib, "shlwapi.lib")
 #pragma comment(lib, "advapi32.lib")
+#endif
 
 #ifndef WINHTTP_PROTOCOL_FLAG_HTTP2
 #define WINHTTP_PROTOCOL_FLAG_HTTP2 0x1
@@ -128,6 +130,74 @@ void lock_app() {
         if (g_debug) log_msg("ERR", "running");
         ExitProcess(0);
     }
+}
+
+static const char *find_field(const char *json, const char *key) {
+    char pat[66];
+    wnsprintfA(pat, sizeof(pat), "\"%s\"", key);
+    DWORD pat_len = (DWORD)lstrlenA(pat);
+    const char *p = json;
+    while ((p = StrStrA(p, pat)) != NULL) {
+        const char *b = p - 1;
+        while (b >= json && (*b == ' ' || *b == '\t' || *b == '\r' || *b == '\n')) b--;
+        if (b < json || *b == '{' || *b == ',') {
+            p += pat_len;
+            while (*p == ' ' || *p == '\t' || *p == '\r' || *p == '\n') p++;
+            if (*p != ':') continue;
+            p++;
+            while (*p == ' ' || *p == '\t' || *p == '\r' || *p == '\n') p++;
+            return p;
+        }
+        p += pat_len;
+    }
+    return NULL;
+}
+
+static BOOL json_str(const char *json, const char *key, char *out, size_t max_len) {
+    const char *p = find_field(json, key);
+    if (!p || *p != '"') return FALSE;
+    p++;
+    size_t i = 0;
+    while (*p && *p != '"' && i < max_len - 1) {
+        if (*p == '\\' && *(p + 1)) {
+            p++;
+            switch (*p) {
+                case 'n': out[i++] = '\n'; p++; break;
+                case 'r': out[i++] = '\r'; p++; break;
+                case 't': out[i++] = '\t'; p++; break;
+                default: out[i++] = *p++; break;
+            }
+        } else {
+            out[i++] = *p++;
+        }
+    }
+    out[i] = '\0';
+    return TRUE;
+}
+
+static BOOL json_slice(const char *json, const char *key, const char **start, size_t *len) {
+    const char *p = find_field(json, key);
+    if (!p || *p != '"') return FALSE;
+    *start = ++p;
+    const char *end = p;
+    while (*end && *end != '"') {
+        if (*end == '\\' && *(end + 1)) end += 2;
+        else end++;
+    }
+    *len = (size_t)(end - p);
+    return (*end == '"');
+}
+
+static BOOL json_bool(const char *json, const char *key) {
+    const char *p = find_field(json, key);
+    return (p && StrCmpNIA(p, "true", 4) == 0);
+}
+
+static DWORD json_timeout(const char *json) {
+    const char *p = find_field(json, "timeout");
+    if (!p) return 60000;
+    int val = StrToIntA(p);
+    return (val > 0) ? (DWORD)(val * 1000) : 60000;
 }
 
 void b64_url(const BYTE *in, DWORD in_len, char *out, DWORD max_len) {
@@ -421,74 +491,6 @@ DWORD WINAPI probe_loop(LPVOID arg) {
         Sleep(1500);
     }
     return 0;
-}
-
-static const char *find_field(const char *json, const char *key) {
-    char pat[66];
-    wnsprintfA(pat, sizeof(pat), "\"%s\"", key);
-    DWORD pat_len = (DWORD)lstrlenA(pat);
-    const char *p = json;
-    while ((p = StrStrA(p, pat)) != NULL) {
-        const char *b = p - 1;
-        while (b >= json && (*b == ' ' || *b == '\t' || *b == '\r' || *b == '\n')) b--;
-        if (b < json || *b == '{' || *b == ',') {
-            p += pat_len;
-            while (*p == ' ' || *p == '\t' || *p == '\r' || *p == '\n') p++;
-            if (*p != ':') continue;
-            p++;
-            while (*p == ' ' || *p == '\t' || *p == '\r' || *p == '\n') p++;
-            return p;
-        }
-        p += pat_len;
-    }
-    return NULL;
-}
-
-static BOOL json_str(const char *json, const char *key, char *out, size_t max_len) {
-    const char *p = find_field(json, key);
-    if (!p || *p != '"') return FALSE;
-    p++;
-    size_t i = 0;
-    while (*p && *p != '"' && i < max_len - 1) {
-        if (*p == '\\' && *(p + 1)) {
-            p++;
-            switch (*p) {
-                case 'n': out[i++] = '\n'; p++; break;
-                case 'r': out[i++] = '\r'; p++; break;
-                case 't': out[i++] = '\t'; p++; break;
-                default: out[i++] = *p++; break;
-            }
-        } else {
-            out[i++] = *p++;
-        }
-    }
-    out[i] = '\0';
-    return TRUE;
-}
-
-static BOOL json_slice(const char *json, const char *key, const char **start, size_t *len) {
-    const char *p = find_field(json, key);
-    if (!p || *p != '"') return FALSE;
-    *start = ++p;
-    const char *end = p;
-    while (*end && *end != '"') {
-        if (*end == '\\' && *(end + 1)) end += 2;
-        else end++;
-    }
-    *len = (size_t)(end - p);
-    return (*end == '"');
-}
-
-static BOOL json_bool(const char *json, const char *key) {
-    const char *p = find_field(json, key);
-    return (p && StrCmpNIA(p, "true", 4) == 0);
-}
-
-static DWORD json_timeout(const char *json) {
-    const char *p = find_field(json, "timeout");
-    if (!p) return 60000;
-    int val = StrToIntA(p);
-    return (val > 0) ? (DWORD)(val * 1000) : 60000;
 }
 
 static BYTE *decrypt_data(const char *b64, size_t b64_len, const char *job_id, DWORD *out_len) {
