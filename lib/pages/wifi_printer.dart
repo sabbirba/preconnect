@@ -1121,30 +1121,6 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
                 title: 'Offline',
                 body: 'Your device has no active internet connection.',
               ),
-              const Gap(12),
-              Text.rich(
-                TextSpan(
-                  style: TextStyle(
-                    color: textSecondary,
-                    fontSize: 12,
-                    height: 1.4,
-                    fontWeight: FontWeight.w500,
-                  ),
-                  children: [
-                    TextSpan(
-                      text: 'Note: ',
-                      style: TextStyle(
-                        color: textSecondary,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                    const TextSpan(
-                      text:
-                          'Print jobs sent to campus printers will be ready for release.',
-                    ),
-                  ],
-                ),
-              ),
               const Gap(16),
               Text(
                 'Layout & Print Options',
