@@ -196,7 +196,7 @@ class _SupportButtonState extends State<_SupportButton> {
     super.initState();
     _status = FundingService.cached;
     _fetchLatest();
-    _rotationTimer = PollingTimer(const Duration(seconds: 7), (_) {
+    _rotationTimer = PollingTimer(const Duration(seconds: 10), (_) {
       if (mounted) {
         if (HomeTabRegistry.activeTab.value != HomeTab.dashboard) return;
         setState(() {
@@ -221,13 +221,61 @@ class _SupportButtonState extends State<_SupportButton> {
     }
   }
 
+  List<String> _currentOptions() {
+    final status = _status;
+    return <String>[
+      'Support iOS',
+      if (status != null && status.totalRaised > 0)
+        '৳${_formatAmount(status.totalRaised)} Raised',
+      if (status != null && status.goal > 0)
+        '৳${_formatAmount(status.goal)} Goal',
+      'Join Discord',
+      'GitHub Repo',
+      'Fork Repo',
+      'Report Issue',
+    ];
+  }
+
   Future<void> _handleTap() async {
     if (_isLoading) return;
     setState(() {
       _isLoading = true;
     });
     try {
-      await widget.onTap();
+      final currentLabel = _labelText();
+      switch (currentLabel) {
+        case 'Join Discord':
+          await openExternalUrl(
+            context,
+            kPreConnectDiscordUrl,
+            failureMessage: 'Unable to open Discord.',
+          );
+          break;
+        case 'GitHub Repo':
+          await openExternalUrl(
+            context,
+            kPreConnectRepositoryUrl,
+            failureMessage: 'Unable to open GitHub repository.',
+          );
+          break;
+        case 'Fork Repo':
+          await openExternalUrl(
+            context,
+            '$kPreConnectRepositoryUrl/fork',
+            failureMessage: 'Unable to open GitHub fork.',
+          );
+          break;
+        case 'Report Issue':
+          await openExternalUrl(
+            context,
+            '$kPreConnectRepositoryUrl/issues/new/choose',
+            failureMessage: 'Unable to open issue reporter.',
+          );
+          break;
+        default:
+          await widget.onTap();
+          break;
+      }
     } finally {
       if (mounted) {
         setState(() {
@@ -251,16 +299,9 @@ class _SupportButtonState extends State<_SupportButton> {
   }
 
   String _labelText() {
-    final status = _status;
-    if (status == null) return 'Support iOS';
-    final optionIndex = _rotationIndex % 4;
-    return switch (optionIndex) {
-      0 => 'Support iOS',
-      1 => '৳${_formatAmount(status.totalRaised)} Raised',
-      2 => '৳${_formatAmount(status.goal)} Goal',
-      3 => '${status.contributorsCount} Backers',
-      _ => 'Support iOS',
-    };
+    final options = _currentOptions();
+    final optionIndex = _rotationIndex % options.length;
+    return options[optionIndex];
   }
 
   @override

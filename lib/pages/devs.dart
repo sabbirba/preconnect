@@ -17,17 +17,17 @@ import 'package:preconnect/tools/preconnect_constants.dart';
 
 const String _githubToken = String.fromEnvironment('GITHUB_TOKEN');
 const String _contributorsRosterUrl =
-    'https://cdn.jsdelivr.net/gh/sabbirba/preconnect@main/contributors.json';
+    'https://raw.githubusercontent.com/sabbirba/preconnect/main/contributors.json';
 const String _sponsorsRosterUrl =
-    'https://cdn.jsdelivr.net/gh/sabbirba/preconnect@main/sponsors.json';
+    'https://raw.githubusercontent.com/sabbirba/preconnect/main/sponsors.json';
 const String _sponsorsCacheKey = 'devs_sponsors_roster_v1';
 
 class DevsPage extends StatefulWidget {
   const DevsPage({super.key});
 
-  static Future<void> preload() async {
-    await _DevsPageState.preloadData();
-    unawaited(_loadSponsorsRoster());
+  static Future<void> preload({bool forceRefresh = false}) async {
+    await _DevsPageState.preloadData(forceRefresh: forceRefresh);
+    unawaited(_loadSponsorsRoster(forceRefresh: forceRefresh));
   }
 
   @override

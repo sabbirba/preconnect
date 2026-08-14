@@ -93,9 +93,11 @@ class FundingService {
     return _cached;
   }
 
-  static Future<FundingStatus?> fetchStatus() async {
+  static Future<FundingStatus?> fetchStatus({bool forceRefresh = false}) async {
     try {
-      final cachedEtag = await RepositoryCache.instance.readString(_etagKey);
+      final cachedEtag = !forceRefresh
+          ? await RepositoryCache.instance.readString(_etagKey)
+          : null;
       final headers = <String, String>{};
       if (cachedEtag != null && cachedEtag.trim().isNotEmpty) {
         headers['If-None-Match'] = cachedEtag;

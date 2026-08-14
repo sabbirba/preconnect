@@ -777,7 +777,7 @@ class _FundingPromoContent {
 }
 
 const String _fundingPromoUrl =
-    'https://cdn.jsdelivr.net/gh/sabbirba/preconnect@main/funding_promo.json';
+    'https://raw.githubusercontent.com/sabbirba/preconnect/main/funding_promo.json';
 const String _fundingPromoCacheKey = 'funding_promo_content_v1';
 
 Future<_FundingPromoContent?> _loadFundingPromoContent({
@@ -1162,6 +1162,19 @@ class BracuFundingSupportContent extends StatelessWidget {
                 ),
                 label: 'GitHub',
                 onTap: () => openExternalUrl(context, kPreConnectRepositoryUrl),
+              ),
+              _BracuSponsorActionChip(
+                iconWidget: const Icon(
+                  Icons.fork_right_rounded,
+                  size: 18,
+                  color: BracuPalette.primary,
+                ),
+                label: 'Fork',
+                onTap: () => openExternalUrl(
+                  context,
+                  '$kPreConnectRepositoryUrl/fork',
+                  failureMessage: 'Unable to open GitHub fork.',
+                ),
               ),
             ],
           ),

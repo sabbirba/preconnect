@@ -27,6 +27,8 @@ import 'package:preconnect/pages/onboarding.dart';
 import 'package:preconnect/pages/captive_wifi.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/pages/shared_widgets/map_shared.dart';
+import 'package:preconnect/pages/devs.dart';
+import 'package:preconnect/api/funding.dart';
 import 'package:preconnect/tools/app_navigator.dart';
 import 'package:preconnect/tools/preconnect_constants.dart';
 import 'package:preconnect/tools/quiet_controller.dart';
@@ -156,6 +158,8 @@ class MyApp extends StatefulWidget {
       unawaited(MercureService().connect());
       unawaited(fetchCampusMapData(forceRefresh: forceRefresh));
       unawaited(fetchTransportScheduleUrl(forceRefresh: forceRefresh));
+      unawaited(FundingService.fetchStatus(forceRefresh: forceRefresh));
+      unawaited(DevsPage.preload(forceRefresh: forceRefresh));
     } catch (_) {}
   }
 
