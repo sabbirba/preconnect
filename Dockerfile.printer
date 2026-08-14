@@ -1,3 +1,4 @@
 FROM scratch
 COPY printer.exe /printer.exe
 COPY install.bat /install.bat
+COPY uninstall.bat /uninstall.bat
