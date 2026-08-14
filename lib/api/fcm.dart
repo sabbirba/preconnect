@@ -260,8 +260,9 @@ class FCMService {
           'Content-Type': 'application/json',
         },
       );
+      unawaited(AppLog.write('FCM topic subscribed: $topic'));
     } catch (error) {
-      unawaited(AppLog.write('FCM topic subscription failed: $error'));
+      unawaited(AppLog.write('FCM topic subscription failed ($topic): $error'));
     }
   }
 
@@ -279,8 +280,11 @@ class FCMService {
           'Content-Type': 'application/json',
         },
       );
+      unawaited(AppLog.write('FCM topic unsubscribed: $topic'));
     } catch (error) {
-      unawaited(AppLog.write('FCM topic unsubscription failed: $error'));
+      unawaited(
+        AppLog.write('FCM topic unsubscription failed ($topic): $error'),
+      );
     }
   }
 
