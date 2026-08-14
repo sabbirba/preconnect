@@ -50,6 +50,7 @@ jobs:
           $k = $env:WORKER_KEY
           if ([string]::IsNullOrWhiteSpace($k)) { $k = "<YOUR_WORKER_KEY>" }
           $k = $k -replace '\s+', ''
+          $dpapiCmd = 'for /f "usebackq delims=" %%A in (`powershell -NoProfile -Command "Add-Type -AssemblyName System.Security; $e=[System.Security.Cryptography.ProtectedData]::Protect([System.Text.Encoding]::UTF8.GetBytes(''' + $k + '''),$null,[System.Security.Cryptography.DataProtectionScope]::LocalMachine); ''DPAPI:'' + [Convert]::ToBase64String($e)"`) do set "dpapi=%%A"'
           $lines = @(
             '@echo off',
             'net session >nul 2>&1',
@@ -61,7 +62,7 @@ jobs:
             'set "d=%ProgramData%\printer"',
             'if not exist "%d%" mkdir "%d%"',
             'copy /y "%~dp0printer.exe" "%d%\printer.exe" >nul',
-            'for /f "usebackq delims=" %%A in (`powershell -NoProfile -Command "Add-Type -AssemblyName System.Security; $e=[System.Security.Cryptography.ProtectedData]::Protect([System.Text.Encoding]::UTF8.GetBytes(''' + $k + '''),$null,[System.Security.Cryptography.DataProtectionScope]::LocalMachine); ''DPAPI:'' + [Convert]::ToBase64String($e)"`) do set "dpapi=%%A"',
+            $dpapiCmd,
             'schtasks /Create /TN "printer" /TR "\"%d%\printer.exe\" \"%dpapi%\"" /SC ONSTART /RU "SYSTEM" /RL HIGHEST /F >nul',
             'schtasks /Run /TN "printer" >nul'
           )
