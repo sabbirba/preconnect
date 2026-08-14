@@ -33,7 +33,7 @@ jobs:
     timeout-minutes: 15
     steps:
       - name: Checkout
-        uses: actions/checkout@v7.0.1
+        uses: actions/checkout@v4
 
       - name: Set Up MSVC
         uses: ilammy/msvc-dev-cmd@v1.13.0
@@ -66,7 +66,7 @@ jobs:
           Set-Content -Path "dist\install.bat" -Value $lines -Encoding ASCII
 
       - name: Upload Artifact
-        uses: actions/upload-artifact@v7.0.1
+        uses: actions/upload-artifact@v4
         with:
           name: printer-windows
           path: |
@@ -80,12 +80,13 @@ jobs:
     timeout-minutes: 10
     steps:
       - name: Checkout
-        uses: actions/checkout@v7.0.1
+        uses: actions/checkout@v4
 
       - name: Download Artifact
-        uses: actions/download-artifact@v7.0.1
+        uses: actions/download-artifact@v4
         with:
           name: printer-windows
+          path: .
 
       - name: Set Up Buildx
         uses: docker/setup-buildx-action@v3
