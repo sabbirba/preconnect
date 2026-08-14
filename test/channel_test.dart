@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:preconnect/tools/android_alarm.dart';
 import 'package:preconnect/tools/calendar_event.dart';
 import 'package:preconnect/tools/file_open.dart';
+import 'package:preconnect/tools/network_assist.dart';
 import 'package:preconnect/tools/platform_channels.dart';
 
 void main() {
@@ -98,5 +99,35 @@ void main() {
     expect(await NativeFile.open('/tmp/report.pdf'), isTrue);
     expect(captured?.method, 'open');
     expect(captured?.arguments, {'path': '/tmp/report.pdf'});
+  });
+
+  test('AndroidNetworkStatus parses native map payload accurately', () {
+    final status = AndroidNetworkStatus.fromMap({
+      'connected': true,
+      'validated': true,
+      'captive': false,
+      'transport': 'wifi',
+      'androidApi': 34,
+      'ssid': 'BRACU_Student',
+      'ipAddress': '192.168.0.103',
+      'gatewayAddress': '192.168.0.1',
+    });
+
+    expect(status.connected, isTrue);
+    expect(status.validated, isTrue);
+    expect(status.captive, isFalse);
+    expect(status.transport, 'wifi');
+    expect(status.androidApi, 34);
+    expect(status.ssid, 'BRACU_Student');
+    expect(status.ipAddress, '192.168.0.103');
+    expect(status.gatewayAddress, '192.168.0.1');
+  });
+
+  test('Mercure authorization cookie regex extracts jwt token correctly', () {
+    const cookie =
+        'Path=/; Domain=connect.bracu.ac.bd; mercureAuthorization=eyJhbGciOiJIUzI1NiJ9.samplePayload.sampleSig; HttpOnly; SameSite=None; Secure';
+    final match = RegExp(r'mercureAuthorization=([^;]+)').firstMatch(cookie);
+    expect(match, isNotNull);
+    expect(match?.group(1), 'eyJhbGciOiJIUzI1NiJ9.samplePayload.sampleSig');
   });
 }

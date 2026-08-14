@@ -48,9 +48,6 @@ class ScheduleService {
   factory ScheduleService() => _instance;
   ScheduleService._internal();
 
-  final Map<String, Future<String?>> _scheduleFetchInFlight =
-      <String, Future<String?>>{};
-
   Future<String?> _resolvePortfolioId({bool forceRefresh = false}) {
     return resolvePortfolioId(
       prefs: AppStorage.instance,
@@ -68,8 +65,27 @@ class ScheduleService {
   static const String _semesterSessionsFetchedAtKey =
       'student_semester_sessions_v1_fetched_at';
 
+  final Map<bool, Future<List<SemesterSessionItem>>> _sessionsFetchInFlight =
+      <bool, Future<List<SemesterSessionItem>>>{};
+
   Future<List<SemesterSessionItem>> fetchSemesterSessions({
     bool forceRefresh = false,
+  }) async {
+    final inFlight = _sessionsFetchInFlight[forceRefresh];
+    if (inFlight != null) {
+      return await inFlight;
+    }
+    final request = _fetchSemesterSessionsInternal(forceRefresh: forceRefresh);
+    _sessionsFetchInFlight[forceRefresh] = request;
+    try {
+      return await request;
+    } finally {
+      _sessionsFetchInFlight.remove(forceRefresh);
+    }
+  }
+
+  Future<List<SemesterSessionItem>> _fetchSemesterSessionsInternal({
+    required bool forceRefresh,
   }) async {
     final repo = RepositoryCache.instance;
     if (!forceRefresh) {
@@ -218,24 +234,28 @@ class ScheduleService {
     }
   }
 
+  final Map<int, Future<String?>> _scheduleFetchInFlight =
+      <int, Future<String?>>{};
+
   Future<String?> fetchStudentScheduleForSemester({
     required int semesterSessionId,
     bool fromGet = false,
   }) async {
-    final inFlightKey = '$semesterSessionId|$fromGet';
-    final inFlight = _scheduleFetchInFlight[inFlightKey];
-    if (inFlight != null) {
+    final inFlight = _scheduleFetchInFlight[semesterSessionId];
+    if (inFlight != null && !fromGet) {
       return await inFlight;
     }
     final request = _fetchStudentScheduleForSemesterInternal(
       semesterSessionId: semesterSessionId,
       fromGet: fromGet,
     );
-    _scheduleFetchInFlight[inFlightKey] = request;
+    _scheduleFetchInFlight[semesterSessionId] = request;
     try {
       return await request;
     } finally {
-      _scheduleFetchInFlight.remove(inFlightKey);
+      if (identical(_scheduleFetchInFlight[semesterSessionId], request)) {
+        _scheduleFetchInFlight.remove(semesterSessionId);
+      }
     }
   }
 

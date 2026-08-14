@@ -106,7 +106,37 @@ class ScraperDataService {
     return data.cast<String, dynamic>();
   }
 
+  final Map<String, Future<dynamic>> _inFlight = <String, Future<dynamic>>{};
+
   Future<dynamic> _fetchJson({
+    required String path,
+    required String cacheKey,
+    required Duration ttl,
+    required bool forceRefresh,
+  }) async {
+    final inFlight = _inFlight[cacheKey];
+    if (inFlight != null && !forceRefresh) {
+      return await inFlight;
+    }
+    final request = _fetchJsonInternal(
+      path: path,
+      cacheKey: cacheKey,
+      ttl: ttl,
+      forceRefresh: forceRefresh,
+    );
+    if (!forceRefresh) {
+      _inFlight[cacheKey] = request;
+    }
+    try {
+      return await request;
+    } finally {
+      if (identical(_inFlight[cacheKey], request)) {
+        _inFlight.remove(cacheKey);
+      }
+    }
+  }
+
+  Future<dynamic> _fetchJsonInternal({
     required String path,
     required String cacheKey,
     required Duration ttl,

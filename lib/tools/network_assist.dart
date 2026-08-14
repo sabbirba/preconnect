@@ -102,6 +102,8 @@ class AndroidNetworkAssist {
     }
   }
 
+  static String? _lastLoggedStatus;
+
   static Stream<AndroidNetworkStatus> get statusStream {
     if (!isSupported) {
       return const Stream<AndroidNetworkStatus>.empty();
@@ -113,11 +115,12 @@ class AndroidNetworkAssist {
           final status = AndroidNetworkStatus.fromMap(
             event as Map<dynamic, dynamic>,
           );
-          unawaited(
-            AppLog.write(
-              'Network Status: transport=${status.transport}, connected=${status.connected}, validated=${status.validated}, captive=${status.captive}, ssid=${status.ssid ?? "none"}',
-            ),
-          );
+          final logMessage =
+              'Network Status: transport=${status.transport}, connected=${status.connected}, validated=${status.validated}, captive=${status.captive}, ssid=${status.ssid ?? "none"}';
+          if (_lastLoggedStatus != logMessage) {
+            _lastLoggedStatus = logMessage;
+            unawaited(AppLog.write(logMessage));
+          }
           return status;
         });
   }
