@@ -23,23 +23,26 @@ concurrency:
   group: printer-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
-  build:
-    name: Build Windows Executable & Publish Package
+  build-windows:
+    name: Build Executable
     runs-on: windows-latest
     timeout-minutes: 15
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v7.0.1
 
-      - name: Set Up MSVC Developer Command Prompt
+      - name: Set Up MSVC
         uses: ilammy/msvc-dev-cmd@v1.13.0
 
-      - name: Compile Win32 Native Printer Executable (Strict Warnings-as-Errors)
+      - name: Compile Executable
         run: |
           cl /O2 /W4 /WX /guard:cf /Fe:printer.exe printer.c user32.lib ws2_32.lib winhttp.lib crypt32.lib winspool.lib rpcrt4.lib shell32.lib advapi32.lib
 
-      - name: Generate Installer Package with Secret Key
+      - name: Generate Package
         shell: powershell
         env:
           WORKER_KEY: ${{ secrets.WORKER_KEY }}
@@ -62,28 +65,44 @@ jobs:
           )
           Set-Content -Path "dist\install.bat" -Value $lines -Encoding ASCII
 
-      - name: Set Up Docker Buildx
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v7.0.1
+        with:
+          name: printer-windows
+          path: |
+            printer.exe
+            dist
+
+  publish-package:
+    name: Publish Container Package
+    needs: build-windows
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7.0.1
+
+      - name: Download Artifact
+        uses: actions/download-artifact@v7.0.1
+        with:
+          name: printer-windows
+
+      - name: Set Up Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Log in to GitHub Container Registry
+      - name: Log in to GHCR
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and Push to GitHub Packages
+      - name: Build and Push
         uses: docker/build-push-action@v5
         with:
           context: .
           file: Dockerfile.printer
-          push: true
+          push: ${{ github.event_name != 'pull_request' }}
           tags: |
             ghcr.io/${{ github.repository_owner }}/preconnect-printer:latest
             ghcr.io/${{ github.repository_owner }}/preconnect-printer:${{ github.sha }}
-
-      - name: Upload Build Artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: printer-windows
-          path: dist/*
