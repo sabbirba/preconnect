@@ -448,16 +448,21 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
 
   Future<bool> _checkWorkerStatus() async {
     try {
-      final url = Uri.parse('${ApiConfig.realtimeApiBase}/print/stats');
+      final timestamp = DateTime.now().millisecondsSinceEpoch;
+      final url = Uri.parse(
+        '${ApiConfig.realtimeApiBase}/print/stats?ts=$timestamp',
+      );
       final response = await HttpUtils.client
           .get(
             url,
             headers: const <String, String>{
               'Accept': 'application/json',
-              'Connection': 'keep-alive',
+              'Cache-Control': 'no-cache, no-store, must-revalidate',
+              'Pragma': 'no-cache',
+              'Expires': '0',
             },
           )
-          .timeout(const Duration(milliseconds: 1500));
+          .timeout(const Duration(milliseconds: 2000));
       if (response.statusCode == 200) {
         final Map<String, dynamic> data =
             jsonDecode(response.body) as Map<String, dynamic>;
@@ -477,20 +482,21 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
       _lastNetworkFingerprint = networkKey;
 
       final results = await Future.wait([
-        _WifiPrinterDiscovery.findLprPrinters(
-          port: _CampusPrinterConfig.current.port,
-          campusHosts: _CampusPrinterConfig.current.hosts,
+        _WifiPrinterDiscovery._probe(
+          _CampusPrinterConfig.current.hosts.first,
+          _CampusPrinterConfig.current.port,
+          const Duration(milliseconds: 1200),
         ),
         _checkWorkerStatus(),
       ]);
 
-      final printers = results[0] as List<_WifiPrinterCandidate>;
-      final workerOnline = results[1] as bool;
+      final directPrinterOnline = results[0];
+      final workerOnline = results[1];
 
       if (mounted) {
         setState(() {
-          if (printers.isNotEmpty) {
-            _printerHost = printers.first.address;
+          if (directPrinterOnline) {
+            _printerHost = _CampusPrinterConfig.current.hosts.first;
             _workerAvailable = false;
           } else {
             _printerHost = '';
@@ -2157,89 +2163,8 @@ class _LprAckReader {
   Future<void> cancel() => _iterator.cancel();
 }
 
-class _WifiPrinterCandidate {
-  const _WifiPrinterCandidate({
-    required this.address,
-    required this.interfaceName,
-  });
-
-  final String address;
-  final String interfaceName;
-}
-
 class _WifiPrinterDiscovery {
   _WifiPrinterDiscovery._();
-
-  static Future<List<_WifiPrinterCandidate>> findLprPrinters({
-    int port = 515,
-    Duration timeout = const Duration(seconds: 3),
-    int concurrency = 128,
-    int limit = 3,
-    int maxSubnets = 2,
-    List<String> preferredHosts = const <String>[],
-    List<String> campusHosts = const <String>['172.16.0.111'],
-  }) async {
-    final subnets = await _localIpv4Subnets();
-    final found = <_WifiPrinterCandidate>[];
-    final seen = <String>{};
-    final targets = <Map<String, dynamic>>[];
-
-    final priorityHosts = <String>[...preferredHosts, ...campusHosts];
-    for (final host in priorityHosts) {
-      final h = host.trim();
-      if (h.isNotEmpty && seen.add(h)) {
-        targets.add({
-          'address': h,
-          'type': campusHosts.contains(h) ? 'campus' : 'saved',
-          'timeout': timeout,
-        });
-      }
-    }
-
-    var subnetCount = 0;
-    for (final subnet in subnets) {
-      subnetCount++;
-      if (subnetCount > maxSubnets) break;
-      for (var host = 1; host <= 254; host++) {
-        if (host == subnet.hostOctet) continue;
-        final address = '${subnet.prefix}.$host';
-        if (seen.add(address)) {
-          targets.add({
-            'address': address,
-            'type': subnet.interfaceName,
-            'timeout': timeout,
-          });
-        }
-      }
-    }
-
-    final active = <Future<void>>{};
-    for (final target in targets) {
-      if (found.length >= limit) break;
-      final address = target['address'] as String;
-      final type = target['type'] as String;
-      final probeTimeout = target['timeout'] as Duration;
-
-      late Future<void> probe;
-      probe = _probe(address, port, probeTimeout)
-          .then((open) {
-            if (open && found.length < limit) {
-              found.add(
-                _WifiPrinterCandidate(address: address, interfaceName: type),
-              );
-            }
-          })
-          .whenComplete(() => active.remove(probe));
-
-      active.add(probe);
-      if (active.length >= concurrency) {
-        await Future.any(active);
-      }
-    }
-
-    await Future.wait(active);
-    return found;
-  }
 
   static Future<bool> _probe(String address, int port, Duration timeout) async {
     Socket? socket;
