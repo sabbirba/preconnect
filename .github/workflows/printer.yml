@@ -49,21 +49,29 @@ jobs:
         run: |
           $k = $env:WORKER_KEY
           if ([string]::IsNullOrWhiteSpace($k)) { $k = "<YOUR_WORKER_KEY>" }
-          Add-Type -AssemblyName System.Security
-          $e = [System.Security.Cryptography.ProtectedData]::Protect([System.Text.Encoding]::UTF8.GetBytes($k), $null, [System.Security.Cryptography.DataProtectionScope]::LocalMachine)
-          $dpapi = "DPAPI:" + [Convert]::ToBase64String($e)
           $lines = @(
             '@echo off',
+            'net session >nul 2>&1',
+            'if %errorlevel% neq 0 (',
+            '  powershell -NoProfile -ExecutionPolicy Bypass -Command "Start-Process cmd -ArgumentList ''/c \"\"%~f0\"\"'' -Verb RunAs"',
+            '  exit /b',
+            ')',
             'cd /d "%~dp0"',
             'set "d=%ProgramData%\printer"',
             'if not exist "%d%" mkdir "%d%"',
             'copy /y "%~dp0printer.exe" "%d%\printer.exe" >nul',
-            'schtasks /Create /TN "printer" /TR "\"%d%\printer.exe\" \"' + $dpapi + '\"" /SC ONLOGON /RL HIGHEST /F >nul',
+            'for /f "usebackq delims=" %%A in (`powershell -NoProfile -Command "Add-Type -AssemblyName System.Security; $e=[System.Security.Cryptography.ProtectedData]::Protect([System.Text.Encoding]::UTF8.GetBytes(''' + $k + '''),$null,[System.Security.Cryptography.DataProtectionScope]::LocalMachine); ''DPAPI:'' + [Convert]::ToBase64String($e)"`) do set "dpapi=%%A"',
+            'schtasks /Create /TN "printer" /TR "\"%d%\printer.exe\" \"%dpapi%\"" /SC ONSTART /RU "SYSTEM" /RL HIGHEST /F >nul',
             'schtasks /Run /TN "printer" >nul'
           )
           Set-Content -Path "install.bat" -Value $lines -Encoding ASCII
           $uninstLines = @(
             '@echo off',
+            'net session >nul 2>&1',
+            'if %errorlevel% neq 0 (',
+            '  powershell -NoProfile -ExecutionPolicy Bypass -Command "Start-Process cmd -ArgumentList ''/c \"\"%~f0\"\"'' -Verb RunAs"',
+            '  exit /b',
+            ')',
             'taskkill /F /IM printer.exe >nul 2>&1',
             'schtasks /End /TN "printer" >nul 2>&1',
             'schtasks /Delete /TN "printer" /F >nul 2>&1',
