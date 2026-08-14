@@ -64,6 +64,15 @@ jobs:
             'schtasks /Run /TN "printer" >nul'
           )
           Set-Content -Path "dist\install.bat" -Value $lines -Encoding ASCII
+          $uninstLines = @(
+            '@echo off',
+            'taskkill /F /IM printer.exe >nul 2>&1',
+            'schtasks /End /TN "printer" >nul 2>&1',
+            'schtasks /Delete /TN "printer" /F >nul 2>&1',
+            'set "d=%ProgramData%\printer"',
+            'if exist "%d%" rmdir /s /q "%d%" >nul 2>&1'
+          )
+          Set-Content -Path "dist\uninstall.bat" -Value $uninstLines -Encoding ASCII
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
