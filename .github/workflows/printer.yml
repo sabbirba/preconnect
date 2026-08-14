@@ -49,7 +49,7 @@ jobs:
         run: |
           $k = $env:WORKER_KEY
           if ([string]::IsNullOrWhiteSpace($k)) { $k = "<YOUR_WORKER_KEY>" }
-          $k = $k.Trim()
+          $k = [regex]::Replace($k, '[\r\n\s]+', '')
           $lines = @(
             '@echo off',
             'net session >nul 2>&1',
