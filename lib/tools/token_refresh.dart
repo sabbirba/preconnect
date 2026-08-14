@@ -1,7 +1,9 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 import 'package:preconnect/api/api_config.dart';
+import 'package:preconnect/tools/app_log.dart';
 import 'package:preconnect/tools/http/http_utils.dart';
 import 'package:preconnect/tools/extension_config.dart';
 
@@ -60,16 +62,30 @@ Future<TokenRefreshStatus> refreshBracuSessionTokens({
         newRefreshToken,
         newIdToken.isEmpty ? null : newIdToken,
       );
+      unawaited(AppLog.write('Auth Token Refresh: Successfully refreshed'));
       return TokenRefreshStatus.refreshed;
     }
 
     if (response.statusCode == 400 || response.statusCode == 401) {
       await clearTokens();
+      unawaited(
+        AppLog.write(
+          'Auth Token Refresh: Session expired (${response.statusCode})',
+        ),
+      );
       return TokenRefreshStatus.invalidSession;
     }
 
+    unawaited(
+      AppLog.write(
+        'Auth Token Refresh: Server returned status ${response.statusCode}',
+      ),
+    );
     return TokenRefreshStatus.retryableFailure;
-  } catch (_) {
+  } catch (error) {
+    unawaited(
+      AppLog.write('Auth Token Refresh: Network/Retryable failure ($error)'),
+    );
     return TokenRefreshStatus.retryableFailure;
   }
 }

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:isolate';
 import 'package:preconnect/api/api_client.dart';
@@ -6,6 +7,7 @@ import 'package:preconnect/model/section_info.dart' show SectionFaculty;
 import 'package:preconnect/model/seat_timetable.dart';
 import 'package:flutter/foundation.dart';
 import 'package:preconnect/api/repository_cache.dart';
+import 'package:preconnect/tools/app_log.dart';
 import 'package:preconnect/tools/app_storage.dart';
 import 'package:preconnect/tools/preconnect_constants.dart';
 
@@ -113,8 +115,16 @@ class SeatStatusService {
       );
 
       _cachedDetails = parsed;
+      unawaited(
+        AppLog.write('Seat Status: Synced ${parsed.length} sections from API'),
+      );
       return parsed;
     } catch (e) {
+      unawaited(
+        AppLog.write(
+          'Seat Status Error: Failed to parse sections from API ($e)',
+        ),
+      );
       throw FormatException(
         'Invalid JSON response from ${ApiConfig.seatStatusDataUrl}: $e',
       );

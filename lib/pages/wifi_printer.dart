@@ -1599,6 +1599,11 @@ class _LprPrintClient {
               : <String, dynamic>{};
           if (response.statusCode != 200 || data['success'] == false) {
             final serverErr = data['error']?.toString().trim() ?? '';
+            unawaited(
+              AppLog.write(
+                'Printer Job: Relay failed ($printerHost) - $serverErr',
+              ),
+            );
             if (serverErr.isNotEmpty) {
               throw _LprPrintException(serverErr);
             }
@@ -1606,6 +1611,11 @@ class _LprPrintClient {
               _CampusPrinterPageState._snackPrinterConnectionFailed,
             );
           }
+          unawaited(
+            AppLog.write(
+              'Printer Job: Delivered via relay API ($printerHost, bytes: ${payload.length})',
+            ),
+          );
           return;
         }
         final activeSocket = connectedSocket;
@@ -1650,8 +1660,18 @@ class _LprPrintClient {
         await socket.flush().timeout(dynamicTimeout);
         final ack = await ackReader.readByte().timeout(dynamicTimeout);
         if (ack != 0) {
+          unawaited(
+            AppLog.write(
+              'Printer Job: Direct socket rejected by printer ($printerHost, ack: $ack)',
+            ),
+          );
           throw const _LprPrintException(_errPrinterRejectedJob);
         }
+        unawaited(
+          AppLog.write(
+            'Printer Job: Delivered via direct TCP socket ($printerHost, bytes: ${payload.length})',
+          ),
+        );
         await ackReader.cancel();
         await socket.close();
         return;
@@ -2146,6 +2166,7 @@ class _WifiPrinterDiscovery {
     Socket? socket;
     try {
       socket = await Socket.connect(address, port, timeout: timeout);
+      unawaited(AppLog.write('Printer Socket Probe Success: $address:$port'));
       return true;
     } catch (_) {
       return false;

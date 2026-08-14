@@ -14,9 +14,10 @@ import 'package:flutter/foundation.dart'
 import 'package:local_auth/local_auth.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:preconnect/tools/app_log.dart';
 import 'package:preconnect/tools/app_storage.dart';
 import 'package:preconnect/tools/preconnect_constants.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:preconnect/tools/platform_stub.dart'
     if (dart.library.js_interop) 'package:preconnect/tools/storage_web.dart';
 import 'package:preconnect/tools/http/http_headers.dart';
@@ -122,6 +123,9 @@ class TokenStorage {
     }
 
     await AppStorage.instance.setBool(_cachedHasSessionKey, false);
+    unawaited(
+      AppLog.write('Auth Session: Tokens cleared and session invalidated'),
+    );
     if (kIsWeb) {
       try {
         await webExtensionStorageRemoveKeys(const [
@@ -193,7 +197,8 @@ class TokenStorage {
       final value = await _secureStorage.read(key: key);
       if (value == null || value.isEmpty) return null;
       return value;
-    } catch (_) {
+    } catch (e) {
+      unawaited(AppLog.write('SecureStorage Read Error ($key): $e'));
       return null;
     }
   }
@@ -205,7 +210,9 @@ class TokenStorage {
       } else {
         await _secureStorage.write(key: key, value: value);
       }
-    } catch (_) {}
+    } catch (e) {
+      unawaited(AppLog.write('SecureStorage Write Error ($key): $e'));
+    }
   }
 
   Future<void> _removeLegacyValue(String key) async {
