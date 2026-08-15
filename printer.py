@@ -334,7 +334,9 @@ def sse_loop() -> None:
                     if ev_data:
                         try:
                             obj = loads("\n".join(ev_data))
-                            if queue_job(obj) and ev_id:
+                            if not queue_job(obj):
+                                return
+                            if ev_id:
                                 last_id = ev_id
                         except Exception: pass
                     ev_id, ev_data, ev_bytes = "", [], 0
