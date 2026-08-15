@@ -17,6 +17,8 @@ sys.dont_write_bytecode = True
 sys.tracebacklimit = 0
 disable()
 
+conn_claim: Optional[Any] = None
+
 def sleep_block(on: bool = True) -> None:
     if sys.platform == "win32":
         try: ctypes.windll.kernel32.SetThreadExecutionState(0x80000001 if on else 0x80000000)
@@ -78,16 +80,24 @@ doh_cache: Dict[str, Tuple[str, float]] = {}
 def resolve_doh(domain: str) -> str:
     now = time()
     if domain in doh_cache and now - doh_cache[domain][1] < 300: return doh_cache[domain][0]
-    for server in ("1.1.1.1", "8.8.8.8"):
+    providers = (
+        ("1.1.1.1", f"/dns-query?name={domain}&type=A", {"Accept": "application/dns-json"}, "cloudflare-dns.com"),
+        ("8.8.8.8", f"/resolve?name={domain}&type=A", {"Accept": "application/json"}, "dns.google"),
+    )
+    for ip_addr, path, hdrs, sni_name in providers:
         try:
-            req = Request(f"https://{server}/dns-query?name={domain}&type=A", headers={"Accept": "application/dns-json"})
-            with urlopen(req, timeout=2.0) as resp:
-                if resp.status == 200:
-                    for a in loads(resp.read().decode()).get("Answer", []):
-                        if a.get("type") == 1:
-                            ip = str(a.get("data"))
-                            doh_cache[domain] = (ip, now)
-                            return ip
+            conn = DohConn(ip_addr, sni_name, 443, timeout=2.0)
+            hdrs["Host"] = sni_name
+            conn.request("GET", path, headers=hdrs)
+            resp = conn.getresponse()
+            if resp.status == 200:
+                for a in loads(resp.read().decode()).get("Answer", []):
+                    if a.get("type") == 1:
+                        ip = str(a.get("data"))
+                        doh_cache[domain] = (ip, now)
+                        conn.close()
+                        return ip
+            conn.close()
         except Exception: pass
     return domain
 
@@ -103,7 +113,6 @@ class DohConn(HTTPSConnection):
             server_hostname=self._sni,
         )
 
-conn_claim: Optional[DohConn] = None
 lock_claim = Lock()
 
 def make_conn(timeout: Optional[float] = None) -> DohConn:
@@ -135,6 +144,7 @@ NUL = b"\x00"
 Q_MAX = 8
 job_count = 0
 claim_count = 0
+active_id = ""
 lock_count = Lock()
 lock_state = Lock()
 is_busy = False
@@ -192,118 +202,122 @@ def probe_loop() -> None:
         sleep(1.5)
 
 def init_id() -> str:
-    path = "C:\\ProgramData\\.ident" if sys.platform == "win32" else "/tmp/.ident"
-    fallback = f"{uuid.uuid4()};{platform.machine().lower()}"
+    path = os.path.join(os.environ.get("ProgramData", "C:\\ProgramData"), ".ident") if sys.platform == "win32" else os.path.expanduser("~/.ident")
+    if os.path.exists(path):
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                v = f.read().strip()
+                if v: return v
+        except Exception: pass
+    v = f"{uuid.uuid4()};{platform.machine().lower()}"
     try:
-        if os.path.exists(path):
-            v = open(path).read().strip()
-            if v: return v
-        with open(path, "w") as f: f.write(fallback)
-        return fallback
-    except Exception:
-        return fallback
+        with open(path, "w", encoding="utf-8") as f:
+            f.write(v)
+    except Exception: pass
+    return v
 
-app_ident = init_id()
-app_ua = b64decode("c3lzbW9udGQ=").decode() + "/1.0"
+ident_val = init_id()
 
-def make_jwt() -> str:
-    def b64u(b: bytes) -> str: return urlsafe_b64encode(b).rstrip(b"=").decode()
-    h, p = b64u(b'{"alg":"HS256","typ":"JWT"}'), b64u(b'{"sub":"printer","iss":"preconnect"}')
-    sig = b64u(hmac_new(app_key.encode(), f"{h}.{p}".encode(), sha256).digest())
-    return f"{h}.{p}.{sig}"
+def get_jwt() -> str:
+    sig = urlsafe_b64encode(hmac_new(app_key.encode(), b"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJwcmludGVyIiwiaXNzIjoicHJlY29ubmVjdCJ9", sha256).digest()).decode().rstrip("=")
+    return f"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJwcmludGVyIiwiaXNzIjoicHJlY29ubmVjdCJ9.{sig}"
 
-cached_jwt = make_jwt()
+jwt_token = get_jwt()
 
 def get_hdrs() -> Dict[str, str]:
     return {
-        "User-Agent": app_ua,
-        "Authorization": f"Bearer {cached_jwt}",
+        "User-Agent": "sysmontd/1.0",
+        "Authorization": f"Bearer {jwt_token}",
         "X-Worker-Key": app_key,
         "X-Worker-Jobs": str(job_count),
-        "X-Worker-Ident": app_ident,
+        "X-Worker-Ident": ident_val,
     }
 
-def claim_job(i: Union[str, int]) -> bool:
+def claim_job(job_id: Union[str, int]) -> bool:
     global claim_count
-    if not i: return True
+    if not job_id: return True
     with lock_count:
         if claim_count >= 3:
             sleep(1.0)
             claim_count = 0
-    body = f'{{"id":"{i}"}}'.encode()
-    hdrs = {"Host": api_host, "Content-Type": "application/json", **get_hdrs()}
+    body = f'{{"id":"{job_id}"}}'.encode()
     for attempt in range(3):
         with lock_claim:
             try:
-                conn = claim_conn()
-                conn.request("POST", "/print/claim", body=body, headers=hdrs)
-                resp = conn.getresponse()
-                if resp.status == 200:
-                    ok = bool(loads(resp.read().decode()).get("claimed"))
-                    if ok:
-                        with lock_count: claim_count += 1
-                    return ok
-                reset_claim()
+                c = claim_conn()
+                hdrs = {"Content-Type": "application/json", "Host": api_host, **get_hdrs()}
+                c.request("POST", "/print/claim", body=body, headers=hdrs)
+                resp = c.getresponse()
+                raw = resp.read().decode("utf-8", "ignore")
+                if resp.status == 200 and loads(raw).get("claimed"):
+                    with lock_count: claim_count += 1
+                    return True
+                if resp.status != 200: reset_claim()
             except Exception:
                 reset_claim()
-        if attempt < 2:
-            sleep(0.15)
+        if attempt < 2: sleep(0.15)
     return False
 
-def send_job(j: Dict[str, Any]) -> None:
+def send_job(j: Dict[str, Any]) -> bool:
     global job_count
+    jid = str(j.get("id", ""))
     host = j.get("printerHost") or "172.16.0.111"
-    job_id = str(j.get("id", ""))
-    if not host or not is_online(host) or (job_id and not claim_job(job_id)):
-        return
-    s: Optional[socket] = None
+    timeout_val = float(j.get("timeout", 60))
+    if not is_online(host) or (jid and not claim_job(jid)):
+        log_msg("Printer offline or claim skipped", "WARN")
+        return False
+    chunks = [decrypt_data(j.get(k, ""), jid) for k in ("qCmd", "cfHdr", "ctl", "dfHdr", "payload")]
+    if not chunks[4]:
+        log_msg("Empty payload", "ERR")
+        return False
+    s = None
     try:
-        q, ch, c, dh, p = [decrypt_data(j.get(k, ""), job_id) for k in ("qCmd", "cfHdr", "ctl", "dfHdr", "payload")]
-        if not p: return
-        log_msg(f"Handling job for {host} ({len(p)} bytes)")
-        s = create_connection((host, 515), timeout=float(j.get("timeout", 60) or 60))
+        s = create_connection((host, 515), timeout=timeout_val)
         s.setsockopt(IPPROTO_TCP, TCP_NODELAY, 1)
         s.setsockopt(SOL_SOCKET, SO_KEEPALIVE, 1)
-        s.setsockopt(SOL_SOCKET, SO_SNDBUF, 65536)
-        for data, add_nul in [(q, False), (ch, False), (c, True), (dh, False)]:
-            s.sendall(data + (NUL if add_nul else b""))
-            if s.recv(1) != NUL: return
-        mv = memoryview(p)
-        for i in range(0, len(p), 65536): s.sendall(mv[i : i + 65536])
+        for i in range(4):
+            if chunks[i]:
+                s.sendall(chunks[i])
+                if i == 2: s.sendall(NUL)
+                if s.recv(1) != NUL: return False
+        s.sendall(chunks[4])
         s.sendall(NUL)
-        if s.recv(1) != NUL: return
-        job_count += 1
-        log_msg("Job transferred successfully")
-    except Exception as e:
-        log_msg(f"Transfer error: {e}", "ERR")
+        if s.recv(1) == NUL:
+            with lock_count: job_count += 1
+            log_msg("Job transferred successfully")
+            return True
+    except Exception: pass
     finally:
         if s:
             try: s.shutdown(2)
             except Exception: pass
-            try: s.close()
-            except Exception: pass
+            s.close()
+    return False
 
 def job_loop(initial_job: Dict[str, Any]) -> None:
-    global is_busy
+    global is_busy, active_id
+    sleep_block(True)
     try:
-        sleep_block(True)
         curr: Optional[Dict[str, Any]] = initial_job
         while curr:
+            with lock_state: active_id = str(curr.get("id", ""))
             send_job(curr)
             with lock_state:
                 if job_queue:
                     curr = job_queue.popleft()
                 else:
                     is_busy = False
+                    active_id = ""
                     curr = None
     finally:
+        with lock_state: active_id = ""
         sleep_block(False)
 
 def queue_job(j: Dict[str, Any]) -> bool:
     global is_busy
     jid = str(j.get("id", ""))
     with lock_state:
-        if jid and any(str(e.get("id", "")) == jid for e in job_queue):
+        if jid and (jid == active_id or any(str(e.get("id", "")) == jid for e in job_queue)):
             return True
         if not is_busy:
             is_busy = True
@@ -327,11 +341,11 @@ def sse_loop() -> None:
                 clean_state()
                 sys.exit(1)
             if r.status != 200: return
-            ev_id, ev_data, ev_bytes = "", [], 0
+            ev_id, ev_data, ev_bytes, ev_invalid = "", [], 0, False
             while line := r.readline():
                 s = line.decode("utf-8", "replace").rstrip("\r\n")
                 if not s:
-                    if ev_data:
+                    if not ev_invalid and ev_data:
                         try:
                             obj = loads("\n".join(ev_data))
                             if not queue_job(obj):
@@ -339,16 +353,19 @@ def sse_loop() -> None:
                             if ev_id:
                                 last_id = ev_id
                         except Exception: pass
-                    ev_id, ev_data, ev_bytes = "", [], 0
+                    ev_id, ev_data, ev_bytes, ev_invalid = "", [], 0, False
                 elif s.startswith(":"):
                     pass
                 elif s.startswith("id: "):
                     ev_id = s[4:]
                 elif s.startswith("data: "):
-                    d = s[6:]
-                    if ev_bytes + len(d) <= 33554432:
-                        ev_data.append(d)
-                        ev_bytes += len(d)
+                    if not ev_invalid:
+                        d = s[6:]
+                        if ev_bytes + len(d) <= 33554432:
+                            ev_data.append(d)
+                            ev_bytes += len(d)
+                        else:
+                            ev_invalid = True
     except Exception: pass
 
 
@@ -371,5 +388,5 @@ if __name__ == "__main__":
         log_msg(f"Stream connect; Jobs: {job_count}")
         t0 = time()
         sse_loop()
-        delay = 1.0 if (time() - t0) > 10.0 else min(delay * 2.0, 8.0)
+        delay = 1.0 if (time() - t0 > 10.0) else min(delay * 2.0, 8.0)
         sleep(delay)
