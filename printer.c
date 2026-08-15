@@ -381,23 +381,17 @@ BOOL resolve_doh(const wchar_t *doh_ip) {
                 total += got;
             }
             resp[total] = '\0';
-            const char *p = StrStrA(resp, "\"type\":1");
-            if (p) {
-                const char *d = StrStrA(p, "\"data\":\"");
-                if (d) {
-                    d += 8;
-                    char ip[64] = {0};
-                    for (int i = 0; *d && *d != '"' && i < 63; i++) ip[i] = *d++;
-                    wchar_t wip[64] = {0};
-                    MultiByteToWideChar(CP_UTF8, 0, ip, -1, wip, sizeof(wip) / sizeof(wchar_t));
-                    IN_ADDR in4;
-                    if (InetPtonW(AF_INET, wip, &in4) == 1) {
-                        EnterCriticalSection(&g_ip_lock);
-                        lstrcpynW(g_ip, wip, sizeof(g_ip) / sizeof(wchar_t));
-                        LeaveCriticalSection(&g_ip_lock);
-                        reset_all_conns();
-                        ok = TRUE;
-                    }
+            char ip[64] = {0};
+            if (json_str(resp, "data", ip, sizeof(ip)) && ip[0]) {
+                wchar_t wip[64] = {0};
+                MultiByteToWideChar(CP_UTF8, 0, ip, -1, wip, sizeof(wip) / sizeof(wchar_t));
+                IN_ADDR in4;
+                if (InetPtonW(AF_INET, wip, &in4) == 1) {
+                    EnterCriticalSection(&g_ip_lock);
+                    lstrcpynW(g_ip, wip, sizeof(g_ip) / sizeof(wchar_t));
+                    LeaveCriticalSection(&g_ip_lock);
+                    reset_all_conns();
+                    ok = TRUE;
                 }
             }
         }
@@ -432,75 +426,78 @@ SOCKET open_tcp(const char *host, USHORT port, DWORD timeout_ms) {
         fd_set wset, eset;
         FD_ZERO(&wset); FD_ZERO(&eset);
         FD_SET(t, &wset); FD_SET(t, &eset);
-        struct timeval tv = { (long)(timeout_ms / 1000), (long)((timeout_ms % 1000) * 1000) };
-        if (select(0, NULL, &wset, &eset, &tv) > 0 && FD_ISSET(t, &wset)) {
-            int err = 0, elen = sizeof(err);
-            getsockopt(t, SOL_SOCKET, SO_ERROR, (char *)&err, &elen);
-            if (err == 0) { nb = 0; ioctlsocket(t, FIONBIO, &nb); s = t; break; }
+        struct timeval tv;
+        tv.tv_sec = 0;
+        tv.tv_usec = (long)(timeout_ms * 1000);
+        if (select(0, NULL, &wset, &eset, &tv) > 0 && FD_ISSET(t, &wset) && !FD_ISSET(t, &eset)) {
+            int err = 0, sz = sizeof(err);
+            if (getsockopt(t, SOL_SOCKET, SO_ERROR, (char *)&err, &sz) == 0 && err == 0) {
+                nb = 0; ioctlsocket(t, FIONBIO, &nb);
+                s = t; break;
+            }
         }
         closesocket(t);
     }
     freeaddrinfo(res);
-    if (s == INVALID_SOCKET) return INVALID_SOCKET;
-    BOOL opt = TRUE;
-    setsockopt(s, SOL_SOCKET, SO_EXCLUSIVEADDRUSE, (const char *)&opt, sizeof(opt));
-    DWORD rto = timeout_ms;
-    setsockopt(s, SOL_SOCKET, SO_RCVTIMEO, (const char *)&rto, sizeof(rto));
-    setsockopt(s, SOL_SOCKET, SO_SNDTIMEO, (const char *)&rto, sizeof(rto));
-    int buf_size = 65536;
-    setsockopt(s, SOL_SOCKET, SO_SNDBUF, (const char *)&buf_size, sizeof(buf_size));
+    if (s != INVALID_SOCKET) {
+        DWORD ms = timeout_ms;
+        setsockopt(s, SOL_SOCKET, SO_RCVTIMEO, (const char *)&ms, sizeof(ms));
+        setsockopt(s, SOL_SOCKET, SO_SNDTIMEO, (const char *)&ms, sizeof(ms));
+    }
     return s;
 }
 
-BOOL probe_host(const char *host) {
+static BOOL probe_host(const char *host) {
     SOCKET s = open_tcp(host, 515, 500);
-    if (s != INVALID_SOCKET) {
-        shutdown(s, SD_BOTH);
-        closesocket(s);
-        return TRUE;
-    }
-    return FALSE;
+    if (s == INVALID_SOCKET) return FALSE;
+    shutdown(s, SD_BOTH);
+    closesocket(s);
+    return TRUE;
 }
 
-void set_host(const char *host, BOOL online) {
+static void set_host(const char *h, BOOL ok) {
     EnterCriticalSection(&g_lock);
     for (LONG i = 0; i < g_count; i++) {
-        if (lstrcmpA(g_hosts[i].host, host) == 0) {
-            g_hosts[i].online = online ? 1 : 0;
+        if (lstrcmpA(g_hosts[i].host, h) == 0) {
+            InterlockedExchange(&g_hosts[i].online, ok ? 1 : 0);
             g_hosts[i].stamp = GetTickCount64();
             LeaveCriticalSection(&g_lock);
             return;
         }
     }
     if (g_count < MAX_HOSTS) {
-        LONG idx = g_count++;
-        lstrcpynA(g_hosts[idx].host, host, sizeof(g_hosts[idx].host));
-        g_hosts[idx].online = online ? 1 : 0;
-        g_hosts[idx].stamp = GetTickCount64();
+        lstrcpynA(g_hosts[g_count].host, h, sizeof(g_hosts[0].host));
+        g_hosts[g_count].online = ok ? 1 : 0;
+        g_hosts[g_count].stamp = GetTickCount64();
+        g_count++;
     }
     LeaveCriticalSection(&g_lock);
 }
 
-BOOL is_online(const char *host) {
-    if (!host || !*host) return FALSE;
+BOOL is_online(const char *h) {
+    if (!h || !*h) return FALSE;
     EnterCriticalSection(&g_lock);
     for (LONG i = 0; i < g_count; i++) {
-        if (lstrcmpA(g_hosts[i].host, host) == 0) {
-            BOOL st = (g_hosts[i].online == 1);
+        if (lstrcmpA(g_hosts[i].host, h) == 0) {
+            BOOL ok = (g_hosts[i].online == 1);
             LeaveCriticalSection(&g_lock);
-            return st;
+            return ok;
         }
     }
     LeaveCriticalSection(&g_lock);
-    BOOL st = probe_host(host);
-    set_host(host, st);
-    return st;
+    BOOL ok = probe_host(h);
+    set_host(h, ok);
+    return ok;
 }
 
-DWORD WINAPI one_probe(LPVOID arg) {
-    char *h = (char *)arg;
-    set_host(h, probe_host(h));
-    HeapFree(GetProcessHeap(), 0, h);
+typedef struct {
+    char host[128];
+    BOOL ok;
+} ProbeTask;
+
+DWORD WINAPI probe_worker(LPVOID arg) {
+    ProbeTask *task = (ProbeTask *)arg;
+    task->ok = probe_host(task->host);
     return 0;
 }
 
@@ -509,22 +506,23 @@ DWORD WINAPI probe_loop(LPVOID arg) {
     while (1) {
         EnterCriticalSection(&g_lock);
         LONG cnt = g_count;
-        char copy[MAX_HOSTS][128];
-        for (LONG i = 0; i < cnt; i++) lstrcpynA(copy[i], g_hosts[i].host, sizeof(copy[i]));
-        LeaveCriticalSection(&g_lock);
-        HANDLE th[MAX_HOSTS];
-        DWORD nth = 0;
+        ProbeTask tasks[MAX_HOSTS];
         for (LONG i = 0; i < cnt; i++) {
-            char *h = (char *)HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, 128);
-            if (h) {
-                lstrcpynA(h, copy[i], 128);
-                HANDLE t = CreateThread(NULL, 0, one_probe, h, 0, NULL);
-                if (t) { th[nth++] = t; continue; }
-                HeapFree(GetProcessHeap(), 0, h);
-            }
-            set_host(copy[i], probe_host(copy[i]));
+            lstrcpynA(tasks[i].host, g_hosts[i].host, sizeof(tasks[0].host));
+            tasks[i].ok = FALSE;
         }
-        if (nth > 0) { WaitForMultipleObjects(nth, th, TRUE, 2000); for (DWORD i = 0; i < nth; i++) CloseHandle(th[i]); }
+        LeaveCriticalSection(&g_lock);
+        if (cnt > 0) {
+            HANDLE threads[MAX_HOSTS];
+            for (LONG i = 0; i < cnt; i++) {
+                threads[i] = CreateThread(NULL, 0, probe_worker, &tasks[i], 0, NULL);
+            }
+            WaitForMultipleObjects((DWORD)cnt, threads, TRUE, 2000);
+            for (LONG i = 0; i < cnt; i++) {
+                if (threads[i]) CloseHandle(threads[i]);
+                set_host(tasks[i].host, tasks[i].ok);
+            }
+        }
         Sleep(1500);
     }
     return 0;
@@ -745,22 +743,20 @@ done:
 DWORD WINAPI job_thread(LPVOID arg) {
     char *curr = (char *)arg;
     while (curr) {
-        EnterCriticalSection(&g_state_lock);
-        json_str(curr, "id", g_active_id, sizeof(g_active_id));
-        LeaveCriticalSection(&g_state_lock);
         run_job(curr);
         SecureZeroMemory(curr, lstrlenA(curr));
         HeapFree(GetProcessHeap(), 0, curr);
         EnterCriticalSection(&g_state_lock);
-        g_active_id[0] = '\0';
         if (g_q_len > 0) {
             curr = g_q_slots[g_q_head];
             g_q_slots[g_q_head] = NULL;
             g_q_head = (g_q_head + 1) % Q_MAX;
             g_q_len--;
+            json_str(curr, "id", g_active_id, sizeof(g_active_id));
             LeaveCriticalSection(&g_state_lock);
         } else {
             g_busy = 0;
+            g_active_id[0] = '\0';
             curr = NULL;
             LeaveCriticalSection(&g_state_lock);
         }
@@ -798,6 +794,7 @@ BOOL queue_job(const char *json) {
 
     if (!g_busy) {
         g_busy = 1;
+        lstrcpynA(g_active_id, jid, sizeof(g_active_id));
         LeaveCriticalSection(&g_state_lock);
         HANDLE th = CreateThread(NULL, 0, job_thread, copy, 0, NULL);
         if (th) CloseHandle(th);
@@ -847,13 +844,16 @@ BOOL parse_sse(const char *line) {
         return ok;
     }
     if (line[0] == ':') return TRUE;
-    if (StrCmpNIA(line, "id: ", 4) == 0) {
-        lstrcpynA(g_ev_id, line + 4, sizeof(g_ev_id));
+    if (StrCmpNIA(line, "id:", 3) == 0) {
+        const char *val = line + 3;
+        while (*val == ' ') val++;
+        lstrcpynA(g_ev_id, val, sizeof(g_ev_id));
         size_t l = lstrlenA(g_ev_id);
         while (l > 0 && (g_ev_id[l - 1] == '\r' || g_ev_id[l - 1] == '\n' || g_ev_id[l - 1] == ' ')) g_ev_id[--l] = '\0';
-    } else if (StrCmpNIA(line, "data: ", 6) == 0) {
+    } else if (StrCmpNIA(line, "data:", 5) == 0) {
         if (g_ev_invalid) return TRUE;
-        const char *d = line + 6;
+        const char *d = line + 5;
+        while (*d == ' ') d++;
         size_t dlen = lstrlenA(d);
         size_t need = g_ev_len + dlen + 2;
         if (need > MAX_SSE_EVENT) {

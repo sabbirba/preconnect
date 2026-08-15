@@ -148,7 +148,7 @@ active_id = ""
 lock_count = Lock()
 lock_state = Lock()
 is_busy = False
-job_queue: deque = deque()
+job_queue: deque[Dict[str, Any]] = deque()
 
 def decrypt_data(s: str, job_id: Union[str, int] = "") -> bytes:
     if not s: return b""
@@ -300,11 +300,11 @@ def job_loop(initial_job: Dict[str, Any]) -> None:
     try:
         curr: Optional[Dict[str, Any]] = initial_job
         while curr:
-            with lock_state: active_id = str(curr.get("id", ""))
             send_job(curr)
             with lock_state:
                 if job_queue:
                     curr = job_queue.popleft()
+                    active_id = str(curr.get("id", "")) if curr else ""
                 else:
                     is_busy = False
                     active_id = ""
@@ -314,13 +314,14 @@ def job_loop(initial_job: Dict[str, Any]) -> None:
         sleep_block(False)
 
 def queue_job(j: Dict[str, Any]) -> bool:
-    global is_busy
+    global is_busy, active_id
     jid = str(j.get("id", ""))
     with lock_state:
         if jid and (jid == active_id or any(str(e.get("id", "")) == jid for e in job_queue)):
             return True
         if not is_busy:
             is_busy = True
+            active_id = jid
             Thread(target=job_loop, args=(j,), daemon=True).start()
             return True
         elif len(job_queue) < Q_MAX:
@@ -342,7 +343,13 @@ def sse_loop() -> None:
                 sys.exit(1)
             if r.status != 200: return
             ev_id, ev_data, ev_bytes, ev_invalid = "", [], 0, False
-            while line := r.readline():
+            while True:
+                line = r.readline(16777216 + 1)
+                if not line: break
+                if len(line) > 16777216:
+                    ev_invalid = True
+                    r.readline()
+                    continue
                 s = line.decode("utf-8", "replace").rstrip("\r\n")
                 if not s:
                     if not ev_invalid and ev_data:
@@ -356,11 +363,11 @@ def sse_loop() -> None:
                     ev_id, ev_data, ev_bytes, ev_invalid = "", [], 0, False
                 elif s.startswith(":"):
                     pass
-                elif s.startswith("id: "):
-                    ev_id = s[4:]
-                elif s.startswith("data: "):
+                elif s.startswith("id:"):
+                    ev_id = s[3:].lstrip(" ")
+                elif s.startswith("data:"):
                     if not ev_invalid:
-                        d = s[6:]
+                        d = s[5:].lstrip(" ")
                         if ev_bytes + len(d) <= 33554432:
                             ev_data.append(d)
                             ev_bytes += len(d)
