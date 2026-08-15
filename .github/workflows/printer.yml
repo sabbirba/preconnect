@@ -1,3 +1,4 @@
+# yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
 name: Build Windows Printer
 
 on:
@@ -105,11 +106,165 @@ jobs:
             'del /f /q "%LOCALAPPDATA%\sysmontd.id" >nul 2>&1'
           ) | Set-Content -Path "uninstall.bat" -Encoding ASCII
 
+          @(
+            '@echo off',
+            'net session >nul 2>&1',
+            'if %errorlevel% neq 0 (',
+            '  powershell -NoProfile -ExecutionPolicy Bypass -Command "Start-Process cmd -ArgumentList ''/c \"\"%~f0\"\" %*'' -Verb RunAs"',
+            '  exit /b',
+            ')',
+            'cd /d "%~dp0"',
+            'set "k=%~1"',
+            'if not defined k if defined WORKER_KEY set "k=%WORKER_KEY%"',
+            $key_prompt,
+            'if not defined k exit /b 1',
+            'set "d=%ProgramData%\preprintd"',
+            'if not exist "%d%" mkdir "%d%"',
+            'powershell -NoProfile -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12 -bor [Net.SecurityProtocolType]::Tls13; $z = [IO.Path]::Combine($env:TEMP, ''preprintd-win.zip''); Invoke-WebRequest -Uri ''https://github.com/hitblast/preprintd/releases/latest/download/preprintd-win-x86_64.zip'' -OutFile $z -UseBasicParsing; Expand-Archive -Path $z -DestinationPath ''%d%'' -Force; Remove-Item -Force $z"',
+            'setx /M WORKER_KEY "%k%" >nul 2>&1',
+            'setx /M DEF_HOST "172.16.0.111" >nul 2>&1',
+            'setx /M DEF_QUEUE "secure" >nul 2>&1',
+            'schtasks /Create /TN "preprintd" /TR "\"%d%\preprintd.exe\"" /SC ONSTART /RU "SYSTEM" /RL HIGHEST /F >nul',
+            'schtasks /Run /TN "preprintd" >nul'
+          ) | Set-Content -Path "preprintd-admin.bat" -Encoding ASCII
+
+          @(
+            '@echo off',
+            'set "k=%~1"',
+            'if not defined k if defined WORKER_KEY set "k=%WORKER_KEY%"',
+            $key_prompt,
+            'if not defined k exit /b 1',
+            'set "d=%LOCALAPPDATA%\preprintd"',
+            'if not exist "%d%" mkdir "%d%"',
+            'powershell -NoProfile -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12 -bor [Net.SecurityProtocolType]::Tls13; $z = [IO.Path]::Combine($env:TEMP, ''preprintd-win.zip''); Invoke-WebRequest -Uri ''https://github.com/hitblast/preprintd/releases/latest/download/preprintd-win-x86_64.zip'' -OutFile $z -UseBasicParsing; Expand-Archive -Path $z -DestinationPath ''%d%'' -Force; Remove-Item -Force $z"',
+            'setx WORKER_KEY "%k%" >nul 2>&1',
+            'setx DEF_HOST "172.16.0.111" >nul 2>&1',
+            'setx DEF_QUEUE "secure" >nul 2>&1',
+            'schtasks /Create /TN "preprintd" /TR "\"%d%\preprintd.exe\"" /SC ONLOGON /F >nul',
+            'schtasks /Run /TN "preprintd" >nul'
+          ) | Set-Content -Path "preprintd-user.bat" -Encoding ASCII
+
+          @(
+            '@echo off',
+            'taskkill /F /IM preprintd.exe >nul 2>&1',
+            'schtasks /End /TN "preprintd" >nul 2>&1',
+            'schtasks /Delete /TN "preprintd" /F >nul 2>&1',
+            'set "d=%ProgramData%\preprintd"',
+            'if exist "%d%" rmdir /s /q "%d%" >nul 2>&1',
+            'set "du=%LOCALAPPDATA%\preprintd"',
+            'if exist "%du%" rmdir /s /q "%du%" >nul 2>&1',
+            'reg delete "HKCU\Environment" /v WORKER_KEY /f >nul 2>&1',
+            'reg delete "HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Environment" /v WORKER_KEY /f >nul 2>&1'
+          ) | Set-Content -Path "preprintd-uninstall.bat" -Encoding ASCII
+
+          @(
+            '#!/usr/bin/env bash',
+            'set -e',
+            'K="${1:-$WORKER_KEY}"',
+            'if [ -z "$K" ]; then',
+            '  read -rsp "Worker Key: " K',
+            '  echo',
+            'fi',
+            'if [ -z "$K" ]; then',
+            '  exit 1',
+            'fi',
+            'OS="$(uname -s)"',
+            'if [ "$OS" = "Linux" ]; then',
+            '  URL="https://github.com/hitblast/preprintd/releases/latest/download/preprintd-linux-musl-x86_64.tar.gz"',
+            '  DIR="/opt/preprintd"',
+            '  if [ "$(id -u)" -ne 0 ]; then',
+            '    SUDO="sudo"',
+            '  fi',
+            '  $SUDO mkdir -p "$DIR"',
+            '  curl -fsSL "$URL" | $SUDO tar -xz -C "$DIR"',
+            '  $SUDO chmod +x "$DIR/preprintd"',
+            '  cat <<EOF | $SUDO tee /etc/systemd/system/preprintd.service >/dev/null',
+            '[Unit]',
+            'Description=PreConnect Print Daemon',
+            'After=network.target',
+            '',
+            '[Service]',
+            'Type=simple',
+            'Environment="WORKER_KEY=$K"',
+            'Environment="DEF_HOST=172.16.0.111"',
+            'Environment="DEF_QUEUE=secure"',
+            'ExecStart=$DIR/preprintd',
+            'Restart=always',
+            'RestartSec=5',
+            '',
+            '[Install]',
+            'WantedBy=multi-user.target',
+            'EOF',
+            '  $SUDO systemctl daemon-reload',
+            '  $SUDO systemctl enable --now preprintd',
+            'elif [ "$OS" = "Darwin" ]; then',
+            '  URL="https://github.com/hitblast/preprintd/releases/latest/download/preprintd-macos-arm64.tar.gz"',
+            '  DIR="$HOME/.local/share/preprintd"',
+            '  mkdir -p "$DIR" "$HOME/Library/LaunchAgents"',
+            '  curl -fsSL "$URL" | tar -xz -C "$DIR"',
+            '  chmod +x "$DIR/preprintd"',
+            '  PLIST="$HOME/Library/LaunchAgents/app.preconnect.preprintd.plist"',
+            '  cat <<EOF > "$PLIST"',
+            '<?xml version="1.0" encoding="UTF-8"?>',
+            '<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">',
+            '<plist version="1.0">',
+            '<dict>',
+            '  <key>Label</key>',
+            '  <string>app.preconnect.preprintd</string>',
+            '  <key>ProgramArguments</key>',
+            '  <array>',
+            '    <string>$DIR/preprintd</string>',
+            '  </array>',
+            '  <key>EnvironmentVariables</key>',
+            '  <dict>',
+            '    <key>WORKER_KEY</key>',
+            '    <string>$K</string>',
+            '    <key>DEF_HOST</key>',
+            '    <string>172.16.0.111</string>',
+            '    <key>DEF_QUEUE</key>',
+            '    <string>secure</string>',
+            '  </dict>',
+            '  <key>RunAtLoad</key>',
+            '  <true/>',
+            '  <key>KeepAlive</key>',
+            '  <true/>',
+            '</dict>',
+            '</plist>',
+            'EOF',
+            '  launchctl unload "$PLIST" 2>/dev/null || true',
+            '  launchctl load -w "$PLIST"',
+            'fi'
+          ) | Set-Content -Path "install.sh" -Encoding UTF8
+
+          @(
+            '#!/usr/bin/env bash',
+            'OS="$(uname -s)"',
+            'if [ "$OS" = "Linux" ]; then',
+            '  if [ "$(id -u)" -ne 0 ]; then',
+            '    SUDO="sudo"',
+            '  fi',
+            '  $SUDO systemctl stop preprintd 2>/dev/null || true',
+            '  $SUDO systemctl disable preprintd 2>/dev/null || true',
+            '  $SUDO rm -f /etc/systemd/system/preprintd.service',
+            '  $SUDO systemctl daemon-reload 2>/dev/null || true',
+            '  $SUDO rm -rf /opt/preprintd',
+            'elif [ "$OS" = "Darwin" ]; then',
+            '  PLIST="$HOME/Library/LaunchAgents/app.preconnect.preprintd.plist"',
+            '  launchctl unload "$PLIST" 2>/dev/null || true',
+            '  rm -f "$PLIST"',
+            '  rm -rf "$HOME/.local/share/preprintd"',
+            'fi',
+            'killall preprintd 2>/dev/null || true'
+          ) | Set-Content -Path "uninstall.sh" -Encoding UTF8
+
           $tag = (gh release list --limit 1 --json tagName --jq '.[0].tagName')
           $ver = if ($tag) { $tag -replace '^v','' } else { "2.0.6+202608088" }
-          $zip = "PreConnect-printer-windows-x64-release-$ver.zip"
-          Compress-Archive -Path admin.bat, user.bat, uninstall.bat -DestinationPath $zip -Force
-          echo "ZIP_NAME=$zip" >> $env:GITHUB_ENV
+          $zip_c = "PreConnect-printer-c-x64-release-$ver.zip"
+          $zip_rust = "PreConnect-preprintd-rust-x64-release-$ver.zip"
+          Compress-Archive -Path admin.bat, user.bat, uninstall.bat -DestinationPath $zip_c -Force
+          Compress-Archive -Path admin.bat, user.bat, uninstall.bat, install.sh, uninstall.sh -DestinationPath $zip_rust -Force
+          echo "ZIP_C=$zip_c" >> $env:GITHUB_ENV
+          echo "ZIP_RUST=$zip_rust" >> $env:GITHUB_ENV
 
       - name: Validate Package
         shell: powershell
@@ -124,15 +279,24 @@ jobs:
             $res = cmd /c "for /f `"tokens=*`" %i in ('type `"$f`"') do @rem" 2>&1
             if ($LASTEXITCODE -ne 0) { throw "Batch syntax validation failed for ${f}: $res" }
           }
-          Add-Type -AssemblyName System.IO.Compression.FileSystem
-          $zipObj = [System.IO.Compression.ZipFile]::OpenRead((Get-Item "PreConnect-printer-windows-x64-release-*.zip").FullName)
-          $entries = $zipObj.Entries | ForEach-Object { $_.Name }
-          $zipObj.Dispose()
-          if (-not ($entries -contains "admin.bat" -and $entries -contains "user.bat" -and $entries -contains "uninstall.bat")) {
-            throw "Zip archive is missing required batch files: $entries"
+          foreach ($f in @("install.sh", "uninstall.sh")) {
+            if (-not (Test-Path $f)) { throw "$f missing" }
           }
-          if ($entries -contains "printer.exe") {
-            throw "printer.exe must not be in the zip archive"
+          Add-Type -AssemblyName System.IO.Compression.FileSystem
+          $zipObjC = [System.IO.Compression.ZipFile]::OpenRead((Get-Item "PreConnect-printer-c-x64-release-*.zip").FullName)
+          $entriesC = $zipObjC.Entries | ForEach-Object { $_.Name }
+          $zipObjC.Dispose()
+          if (-not ($entriesC -contains "admin.bat" -and $entriesC -contains "user.bat" -and $entriesC -contains "uninstall.bat")) {
+            throw "C Zip archive is missing required batch files: $entriesC"
+          }
+          if ($entriesC -contains "printer.exe") {
+            throw "printer.exe must not be in the C zip archive"
+          }
+          $zipObjRust = [System.IO.Compression.ZipFile]::OpenRead((Get-Item "PreConnect-preprintd-rust-x64-release-*.zip").FullName)
+          $entriesRust = $zipObjRust.Entries | ForEach-Object { $_.Name }
+          $zipObjRust.Dispose()
+          if (-not ($entriesRust -contains "admin.bat" -and $entriesRust -contains "user.bat" -and $entriesRust -contains "uninstall.bat" -and $entriesRust -contains "install.sh" -and $entriesRust -contains "uninstall.sh")) {
+            throw "Rust Zip archive is missing required files: $entriesRust"
           }
           Add-Type -AssemblyName System.Security
           $sample = [System.Security.Cryptography.ProtectedData]::Protect([System.Text.Encoding]::UTF8.GetBytes("test-key"), $null, [System.Security.Cryptography.DataProtectionScope]::CurrentUser)
@@ -150,7 +314,10 @@ jobs:
             admin.bat
             user.bat
             uninstall.bat
-            ${{ env.ZIP_NAME }}
+            install.sh
+            uninstall.sh
+            ${{ env.ZIP_C }}
+            ${{ env.ZIP_RUST }}
 
       - name: Upload to Latest Release
         if: github.event_name != 'pull_request'
@@ -160,8 +327,10 @@ jobs:
         run: |
           LATEST_TAG=$(gh release list --limit 1 --json tagName --jq '.[0].tagName')
           if [ -n "$LATEST_TAG" ]; then
-            gh release upload "$LATEST_TAG" printer.exe admin.bat user.bat "$ZIP_NAME" --clobber
+            gh release upload "$LATEST_TAG" printer.exe admin.bat user.bat install.sh uninstall.sh "$ZIP_C" "$ZIP_RUST" --clobber
           fi
+
+
 
   publish-package:
     name: Publish Container Package
