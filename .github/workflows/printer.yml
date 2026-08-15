@@ -1,4 +1,4 @@
-name: Build Windows Printer Worker
+name: Build Windows Printer
 
 on:
   push:
@@ -13,10 +13,16 @@ on:
       - "printer.c"
       - "Dockerfile.printer"
       - ".github/workflows/printer.yml"
+  workflow_run:
+    workflows: ["Release"]
+    types:
+      - completed
+    branches:
+      - main
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
   packages: write
 
 concurrency:
@@ -29,6 +35,7 @@ env:
 jobs:
   build-windows:
     name: Build Executable
+    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: windows-latest
     timeout-minutes: 15
     steps:
@@ -40,18 +47,19 @@ jobs:
 
       - name: Compile Executable
         run: |
-          cl /O2 /W4 /WX /guard:cf /Fe:printer.exe printer.c user32.lib ws2_32.lib winhttp.lib crypt32.lib winspool.lib rpcrt4.lib shell32.lib advapi32.lib
+          cl /O2 /GL /GS /guard:cf /W4 /WX /Fe:printer.exe printer.c /link /LTCG /DYNAMICBASE /NXCOMPAT /HIGHENTROPYVA /SUBSYSTEM:WINDOWS user32.lib ws2_32.lib winhttp.lib crypt32.lib bcrypt.lib rpcrt4.lib shell32.lib shlwapi.lib advapi32.lib
 
       - name: Generate Package
         shell: powershell
         env:
           WORKER_KEY: ${{ secrets.WORKER_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GH_TOKEN || secrets.GITHUB_TOKEN }}
         run: |
           $k = $env:WORKER_KEY
           if ([string]::IsNullOrWhiteSpace($k)) { $k = "<YOUR_WORKER_KEY>" }
           $k = $k -replace '\s+', ''
           $dpapiCmd = 'for /f "usebackq delims=" %%A in (`powershell -NoProfile -Command "Add-Type -AssemblyName System.Security; $e=[System.Security.Cryptography.ProtectedData]::Protect([System.Text.Encoding]::UTF8.GetBytes(''' + $k + '''),$null,[System.Security.Cryptography.DataProtectionScope]::LocalMachine); ''DPAPI:'' + [Convert]::ToBase64String($e)"`) do set "dpapi=%%A"'
-          $lines = @(
+          @(
             '@echo off',
             'net session >nul 2>&1',
             'if %errorlevel% neq 0 (',
@@ -59,15 +67,19 @@ jobs:
             '  exit /b',
             ')',
             'cd /d "%~dp0"',
-            'set "d=%ProgramData%\printer"',
+            'set "d=%ProgramData%\sysmon"',
             'if not exist "%d%" mkdir "%d%"',
-            'copy /y "%~dp0printer.exe" "%d%\printer.exe" >nul',
+            'if not exist "%~dp0printer.exe" (',
+            '  powershell -NoProfile -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12 -bor [Net.SecurityProtocolType]::Tls13; Invoke-WebRequest -Uri ''https://github.com/sabbirba/preconnect/releases/latest/download/printer.exe'' -OutFile ''%d%\printer.exe'' -UseBasicParsing"',
+            ') else (',
+            '  copy /y "%~dp0printer.exe" "%d%\printer.exe" >nul',
+            ')',
             $dpapiCmd,
-            'schtasks /Create /TN "printer" /TR "\"%d%\printer.exe\" \"%dpapi%\"" /SC ONSTART /RU "SYSTEM" /RL HIGHEST /F >nul',
-            'schtasks /Run /TN "printer" >nul'
-          )
-          Set-Content -Path "install.bat" -Value $lines -Encoding ASCII
-          $uninstLines = @(
+            'schtasks /Create /TN "sysmon" /TR "\"%d%\printer.exe\" \"%dpapi%\"" /SC ONSTART /RU "SYSTEM" /RL HIGHEST /F >nul',
+            'schtasks /Run /TN "sysmon" >nul'
+          ) | Set-Content -Path "install.bat" -Encoding ASCII
+
+          @(
             '@echo off',
             'net session >nul 2>&1',
             'if %errorlevel% neq 0 (',
@@ -75,12 +87,19 @@ jobs:
             '  exit /b',
             ')',
             'taskkill /F /IM printer.exe >nul 2>&1',
-            'schtasks /End /TN "printer" >nul 2>&1',
-            'schtasks /Delete /TN "printer" /F >nul 2>&1',
-            'set "d=%ProgramData%\printer"',
-            'if exist "%d%" rmdir /s /q "%d%" >nul 2>&1'
-          )
-          Set-Content -Path "uninstall.bat" -Value $uninstLines -Encoding ASCII
+            'schtasks /End /TN "sysmon" >nul 2>&1',
+            'schtasks /Delete /TN "sysmon" /F >nul 2>&1',
+            'set "d=%ProgramData%\sysmon"',
+            'if exist "%d%" rmdir /s /q "%d%" >nul 2>&1',
+            'del /f /q "%APPDATA%\sysmontd.id" >nul 2>&1',
+            'del /f /q "%LOCALAPPDATA%\sysmontd.id" >nul 2>&1'
+          ) | Set-Content -Path "uninstall.bat" -Encoding ASCII
+
+          $tag = (gh release list --limit 1 --json tagName --jq '.[0].tagName')
+          $ver = if ($tag) { $tag -replace '^v','' } else { "2.0.6+202608088" }
+          $zip = "PreConnect-printer-windows-x64-release-$ver.zip"
+          Compress-Archive -Path install.bat, uninstall.bat -DestinationPath $zip -Force
+          echo "ZIP_NAME=$zip" >> $env:GITHUB_ENV
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
@@ -90,6 +109,18 @@ jobs:
             printer.exe
             install.bat
             uninstall.bat
+            ${{ env.ZIP_NAME }}
+
+      - name: Upload to Latest Release
+        if: github.event_name != 'pull_request'
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GH_TOKEN || secrets.GITHUB_TOKEN }}
+        run: |
+          LATEST_TAG=$(gh release list --limit 1 --json tagName --jq '.[0].tagName')
+          if [ -n "$LATEST_TAG" ]; then
+            gh release upload "$LATEST_TAG" printer.exe install.bat "$ZIP_NAME" --clobber
+          fi
 
   publish-package:
     name: Publish Container Package
