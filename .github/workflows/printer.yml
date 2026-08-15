@@ -122,7 +122,7 @@ jobs:
             $c = Get-Content $f -Raw
             if ([string]::IsNullOrWhiteSpace($c)) { throw "$f is empty" }
             $res = cmd /c "for /f `"tokens=*`" %i in ('type `"$f`"') do @rem" 2>&1
-            if ($LASTEXITCODE -ne 0) { throw "Batch syntax validation failed for $f: $res" }
+            if ($LASTEXITCODE -ne 0) { throw "Batch syntax validation failed for ${f}: $res" }
           }
           Add-Type -AssemblyName System.IO.Compression.FileSystem
           $zipObj = [System.IO.Compression.ZipFile]::OpenRead((Get-Item "PreConnect-printer-windows-x64-release-*.zip").FullName)
