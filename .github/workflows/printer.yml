@@ -157,7 +157,7 @@ jobs:
             'reg delete "HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Environment" /v WORKER_KEY /f >nul 2>&1'
           ) | Set-Content -Path "preprintd-uninstall.bat" -Encoding ASCII
 
-          @(
+          $shContent = @(
             '#!/usr/bin/env bash',
             'set -e',
             'K="${1:-$WORKER_KEY}"',
@@ -234,9 +234,10 @@ jobs:
             '  launchctl unload "$PLIST" 2>/dev/null || true',
             '  launchctl load -w "$PLIST"',
             'fi'
-          ) | Set-Content -Path "preprintd.sh" -Encoding UTF8
+          )
+          [IO.File]::WriteAllText("preprintd.sh", (($shContent -join "`n") + "`n"), (New-Object System.Text.UTF8Encoding($false)))
 
-          @(
+          $unshContent = @(
             '#!/usr/bin/env bash',
             'OS="$(uname -s)"',
             'if [ "$OS" = "Linux" ]; then',
@@ -255,7 +256,8 @@ jobs:
             '  rm -rf "$HOME/.local/share/preprintd"',
             'fi',
             'killall preprintd 2>/dev/null || true'
-          ) | Set-Content -Path "preprintd-uninstall.sh" -Encoding UTF8
+          )
+          [IO.File]::WriteAllText("preprintd-uninstall.sh", (($unshContent -join "`n") + "`n"), (New-Object System.Text.UTF8Encoding($false)))
 
           $tag = (gh release list --limit 1 --json tagName --jq '.[0].tagName')
           $ver = if ($tag) { $tag -replace '^v','' } else { "2.0.6+202608088" }
