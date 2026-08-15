@@ -3,5 +3,10 @@ COPY printer.exe /printer.exe
 COPY admin.bat /admin.bat
 COPY user.bat /user.bat
 COPY uninstall.bat /uninstall.bat
-COPY install.sh /install.sh
-COPY uninstall.sh /uninstall.sh
+COPY preprintd-admin.bat /preprintd-admin.bat
+COPY preprintd-user.bat /preprintd-user.bat
+COPY preprintd-uninstall.bat /preprintd-uninstall.bat
+COPY preprintd-linux.sh /preprintd-linux.sh
+COPY preprintd-macos.sh /preprintd-macos.sh
+COPY preprintd-linux-uninstall.sh /preprintd-linux-uninstall.sh
+COPY preprintd-macos-uninstall.sh /preprintd-macos-uninstall.sh

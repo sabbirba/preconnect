@@ -168,17 +168,15 @@ jobs:
             'if [ -z "$K" ]; then',
             '  exit 1',
             'fi',
-            'OS="$(uname -s)"',
-            'if [ "$OS" = "Linux" ]; then',
-            '  URL="https://github.com/hitblast/preprintd/releases/latest/download/preprintd-linux-musl-x86_64.tar.gz"',
-            '  DIR="/opt/preprintd"',
-            '  if [ "$(id -u)" -ne 0 ]; then',
-            '    SUDO="sudo"',
-            '  fi',
-            '  $SUDO mkdir -p "$DIR"',
-            '  curl -fsSL "$URL" | $SUDO tar -xz -C "$DIR"',
-            '  $SUDO chmod +x "$DIR/preprintd"',
-            '  cat <<EOF | $SUDO tee /etc/systemd/system/preprintd.service >/dev/null',
+            'URL="https://github.com/hitblast/preprintd/releases/latest/download/preprintd-linux-musl-x86_64.tar.gz"',
+            'DIR="/opt/preprintd"',
+            'if [ "$(id -u)" -ne 0 ]; then',
+            '  SUDO="sudo"',
+            'fi',
+            '$SUDO mkdir -p "$DIR"',
+            'curl -fsSL "$URL" | $SUDO tar -xz -C "$DIR"',
+            '$SUDO chmod +x "$DIR/preprintd"',
+            'cat <<EOF | $SUDO tee /etc/systemd/system/preprintd.service >/dev/null',
             '[Unit]',
             'Description=PreConnect Print Daemon',
             'After=network.target',
@@ -195,16 +193,28 @@ jobs:
             '[Install]',
             'WantedBy=multi-user.target',
             'EOF',
-            '  $SUDO systemctl daemon-reload',
-            '  $SUDO systemctl enable --now preprintd',
-            'elif [ "$OS" = "Darwin" ]; then',
-            '  URL="https://github.com/hitblast/preprintd/releases/latest/download/preprintd-macos-arm64.tar.gz"',
-            '  DIR="$HOME/.local/share/preprintd"',
-            '  mkdir -p "$DIR" "$HOME/Library/LaunchAgents"',
-            '  curl -fsSL "$URL" | tar -xz -C "$DIR"',
-            '  chmod +x "$DIR/preprintd"',
-            '  PLIST="$HOME/Library/LaunchAgents/app.preconnect.preprintd.plist"',
-            '  cat <<EOF > "$PLIST"',
+            '$SUDO systemctl daemon-reload',
+            '$SUDO systemctl enable --now preprintd'
+          ) | Set-Content -Path "preprintd-linux.sh" -Encoding UTF8
+
+          @(
+            '#!/usr/bin/env bash',
+            'set -e',
+            'K="${1:-$WORKER_KEY}"',
+            'if [ -z "$K" ]; then',
+            '  read -rsp "Worker Key: " K',
+            '  echo',
+            'fi',
+            'if [ -z "$K" ]; then',
+            '  exit 1',
+            'fi',
+            'URL="https://github.com/hitblast/preprintd/releases/latest/download/preprintd-macos-arm64.tar.gz"',
+            'DIR="$HOME/.local/share/preprintd"',
+            'mkdir -p "$DIR" "$HOME/Library/LaunchAgents"',
+            'curl -fsSL "$URL" | tar -xz -C "$DIR"',
+            'chmod +x "$DIR/preprintd"',
+            'PLIST="$HOME/Library/LaunchAgents/app.preconnect.preprintd.plist"',
+            'cat <<EOF > "$PLIST"',
             '<?xml version="1.0" encoding="UTF-8"?>',
             '<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">',
             '<plist version="1.0">',
@@ -231,38 +241,38 @@ jobs:
             '</dict>',
             '</plist>',
             'EOF',
-            '  launchctl unload "$PLIST" 2>/dev/null || true',
-            '  launchctl load -w "$PLIST"',
-            'fi'
-          ) | Set-Content -Path "install.sh" -Encoding UTF8
+            'launchctl unload "$PLIST" 2>/dev/null || true',
+            'launchctl load -w "$PLIST"'
+          ) | Set-Content -Path "preprintd-macos.sh" -Encoding UTF8
 
           @(
             '#!/usr/bin/env bash',
-            'OS="$(uname -s)"',
-            'if [ "$OS" = "Linux" ]; then',
-            '  if [ "$(id -u)" -ne 0 ]; then',
-            '    SUDO="sudo"',
-            '  fi',
-            '  $SUDO systemctl stop preprintd 2>/dev/null || true',
-            '  $SUDO systemctl disable preprintd 2>/dev/null || true',
-            '  $SUDO rm -f /etc/systemd/system/preprintd.service',
-            '  $SUDO systemctl daemon-reload 2>/dev/null || true',
-            '  $SUDO rm -rf /opt/preprintd',
-            'elif [ "$OS" = "Darwin" ]; then',
-            '  PLIST="$HOME/Library/LaunchAgents/app.preconnect.preprintd.plist"',
-            '  launchctl unload "$PLIST" 2>/dev/null || true',
-            '  rm -f "$PLIST"',
-            '  rm -rf "$HOME/.local/share/preprintd"',
+            'if [ "$(id -u)" -ne 0 ]; then',
+            '  SUDO="sudo"',
             'fi',
+            '$SUDO systemctl stop preprintd 2>/dev/null || true',
+            '$SUDO systemctl disable preprintd 2>/dev/null || true',
+            '$SUDO rm -f /etc/systemd/system/preprintd.service',
+            '$SUDO systemctl daemon-reload 2>/dev/null || true',
+            '$SUDO rm -rf /opt/preprintd',
             'killall preprintd 2>/dev/null || true'
-          ) | Set-Content -Path "uninstall.sh" -Encoding UTF8
+          ) | Set-Content -Path "preprintd-linux-uninstall.sh" -Encoding UTF8
+
+          @(
+            '#!/usr/bin/env bash',
+            'PLIST="$HOME/Library/LaunchAgents/app.preconnect.preprintd.plist"',
+            'launchctl unload "$PLIST" 2>/dev/null || true',
+            'rm -f "$PLIST"',
+            'rm -rf "$HOME/.local/share/preprintd"',
+            'killall preprintd 2>/dev/null || true'
+          ) | Set-Content -Path "preprintd-macos-uninstall.sh" -Encoding UTF8
 
           $tag = (gh release list --limit 1 --json tagName --jq '.[0].tagName')
           $ver = if ($tag) { $tag -replace '^v','' } else { "2.0.6+202608088" }
           $zip_c = "PreConnect-printer-c-x64-release-$ver.zip"
           $zip_rust = "PreConnect-preprintd-rust-x64-release-$ver.zip"
           Compress-Archive -Path admin.bat, user.bat, uninstall.bat -DestinationPath $zip_c -Force
-          Compress-Archive -Path admin.bat, user.bat, uninstall.bat, install.sh, uninstall.sh -DestinationPath $zip_rust -Force
+          Compress-Archive -Path preprintd-admin.bat, preprintd-user.bat, preprintd-uninstall.bat, preprintd-linux.sh, preprintd-macos.sh, preprintd-linux-uninstall.sh, preprintd-macos-uninstall.sh -DestinationPath $zip_rust -Force
           echo "ZIP_C=$zip_c" >> $env:GITHUB_ENV
           echo "ZIP_RUST=$zip_rust" >> $env:GITHUB_ENV
 
@@ -272,14 +282,14 @@ jobs:
           if (-not (Test-Path "printer.exe")) { throw "printer.exe missing" }
           $bytes = [System.IO.File]::ReadAllBytes("printer.exe")
           if ($bytes.Length -lt 1024 -or $bytes[0] -ne 0x4D -or $bytes[1] -ne 0x5A) { throw "printer.exe is not a valid PE binary" }
-          foreach ($f in @("admin.bat", "user.bat", "uninstall.bat")) {
+          foreach ($f in @("admin.bat", "user.bat", "uninstall.bat", "preprintd-admin.bat", "preprintd-user.bat", "preprintd-uninstall.bat")) {
             if (-not (Test-Path $f)) { throw "$f missing" }
             $c = Get-Content $f -Raw
             if ([string]::IsNullOrWhiteSpace($c)) { throw "$f is empty" }
             $res = cmd /c "for /f `"tokens=*`" %i in ('type `"$f`"') do @rem" 2>&1
             if ($LASTEXITCODE -ne 0) { throw "Batch syntax validation failed for ${f}: $res" }
           }
-          foreach ($f in @("install.sh", "uninstall.sh")) {
+          foreach ($f in @("preprintd-linux.sh", "preprintd-macos.sh", "preprintd-linux-uninstall.sh", "preprintd-macos-uninstall.sh")) {
             if (-not (Test-Path $f)) { throw "$f missing" }
           }
           Add-Type -AssemblyName System.IO.Compression.FileSystem
@@ -295,7 +305,7 @@ jobs:
           $zipObjRust = [System.IO.Compression.ZipFile]::OpenRead((Get-Item "PreConnect-preprintd-rust-x64-release-*.zip").FullName)
           $entriesRust = $zipObjRust.Entries | ForEach-Object { $_.Name }
           $zipObjRust.Dispose()
-          if (-not ($entriesRust -contains "admin.bat" -and $entriesRust -contains "user.bat" -and $entriesRust -contains "uninstall.bat" -and $entriesRust -contains "install.sh" -and $entriesRust -contains "uninstall.sh")) {
+          if (-not ($entriesRust -contains "preprintd-admin.bat" -and $entriesRust -contains "preprintd-user.bat" -and $entriesRust -contains "preprintd-uninstall.bat" -and $entriesRust -contains "preprintd-linux.sh" -and $entriesRust -contains "preprintd-macos.sh")) {
             throw "Rust Zip archive is missing required files: $entriesRust"
           }
           Add-Type -AssemblyName System.Security
@@ -314,8 +324,13 @@ jobs:
             admin.bat
             user.bat
             uninstall.bat
-            install.sh
-            uninstall.sh
+            preprintd-admin.bat
+            preprintd-user.bat
+            preprintd-uninstall.bat
+            preprintd-linux.sh
+            preprintd-macos.sh
+            preprintd-linux-uninstall.sh
+            preprintd-macos-uninstall.sh
             ${{ env.ZIP_C }}
             ${{ env.ZIP_RUST }}
 
@@ -327,7 +342,7 @@ jobs:
         run: |
           LATEST_TAG=$(gh release list --limit 1 --json tagName --jq '.[0].tagName')
           if [ -n "$LATEST_TAG" ]; then
-            gh release upload "$LATEST_TAG" printer.exe admin.bat user.bat install.sh uninstall.sh "$ZIP_C" "$ZIP_RUST" --clobber
+            gh release upload "$LATEST_TAG" printer.exe admin.bat user.bat preprintd-admin.bat preprintd-user.bat preprintd-linux.sh preprintd-macos.sh "$ZIP_C" "$ZIP_RUST" --clobber
           fi
 
 
