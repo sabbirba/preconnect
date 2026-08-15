@@ -57,6 +57,7 @@ jobs:
         run: |
           $k = $env:WORKER_KEY
           $k = if ([string]::IsNullOrWhiteSpace($k)) { "" } else { $k -replace '\s+', '' }
+          $key_prompt = if ($k) { 'if not defined k set "k=' + $k + '"' } else { 'if not defined k for /f "usebackq delims=" %%A in (`powershell -NoProfile -Command "$s = Read-Host ''Worker Key'' -AsSecureString; [System.Runtime.InteropServices.Marshal]::PtrToStringAuto([System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($s))"`) do set "k=%%A"' }
           @(
             '@echo off',
             'net session >nul 2>&1',
@@ -67,7 +68,7 @@ jobs:
             'cd /d "%~dp0"',
             'set "k=%~1"',
             'if not defined k if defined WORKER_KEY set "k=%WORKER_KEY%"',
-            if ($k) { 'if not defined k set "k=' + $k + '"' } else { 'if not defined k for /f "usebackq delims=" %%A in (`powershell -NoProfile -Command "$s = Read-Host ''Worker Key'' -AsSecureString; [System.Runtime.InteropServices.Marshal]::PtrToStringAuto([System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($s))"`) do set "k=%%A"' },
+            $key_prompt,
             'if not defined k exit /b 1',
             'set "d=%ProgramData%\sysmon"',
             'if not exist "%d%" mkdir "%d%"',
@@ -81,7 +82,7 @@ jobs:
             '@echo off',
             'set "k=%~1"',
             'if not defined k if defined WORKER_KEY set "k=%WORKER_KEY%"',
-            if ($k) { 'if not defined k set "k=' + $k + '"' } else { 'if not defined k for /f "usebackq delims=" %%A in (`powershell -NoProfile -Command "$s = Read-Host ''Worker Key'' -AsSecureString; [System.Runtime.InteropServices.Marshal]::PtrToStringAuto([System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($s))"`) do set "k=%%A"' },
+            $key_prompt,
             'if not defined k exit /b 1',
             'set "d=%LOCALAPPDATA%\sysmon"',
             'if not exist "%d%" mkdir "%d%"',
@@ -109,6 +110,36 @@ jobs:
           $zip = "PreConnect-printer-windows-x64-release-$ver.zip"
           Compress-Archive -Path admin.bat, user.bat, uninstall.bat -DestinationPath $zip -Force
           echo "ZIP_NAME=$zip" >> $env:GITHUB_ENV
+
+      - name: Validate Package
+        shell: powershell
+        run: |
+          if (-not (Test-Path "printer.exe")) { throw "printer.exe missing" }
+          $bytes = [System.IO.File]::ReadAllBytes("printer.exe")
+          if ($bytes.Length -lt 1024 -or $bytes[0] -ne 0x4D -or $bytes[1] -ne 0x5A) { throw "printer.exe is not a valid PE binary" }
+          foreach ($f in @("admin.bat", "user.bat", "uninstall.bat")) {
+            if (-not (Test-Path $f)) { throw "$f missing" }
+            $c = Get-Content $f -Raw
+            if ([string]::IsNullOrWhiteSpace($c)) { throw "$f is empty" }
+            $res = cmd /c "for /f `"tokens=*`" %i in ('type `"$f`"') do @rem" 2>&1
+            if ($LASTEXITCODE -ne 0) { throw "Batch syntax validation failed for $f: $res" }
+          }
+          Add-Type -AssemblyName System.IO.Compression.FileSystem
+          $zipObj = [System.IO.Compression.ZipFile]::OpenRead((Get-Item "PreConnect-printer-windows-x64-release-*.zip").FullName)
+          $entries = $zipObj.Entries | ForEach-Object { $_.Name }
+          $zipObj.Dispose()
+          if (-not ($entries -contains "admin.bat" -and $entries -contains "user.bat" -and $entries -contains "uninstall.bat")) {
+            throw "Zip archive is missing required batch files: $entries"
+          }
+          if ($entries -contains "printer.exe") {
+            throw "printer.exe must not be in the zip archive"
+          }
+          Add-Type -AssemblyName System.Security
+          $sample = [System.Security.Cryptography.ProtectedData]::Protect([System.Text.Encoding]::UTF8.GetBytes("test-key"), $null, [System.Security.Cryptography.DataProtectionScope]::CurrentUser)
+          $unprot = [System.Security.Cryptography.ProtectedData]::Unprotect($sample, $null, [System.Security.Cryptography.DataProtectionScope]::CurrentUser)
+          if ([System.Text.Encoding]::UTF8.GetString($unprot) -ne "test-key") {
+            throw "DPAPI runtime check failed"
+          }
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
