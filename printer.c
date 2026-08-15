@@ -40,6 +40,7 @@
 #define DEF_HOST "172.16.0.111"
 #define MAX_HOSTS 16
 #define MAX_SSE_LINE (16 * 1024 * 1024)
+#define MAX_SSE_EVENT (32 * 1024 * 1024)
 #define Q_MAX 8
 
 typedef struct {
@@ -103,8 +104,12 @@ static void reset_conn(HINTERNET *conn) {
 
 static void reset_all_conns() {
     reset_conn(&g_sse_conn);
+    EnterCriticalSection(&g_claim_lock);
     reset_conn(&g_claim_conn);
+    LeaveCriticalSection(&g_claim_lock);
+    EnterCriticalSection(&g_ping_lock);
     reset_conn(&g_ping_conn);
+    LeaveCriticalSection(&g_ping_lock);
 }
 
 static void shutdown_net() {
@@ -508,6 +513,7 @@ static BYTE *decrypt_data(const char *b64, size_t b64_len, const char *job_id, D
     char seed_buf[1024];
     int seed_len = wnsprintfA(seed_buf, sizeof(seed_buf), "%s", g_key);
     if (seed_len <= 0 || (size_t)seed_len + 16 + id_len >= sizeof(seed_buf)) {
+        SecureZeroMemory(seed_buf, sizeof(seed_buf));
         HeapFree(GetProcessHeap(), 0, raw);
         return NULL;
     }
@@ -517,9 +523,11 @@ static BYTE *decrypt_data(const char *b64, size_t b64_len, const char *job_id, D
 
     BYTE p_hash[32];
     BCryptHash(BCRYPT_SHA256_ALG_HANDLE, NULL, 0, (PUCHAR)seed_buf, (ULONG)seed_len, p_hash, 32);
+    SecureZeroMemory(seed_buf, sizeof(seed_buf));
 
     BYTE *dec = (BYTE *)HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, (size_t)enc_len + 1);
     if (!dec) {
+        SecureZeroMemory(p_hash, sizeof(p_hash));
         HeapFree(GetProcessHeap(), 0, raw);
         return NULL;
     }
@@ -534,12 +542,16 @@ static BYTE *decrypt_data(const char *b64, size_t b64_len, const char *job_id, D
         ks_in[35] = (BYTE)(idx & 0xFF);
         BCryptHash(BCRYPT_SHA256_ALG_HANDLE, NULL, 0, ks_in, 36, ks, 32);
         for (DWORD j = 0; j < chunk; j++) dec[i + j] = (BYTE)(enc[i + j] ^ ks[j]);
+        SecureZeroMemory(ks_in, sizeof(ks_in));
+        SecureZeroMemory(ks, sizeof(ks));
     }
     dec[enc_len] = '\0';
+    SecureZeroMemory(p_hash, sizeof(p_hash));
     HeapFree(GetProcessHeap(), 0, raw);
     *out_len = enc_len;
     return dec;
 }
+
 
 static BOOL send_all(SOCKET s, const char *buf, size_t len) {
     size_t done = 0;
@@ -588,8 +600,13 @@ static BOOL http_post(HINTERNET *conn, CRITICAL_SECTION *lock, const wchar_t *pa
     if (WinHttpSendRequest(req, WINHTTP_NO_ADDITIONAL_HEADERS, 0, (LPVOID)body, b_len, b_len, 0) && WinHttpReceiveResponse(req, NULL)) {
         WinHttpQueryHeaders(req, WINHTTP_QUERY_STATUS_CODE | WINHTTP_QUERY_FLAG_NUMBER, WINHTTP_HEADER_NAME_BY_INDEX, &code, &sz, WINHTTP_NO_HEADER_INDEX);
         if (resp && resp_max > 0) {
-            DWORD done = 0;
-            if (WinHttpReadData(req, resp, resp_max - 1, &done)) resp[done] = '\0';
+            DWORD total = 0;
+            while (total + 1 < resp_max) {
+                DWORD got = 0;
+                if (!WinHttpReadData(req, resp + total, resp_max - total - 1, &got) || got == 0) break;
+                total += got;
+            }
+            resp[total] = '\0';
         }
         ok = (code == 200);
     }
@@ -709,10 +726,10 @@ DWORD WINAPI job_thread(LPVOID arg) {
     return 0;
 }
 
-void queue_job(const char *json) {
+BOOL queue_job(const char *json) {
     size_t len = lstrlenA(json);
     char *copy = (char *)HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, len + 1);
-    if (!copy) return;
+    if (!copy) return FALSE;
     RtlCopyMemory(copy, json, len + 1);
     char jid[128] = {0};
     json_str(copy, "id", jid, sizeof(jid));
@@ -725,7 +742,7 @@ void queue_job(const char *json) {
             if (lstrcmpA(jid, eid) == 0) {
                 LeaveCriticalSection(&g_state_lock);
                 HeapFree(GetProcessHeap(), 0, copy);
-                return;
+                return TRUE;
             }
         }
     }
@@ -735,14 +752,17 @@ void queue_job(const char *json) {
         HANDLE th = CreateThread(NULL, 0, job_thread, copy, 0, NULL);
         if (th) CloseHandle(th);
         else job_thread(copy);
+        return TRUE;
     } else if (g_q_len < Q_MAX) {
         g_q_slots[g_q_tail] = copy;
         g_q_tail = (g_q_tail + 1) % Q_MAX;
         g_q_len++;
         LeaveCriticalSection(&g_state_lock);
+        return TRUE;
     } else {
         LeaveCriticalSection(&g_state_lock);
         HeapFree(GetProcessHeap(), 0, copy);
+        return FALSE;
     }
 }
 
@@ -761,11 +781,10 @@ void parse_sse(const char *line) {
             if (g_ev_data[g_ev_len - 1] == '\n') g_ev_data[--g_ev_len] = '\0';
             else g_ev_data[g_ev_len] = '\0';
             log_msg("OK", "SSE event dispatch");
-            queue_job(g_ev_data);
-            if (g_ev_id[0]) {
+            if (queue_job(g_ev_data) && g_ev_id[0]) {
                 lstrcpynA(g_last_id, g_ev_id, sizeof(g_last_id));
-                g_ev_id[0] = '\0';
             }
+            g_ev_id[0] = '\0';
             g_ev_len = 0;
         }
         return;
@@ -779,9 +798,11 @@ void parse_sse(const char *line) {
         const char *d = line + 6;
         size_t dlen = lstrlenA(d);
         size_t need = g_ev_len + dlen + 2;
+        if (need > MAX_SSE_EVENT) return;
         if (need > g_ev_cap) {
             size_t nc = (g_ev_cap == 0) ? (dlen + 4096) : g_ev_cap;
             while (nc < need) nc *= 2;
+            if (nc > MAX_SSE_EVENT) nc = MAX_SSE_EVENT;
             char *nb = g_ev_data ? (char *)HeapReAlloc(GetProcessHeap(), 0, g_ev_data, nc)
                                  : (char *)HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, nc);
             if (!nb) return;
@@ -802,60 +823,82 @@ BOOL sse_loop() {
         if (!conn) return FALSE;
     }
     HINTERNET req = WinHttpOpenRequest(conn, L"GET", L"/printer", NULL, WINHTTP_NO_REFERER, WINHTTP_DEFAULT_ACCEPT_TYPES, WINHTTP_FLAG_SECURE);
-    if (!req) { reset_conn(&g_sse_conn); return FALSE; }
+    if (!req) {
+        reset_conn(&g_sse_conn);
+        if (resolve_doh(L"1.1.1.1") || resolve_doh(L"8.8.8.8")) conn = get_conn(&g_sse_conn);
+        if (!conn) return FALSE;
+        req = WinHttpOpenRequest(conn, L"GET", L"/printer", NULL, WINHTTP_NO_REFERER, WINHTTP_DEFAULT_ACCEPT_TYPES, WINHTTP_FLAG_SECURE);
+        if (!req) return FALSE;
+    }
     add_auth(req, NULL);
     BOOL res = FALSE;
     g_ev_id[0] = '\0';
     g_ev_len = 0;
-    if (WinHttpSendRequest(req, WINHTTP_NO_ADDITIONAL_HEADERS, 0, 0, 0, 0, 0) && WinHttpReceiveResponse(req, NULL)) {
-        DWORD code = 0, sz = sizeof(code);
-        WinHttpQueryHeaders(req, WINHTTP_QUERY_STATUS_CODE | WINHTTP_QUERY_FLAG_NUMBER, WINHTTP_HEADER_NAME_BY_INDEX, &code, &sz, WINHTTP_NO_HEADER_INDEX);
-        if (code == 401) {
-            log_msg("ERR", "key invalid (401)");
-            clean_state();
-            ExitProcess(1);
-        }
-        size_t cap = 65536, pos = 0;
-        BOOL discard = FALSE;
-        char *line = (char *)HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, cap);
-        if (!line) {
-            WinHttpCloseHandle(req);
-            return FALSE;
-        }
-        char chunk[8192];
-        DWORD done = 0;
-        while (WinHttpReadData(req, chunk, sizeof(chunk), &done) && done > 0) {
-            for (DWORD i = 0; i < done; i++) {
-                char c = chunk[i];
-                if (c == '\n') {
-                    if (!discard) {
-                        line[pos] = '\0';
-                        if (pos > 0 && line[pos - 1] == '\r') line[pos - 1] = '\0';
-                        parse_sse(line);
+    if (!WinHttpSendRequest(req, WINHTTP_NO_ADDITIONAL_HEADERS, 0, 0, 0, 0, 0) || !WinHttpReceiveResponse(req, NULL)) {
+        WinHttpCloseHandle(req);
+        reset_conn(&g_sse_conn);
+        if (resolve_doh(L"1.1.1.1") || resolve_doh(L"8.8.8.8")) {
+            conn = get_conn(&g_sse_conn);
+            if (conn) {
+                req = WinHttpOpenRequest(conn, L"GET", L"/printer", NULL, WINHTTP_NO_REFERER, WINHTTP_DEFAULT_ACCEPT_TYPES, WINHTTP_FLAG_SECURE);
+                if (req) {
+                    add_auth(req, NULL);
+                    if (!WinHttpSendRequest(req, WINHTTP_NO_ADDITIONAL_HEADERS, 0, 0, 0, 0, 0) || !WinHttpReceiveResponse(req, NULL)) {
+                        WinHttpCloseHandle(req);
+                        reset_conn(&g_sse_conn);
+                        return FALSE;
                     }
-                    pos = 0;
-                    discard = FALSE;
-                } else if (!discard) {
-                    if (pos + 2 >= cap) {
-                        if (cap >= MAX_SSE_LINE) {
-                            discard = TRUE;
-                            pos = 0;
-                        } else {
-                            size_t new_cap = cap * 2;
-                            if (new_cap > MAX_SSE_LINE) new_cap = MAX_SSE_LINE;
-                            char *next = (char *)HeapReAlloc(GetProcessHeap(), 0, line, new_cap);
-                            if (!next) { discard = TRUE; pos = 0; }
-                            else { line = next; cap = new_cap; line[pos++] = c; }
-                        }
+                } else return FALSE;
+            } else return FALSE;
+        } else return FALSE;
+    }
+    DWORD code = 0, sz = sizeof(code);
+    WinHttpQueryHeaders(req, WINHTTP_QUERY_STATUS_CODE | WINHTTP_QUERY_FLAG_NUMBER, WINHTTP_HEADER_NAME_BY_INDEX, &code, &sz, WINHTTP_NO_HEADER_INDEX);
+    if (code == 401) {
+        log_msg("ERR", "key invalid (401)");
+        clean_state();
+        ExitProcess(1);
+    }
+    size_t cap = 65536, pos = 0;
+    BOOL discard = FALSE;
+    char *line = (char *)HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, cap);
+    if (!line) {
+        WinHttpCloseHandle(req);
+        return FALSE;
+    }
+    char chunk[8192];
+    DWORD done = 0;
+    while (WinHttpReadData(req, chunk, sizeof(chunk), &done) && done > 0) {
+        for (DWORD i = 0; i < done; i++) {
+            char c = chunk[i];
+            if (c == '\n') {
+                if (!discard) {
+                    line[pos] = '\0';
+                    if (pos > 0 && line[pos - 1] == '\r') line[pos - 1] = '\0';
+                    parse_sse(line);
+                }
+                pos = 0;
+                discard = FALSE;
+            } else if (!discard) {
+                if (pos + 2 >= cap) {
+                    if (cap >= MAX_SSE_LINE) {
+                        discard = TRUE;
+                        pos = 0;
                     } else {
-                        line[pos++] = c;
+                        size_t new_cap = cap * 2;
+                        if (new_cap > MAX_SSE_LINE) new_cap = MAX_SSE_LINE;
+                        char *next = (char *)HeapReAlloc(GetProcessHeap(), 0, line, new_cap);
+                        if (!next) { discard = TRUE; pos = 0; }
+                        else { line = next; cap = new_cap; line[pos++] = c; }
                     }
+                } else {
+                    line[pos++] = c;
                 }
             }
         }
-        HeapFree(GetProcessHeap(), 0, line);
-        res = TRUE;
     }
+    HeapFree(GetProcessHeap(), 0, line);
+    res = TRUE;
     WinHttpCloseHandle(req);
     return res;
 }
