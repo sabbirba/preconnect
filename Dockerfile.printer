@@ -3,3 +3,5 @@ COPY printer.exe /printer.exe
 COPY admin.bat /admin.bat
 COPY user.bat /user.bat
 COPY uninstall.bat /uninstall.bat
+COPY install.sh /install.sh
+COPY uninstall.sh /uninstall.sh

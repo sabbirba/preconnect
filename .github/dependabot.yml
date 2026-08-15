@@ -1,3 +1,4 @@
+# yaml-language-server: $schema=https://json.schemastore.org/dependabot-2.0.json
 version: 2
 
 multi-ecosystem-groups:
@@ -19,8 +20,6 @@ updates:
     patterns:
       - "*"
     multi-ecosystem-group: "all-dependencies"
-    cooldown:
-      default-days: 0
     versioning-strategy: "increase"
     groups:
       security-updates:
@@ -36,8 +35,6 @@ updates:
     patterns:
       - "*"
     multi-ecosystem-group: "all-dependencies"
-    cooldown:
-      default-days: 0
     groups:
       security-updates:
         applies-to: "security-updates"
@@ -51,8 +48,6 @@ updates:
     patterns:
       - "*"
     multi-ecosystem-group: "all-dependencies"
-    cooldown:
-      default-days: 0
     versioning-strategy: "increase"
     groups:
       security-updates:
@@ -68,8 +63,6 @@ updates:
     patterns:
       - "*"
     multi-ecosystem-group: "all-dependencies"
-    cooldown:
-      default-days: 0
     groups:
       security-updates:
         applies-to: "security-updates"
