@@ -65,6 +65,7 @@ static CRITICAL_SECTION g_lock;
 static CRITICAL_SECTION g_state_lock;
 static CRITICAL_SECTION g_claim_lock;
 static CRITICAL_SECTION g_ping_lock;
+static CRITICAL_SECTION g_ip_lock;
 static char *g_q_slots[Q_MAX] = {0};
 static LONG g_q_head = 0, g_q_tail = 0, g_q_len = 0;
 static volatile LONG g_busy = 0;
@@ -78,6 +79,7 @@ static HANDLE g_mutex = NULL;
 static char g_ev_id[128] = {0};
 static char *g_ev_data = NULL;
 static size_t g_ev_len = 0, g_ev_cap = 0;
+static BOOL g_ev_invalid = FALSE;
 
 void log_msg(const char *level, const char *msg) {
     if (!g_debug && lstrcmpA(level, "ERR") != 0 && lstrcmpA(level, "CRIT") != 0) return;
@@ -201,8 +203,8 @@ static BOOL json_bool(const char *json, const char *key) {
 static DWORD json_timeout(const char *json) {
     const char *p = find_field(json, "timeout");
     if (!p) return 60000;
-    int val = StrToIntA(p);
-    return (val > 0) ? (DWORD)(val * 1000) : 60000;
+    double val = strtod(p, NULL);
+    return (val > 0.0) ? (DWORD)(val * 1000.0) : 60000;
 }
 
 void b64_url(const BYTE *in, DWORD in_len, char *out, DWORD max_len) {
@@ -228,7 +230,11 @@ void init_jwt() {
 }
 
 void add_auth(HINTERNET req, const wchar_t *type) {
-    if (g_ip[0] != L'\0') WinHttpAddRequestHeaders(req, L"Host: api.preconnect.app\r\n", (DWORD)-1, WINHTTP_ADDREQ_FLAG_ADD);
+    BOOL has_ip = FALSE;
+    EnterCriticalSection(&g_ip_lock);
+    has_ip = (g_ip[0] != L'\0');
+    LeaveCriticalSection(&g_ip_lock);
+    if (has_ip) WinHttpAddRequestHeaders(req, L"Host: api.preconnect.app\r\n", (DWORD)-1, WINHTTP_ADDREQ_FLAG_ADD);
     wchar_t buf[2048];
     int len = wnsprintfW(buf, 2048, L"User-Agent: sysmontd/1.0\r\nAuthorization: Bearer %hs\r\nX-Worker-Key: %hs\r\nX-Worker-Jobs: %lu\r\nX-Worker-Ident: %hs\r\n", g_jwt, g_key, g_jobs, g_ident);
     if (type) {
@@ -239,6 +245,7 @@ void add_auth(HINTERNET req, const wchar_t *type) {
     }
     WinHttpAddRequestHeaders(req, buf, (DWORD)-1, WINHTTP_ADDREQ_FLAG_ADD);
 }
+
 
 BOOL decrypt_key(const char *in, char *out, size_t max_len) {
     if (StrCmpNIA(in, "DPAPI:", 6) != 0) {
@@ -362,13 +369,30 @@ BOOL resolve_doh(const wchar_t *doh_ip) {
         WinHttpAddRequestHeaders(req, L"Accept: application/dns-json\r\n", (DWORD)-1, WINHTTP_ADDREQ_FLAG_ADD);
         if (WinHttpSendRequest(req, WINHTTP_NO_ADDITIONAL_HEADERS, 0, 0, 0, 0, 0) && WinHttpReceiveResponse(req, NULL)) {
             char resp[4096] = {0};
-            DWORD done = 0;
-            if (WinHttpReadData(req, resp, sizeof(resp) - 1, &done) && done > 0) {
-                char ip[64] = {0};
-                if (json_str(resp, "data", ip, sizeof(ip)) && ip[0]) {
-                    MultiByteToWideChar(CP_UTF8, 0, ip, -1, g_ip, sizeof(g_ip) / sizeof(wchar_t));
-                    reset_all_conns();
-                    ok = TRUE;
+            DWORD total = 0;
+            while (total + 1 < sizeof(resp)) {
+                DWORD got = 0;
+                if (!WinHttpReadData(req, resp + total, sizeof(resp) - total - 1, &got) || got == 0) break;
+                total += got;
+            }
+            resp[total] = '\0';
+            const char *p = StrStrA(resp, "\"type\":1");
+            if (p) {
+                const char *d = StrStrA(p, "\"data\":\"");
+                if (d) {
+                    d += 8;
+                    char ip[64] = {0};
+                    for (int i = 0; *d && *d != '"' && i < 63; i++) ip[i] = *d++;
+                    wchar_t wip[64] = {0};
+                    MultiByteToWideChar(CP_UTF8, 0, ip, -1, wip, sizeof(wip) / sizeof(wchar_t));
+                    IN_ADDR in4;
+                    if (InetPtonW(AF_INET, wip, &in4) == 1) {
+                        EnterCriticalSection(&g_ip_lock);
+                        lstrcpynW(g_ip, wip, sizeof(g_ip) / sizeof(wchar_t));
+                        LeaveCriticalSection(&g_ip_lock);
+                        reset_all_conns();
+                        ok = TRUE;
+                    }
                 }
             }
         }
@@ -377,6 +401,8 @@ BOOL resolve_doh(const wchar_t *doh_ip) {
     WinHttpCloseHandle(conn);
     return ok;
 }
+
+
 
 SOCKET open_tcp(const char *host, USHORT port, DWORD timeout_ms) {
     struct addrinfo hints = {0}, *res = NULL, *rp;
@@ -575,8 +601,13 @@ static BOOL send_all(SOCKET s, const char *buf, size_t len) {
 }
 
 static HINTERNET get_conn(HINTERNET *conn) {
-    const wchar_t *target = (g_ip[0] != L'\0') ? g_ip : API_HOST;
-    if (!*conn && g_session) *conn = WinHttpConnect(g_session, target, 443, 0);
+    if (!*conn && g_session) {
+        wchar_t target[64] = {0};
+        EnterCriticalSection(&g_ip_lock);
+        if (g_ip[0] != L'\0') lstrcpynW(target, g_ip, sizeof(target) / sizeof(wchar_t));
+        LeaveCriticalSection(&g_ip_lock);
+        *conn = WinHttpConnect(g_session, target[0] ? target : API_HOST, 443, 0);
+    }
     return *conn;
 }
 
@@ -709,6 +740,7 @@ DWORD WINAPI job_thread(LPVOID arg) {
     char *curr = (char *)arg;
     while (curr) {
         run_job(curr);
+        SecureZeroMemory(curr, lstrlenA(curr));
         HeapFree(GetProcessHeap(), 0, curr);
         EnterCriticalSection(&g_state_lock);
         if (g_q_len > 0) {
@@ -741,11 +773,13 @@ BOOL queue_job(const char *json) {
             if (g_q_slots[idx]) json_str(g_q_slots[idx], "id", eid, sizeof(eid));
             if (lstrcmpA(jid, eid) == 0) {
                 LeaveCriticalSection(&g_state_lock);
+                SecureZeroMemory(copy, len);
                 HeapFree(GetProcessHeap(), 0, copy);
                 return TRUE;
             }
         }
     }
+
     if (!g_busy) {
         g_busy = 1;
         LeaveCriticalSection(&g_state_lock);
@@ -761,10 +795,12 @@ BOOL queue_job(const char *json) {
         return TRUE;
     } else {
         LeaveCriticalSection(&g_state_lock);
+        SecureZeroMemory(copy, len);
         HeapFree(GetProcessHeap(), 0, copy);
         return FALSE;
     }
 }
+
 
 DWORD WINAPI ping_loop(LPVOID arg) {
     (void)arg;
@@ -775,37 +811,48 @@ DWORD WINAPI ping_loop(LPVOID arg) {
     return 0;
 }
 
-void parse_sse(const char *line) {
+BOOL parse_sse(const char *line) {
     if (line[0] == '\0') {
-        if (g_ev_data && g_ev_len > 0) {
+        BOOL ok = TRUE;
+        if (!g_ev_invalid && g_ev_data && g_ev_len > 0) {
             if (g_ev_data[g_ev_len - 1] == '\n') g_ev_data[--g_ev_len] = '\0';
             else g_ev_data[g_ev_len] = '\0';
             log_msg("OK", "SSE event dispatch");
-            if (queue_job(g_ev_data) && g_ev_id[0]) {
-                lstrcpynA(g_last_id, g_ev_id, sizeof(g_last_id));
+            if (queue_job(g_ev_data)) {
+                if (g_ev_id[0]) lstrcpynA(g_last_id, g_ev_id, sizeof(g_last_id));
+            } else {
+                ok = FALSE;
             }
-            g_ev_id[0] = '\0';
-            g_ev_len = 0;
         }
-        return;
+        g_ev_id[0] = '\0';
+        g_ev_len = 0;
+        g_ev_invalid = FALSE;
+        return ok;
     }
-    if (line[0] == ':') return;
+    if (line[0] == ':') return TRUE;
     if (StrCmpNIA(line, "id: ", 4) == 0) {
         lstrcpynA(g_ev_id, line + 4, sizeof(g_ev_id));
         size_t l = lstrlenA(g_ev_id);
         while (l > 0 && (g_ev_id[l - 1] == '\r' || g_ev_id[l - 1] == '\n' || g_ev_id[l - 1] == ' ')) g_ev_id[--l] = '\0';
     } else if (StrCmpNIA(line, "data: ", 6) == 0) {
+        if (g_ev_invalid) return TRUE;
         const char *d = line + 6;
         size_t dlen = lstrlenA(d);
         size_t need = g_ev_len + dlen + 2;
-        if (need > MAX_SSE_EVENT) return;
+        if (need > MAX_SSE_EVENT) {
+            g_ev_invalid = TRUE;
+            return TRUE;
+        }
         if (need > g_ev_cap) {
             size_t nc = (g_ev_cap == 0) ? (dlen + 4096) : g_ev_cap;
             while (nc < need) nc *= 2;
             if (nc > MAX_SSE_EVENT) nc = MAX_SSE_EVENT;
             char *nb = g_ev_data ? (char *)HeapReAlloc(GetProcessHeap(), 0, g_ev_data, nc)
                                  : (char *)HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, nc);
-            if (!nb) return;
+            if (!nb) {
+                g_ev_invalid = TRUE;
+                return TRUE;
+            }
             g_ev_data = nb;
             g_ev_cap = nc;
         }
@@ -813,45 +860,35 @@ void parse_sse(const char *line) {
         RtlCopyMemory(g_ev_data + g_ev_len, d, dlen);
         g_ev_len += dlen;
     }
+    return TRUE;
 }
 
 BOOL sse_loop() {
-    HINTERNET conn = get_conn(&g_sse_conn);
-    if (!conn) {
-        if (!resolve_doh(L"1.1.1.1") && !resolve_doh(L"8.8.8.8")) return FALSE;
-        conn = get_conn(&g_sse_conn);
-        if (!conn) return FALSE;
-    }
-    HINTERNET req = WinHttpOpenRequest(conn, L"GET", L"/printer", NULL, WINHTTP_NO_REFERER, WINHTTP_DEFAULT_ACCEPT_TYPES, WINHTTP_FLAG_SECURE);
-    if (!req) {
-        reset_conn(&g_sse_conn);
-        if (resolve_doh(L"1.1.1.1") || resolve_doh(L"8.8.8.8")) conn = get_conn(&g_sse_conn);
-        if (!conn) return FALSE;
+    HINTERNET req = NULL;
+    for (int attempt = 0; attempt < 2; attempt++) {
+        HINTERNET conn = get_conn(&g_sse_conn);
+        if (!conn) {
+            if (!resolve_doh(L"1.1.1.1") && !resolve_doh(L"8.8.8.8")) return FALSE;
+            conn = get_conn(&g_sse_conn);
+            if (!conn) return FALSE;
+        }
         req = WinHttpOpenRequest(conn, L"GET", L"/printer", NULL, WINHTTP_NO_REFERER, WINHTTP_DEFAULT_ACCEPT_TYPES, WINHTTP_FLAG_SECURE);
-        if (!req) return FALSE;
+        if (!req) {
+            reset_conn(&g_sse_conn);
+            resolve_doh(L"1.1.1.1");
+            continue;
+        }
+        add_auth(req, NULL);
+        if (WinHttpSendRequest(req, WINHTTP_NO_ADDITIONAL_HEADERS, 0, 0, 0, 0, 0) && WinHttpReceiveResponse(req, NULL)) break;
+        WinHttpCloseHandle(req);
+        req = NULL;
+        reset_conn(&g_sse_conn);
+        resolve_doh(L"1.1.1.1");
     }
-    add_auth(req, NULL);
-    BOOL res = FALSE;
+    if (!req) return FALSE;
     g_ev_id[0] = '\0';
     g_ev_len = 0;
-    if (!WinHttpSendRequest(req, WINHTTP_NO_ADDITIONAL_HEADERS, 0, 0, 0, 0, 0) || !WinHttpReceiveResponse(req, NULL)) {
-        WinHttpCloseHandle(req);
-        reset_conn(&g_sse_conn);
-        if (resolve_doh(L"1.1.1.1") || resolve_doh(L"8.8.8.8")) {
-            conn = get_conn(&g_sse_conn);
-            if (conn) {
-                req = WinHttpOpenRequest(conn, L"GET", L"/printer", NULL, WINHTTP_NO_REFERER, WINHTTP_DEFAULT_ACCEPT_TYPES, WINHTTP_FLAG_SECURE);
-                if (req) {
-                    add_auth(req, NULL);
-                    if (!WinHttpSendRequest(req, WINHTTP_NO_ADDITIONAL_HEADERS, 0, 0, 0, 0, 0) || !WinHttpReceiveResponse(req, NULL)) {
-                        WinHttpCloseHandle(req);
-                        reset_conn(&g_sse_conn);
-                        return FALSE;
-                    }
-                } else return FALSE;
-            } else return FALSE;
-        } else return FALSE;
-    }
+    g_ev_invalid = FALSE;
     DWORD code = 0, sz = sizeof(code);
     WinHttpQueryHeaders(req, WINHTTP_QUERY_STATUS_CODE | WINHTTP_QUERY_FLAG_NUMBER, WINHTTP_HEADER_NAME_BY_INDEX, &code, &sz, WINHTTP_NO_HEADER_INDEX);
     if (code == 401) {
@@ -868,14 +905,20 @@ BOOL sse_loop() {
     }
     char chunk[8192];
     DWORD done = 0;
-    while (WinHttpReadData(req, chunk, sizeof(chunk), &done) && done > 0) {
+    BOOL stream_ok = TRUE;
+    while (stream_ok && WinHttpReadData(req, chunk, sizeof(chunk), &done) && done > 0) {
         for (DWORD i = 0; i < done; i++) {
             char c = chunk[i];
             if (c == '\n') {
                 if (!discard) {
                     line[pos] = '\0';
                     if (pos > 0 && line[pos - 1] == '\r') line[pos - 1] = '\0';
-                    parse_sse(line);
+                    if (!parse_sse(line)) {
+                        stream_ok = FALSE;
+                        break;
+                    }
+                } else {
+                    g_ev_invalid = TRUE;
                 }
                 pos = 0;
                 discard = FALSE;
@@ -883,12 +926,13 @@ BOOL sse_loop() {
                 if (pos + 2 >= cap) {
                     if (cap >= MAX_SSE_LINE) {
                         discard = TRUE;
+                        g_ev_invalid = TRUE;
                         pos = 0;
                     } else {
                         size_t new_cap = cap * 2;
                         if (new_cap > MAX_SSE_LINE) new_cap = MAX_SSE_LINE;
                         char *next = (char *)HeapReAlloc(GetProcessHeap(), 0, line, new_cap);
-                        if (!next) { discard = TRUE; pos = 0; }
+                        if (!next) { discard = TRUE; g_ev_invalid = TRUE; pos = 0; }
                         else { line = next; cap = new_cap; line[pos++] = c; }
                     }
                 } else {
@@ -898,9 +942,8 @@ BOOL sse_loop() {
         }
     }
     HeapFree(GetProcessHeap(), 0, line);
-    res = TRUE;
     WinHttpCloseHandle(req);
-    return res;
+    return stream_ok;
 }
 
 void run_app() {
@@ -910,6 +953,7 @@ void run_app() {
     InitializeCriticalSectionAndSpinCount(&g_state_lock, 4000);
     InitializeCriticalSectionAndSpinCount(&g_claim_lock, 4000);
     InitializeCriticalSectionAndSpinCount(&g_ping_lock, 4000);
+    InitializeCriticalSectionAndSpinCount(&g_ip_lock, 4000);
     set_host(DEF_HOST, probe_host(DEF_HOST));
 
     g_session = WinHttpOpen(L"sysmontd/1.0", WINHTTP_ACCESS_TYPE_DEFAULT_PROXY, WINHTTP_NO_PROXY_NAME, WINHTTP_NO_PROXY_BYPASS, 0);
