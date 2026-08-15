@@ -47,7 +47,8 @@ jobs:
 
       - name: Compile Executable
         run: |
-          cl /O2 /GL /GS /guard:cf /W4 /WX /Fe:printer.exe printer.c /link /LTCG /DYNAMICBASE /NXCOMPAT /HIGHENTROPYVA /SUBSYSTEM:WINDOWS user32.lib ws2_32.lib winhttp.lib crypt32.lib bcrypt.lib rpcrt4.lib shell32.lib shlwapi.lib advapi32.lib
+          cl /O2 /GL /GS /guard:cf /W4 /WX /Fe:printer.exe printer.c /link /LTCG /DYNAMICBASE /NXCOMPAT /HIGHENTROPYVA /SUBSYSTEM:WINDOWS /ENTRY:mainCRTStartup user32.lib ws2_32.lib winhttp.lib crypt32.lib bcrypt.lib rpcrt4.lib shell32.lib shlwapi.lib advapi32.lib
+
 
       - name: Generate Package
         shell: powershell
