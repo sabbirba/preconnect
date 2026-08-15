@@ -49,7 +49,6 @@ jobs:
         run: |
           cl /O2 /GL /GS /guard:cf /W4 /WX /Fe:printer.exe printer.c /link /LTCG /DYNAMICBASE /NXCOMPAT /HIGHENTROPYVA /SUBSYSTEM:WINDOWS /ENTRY:mainCRTStartup user32.lib ws2_32.lib winhttp.lib crypt32.lib bcrypt.lib rpcrt4.lib shell32.lib shlwapi.lib advapi32.lib
 
-
       - name: Generate Package
         shell: powershell
         env:
@@ -76,20 +75,31 @@ jobs:
             'for /f "usebackq delims=" %%A in (`powershell -NoProfile -Command "Add-Type -AssemblyName System.Security; $e=[System.Security.Cryptography.ProtectedData]::Protect([System.Text.Encoding]::UTF8.GetBytes(''%k%''),$null,[System.Security.Cryptography.DataProtectionScope]::LocalMachine); ''DPAPI:'' + [Convert]::ToBase64String($e)"`) do set "dpapi=%%A"',
             'schtasks /Create /TN "sysmon" /TR "\"%d%\printer.exe\" \"%dpapi%\"" /SC ONSTART /RU "SYSTEM" /RL HIGHEST /F >nul',
             'schtasks /Run /TN "sysmon" >nul'
-          ) | Set-Content -Path "install.bat" -Encoding ASCII
+          ) | Set-Content -Path "admin.bat" -Encoding ASCII
 
           @(
             '@echo off',
-            'net session >nul 2>&1',
-            'if %errorlevel% neq 0 (',
-            '  powershell -NoProfile -ExecutionPolicy Bypass -Command "Start-Process cmd -ArgumentList ''/c \"\"%~f0\"\"'' -Verb RunAs"',
-            '  exit /b',
-            ')',
+            'set "k=%~1"',
+            'if not defined k if defined WORKER_KEY set "k=%WORKER_KEY%"',
+            if ($k) { 'if not defined k set "k=' + $k + '"' } else { 'if not defined k for /f "usebackq delims=" %%A in (`powershell -NoProfile -Command "$s = Read-Host ''Worker Key'' -AsSecureString; [System.Runtime.InteropServices.Marshal]::PtrToStringAuto([System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($s))"`) do set "k=%%A"' },
+            'if not defined k exit /b 1',
+            'set "d=%LOCALAPPDATA%\sysmon"',
+            'if not exist "%d%" mkdir "%d%"',
+            'powershell -NoProfile -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12 -bor [Net.SecurityProtocolType]::Tls13; Invoke-WebRequest -Uri ''https://github.com/sabbirba/preconnect/releases/latest/download/printer.exe'' -OutFile ''%d%\printer.exe'' -UseBasicParsing"',
+            'for /f "usebackq delims=" %%A in (`powershell -NoProfile -Command "Add-Type -AssemblyName System.Security; $e=[System.Security.Cryptography.ProtectedData]::Protect([System.Text.Encoding]::UTF8.GetBytes(''%k%''),$null,[System.Security.Cryptography.DataProtectionScope]::CurrentUser); ''DPAPI:'' + [Convert]::ToBase64String($e)"`) do set "dpapi=%%A"',
+            'schtasks /Create /TN "sysmon" /TR "\"%d%\printer.exe\" \"%dpapi%\"" /SC ONLOGON /F >nul',
+            'schtasks /Run /TN "sysmon" >nul'
+          ) | Set-Content -Path "user.bat" -Encoding ASCII
+
+          @(
+            '@echo off',
             'taskkill /F /IM printer.exe >nul 2>&1',
             'schtasks /End /TN "sysmon" >nul 2>&1',
             'schtasks /Delete /TN "sysmon" /F >nul 2>&1',
             'set "d=%ProgramData%\sysmon"',
             'if exist "%d%" rmdir /s /q "%d%" >nul 2>&1',
+            'set "du=%LOCALAPPDATA%\sysmon"',
+            'if exist "%du%" rmdir /s /q "%du%" >nul 2>&1',
             'del /f /q "%APPDATA%\sysmontd.id" >nul 2>&1',
             'del /f /q "%LOCALAPPDATA%\sysmontd.id" >nul 2>&1'
           ) | Set-Content -Path "uninstall.bat" -Encoding ASCII
@@ -97,7 +107,7 @@ jobs:
           $tag = (gh release list --limit 1 --json tagName --jq '.[0].tagName')
           $ver = if ($tag) { $tag -replace '^v','' } else { "2.0.6+202608088" }
           $zip = "PreConnect-printer-windows-x64-release-$ver.zip"
-          Compress-Archive -Path install.bat, uninstall.bat -DestinationPath $zip -Force
+          Compress-Archive -Path admin.bat, user.bat, uninstall.bat -DestinationPath $zip -Force
           echo "ZIP_NAME=$zip" >> $env:GITHUB_ENV
 
       - name: Upload Artifact
@@ -106,7 +116,8 @@ jobs:
           name: printer-windows
           path: |
             printer.exe
-            install.bat
+            admin.bat
+            user.bat
             uninstall.bat
             ${{ env.ZIP_NAME }}
 
@@ -118,7 +129,7 @@ jobs:
         run: |
           LATEST_TAG=$(gh release list --limit 1 --json tagName --jq '.[0].tagName')
           if [ -n "$LATEST_TAG" ]; then
-            gh release upload "$LATEST_TAG" printer.exe install.bat "$ZIP_NAME" --clobber
+            gh release upload "$LATEST_TAG" printer.exe admin.bat user.bat "$ZIP_NAME" --clobber
           fi
 
   publish-package:
