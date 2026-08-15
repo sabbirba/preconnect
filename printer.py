@@ -183,9 +183,12 @@ def probe_loop() -> None:
     while True:
         with lock_host:
             hosts = list(host_cache.keys())
-        for h in hosts:
+        def one(h: str) -> None:
             ok = tcp_probe(h)
             with lock_host: host_cache[h] = (ok, time())
+        threads = [Thread(target=one, args=(h,)) for h in hosts]
+        for t in threads: t.start()
+        for t in threads: t.join(timeout=2.0)
         sleep(1.5)
 
 def init_id() -> str:
@@ -228,7 +231,7 @@ def claim_job(i: Union[str, int]) -> bool:
             sleep(1.0)
             claim_count = 0
     body = f'{{"id":"{i}"}}'.encode()
-    hdrs = {"Content-Type": "application/json", **get_hdrs()}
+    hdrs = {"Host": api_host, "Content-Type": "application/json", **get_hdrs()}
     for attempt in range(3):
         with lock_claim:
             try:
@@ -296,17 +299,20 @@ def job_loop(initial_job: Dict[str, Any]) -> None:
     finally:
         sleep_block(False)
 
-def queue_job(j: Dict[str, Any]) -> None:
+def queue_job(j: Dict[str, Any]) -> bool:
     global is_busy
     jid = str(j.get("id", ""))
     with lock_state:
         if jid and any(str(e.get("id", "")) == jid for e in job_queue):
-            return
+            return True
         if not is_busy:
             is_busy = True
             Thread(target=job_loop, args=(j,), daemon=True).start()
+            return True
         elif len(job_queue) < Q_MAX:
             job_queue.append(j)
+            return True
+        return False
 
 last_id = ""
 
@@ -321,22 +327,28 @@ def sse_loop() -> None:
                 clean_state()
                 sys.exit(1)
             if r.status != 200: return
-            ev_id, ev_data = "", []
+            ev_id, ev_data, ev_bytes = "", [], 0
             while line := r.readline():
                 s = line.decode("utf-8", "replace").rstrip("\r\n")
                 if not s:
                     if ev_data:
-                        try: queue_job(loads("\n".join(ev_data)))
+                        try:
+                            obj = loads("\n".join(ev_data))
+                            if queue_job(obj) and ev_id:
+                                last_id = ev_id
                         except Exception: pass
-                        if ev_id: last_id = ev_id
-                    ev_id, ev_data = "", []
+                    ev_id, ev_data, ev_bytes = "", [], 0
                 elif s.startswith(":"):
                     pass
                 elif s.startswith("id: "):
                     ev_id = s[4:]
                 elif s.startswith("data: "):
-                    ev_data.append(s[6:])
+                    d = s[6:]
+                    if ev_bytes + len(d) <= 33554432:
+                        ev_data.append(d)
+                        ev_bytes += len(d)
     except Exception: pass
+
 
 def ping_loop() -> None:
     while True:
