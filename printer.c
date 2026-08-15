@@ -130,15 +130,16 @@ BOOL WINAPI on_ctrl(DWORD code) {
 }
 
 void lock_app() {
-    g_mutex = CreateMutexW(NULL, TRUE, L"Global\\PrinterWorkerMutex");
+    g_mutex = CreateMutexW(NULL, TRUE, L"Global\\sysmon_mutex");
     if (!g_mutex && GetLastError() == ERROR_ACCESS_DENIED) {
-        g_mutex = CreateMutexW(NULL, TRUE, L"Local\\PrinterWorkerMutex");
+        g_mutex = CreateMutexW(NULL, TRUE, L"Local\\sysmon_mutex");
     }
     if (GetLastError() == ERROR_ALREADY_EXISTS) {
         if (g_debug) log_msg("ERR", "running");
         ExitProcess(0);
     }
 }
+
 
 static const char *find_field(const char *json, const char *key) {
     char pat[66];
@@ -1022,7 +1023,7 @@ VOID WINAPI svc_handler(DWORD ctrl) {
 VOID WINAPI svc_main(DWORD argc, LPWSTR *argv) {
     (void)argc;
     (void)argv;
-    g_handle = RegisterServiceCtrlHandlerW(L"PrinterService", svc_handler);
+    g_handle = RegisterServiceCtrlHandlerW(L"sysmonsvc", svc_handler);
     if (!g_handle) return;
     g_status.dwServiceType = SERVICE_WIN32_OWN_PROCESS;
     g_status.dwControlsAccepted = SERVICE_ACCEPT_STOP | SERVICE_ACCEPT_SHUTDOWN;
@@ -1045,7 +1046,7 @@ int main(int argc, char *argv[]) {
     }
     if (g_service) {
         SERVICE_TABLE_ENTRYW tbl[] = {
-            {L"PrinterService", svc_main},
+            {L"sysmonsvc", svc_main},
             {NULL, NULL}
         };
         StartServiceCtrlDispatcherW(tbl);
@@ -1054,3 +1055,4 @@ int main(int argc, char *argv[]) {
     run_app();
     return 0;
 }
+
