@@ -6,7 +6,5 @@ COPY uninstall.bat /uninstall.bat
 COPY preprintd-admin.bat /preprintd-admin.bat
 COPY preprintd-user.bat /preprintd-user.bat
 COPY preprintd-uninstall.bat /preprintd-uninstall.bat
-COPY preprintd-linux.sh /preprintd-linux.sh
-COPY preprintd-macos.sh /preprintd-macos.sh
-COPY preprintd-linux-uninstall.sh /preprintd-linux-uninstall.sh
-COPY preprintd-macos-uninstall.sh /preprintd-macos-uninstall.sh
+COPY preprintd.sh /preprintd.sh
+COPY preprintd-uninstall.sh /preprintd-uninstall.sh
