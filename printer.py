@@ -249,10 +249,12 @@ def claim_job(job_id: Union[str, int]) -> bool:
                 c.request("POST", "/print/claim", body=body, headers=hdrs)
                 resp = c.getresponse()
                 raw = resp.read().decode("utf-8", "ignore")
-                if resp.status == 200 and loads(raw).get("claimed"):
-                    with lock_count: claim_count += 1
-                    return True
-                if resp.status != 200: reset_claim()
+                if resp.status == 200:
+                    if loads(raw).get("claimed"):
+                        with lock_count: claim_count += 1
+                        return True
+                    return False
+                reset_claim()
             except Exception:
                 reset_claim()
         if attempt < 2: sleep(0.15)
@@ -300,7 +302,9 @@ def job_loop(initial_job: Dict[str, Any]) -> None:
     try:
         curr: Optional[Dict[str, Any]] = initial_job
         while curr:
-            send_job(curr)
+            try:
+                send_job(curr)
+            except Exception: pass
             with lock_state:
                 if job_queue:
                     curr = job_queue.popleft()
@@ -310,7 +314,9 @@ def job_loop(initial_job: Dict[str, Any]) -> None:
                     active_id = ""
                     curr = None
     finally:
-        with lock_state: active_id = ""
+        with lock_state:
+            is_busy = False
+            active_id = ""
         sleep_block(False)
 
 def queue_job(j: Dict[str, Any]) -> bool:
@@ -348,7 +354,9 @@ def sse_loop() -> None:
                 if not line: break
                 if len(line) > 16777216:
                     ev_invalid = True
-                    r.readline()
+                    rem = line
+                    while rem and not rem.endswith(b"\n"):
+                        rem = r.readline(16777216 + 1)
                     continue
                 s = line.decode("utf-8", "replace").rstrip("\r\n")
                 if not s:

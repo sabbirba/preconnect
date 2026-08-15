@@ -381,18 +381,25 @@ BOOL resolve_doh(const wchar_t *doh_ip) {
                 total += got;
             }
             resp[total] = '\0';
-            char ip[64] = {0};
-            if (json_str(resp, "data", ip, sizeof(ip)) && ip[0]) {
-                wchar_t wip[64] = {0};
-                MultiByteToWideChar(CP_UTF8, 0, ip, -1, wip, sizeof(wip) / sizeof(wchar_t));
-                IN_ADDR in4;
-                if (InetPtonW(AF_INET, wip, &in4) == 1) {
-                    EnterCriticalSection(&g_ip_lock);
-                    lstrcpynW(g_ip, wip, sizeof(g_ip) / sizeof(wchar_t));
-                    LeaveCriticalSection(&g_ip_lock);
-                    reset_all_conns();
-                    ok = TRUE;
+            const char *curr = resp;
+            while ((curr = find_field(curr, "type")) != NULL) {
+                if (*curr == '1' && (*(curr + 1) == ',' || *(curr + 1) == '}' || *(curr + 1) == ' ' || *(curr + 1) == '\r' || *(curr + 1) == '\n')) {
+                    char ip[64] = {0};
+                    if (json_str(curr, "data", ip, sizeof(ip)) && ip[0]) {
+                        wchar_t wip[64] = {0};
+                        MultiByteToWideChar(CP_UTF8, 0, ip, -1, wip, sizeof(wip) / sizeof(wchar_t));
+                        IN_ADDR in4;
+                        if (InetPtonW(AF_INET, wip, &in4) == 1) {
+                            EnterCriticalSection(&g_ip_lock);
+                            lstrcpynW(g_ip, wip, sizeof(g_ip) / sizeof(wchar_t));
+                            LeaveCriticalSection(&g_ip_lock);
+                            reset_all_conns();
+                            ok = TRUE;
+                            break;
+                        }
+                    }
                 }
+                curr++;
             }
         }
         WinHttpCloseHandle(req);
@@ -492,12 +499,13 @@ BOOL is_online(const char *h) {
 
 typedef struct {
     char host[128];
-    BOOL ok;
 } ProbeTask;
 
 DWORD WINAPI probe_worker(LPVOID arg) {
     ProbeTask *task = (ProbeTask *)arg;
-    task->ok = probe_host(task->host);
+    BOOL ok = probe_host(task->host);
+    set_host(task->host, ok);
+    HeapFree(GetProcessHeap(), 0, task);
     return 0;
 }
 
@@ -506,21 +514,18 @@ DWORD WINAPI probe_loop(LPVOID arg) {
     while (1) {
         EnterCriticalSection(&g_lock);
         LONG cnt = g_count;
-        ProbeTask tasks[MAX_HOSTS];
+        char hosts_copy[MAX_HOSTS][128];
         for (LONG i = 0; i < cnt; i++) {
-            lstrcpynA(tasks[i].host, g_hosts[i].host, sizeof(tasks[0].host));
-            tasks[i].ok = FALSE;
+            lstrcpynA(hosts_copy[i], g_hosts[i].host, sizeof(hosts_copy[0]));
         }
         LeaveCriticalSection(&g_lock);
-        if (cnt > 0) {
-            HANDLE threads[MAX_HOSTS];
-            for (LONG i = 0; i < cnt; i++) {
-                threads[i] = CreateThread(NULL, 0, probe_worker, &tasks[i], 0, NULL);
-            }
-            WaitForMultipleObjects((DWORD)cnt, threads, TRUE, 2000);
-            for (LONG i = 0; i < cnt; i++) {
-                if (threads[i]) CloseHandle(threads[i]);
-                set_host(tasks[i].host, tasks[i].ok);
+        for (LONG i = 0; i < cnt; i++) {
+            ProbeTask *task = (ProbeTask *)HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, sizeof(ProbeTask));
+            if (task) {
+                lstrcpynA(task->host, hosts_copy[i], sizeof(task->host));
+                HANDLE th = CreateThread(NULL, 0, probe_worker, task, 0, NULL);
+                if (th) CloseHandle(th);
+                else probe_worker(task);
             }
         }
         Sleep(1500);
@@ -912,6 +917,10 @@ BOOL sse_loop() {
         log_msg("ERR", "key invalid (401)");
         clean_state();
         ExitProcess(1);
+    }
+    if (code != 200) {
+        WinHttpCloseHandle(req);
+        return FALSE;
     }
     size_t cap = 65536, pos = 0;
     BOOL discard = FALSE;
