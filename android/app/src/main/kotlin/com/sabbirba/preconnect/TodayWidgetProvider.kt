@@ -9,6 +9,7 @@ import android.net.Uri
 import android.view.View
 import android.widget.RemoteViews
 import es.antonborri.home_widget.HomeWidgetBackgroundIntent
+import es.antonborri.home_widget.HomeWidgetLaunchIntent
 import es.antonborri.home_widget.HomeWidgetProvider
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -35,6 +36,12 @@ class TodayWidgetProvider : HomeWidgetProvider() {
             )
             views.setViewVisibility(R.id.today_sync_icon, if (isSyncing) View.GONE else View.VISIBLE)
             views.setViewVisibility(R.id.today_sync_progress, if (isSyncing) View.VISIBLE else View.GONE)
+            val openAppIntent =
+                HomeWidgetLaunchIntent.getActivity(
+                    context,
+                    MainActivity::class.java,
+                    Uri.parse("preconnect://today"),
+                )
 
             val rows =
                 listOf(
@@ -53,6 +60,7 @@ class TodayWidgetProvider : HomeWidgetProvider() {
                 }
 
                 views.setViewVisibility(row.container, View.VISIBLE)
+                views.setOnClickPendingIntent(row.container, openAppIntent)
                 views.setTextViewText(row.title, itemTitle)
                 views.setTextViewText(
                     row.subtitle,
