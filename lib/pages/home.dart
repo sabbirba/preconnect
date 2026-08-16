@@ -146,10 +146,6 @@ class _HomePageState extends State<HomePage> {
       unawaited(QuietModeController.instance.refresh());
       WidgetsBinding.instance.addPostFrameCallback((_) async {
         await BracuPermissionHelper.checkAndRequestOnStartup(context);
-        if (!mounted) return;
-        if (widget.isLoggedIn) {
-          await InAppReviewPrompt.requestOnStartup();
-        }
       });
     }
   }

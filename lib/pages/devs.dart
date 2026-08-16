@@ -42,7 +42,7 @@ class _DevsPageState extends State<DevsPage> {
   List<_SponsorEntry> _sponsors = const <_SponsorEntry>[];
   bool _sponsorsLoading = false;
   int _secretTapCount = 0;
-  bool _isAuthenticatingSecret = false;
+  bool _isOpeningSecret = false;
   static List<_ContributorProfile>? _cachedContributors;
   static Future<List<_ContributorProfile>>? _preloadFuture;
   @override
@@ -334,17 +334,17 @@ class _DevsPageState extends State<DevsPage> {
   }
 
   Future<void> _onHeaderSecretTap() async {
-    if (_isAuthenticatingSecret) return;
+    if (_isOpeningSecret) return;
     _secretTapCount += 1;
     if (_secretTapCount < 10) return;
     _secretTapCount = 0;
     if (!mounted) return;
 
-    _isAuthenticatingSecret = true;
-    final authenticated = await AppLockService().authenticate();
-    _isAuthenticatingSecret = false;
+    _isOpeningSecret = true;
+    final localAuthEnabled = await AppLockService().isEnabled();
+    _isOpeningSecret = false;
     if (!mounted) return;
-    if (!authenticated) return;
+    if (!localAuthEnabled) return;
 
     await Navigator.of(context).push(
       MaterialPageRoute(

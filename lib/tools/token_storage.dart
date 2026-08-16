@@ -496,33 +496,14 @@ class HomeCardVisibility {
 class InAppReviewPrompt {
   InAppReviewPrompt._();
 
-  static bool _startupRequested = false;
-
-  static Future<bool> requestReview() async {
-    try {
-      if (!(Platform.isAndroid || Platform.isIOS)) return false;
-      if (!await TokenStorage.instance.hasAccessToken()) return false;
-      return _requestAvailableReview();
-    } catch (_) {
-      return false;
-    }
-  }
-
   static Future<bool> _requestAvailableReview() async {
     try {
       final available = await StoreActions.isReviewAvailable();
       if (!available) return false;
-      return StoreActions.requestReview();
+      return await StoreActions.requestReview();
     } catch (_) {
       return false;
     }
-  }
-
-  static Future<void> requestOnStartup() async {
-    if (_startupRequested) return;
-    if (!await TokenStorage.instance.hasAccessToken()) return;
-    _startupRequested = true;
-    await _requestAvailableReview();
   }
 
   static Future<void> rate() async {
@@ -544,7 +525,7 @@ class InAppReviewPrompt {
           );
           if (launched) return true;
         } catch (_) {}
-        return launchUrl(playStoreUri, mode: LaunchMode.platformDefault);
+        return await launchUrl(playStoreUri, mode: LaunchMode.platformDefault);
       }
 
       final isApple =
@@ -610,7 +591,7 @@ class InAppReviewPrompt {
           );
           if (launched) return true;
         } catch (_) {}
-        return launchUrl(fallbackUri, mode: LaunchMode.platformDefault);
+        return await launchUrl(fallbackUri, mode: LaunchMode.platformDefault);
       }
 
       var packageName = 'com.sabbirba.preconnect';
@@ -640,7 +621,7 @@ class InAppReviewPrompt {
         );
         if (launched) return true;
       } catch (_) {}
-      return launchUrl(playStoreUri, mode: LaunchMode.platformDefault);
+      return await launchUrl(playStoreUri, mode: LaunchMode.platformDefault);
     } catch (_) {
       return false;
     }
