@@ -23,7 +23,6 @@ abstract final class TodayWidget {
   static const String _androidName = 'TodayWidgetProvider';
   static const String _iOSName = 'TodayWidget';
   static const String appGroupId = 'group.com.sabbirba.preconnect.widget';
-  static const int _maxItems = 3;
   static const String primaryColor = '#FF1E6BE3';
   static const String accentColor = '#FF22B573';
 
@@ -53,7 +52,13 @@ abstract final class TodayWidget {
         'today_date_key',
         DateTime.now().toIso8601String().substring(0, 10),
       );
-      for (var i = 0; i < _maxItems; i++) {
+      final previousItemCount =
+          await HomeWidget.getWidgetData<int>('today_item_count') ?? 0;
+      final slotCount = previousItemCount > items.length
+          ? previousItemCount
+          : items.length;
+      await HomeWidget.saveWidgetData<int>('today_item_count', items.length);
+      for (var i = 0; i < slotCount; i++) {
         final item = i < items.length ? items[i] : null;
         final slot = i + 1;
         await HomeWidget.saveWidgetData<String>(
