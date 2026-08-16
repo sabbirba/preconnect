@@ -1,4 +1,4 @@
-import com.android.build.gradle.LibraryExtension
+import com.android.build.api.dsl.LibraryExtension
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 allprojects {
@@ -66,6 +66,19 @@ subprojects {
                 "implementation",
                 "androidx.concurrent:concurrent-futures:1.1.0",
             )
+        }
+    }
+    if (name == "flutter_zxing") {
+        plugins.withId("com.android.library") {
+            extensions.configure<LibraryExtension> {
+                defaultConfig {
+                    externalNativeBuild {
+                        cmake {
+                            arguments += "-DCMAKE_CXX_STANDARD=20"
+                        }
+                    }
+                }
+            }
         }
     }
 }
