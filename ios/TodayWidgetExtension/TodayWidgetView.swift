@@ -83,31 +83,32 @@ struct TodayWidgetEntryView: View {
 
   var body: some View {
     VStack(alignment: .leading, spacing: 6) {
-      HStack(alignment: .center, spacing: 8) {
-        Text(entry.title)
-          .font(.system(size: 16, weight: .bold))
-          .foregroundStyle(todayTextPrimary)
-          .lineLimit(1)
-          .minimumScaleFactor(0.75)
-          .frame(maxWidth: .infinity, alignment: .leading)
+      Button(intent: SyncTodayWidgetIntent()) {
+        HStack(alignment: .center, spacing: 8) {
+          Text(entry.title)
+            .font(.system(size: 16, weight: .bold))
+            .foregroundStyle(todayTextPrimary)
+            .lineLimit(1)
+            .minimumScaleFactor(0.75)
+            .frame(maxWidth: .infinity, alignment: .leading)
 
-        Text(entry.dateText)
-          .font(.system(size: 16, weight: .bold))
-          .foregroundStyle(todayTextPrimary)
-          .lineLimit(1)
-          .minimumScaleFactor(0.75)
-          .fixedSize(horizontal: true, vertical: false)
+          Text(entry.dateText)
+            .font(.system(size: 16, weight: .bold))
+            .foregroundStyle(todayTextPrimary)
+            .lineLimit(1)
+            .minimumScaleFactor(0.75)
+            .fixedSize(horizontal: true, vertical: false)
 
-        Button(intent: SyncTodayWidgetIntent()) {
           Image(systemName: "arrow.triangle.2.circlepath")
             .font(.system(size: 14, weight: .bold))
             .foregroundStyle(Color(hex: "#FF1E6BE3"))
             .frame(width: 16, height: 16)
             .symbolEffect(.rotate, options: .repeating, isActive: entry.isSyncing)
         }
-        .buttonStyle(.plain)
+        .padding(.horizontal, 4)
+        .contentShape(Rectangle())
       }
-      .padding(.horizontal, 4)
+      .buttonStyle(.plain)
 
       ForEach(Array(visibleItems.enumerated()), id: \.offset) { _, item in
         TodayWidgetCard(item: item)
