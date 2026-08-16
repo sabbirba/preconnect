@@ -109,15 +109,17 @@ class _SettingsPageState extends State<SettingsPage>
   }
 
   Future<void> _setAppLock(bool value) async {
-    if (value) {
-      final confirmed = await AppLockService().authenticate();
-      if (!confirmed) {
-        if (mounted) {
-          showAppSnackBar(context, 'Verification failed. App lock not enabled');
-        }
-        return;
+    final confirmed = await AppLockService().authenticate();
+    if (!confirmed) {
+      if (mounted) {
+        showAppSnackBar(
+          context,
+          'Verification failed. App lock not ${value ? 'enabled' : 'disabled'}',
+        );
       }
+      return;
     }
+    if (!mounted) return;
     await AppLockService().setEnabled(value);
     setState(() {
       _appLockEnabled = value;
