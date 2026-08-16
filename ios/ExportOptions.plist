@@ -12,6 +12,8 @@
   <dict>
     <key>com.sabbirba.preconnect</key>
     <string>PreConnect</string>
+    <key>com.sabbirba.preconnect.TodayWidgetExtension</key>
+    <string>PreConnect Widget</string>
   </dict>
   <key>uploadBitcode</key>
   <false/>

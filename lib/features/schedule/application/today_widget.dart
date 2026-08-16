@@ -22,7 +22,7 @@ class TodayItem {
 abstract final class TodayWidget {
   static const String _androidName = 'TodayWidgetProvider';
   static const String _iOSName = 'TodayWidget';
-  static const String appGroupId = 'group.com.sabbirba.preconnect.widget';
+  static const String appGroupId = 'group.com.sabbirba.preconnect.TodayWidgetExtension';
   static const String primaryColor = '#FF1E6BE3';
   static const String accentColor = '#FF22B573';
 

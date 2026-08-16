@@ -615,9 +615,11 @@ jobs:
           IOS_P12_BASE64: ${{ secrets.IOS_P12_BASE64 }}
           IOS_P12_PASSWORD: ${{ secrets.IOS_P12_PASSWORD }}
           IOS_PROFILE_BASE64: ${{ secrets.IOS_PROFILE_BASE64 }}
+          IOS_WIDGET_PROFILE_BASE64: ${{ secrets.IOS_WIDGET_PROFILE_BASE64 }}
         run: |
           if [ -n "$DEVELOPMENT_TEAM" ] && [ -n "$IOS_P12_BASE64" ] && \
-             [ -n "$IOS_P12_PASSWORD" ] && [ -n "$IOS_PROFILE_BASE64" ]; then
+             [ -n "$IOS_P12_PASSWORD" ] && [ -n "$IOS_PROFILE_BASE64" ] && \
+             [ -n "$IOS_WIDGET_PROFILE_BASE64" ]; then
             echo "enabled=true" >> "$GITHUB_OUTPUT"
           else
             echo "enabled=false" >> "$GITHUB_OUTPUT"
@@ -631,25 +633,35 @@ jobs:
           p12-password: ${{ secrets.IOS_P12_PASSWORD }}
           keychain-password: "PreConnect"
 
-      - name: Install iOS Provisioning Profile
+      - name: Install iOS Provisioning Profiles
         if: steps.ios_signing.outputs.enabled == 'true'
         shell: bash
         env:
           IOS_PROFILE_BASE64: ${{ secrets.IOS_PROFILE_BASE64 }}
+          IOS_WIDGET_PROFILE_BASE64: ${{ secrets.IOS_WIDGET_PROFILE_BASE64 }}
         run: |
           PROFILE_DIR="$HOME/Library/MobileDevice/Provisioning Profiles"
           mkdir -p "$PROFILE_DIR"
-          PROFILE_PATH="$PROFILE_DIR/PreConnect.mobileprovision"
-          printf '%s' "$IOS_PROFILE_BASE64" | base64 -d > "$PROFILE_PATH"
-          TMPXML="$(mktemp /tmp/profile_XXXXXX.plist)"
-          security cms -D -i "$PROFILE_PATH" > "$TMPXML" 2>/dev/null
-          UUID="$(/usr/libexec/PlistBuddy -c "Print :UUID" "$TMPXML" 2>/dev/null)"
-          rm -f "$TMPXML"
-          if [ -z "$UUID" ]; then
-            echo "Unable to read iOS provisioning profile UUID." >&2
-            exit 1
-          fi
-          cp "$PROFILE_PATH" "$PROFILE_DIR/${UUID}.mobileprovision"
+          install_profile() {
+            local b64="$1" name="$2" tmppath
+            tmppath="$(mktemp /tmp/profile_XXXXXX.mobileprovision)"
+            printf '%s' "$b64" | base64 -d > "$tmppath"
+            local tmpxml
+            tmpxml="$(mktemp /tmp/profile_XXXXXX.plist)"
+            security cms -D -i "$tmppath" > "$tmpxml" 2>/dev/null
+            local uuid
+            uuid="$(/usr/libexec/PlistBuddy -c "Print :UUID" "$tmpxml" 2>/dev/null)"
+            rm -f "$tmpxml"
+            if [ -z "$uuid" ]; then
+              echo "Unable to read provisioning profile UUID for $name." >&2
+              rm -f "$tmppath"
+              exit 1
+            fi
+            cp "$tmppath" "$PROFILE_DIR/${uuid}.mobileprovision"
+            rm -f "$tmppath"
+          }
+          install_profile "$IOS_PROFILE_BASE64" "PreConnect"
+          install_profile "$IOS_WIDGET_PROFILE_BASE64" "PreConnect Widget"
 
       - name: Build iOS Unsigned
         if: steps.ios_signing.outputs.enabled != 'true'

@@ -1,6 +1,6 @@
 import WidgetKit
 
-let todayWidgetAppGroupId = "group.com.sabbirba.preconnect.widget"
+let todayWidgetAppGroupId = "group.com.sabbirba.preconnect.TodayWidgetExtension"
 let todayWidgetKind = "TodayWidget"
 
 struct TodayWidgetItem {
