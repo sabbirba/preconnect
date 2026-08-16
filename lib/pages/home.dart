@@ -105,7 +105,7 @@ class _HomePageState extends State<HomePage> {
     HomeTab.seatStatus: const SeatStatusPage(),
     HomeTab.degreeProgress: const DegreeProgressPage(),
     HomeTab.alarms: const AlarmPage(),
-    HomeTab.friendSchedule: FriendSchedulePage(onNavigate: _setTab),
+    HomeTab.friendSchedule: const FriendSchedulePage(),
     HomeTab.campusPrinter: const CampusPrinterPage(),
     HomeTab.devs: const DevsPage(),
     HomeTab.personalSchedules: const CustomSchedulesPage(),

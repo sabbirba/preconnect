@@ -14,6 +14,7 @@ import 'package:preconnect/tools/build_info.dart';
 import 'package:preconnect/tools/cached_image.dart';
 import 'package:preconnect/tools/cdn_cache.dart';
 import 'package:preconnect/tools/preconnect_constants.dart';
+import 'package:preconnect/tools/token_storage.dart';
 
 const String _githubToken = String.fromEnvironment('GITHUB_TOKEN');
 const String _contributorsRosterUrl =
@@ -41,6 +42,7 @@ class _DevsPageState extends State<DevsPage> {
   List<_SponsorEntry> _sponsors = const <_SponsorEntry>[];
   bool _sponsorsLoading = false;
   int _secretTapCount = 0;
+  bool _isAuthenticatingSecret = false;
   static List<_ContributorProfile>? _cachedContributors;
   static Future<List<_ContributorProfile>>? _preloadFuture;
   @override
@@ -332,10 +334,17 @@ class _DevsPageState extends State<DevsPage> {
   }
 
   Future<void> _onHeaderSecretTap() async {
+    if (_isAuthenticatingSecret) return;
     _secretTapCount += 1;
     if (_secretTapCount < 10) return;
     _secretTapCount = 0;
     if (!mounted) return;
+
+    _isAuthenticatingSecret = true;
+    final authenticated = await AppLockService().authenticate();
+    _isAuthenticatingSecret = false;
+    if (!mounted) return;
+    if (!authenticated) return;
 
     await Navigator.of(context).push(
       MaterialPageRoute(

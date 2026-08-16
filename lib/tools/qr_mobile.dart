@@ -1,4 +1,4 @@
-import 'package:mobile_scanner/mobile_scanner.dart';
+import 'package:flutter_zxing/flutter_zxing.dart';
 import 'package:preconnect/tools/picker_mobile.dart';
 import 'package:preconnect/tools/picker_utils.dart';
 
@@ -7,14 +7,17 @@ Future<String?> pickQrFromSystemImage() async {
   if (picked == null) return null;
   final imagePath = await ensureReadableSystemImagePath(picked);
   if (imagePath.isEmpty) return null;
-  final scanner = MobileScannerController();
-  try {
-    final capture = await scanner.analyzeImage(imagePath);
-    if (capture == null || capture.barcodes.isEmpty) return null;
-    final value = capture.barcodes.first.rawValue;
-    if (value == null || value.trim().isEmpty) return null;
-    return value;
-  } finally {
-    scanner.dispose();
-  }
+  final result = await zx.readBarcodeImagePathString(
+    imagePath,
+    DecodeParams(
+      format: Format.qrCode,
+      tryHarder: true,
+      tryRotate: true,
+      tryInverted: true,
+      tryDownscale: true,
+      maxNumberOfSymbols: 1,
+    ),
+  );
+  final value = result.text?.trim();
+  return result.isValid && value?.isNotEmpty == true ? value : null;
 }

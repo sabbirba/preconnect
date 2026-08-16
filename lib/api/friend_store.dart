@@ -57,27 +57,46 @@ class FriendScheduleStore {
     }
   }
 
-  Future<void> upsertEncodedSchedule(String encodedValue) =>
-      upsertEncodedSchedules([encodedValue]);
+  Future<void> importPayload(String raw) async {
+    final trimmed = raw.trim();
+    if (trimmed.isEmpty) {
+      throw const FormatException('Schedule code is empty');
+    }
 
-  Future<void> upsertEncodedSchedules(List<String> encodedValues) async {
-    if (encodedValues.isEmpty) return;
-    final snapshot = await loadSnapshot();
+    final exported = extractExportSchedules(trimmed);
+    final encodedValues = exported ?? <String>[trimmed];
+    if (encodedValues.isEmpty) {
+      throw const FormatException('Schedule code contains no schedules');
+    }
+
     final incoming = <String, String>{};
-    for (final v in encodedValues) {
-      final encoded = v.trim();
-      if (encoded.isEmpty) continue;
-      final id = _extractFriendId(encoded);
-      if (id == null || id.isEmpty) continue;
+    for (final value in encodedValues) {
+      final encoded = value.trim();
+      final schedule = parseSchedulePayload(encoded);
+      final id = schedule?.id.trim() ?? '';
+      if (encoded.isEmpty || id.isEmpty) {
+        throw const FormatException('Invalid friend schedule code');
+      }
       incoming[id] = encoded;
     }
-    if (incoming.isEmpty) return;
+
+    final snapshot = await loadSnapshot();
     final next = <String>[
       for (final existing in snapshot.encodedSchedules)
         if (!incoming.containsKey(_extractFriendId(existing))) existing,
       ...incoming.values,
     ];
     await AppStorage.instance.setString(_encodedSchedulesKey, jsonEncode(next));
+    final saved = await loadSnapshot();
+    final savedById = <String, String>{
+      for (final value in saved.encodedSchedules)
+        if (_extractFriendId(value) case final String id) id: value,
+    };
+    for (final entry in incoming.entries) {
+      if (savedById[entry.key] != entry.value) {
+        throw StateError('Friend schedule could not be saved');
+      }
+    }
   }
 
   Future<void> removeByEncoded(String encodedValue) async {
@@ -88,6 +107,10 @@ class FriendScheduleStore {
         .where((value) => value != encoded)
         .toList();
     await AppStorage.instance.setString(_encodedSchedulesKey, jsonEncode(next));
+    final saved = await loadSnapshot();
+    if (saved.encodedSchedules.contains(encoded)) {
+      throw StateError('Friend schedule could not be removed');
+    }
   }
 
   Future<void> saveAllMetadata(Map<String, FriendMetadata> metadata) async {
@@ -95,6 +118,19 @@ class FriendScheduleStore {
       _metadataKey,
       jsonEncode(metadata.map((key, value) => MapEntry(key, value.toJson()))),
     );
+    final saved = (await loadSnapshot()).metadata;
+    if (saved.length != metadata.length) {
+      throw StateError('Friend metadata could not be saved');
+    }
+    for (final entry in metadata.entries) {
+      final value = saved[entry.key];
+      if (value == null ||
+          value.friendId != entry.value.friendId ||
+          value.nickname != entry.value.nickname ||
+          value.isFavorite != entry.value.isFavorite) {
+        throw StateError('Friend metadata could not be saved');
+      }
+    }
   }
 
   Future<void> clearAll() async {
@@ -103,63 +139,57 @@ class FriendScheduleStore {
   }
 
   static FriendSchedule? parseSchedulePayload(String raw) {
-    final trimmed = raw.trim();
-    if (trimmed.isEmpty) return null;
-
+    final parsed = _decodeCompressedJson(raw);
+    if (parsed is! Map<String, dynamic> ||
+        parsed.length != 5 ||
+        parsed['name'] is! String ||
+        parsed['id'] is! String ||
+        (parsed['photoFilePath'] != null &&
+            parsed['photoFilePath'] is! String) ||
+        parsed['courses'] is! List ||
+        (parsed['semester'] != null && parsed['semester'] is! String)) {
+      return null;
+    }
+    const expectedKeys = <String>{
+      'name',
+      'id',
+      'photoFilePath',
+      'courses',
+      'semester',
+    };
+    if (!parsed.keys.toSet().containsAll(expectedKeys)) return null;
     try {
-      final decodedBase64 = base64.decode(trimmed);
-      try {
-        final decompressed = GZipDecoder().decodeBytes(decodedBase64);
-        final jsonStr = utf8.decode(decompressed);
-        final parsed = jsonDecode(jsonStr);
-        if (parsed is Map<String, dynamic>) {
-          return FriendSchedule.fromJson(parsed);
-        }
-      } catch (_) {
-        final jsonStr = utf8.decode(decodedBase64);
-        final parsed = jsonDecode(jsonStr);
-        if (parsed is Map<String, dynamic>) {
-          return FriendSchedule.fromJson(parsed);
-        }
-      }
-    } catch (_) {}
-
-    try {
-      final parsed = jsonDecode(trimmed);
-      if (parsed is Map<String, dynamic>) {
-        return FriendSchedule.fromJson(parsed);
-      }
-    } catch (_) {}
-
-    return null;
+      return FriendSchedule.fromJson(parsed);
+    } catch (_) {
+      return null;
+    }
   }
 
   static List<String>? extractExportSchedules(String raw) {
+    final parsed = _decodeCompressedJson(raw);
+    if (parsed case {
+      'type': 'friend_schedules_export',
+      'version': 1,
+      'schedules': final List<dynamic> schedules,
+    } when parsed.length == 3) {
+      if (schedules.any((value) => value is! String || value.trim().isEmpty)) {
+        return null;
+      }
+      return schedules.cast<String>();
+    }
+    return null;
+  }
+
+  static dynamic _decodeCompressedJson(String raw) {
     final trimmed = raw.trim();
     if (trimmed.isEmpty) return null;
 
-    dynamic parsed;
     try {
-      final decodedBase64 = base64.decode(trimmed);
-      try {
-        final decompressed = GZipDecoder().decodeBytes(decodedBase64);
-        parsed = jsonDecode(utf8.decode(decompressed));
-      } catch (_) {
-        parsed = jsonDecode(utf8.decode(decodedBase64));
-      }
+      final decoded = base64.decode(trimmed);
+      return jsonDecode(utf8.decode(GZipDecoder().decodeBytes(decoded)));
     } catch (_) {
-      try {
-        parsed = jsonDecode(trimmed);
-      } catch (_) {}
+      return null;
     }
-
-    if (parsed case {
-      'type': 'friend_schedules_export',
-      'schedules': final List<dynamic> schedules,
-    }) {
-      return schedules.whereType<String>().toList();
-    }
-    return null;
   }
 
   String? _extractFriendId(String base64Data) {
