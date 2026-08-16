@@ -1,11 +1,42 @@
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:preconnect/api/api_config.dart';
+import 'package:preconnect/api/schedule.dart';
 import 'package:preconnect/api/seat_status.dart';
+import 'package:preconnect/model/advising_phase.dart';
 import 'package:preconnect/model/section_info.dart';
 
 void main() {
   group('section parsing', () {
+    test('parses wrapped advising responses without duplicate sections', () {
+      final section = <String, dynamic>{
+        'sectionId': 3,
+        'courseId': 103,
+        'courseCode': 'CSE103',
+        'sectionName': 'C',
+        'semesterSessionId': 20241,
+        'courseCredit': 3,
+        'capacity': 30,
+        'consumedSeat': 10,
+        'sectionSchedule': <String, dynamic>{'classSchedules': <dynamic>[]},
+        'faculties': 'Faculty',
+        'roomName': 'Room',
+        'roomNumber': '303',
+        'courseType': 'Theory',
+      };
+
+      for (final key in <String>['courses', 'sections', 'data']) {
+        final parsed = ScheduleService().parseStudentSections(
+          jsonEncode(<String, dynamic>{
+            key: <dynamic>[section, section],
+          }),
+        );
+        expect(parsed, hasLength(1));
+        expect(parsed.single.courseCode, 'CSE103');
+      }
+    });
+
     test('parses a string-encoded section schedule', () {
       final payload = jsonEncode([
         {
@@ -84,6 +115,31 @@ void main() {
         'Tuesday',
       );
     });
+  });
+
+  test('advising phases map to the expected API contracts', () {
+    const portfolioId = '123';
+    expect(
+      ApiConfig.studentCoursesForPhasePath(portfolioId, AdvisingPhase.phaseOne),
+      '/adv/v1/student-courses/123/phase-one',
+    );
+    expect(
+      ApiConfig.studentCoursesForPhasePath(portfolioId, AdvisingPhase.phaseTwo),
+      '/adv/v1/student-courses/123/phase-two',
+    );
+    expect(
+      ApiConfig.studentCoursesForPhasePath(
+        portfolioId,
+        AdvisingPhase.selfRegistration,
+      ),
+      '/adv/v1/student-courses/123/self-registration',
+    );
+    for (final phase in AdvisingPhase.values) {
+      expect(
+        ApiConfig.relatedLabSectionsPath(portfolioId, phase: phase.queryValue),
+        contains('phase=${phase.queryValue}'),
+      );
+    }
   });
 
   test('parses a seat-status schedule encoded as a string', () {

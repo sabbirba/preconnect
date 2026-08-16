@@ -1,7 +1,35 @@
 part of 'package:preconnect/pages/ui_kit.dart';
 
-class SectionsErrorState extends StatelessWidget {
-  const SectionsErrorState({
+class BracuEmptyCard extends StatelessWidget {
+  const BracuEmptyCard({super.key, required this.message});
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(12),
+        color: BracuPalette.card(context).withValues(alpha: 0.35),
+        border: Border.all(
+          color: BracuPalette.textSecondary(context).withValues(alpha: 0.22),
+        ),
+      ),
+      child: Text(
+        message,
+        style: TextStyle(
+          fontSize: 12,
+          color: BracuPalette.textSecondary(context),
+        ),
+      ),
+    );
+  }
+}
+
+class BracuErrorState extends StatelessWidget {
+  const BracuErrorState({
     super.key,
     required this.title,
     required this.message,
@@ -81,21 +109,8 @@ class SectionListCard extends StatelessWidget {
     final cardColor = BracuPalette.card(context).withValues(alpha: 0.35);
 
     if (sections.isEmpty) {
-      return Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(12),
-          color: cardColor,
-          border: Border.all(color: borderColor),
-        ),
-        child: Text(
-          emptyMessage ?? '$label: no sections returned.',
-          style: TextStyle(
-            fontSize: 12,
-            color: BracuPalette.textSecondary(context),
-          ),
-        ),
+      return BracuEmptyCard(
+        message: emptyMessage ?? '$label: no sections returned.',
       );
     }
 

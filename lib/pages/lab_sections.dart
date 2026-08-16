@@ -5,6 +5,7 @@ import 'package:gap/gap.dart';
 import 'package:preconnect/api/schedule.dart';
 import 'package:preconnect/model/advising_phase.dart';
 import 'package:preconnect/model/section_info.dart';
+import 'package:preconnect/pages/section_loader.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 
 class _LabPhaseTab {
@@ -14,14 +15,26 @@ class _LabPhaseTab {
   final String queryValue;
 }
 
-final List<_LabPhaseTab> _labPhaseTabs = [
+final List<_LabPhaseTab> _labPhaseTabs = <_LabPhaseTab>[
   for (final phase in AdvisingPhase.values)
     _LabPhaseTab(label: phase.label, queryValue: phase.queryValue),
   const _LabPhaseTab(label: 'Wishlist', queryValue: 'WISH_LIST'),
 ];
 
+Future<List<Section>> _loadLabSections(
+  String phase, {
+  bool forceRefresh = false,
+}) {
+  return ScheduleService().fetchRelatedLabSections(
+    phase,
+    forceRefresh: forceRefresh,
+  );
+}
+
 class LabSectionsPage extends StatefulWidget {
-  const LabSectionsPage({super.key});
+  const LabSectionsPage({super.key, this.loadSections});
+
+  final SectionLoader<String>? loadSections;
 
   @override
   State<LabSectionsPage> createState() => _LabSectionsPageState();
@@ -30,57 +43,35 @@ class LabSectionsPage extends StatefulWidget {
 class _LabSectionsPageState extends State<LabSectionsPage>
     with SingleTickerProviderStateMixin {
   late final TabController _tabController;
-  final Map<int, bool> _isLoading = {
-    for (var i = 0; i < _labPhaseTabs.length; i++) i: true,
-  };
-  final Map<int, String?> _errors = {
-    for (var i = 0; i < _labPhaseTabs.length; i++) i: null,
-  };
-  final Map<int, List<Section>> _sections = {
-    for (var i = 0; i < _labPhaseTabs.length; i++) i: const [],
-  };
+  late final List<SectionLoadController<String>> _controllers;
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: _labPhaseTabs.length, vsync: this);
-    for (var i = 0; i < _labPhaseTabs.length; i++) {
-      unawaited(_load(i));
-    }
+    final loader = widget.loadSections ?? _loadLabSections;
+    _controllers = <SectionLoadController<String>>[
+      for (final tab in _labPhaseTabs)
+        SectionLoadController<String>(key: tab.queryValue, loader: loader),
+    ];
+    _tabController = TabController(length: _labPhaseTabs.length, vsync: this)
+      ..addListener(_loadSelectedTab);
+    unawaited(_controllers.first.load());
   }
 
   @override
   void dispose() {
-    _tabController.dispose();
+    _tabController
+      ..removeListener(_loadSelectedTab)
+      ..dispose();
+    for (final controller in _controllers) {
+      controller.dispose();
+    }
     super.dispose();
   }
 
-  Future<void> _load(int index) async {
-    if (!mounted) return;
-    setState(() {
-      _isLoading[index] = true;
-      _errors[index] = null;
-    });
-    try {
-      final sections = await ScheduleService().fetchRelatedLabSections(
-        _labPhaseTabs[index].queryValue,
-      );
-      if (!mounted) return;
-      setState(() {
-        _sections[index] = sections;
-      });
-    } catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _errors[index] = e.toString();
-      });
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading[index] = false;
-        });
-      }
-    }
+  void _loadSelectedTab() {
+    final controller = _controllers[_tabController.index];
+    if (!controller.isLoaded) unawaited(controller.load());
   }
 
   @override
@@ -103,8 +94,11 @@ class _LabSectionsPageState extends State<LabSectionsPage>
             child: TabBarView(
               controller: _tabController,
               children: [
-                for (var i = 0; i < _labPhaseTabs.length; i++)
-                  _buildPhaseTab(context, i),
+                for (var index = 0; index < _labPhaseTabs.length; index++)
+                  _LabSectionsTab(
+                    tab: _labPhaseTabs[index],
+                    controller: _controllers[index],
+                  ),
               ],
             ),
           ),
@@ -112,34 +106,21 @@ class _LabSectionsPageState extends State<LabSectionsPage>
       ),
     );
   }
+}
 
-  Widget _buildPhaseTab(BuildContext context, int index) {
-    final tab = _labPhaseTabs[index];
-    final isLoading = _isLoading[index] ?? false;
-    final error = _errors[index];
-    final sections = _sections[index] ?? const <Section>[];
+class _LabSectionsTab extends StatelessWidget {
+  const _LabSectionsTab({required this.tab, required this.controller});
 
-    if (isLoading && sections.isEmpty && error == null) {
-      return const Center(child: BracuLoading());
-    }
+  final _LabPhaseTab tab;
+  final SectionLoadController<String> controller;
 
-    if (error != null && sections.isEmpty) {
-      return SectionsErrorState(
-        title: 'Could not load ${tab.label} lab sections.',
-        message: error,
-        onRetry: () => _load(index),
-      );
-    }
-
-    return BracuRefreshList(
-      onRefresh: () => _load(index),
-      children: [
-        SectionListCard(
-          label: 'Related Lab Sections',
-          sections: sections,
-          emptyMessage: 'No related lab sections found for ${tab.label}.',
-        ),
-      ],
+  @override
+  Widget build(BuildContext context) {
+    return SectionLoadView<String>(
+      controller: controller,
+      errorTitle: 'Could not load ${tab.label} lab sections.',
+      label: 'Related Lab Sections',
+      emptyMessage: 'No related lab sections found for ${tab.label}.',
     );
   }
 }
