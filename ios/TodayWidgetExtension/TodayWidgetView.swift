@@ -60,11 +60,26 @@ struct TodayWidgetCard: View {
     .padding(14)
     .background(todayCardBackground)
     .clipShape(RoundedRectangle(cornerRadius: 18))
+    .overlay {
+      RoundedRectangle(cornerRadius: 18)
+        .stroke(Color.black.opacity(0.16), lineWidth: 1)
+    }
   }
 }
 
 struct TodayWidgetEntryView: View {
+  @Environment(\.widgetFamily) private var family
   var entry: TodayWidgetProvider.Entry
+
+  private var maxItems: Int {
+    family == .systemMedium ? 1 : 3
+  }
+
+  private var emptyItem: TodayWidgetItem {
+    TodayWidgetItem(
+      badge: "--", badgeColor: "#FF1E6BE3", title: "No Classes Today",
+      subtitle: "Enjoy your day off.", trailing: "", trailingSub: "")
+  }
 
   var body: some View {
     VStack(alignment: .leading, spacing: 6) {
@@ -93,15 +108,14 @@ struct TodayWidgetEntryView: View {
       }
       .padding(.horizontal, 4)
 
-      ForEach(Array(entry.items.enumerated()), id: \.offset) { _, item in
+      let visibleItems = Array(entry.items.prefix(maxItems))
+
+      ForEach(Array(visibleItems.enumerated()), id: \.offset) { _, item in
         TodayWidgetCard(item: item)
       }
 
-      if entry.items.isEmpty {
-        TodayWidgetCard(
-          item: TodayWidgetItem(
-            badge: "--", badgeColor: "#FF1E6BE3", title: "No Classes Today",
-            subtitle: "Enjoy your day off.", trailing: "", trailingSub: ""))
+      if visibleItems.isEmpty {
+        TodayWidgetCard(item: emptyItem)
       }
 
       Spacer(minLength: 0)
@@ -119,7 +133,7 @@ struct TodayWidget: Widget {
     }
     .configurationDisplayName("Today's Schedule")
     .description("Shows today's classes, exams, and status.")
-    .supportedFamilies([.systemLarge])
+    .supportedFamilies([.systemMedium, .systemLarge])
     .contentMarginsDisabled()
   }
 }
