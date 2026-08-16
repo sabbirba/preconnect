@@ -54,6 +54,4 @@ class StorageKeys {
       'wifi_captive_last_response_log';
   static const String portfolios = 'portfolios';
   static const String paymentPortfolios = 'payment_portfolios';
-  static const String hasShownPermissionHelperSheet =
-      'has_shown_permission_helper_sheet';
 }

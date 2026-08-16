@@ -6,8 +6,6 @@ import 'package:gap/gap.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:preconnect/api/fcm.dart';
 import 'package:preconnect/pages/ui_kit.dart';
-import 'package:preconnect/tools/app_storage.dart';
-import 'package:preconnect/tools/storage_keys.dart';
 
 class PermissionRequirement {
   final Permission permission;
@@ -97,26 +95,17 @@ class BracuPermissionHelper {
 
   static Future<void> checkAndRequestOnStartup(BuildContext context) async {
     if (!context.mounted) return;
-    final alreadyShown =
-        await AppStorage.instance.getBool(
-          StorageKeys.hasShownPermissionHelperSheet,
-        ) ??
-        false;
-    if (alreadyShown) return;
-    await AppStorage.instance.setBool(
-      StorageKeys.hasShownPermissionHelperSheet,
-      true,
-    );
+    final isAndroid = defaultTargetPlatform == TargetPlatform.android;
+    final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
+    if (!isAndroid && !isIOS) return;
 
     int androidSdk = 0;
-    if (defaultTargetPlatform == TargetPlatform.android) {
+    if (isAndroid) {
       try {
         final androidInfo = await DeviceInfoPlugin().androidInfo;
         androidSdk = androidInfo.version.sdkInt;
       } catch (_) {}
     }
-
-    final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
 
     if (isIOS) {
       await _requestIosPermissionsSilently();
@@ -256,11 +245,13 @@ class _BracuPermissionBottomSheetContentState
   }
 
   void _checkCompletion() {
-    final allGranted = widget.requirements.every((req) {
-      final s = _statuses[req.permission];
-      final serviceOn = _services[req.permission] ?? true;
-      return s != null && (s.isGranted || s.isLimited) && serviceOn;
-    });
+    final allGranted = widget.requirements
+        .where((req) => !req.isOptional)
+        .every((req) {
+          final s = _statuses[req.permission];
+          final serviceOn = _services[req.permission] ?? true;
+          return s != null && (s.isGranted || s.isLimited) && serviceOn;
+        });
 
     if (allGranted) {
       Navigator.of(context).maybePop();

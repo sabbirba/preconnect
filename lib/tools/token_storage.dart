@@ -495,64 +495,13 @@ class HomeCardVisibility {
 
 class InAppReviewPrompt {
   InAppReviewPrompt._();
-  static const String _launchCountKey = 'review_launch_count';
-  static const String _firstOpenKey = 'review_first_open_utc';
-  static const String _lastAttemptKey = 'review_last_attempt_utc';
-  static const String _lastPromptKey = 'review_last_prompt_utc';
 
-  static const int _minLaunchCount = 2;
-  static const int _minDaysFromFirstOpen = 0;
-  static const int _cooldownDays = 14;
-  static const int _minHoursBetweenAttempts = 24;
-
-  static Future<void> maybePrompt() async {
+  static Future<void> requestOnStartup() async {
     try {
       if (!(Platform.isAndroid || Platform.isIOS)) return;
-
-      final prefs = AppStorage.instance;
-      final now = DateTime.now().toUtc();
-
-      final launches = (await prefs.getInt(_launchCountKey) ?? 0) + 1;
-      await prefs.setInt(_launchCountKey, launches);
-
-      final hasFirstOpen = await prefs.containsKey(_firstOpenKey);
-      final firstOpenMs =
-          await prefs.getInt(_firstOpenKey) ?? now.millisecondsSinceEpoch;
-      if (!hasFirstOpen) {
-        await prefs.setInt(_firstOpenKey, firstOpenMs);
-      }
-      final firstOpen = DateTime.fromMillisecondsSinceEpoch(
-        firstOpenMs,
-        isUtc: true,
-      );
-
-      final lastPromptMs = await prefs.getInt(_lastPromptKey);
-      final lastAttemptMs = await prefs.getInt(_lastAttemptKey);
-
-      if (launches < _minLaunchCount) return;
-      if (now.difference(firstOpen).inDays < _minDaysFromFirstOpen) return;
-      if (lastAttemptMs != null) {
-        final lastAttempt = DateTime.fromMillisecondsSinceEpoch(
-          lastAttemptMs,
-          isUtc: true,
-        );
-        if (now.difference(lastAttempt).inHours < _minHoursBetweenAttempts) {
-          return;
-        }
-      }
-      if (lastPromptMs != null) {
-        final lastPrompt = DateTime.fromMillisecondsSinceEpoch(
-          lastPromptMs,
-          isUtc: true,
-        );
-        if (now.difference(lastPrompt).inDays < _cooldownDays) return;
-      }
-      await prefs.setInt(_lastAttemptKey, now.millisecondsSinceEpoch);
-
       final available = await StoreActions.isReviewAvailable();
       if (!available) return;
       await StoreActions.requestReview();
-      await prefs.setInt(_lastPromptKey, now.millisecondsSinceEpoch);
     } catch (_) {}
   }
 
