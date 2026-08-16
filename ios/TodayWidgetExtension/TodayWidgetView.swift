@@ -82,25 +82,16 @@ struct TodayWidgetEntryView: View {
           .lineLimit(1)
 
         Button(intent: SyncTodayWidgetIntent()) {
-          if entry.isSyncing {
-            ProgressView()
-              .progressViewStyle(.circular)
-              .tint(Color(hex: "#FF1E6BE3"))
-              .scaleEffect(0.7)
-              .frame(width: 16, height: 16)
-          } else {
-            Image(systemName: "arrow.triangle.2.circlepath")
-              .font(.system(size: 14, weight: .bold))
-              .foregroundStyle(Color(hex: "#FF1E6BE3"))
-              .frame(width: 16, height: 16)
-          }
+          Image(systemName: "arrow.triangle.2.circlepath")
+            .font(.system(size: 14, weight: .bold))
+            .foregroundStyle(Color(hex: "#FF1E6BE3"))
+            .frame(width: 16, height: 16)
+            .symbolEffect(.rotate, options: .repeating, isActive: entry.isSyncing)
         }
         .buttonStyle(.plain)
         .padding(.leading, 8)
       }
-      .padding(10)
-      .background(todayCardBackground)
-      .clipShape(RoundedRectangle(cornerRadius: 18))
+      .padding(.horizontal, 4)
 
       ForEach(Array(entry.items.enumerated()), id: \.offset) { _, item in
         TodayWidgetCard(item: item)
@@ -128,7 +119,7 @@ struct TodayWidget: Widget {
     }
     .configurationDisplayName("Today's Schedule")
     .description("Shows today's classes, exams, and status.")
-    .supportedFamilies([.systemMedium, .systemLarge])
+    .supportedFamilies([.systemLarge])
     .contentMarginsDisabled()
   }
 }
