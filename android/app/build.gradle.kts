@@ -1,3 +1,4 @@
+import com.android.build.api.dsl.ApplicationExtension
 import java.io.FileInputStream
 import java.util.Properties
 
@@ -30,7 +31,7 @@ fun envFromDotEnv(name: String): String? {
     return null
 }
 
-android {
+extensions.configure<ApplicationExtension> {
     val keystoreProperties = Properties()
     val keystorePropertiesFile = rootProject.file("key.properties")
 
@@ -95,15 +96,13 @@ android {
         targetSdk = 36
         versionCode = flutter.versionCode
         versionName = flutter.versionName
-        resConfigs("en")
+        androidResources.localeFilters += "en"
     }
 
     signingConfigs {
         if (hasReleaseSigningConfig) {
             create("release") {
-                if (releaseKeystoreFile != null) {
-                    storeFile = releaseKeystoreFile
-                }
+                storeFile = requireNotNull(releaseKeystoreFile)
                 storePassword = keystoreValue("storePassword")
                 keyAlias = keystoreValue("keyAlias")
                 keyPassword = keystoreValue("keyPassword")
