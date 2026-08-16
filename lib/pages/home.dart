@@ -63,8 +63,13 @@ part 'home_sections/dashboard_data.dart';
 part 'home_sections/dashboard_view.dart';
 
 class HomePage extends StatefulWidget {
-  const HomePage({super.key, this.initialTab = HomeTab.dashboard});
+  const HomePage({
+    super.key,
+    required this.isLoggedIn,
+    this.initialTab = HomeTab.dashboard,
+  });
 
+  final bool isLoggedIn;
   final HomeTab initialTab;
 
   static final StreamController<HomeTab> _shortcutTabController =
@@ -95,6 +100,7 @@ class _HomePageState extends State<HomePage> {
     HomeTab.dashboard: _HomeDashboard(
       onNavigate: _setTab,
       onLogout: () => _confirmLogout(context),
+      showRating: widget.isLoggedIn,
     ),
     HomeTab.bus: const BusPage(),
     HomeTab.freeLabs: const FreeLabsPage(),
@@ -141,7 +147,9 @@ class _HomePageState extends State<HomePage> {
       WidgetsBinding.instance.addPostFrameCallback((_) async {
         await BracuPermissionHelper.checkAndRequestOnStartup(context);
         if (!mounted) return;
-        await InAppReviewPrompt.requestOnStartup();
+        if (widget.isLoggedIn) {
+          await InAppReviewPrompt.requestOnStartup();
+        }
       });
     }
   }

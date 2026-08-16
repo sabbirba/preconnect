@@ -81,7 +81,6 @@ class BracuPermissionHelper {
       title: 'Notifications',
       reason: 'Receive Schedule Alerts',
       icon: Icons.notifications_active_rounded,
-      isOptional: true,
     ),
     PermissionRequirement(
       permission: Permission.reminders,

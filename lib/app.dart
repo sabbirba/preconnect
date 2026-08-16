@@ -705,14 +705,20 @@ class _MyAppState extends State<MyApp>
     final navigator = AppNavigator.key.currentState;
     if (navigator != null) {
       navigator.pushAndRemoveUntil(
-        MaterialPageRoute(builder: (context) => HomePage(initialTab: tab)),
+        MaterialPageRoute(
+          builder: (context) =>
+              HomePage(isLoggedIn: _initialLoggedIn, initialTab: tab),
+        ),
         (route) => false,
       );
       return;
     }
     WidgetsBinding.instance.addPostFrameCallback((_) {
       AppNavigator.key.currentState?.pushAndRemoveUntil(
-        MaterialPageRoute(builder: (context) => HomePage(initialTab: tab)),
+        MaterialPageRoute(
+          builder: (context) =>
+              HomePage(isLoggedIn: _initialLoggedIn, initialTab: tab),
+        ),
         (route) => false,
       );
     });
@@ -1084,7 +1090,10 @@ class _MyAppState extends State<MyApp>
             },
 
             home: (_initialLoggedIn || _canOpenOffline)
-                ? HomePage(initialTab: _resolvedBootstrapState.initialHomeTab)
+                ? HomePage(
+                    isLoggedIn: _initialLoggedIn,
+                    initialTab: _resolvedBootstrapState.initialHomeTab,
+                  )
                 : const OnboardingPage(),
           ),
         );

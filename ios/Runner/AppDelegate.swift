@@ -300,11 +300,11 @@ class AppDelegate: FlutterAppDelegate, FlutterImplicitEngineDelegate,
         if #available(iOS 18.0, *) {
           Task { @MainActor in
             AppStore.requestReview(in: scene)
-            result(nil)
+            result(true)
           }
         } else {
           SKStoreReviewController.requestReview(in: scene)
-          result(nil)
+          result(true)
         }
       default:
         result(FlutterMethodNotImplemented)

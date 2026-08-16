@@ -217,7 +217,9 @@ class _LoginPageState extends State<LoginPage> {
       RefreshBus.instance.notify(reason: 'auth');
       if (mounted) {
         Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(builder: (context) => const HomePage()),
+          MaterialPageRoute(
+            builder: (context) => const HomePage(isLoggedIn: true),
+          ),
           (route) => false,
         );
       }
