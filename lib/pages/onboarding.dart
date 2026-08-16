@@ -125,9 +125,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
 
     if (widget.isLoggedIn) {
       Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(
-          builder: (context) => const HomePage(isLoggedIn: true),
-        ),
+        MaterialPageRoute(builder: (context) => const HomePage()),
         (route) => false,
       );
       return;
@@ -234,9 +232,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
       await MyApp.warmStartupCachesAsync();
       if (!mounted) return;
       Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(
-          builder: (context) => const HomePage(isLoggedIn: true),
-        ),
+        MaterialPageRoute(builder: (context) => const HomePage()),
         (route) => false,
       );
       return;
