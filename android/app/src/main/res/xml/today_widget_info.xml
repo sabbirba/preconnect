@@ -11,5 +11,5 @@
     android:previewImage="@mipmap/ic_launcher"
     android:widgetCategory="home_screen"
     android:resizeMode="vertical"
-    android:updatePeriodMillis="1800000"
+    android:updatePeriodMillis="0"
     tools:targetApi="31" />

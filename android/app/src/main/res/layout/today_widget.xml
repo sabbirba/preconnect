@@ -7,7 +7,7 @@
     android:padding="14dp">
 
     <LinearLayout
-        android:id="@+id/today_sync"
+        android:id="@+id/today_header"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
@@ -38,29 +38,6 @@
             android:textStyle="bold"
             android:maxLines="1" />
 
-        <FrameLayout
-            android:layout_width="20dp"
-            android:layout_height="20dp"
-            android:layout_marginStart="8dp"
-            android:foregroundGravity="center">
-
-            <ImageView
-                android:id="@+id/today_sync_icon"
-                android:layout_width="20dp"
-                android:layout_height="20dp"
-                android:layout_gravity="center"
-                android:scaleType="centerInside"
-                android:src="@drawable/ic_sync" />
-
-            <ProgressBar
-                android:id="@+id/today_sync_progress"
-                android:layout_width="20dp"
-                android:layout_height="20dp"
-                android:layout_gravity="center"
-                android:indeterminate="true"
-                android:indeterminateDrawable="@drawable/ic_sync_spin"
-                android:visibility="gone" />
-        </FrameLayout>
     </LinearLayout>
 
     <LinearLayout

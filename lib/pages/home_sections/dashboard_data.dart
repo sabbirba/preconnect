@@ -3,20 +3,15 @@ part of 'package:preconnect/pages/home.dart';
 @pragma('vm:entry-point')
 Future<void> syncTodayWidgetInBackground(Uri? uri) async {
   final action = uri?.host;
-  if (action != 'sync' && action != 'refresh') return;
+  if (action != 'refresh') return;
 
-  final isManualSync = action == 'sync';
   try {
-    await TodayWidget.setSyncing(true);
-    final data = await _HomeDashboardState.preloadData(
-      forceRefresh: isManualSync,
-    );
+    await AppStorage.initialize();
+    final data = await _HomeDashboardState.preloadData();
     final state = _HomeDashboardState();
-    final derived = state._deriveDashboardValues(data);
+    final derived = state._deriveDashboardValues(data, updateWidget: false);
     await state._syncTodayWidget(data, derived);
-  } catch (_) {
-    await TodayWidget.setSyncing(false);
-  }
+  } catch (_) {}
 }
 
 class _HomeDashboard extends StatefulWidget {
@@ -593,7 +588,10 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
   String? _derivedForToday;
   _DerivedDashboardData? _derivedCache;
 
-  _DerivedDashboardData _deriveDashboardValues(_HomeData? data) {
+  _DerivedDashboardData _deriveDashboardValues(
+    _HomeData? data, {
+    bool updateWidget = true,
+  }) {
     final today = _todayName();
     final cached = _derivedCache;
     if (cached != null &&
@@ -636,7 +634,9 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
     _derivedForData = data;
     _derivedForToday = today;
     _derivedCache = result;
-    unawaited(_syncTodayWidget(data, result));
+    if (updateWidget) {
+      unawaited(_syncTodayWidget(data, result));
+    }
     return result;
   }
 

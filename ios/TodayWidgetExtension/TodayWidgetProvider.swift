@@ -17,7 +17,6 @@ struct TodayWidgetEntry: TimelineEntry {
   let title: String
   let dateText: String
   let items: [TodayWidgetItem]
-  let isSyncing: Bool
 }
 
 struct TodayWidgetProvider: TimelineProvider {
@@ -33,8 +32,7 @@ struct TodayWidgetProvider: TimelineProvider {
         TodayWidgetItem(
           badge: "03", badgeColor: "#FF1E6BE3", title: "CSE111",
           subtitle: "12:30 PM - 1:50 PM", trailing: "10A-05C", trailingSub: "TAW"),
-      ],
-      isSyncing: false
+      ]
     )
   }
 
@@ -45,8 +43,8 @@ struct TodayWidgetProvider: TimelineProvider {
   func getTimeline(in context: Context, completion: @escaping (Timeline<TodayWidgetEntry>) -> Void)
   {
     let entry = readEntry()
-    let nextRefresh = Calendar.current.date(byAdding: .minute, value: 30, to: Date()) ?? Date()
-      .addingTimeInterval(1800)
+    let nextRefresh = Calendar.current.date(byAdding: .minute, value: 5, to: Date()) ?? Date()
+      .addingTimeInterval(300)
     completion(Timeline(entries: [entry], policy: .after(nextRefresh)))
   }
 
@@ -55,7 +53,6 @@ struct TodayWidgetProvider: TimelineProvider {
 
     let title = preferences?.string(forKey: "today_title") ?? "Today"
     let dateText = preferences?.string(forKey: "today_date") ?? ""
-    let isSyncing = preferences?.string(forKey: "today_syncing") == "1"
     let itemCount = preferences?.integer(forKey: "today_item_count") ?? 0
 
     var items: [TodayWidgetItem] = []
@@ -75,7 +72,6 @@ struct TodayWidgetProvider: TimelineProvider {
       }
     }
 
-    return TodayWidgetEntry(
-      date: Date(), title: title, dateText: dateText, items: items, isSyncing: isSyncing)
+    return TodayWidgetEntry(date: Date(), title: title, dateText: dateText, items: items)
   }
 }

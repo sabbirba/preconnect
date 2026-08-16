@@ -49,10 +49,6 @@ abstract final class TodayWidget {
     try {
       await HomeWidget.saveWidgetData<String>('today_title', title);
       await HomeWidget.saveWidgetData<String>('today_date', date);
-      await HomeWidget.saveWidgetData<String>(
-        'today_date_key',
-        DateTime.now().toIso8601String().substring(0, 10),
-      );
       final previousItemCount =
           await HomeWidget.getWidgetData<int>('today_item_count') ?? 0;
       final slotCount = previousItemCount > items.length
@@ -87,21 +83,6 @@ abstract final class TodayWidget {
           item?.trailingSub ?? '',
         );
       }
-      await HomeWidget.saveWidgetData<String>('today_syncing', '0');
-      await HomeWidget.updateWidget(
-        androidName: _androidName,
-        iOSName: _iOSName,
-      );
-    } catch (_) {}
-  }
-
-  static Future<void> setSyncing(bool syncing) async {
-    if (!isSupported) return;
-    try {
-      await HomeWidget.saveWidgetData<String>(
-        'today_syncing',
-        syncing ? '1' : '0',
-      );
       await HomeWidget.updateWidget(
         androidName: _androidName,
         iOSName: _iOSName,
