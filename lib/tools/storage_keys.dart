@@ -43,6 +43,7 @@ class StorageKeys {
   static const String emergencyContactName = 'emergencyContactName';
   static const String themeMode = 'themeMode';
   static const String homeTab = 'home_tab';
+  static const String firstAppUseAt = 'first_app_use_at';
   static const String studentSchedule = 'student_schedule_v1';
   static const String qrBase64 = 'qr_base64';
   static const String qrHash = 'qr_hash';

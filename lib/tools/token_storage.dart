@@ -24,6 +24,7 @@ import 'package:preconnect/tools/http/http_headers.dart';
 import 'package:http/http.dart' as http;
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:preconnect/tools/store_actions.dart';
+import 'package:preconnect/tools/storage_keys.dart';
 
 class TokenPersistenceException implements Exception {
   TokenPersistenceException(this.message);
@@ -495,6 +496,30 @@ class HomeCardVisibility {
 
 class InAppReviewPrompt {
   InAppReviewPrompt._();
+
+  static const Duration _minimumAppUse = Duration(days: 3);
+
+  static Future<void> requestAfterThreeDays() async {
+    if (kIsWeb) return;
+    if (!(Platform.isAndroid || Platform.isIOS)) return;
+
+    final storage = AppStorage.instance;
+    final now = DateTime.now();
+    final firstUseTimestamp = await storage.getInt(StorageKeys.firstAppUseAt);
+    if (firstUseTimestamp == null) {
+      await storage.setInt(
+        StorageKeys.firstAppUseAt,
+        now.millisecondsSinceEpoch,
+      );
+      return;
+    }
+
+    final firstUse = DateTime.fromMillisecondsSinceEpoch(firstUseTimestamp);
+    if (now.difference(firstUse) < _minimumAppUse) return;
+    if (!await TokenStorage.instance.hasAccessToken()) return;
+
+    await _requestAvailableReview();
+  }
 
   static Future<bool> _requestAvailableReview() async {
     try {
