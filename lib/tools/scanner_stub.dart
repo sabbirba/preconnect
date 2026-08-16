@@ -1,34 +1,52 @@
 import 'package:flutter/material.dart';
 
-class MobileScannerController {
-  MobileScannerController({bool autoStart = true});
-
-  final MobileScannerControllerValue value = MobileScannerControllerValue();
-
-  Future<void> start() async {}
-
-  Future<void> stop() async {}
-
-  void dispose() {}
-
-  Future<BarcodeCapture?> analyzeImage(String path) async => null;
+class Format {
+  static const int qrCode = 8192;
 }
 
-class MobileScannerControllerValue {
-  bool get isRunning => false;
+class Code {
+  const Code({this.text});
+
+  final String? text;
 }
 
-class MobileScanner extends StatelessWidget {
-  const MobileScanner({
+enum ResolutionPreset { high }
+
+class ReaderWidget extends StatelessWidget {
+  const ReaderWidget({
     super.key,
-    required this.controller,
-    this.errorBuilder,
-    this.onDetect,
+    this.codeFormat = Format.qrCode,
+    this.resolution = ResolutionPreset.high,
+    this.cropPercent = 0.85,
+    this.tryHarder = false,
+    this.tryRotate = true,
+    this.tryInverted = false,
+    this.tryDownscale = false,
+    this.maxNumberOfSymbols = 1,
+    this.showScannerOverlay = false,
+    this.showFlashlight = false,
+    this.showGallery = false,
+    this.showToggleCamera = false,
+    this.allowPinchZoom = false,
+    this.onControllerCreated,
+    this.onScan,
   });
 
-  final MobileScannerController controller;
-  final Widget Function(BuildContext, MobileScannerException)? errorBuilder;
-  final void Function(BarcodeCapture)? onDetect;
+  final int codeFormat;
+  final ResolutionPreset resolution;
+  final double cropPercent;
+  final bool tryHarder;
+  final bool tryRotate;
+  final bool tryInverted;
+  final bool tryDownscale;
+  final int maxNumberOfSymbols;
+  final bool showScannerOverlay;
+  final bool showFlashlight;
+  final bool showGallery;
+  final bool showToggleCamera;
+  final bool allowPinchZoom;
+  final void Function(Object?, Exception?)? onControllerCreated;
+  final void Function(Code)? onScan;
 
   @override
   Widget build(BuildContext context) {
@@ -43,39 +61,4 @@ class MobileScanner extends StatelessWidget {
       ),
     );
   }
-}
-
-class MobileScannerErrorCode {
-  const MobileScannerErrorCode._(this.message);
-
-  final String message;
-
-  static const permissionDenied = MobileScannerErrorCode._(
-    'Camera permission denied',
-  );
-}
-
-class MobileScannerException implements Exception {
-  const MobileScannerException({required this.errorCode, this.errorDetails});
-
-  final MobileScannerErrorCode errorCode;
-  final MobileScannerErrorDetails? errorDetails;
-}
-
-class MobileScannerErrorDetails {
-  const MobileScannerErrorDetails({this.message});
-
-  final String? message;
-}
-
-class BarcodeCapture {
-  const BarcodeCapture({this.barcodes = const <Barcode>[]});
-
-  final List<Barcode> barcodes;
-}
-
-class Barcode {
-  const Barcode({this.rawValue});
-
-  final String? rawValue;
 }

@@ -10,7 +10,6 @@ import 'package:preconnect/api/auth.dart';
 import 'package:preconnect/api/friend_store.dart';
 import 'package:preconnect/model/friend_schedule.dart';
 import 'package:archive/archive.dart';
-import 'package:preconnect/pages/home_tab.dart';
 import 'package:preconnect/pages/friend_sections/schedule_list.dart';
 import 'package:preconnect/pages/friend_sections/friend_detail.dart';
 import 'package:preconnect/pages/scan_schedule.dart';
@@ -18,14 +17,9 @@ import 'package:preconnect/pages/share_schedule.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
 import 'package:preconnect/tools/ramadan.dart';
-import 'package:preconnect/tools/picker_utils.dart';
-import 'package:mobile_scanner/mobile_scanner.dart'
-    if (dart.library.js_interop) 'package:preconnect/tools/scanner_stub.dart';
 
 class FriendSchedulePage extends StatefulWidget {
-  const FriendSchedulePage({super.key, required this.onNavigate});
-
-  final void Function(HomeTab tab) onNavigate;
+  const FriendSchedulePage({super.key});
 
   @override
   State<FriendSchedulePage> createState() => _FriendSchedulePageState();
@@ -36,12 +30,12 @@ class _FriendSchedulePageState extends State<FriendSchedulePage>
   List<FriendScheduleItem> decodedSchedules = [];
   Map<String, FriendMetadata> _metadata = {};
   final FriendScheduleStore _store = FriendScheduleStore();
-  final MobileScannerController _galleryScanner = MobileScannerController();
   final TextEditingController _searchController = TextEditingController();
   bool _isPicking = false;
   String _searchQuery = '';
   bool _isRamadan = false;
   bool _isLoadingSchedules = false;
+  Completer<void>? _loadCompleter;
 
   @override
   void initState() {
@@ -60,7 +54,6 @@ class _FriendSchedulePageState extends State<FriendSchedulePage>
   @override
   void dispose() {
     unbindRefreshBus(_onRefreshSignal);
-    _galleryScanner.dispose();
     _searchController.dispose();
     super.dispose();
   }
@@ -68,13 +61,7 @@ class _FriendSchedulePageState extends State<FriendSchedulePage>
   void _onRefreshSignal() {
     if (!mounted) return;
     final reason = refreshBusReason;
-    if (reason == 'friend_schedule') {
-      return;
-    }
-    if (reason == 'share_schedule' ||
-        reason == 'scan_schedule' ||
-        reason == 'auth' ||
-        reason == 'cache_cleared') {
+    if (reason == 'auth' || reason == 'cache_cleared') {
       unawaited(_loadSchedules());
     }
   }
@@ -88,8 +75,12 @@ class _FriendSchedulePageState extends State<FriendSchedulePage>
   }
 
   Future<void> _loadSchedules() async {
-    if (_isLoadingSchedules) return;
+    while (_isLoadingSchedules) {
+      await _loadCompleter?.future;
+    }
     _isLoadingSchedules = true;
+    final completer = Completer<void>();
+    _loadCompleter = completer;
     try {
       final ramadanFuture = RamadanTiming.isRamadan();
       final snapshot = await _store.loadSnapshot();
@@ -142,6 +133,8 @@ class _FriendSchedulePageState extends State<FriendSchedulePage>
       });
     } finally {
       _isLoadingSchedules = false;
+      if (!completer.isCompleted) completer.complete();
+      if (identical(_loadCompleter, completer)) _loadCompleter = null;
     }
   }
 
@@ -149,46 +142,127 @@ class _FriendSchedulePageState extends State<FriendSchedulePage>
     await _loadSchedules();
   }
 
-  Future<void> _saveScannedValue(String value) async {
-    await _store.upsertEncodedSchedule(value);
-  }
-
   Future<void> _scanFromGallery() async {
     if (_isPicking) return;
     setState(() => _isPicking = true);
     try {
-      final picked = await pickSystemImage();
-      if (picked == null) return;
-
-      final imagePath = await ensureReadableSystemImagePath(picked);
-      if (imagePath.isEmpty) {
-        if (!mounted) return;
-        showAppSnackBar(context, 'Unable to read selected image');
-        return;
-      }
-      final BarcodeCapture? capture = await _galleryScanner.analyzeImage(
-        imagePath,
-      );
-      if (capture == null || capture.barcodes.isEmpty) {
+      final value = await pickQrFromSystemImage();
+      if (value == null || value.trim().isEmpty) {
         if (!mounted) return;
         showAppSnackBar(context, 'No QR code found in image');
         return;
       }
-
-      final value = capture.barcodes.first.rawValue;
-      if (value == null || value.trim().isEmpty) {
+      try {
+        await _store.importPayload(value.trim());
+        await _loadSchedules();
+      } on FormatException {
         if (!mounted) return;
-        showAppSnackBar(context, 'Invalid QR code');
-        return;
+        showAppSnackBar(context, 'Invalid friend schedule QR code');
+      } catch (_) {
+        if (!mounted) return;
+        showAppSnackBar(context, 'Could not save friend schedule');
       }
-
-      await _saveScannedValue(value);
-      await _loadSchedules();
     } finally {
       if (mounted) {
         setState(() => _isPicking = false);
       }
     }
+  }
+
+  Future<void> _showScheduleToolSheet({
+    required String title,
+    required String subtitle,
+    required Widget Function(BuildContext sheetContext) builder,
+  }) {
+    return showBracuCustomBottomSheet<void>(
+      context: context,
+      backgroundColor: BracuPalette.card(context),
+      clipBehavior: Clip.antiAlias,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      draggable: false,
+      isScrollControlled: true,
+      builder: (sheetContext) {
+        final textPrimary = BracuPalette.textPrimary(sheetContext);
+        final textSecondary = BracuPalette.textSecondary(sheetContext);
+        return SafeArea(
+          top: false,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(18, 6, 18, 0),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Center(
+                      child: Container(
+                        width: 36,
+                        height: 3,
+                        decoration: BoxDecoration(
+                          color: textSecondary.withValues(alpha: 0.28),
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                      ),
+                    ),
+                    const Gap(6),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 8),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  title,
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    color: textPrimary,
+                                    fontSize: 16.5,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                                const Gap(4),
+                                Text(
+                                  subtitle,
+                                  style: TextStyle(
+                                    color: textSecondary,
+                                    fontSize: 12,
+                                    height: 1.3,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const Gap(8),
+                        IconButton(
+                          onPressed: () =>
+                              Navigator.of(sheetContext).maybePop(),
+                          icon: const Icon(Icons.close_rounded, size: 20),
+                          style: IconButton.styleFrom(
+                            padding: EdgeInsets.zero,
+                            minimumSize: const Size(36, 36),
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const Gap(4),
+                  ],
+                ),
+              ),
+              builder(sheetContext),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   Future<void> _exportAllFriendSchedules() async {
@@ -248,7 +322,14 @@ class _FriendSchedulePageState extends State<FriendSchedulePage>
       confirmLabel: 'Remove',
       confirmColor: BracuPalette.danger,
       onConfirm: () async {
-        await _store.removeByEncoded(item.encoded);
+        try {
+          await _store.removeByEncoded(item.encoded);
+        } catch (_) {
+          if (mounted) {
+            showAppSnackBar(context, 'Could not remove friend schedule');
+          }
+          rethrow;
+        }
       },
     );
 
@@ -258,10 +339,6 @@ class _FriendSchedulePageState extends State<FriendSchedulePage>
       decodedSchedules.removeWhere((e) => e.encoded == item.encoded);
     });
     return true;
-  }
-
-  Future<void> _saveMetadata() async {
-    await _store.saveAllMetadata(_metadata);
   }
 
   void _applyMetadataToDecodedSchedules() {
@@ -281,12 +358,19 @@ class _FriendSchedulePageState extends State<FriendSchedulePage>
     final newMetadata = (currentMetadata ?? FriendMetadata(friendId: friendId))
         .copyWith(isFavorite: !(currentMetadata?.isFavorite ?? false));
 
-    setState(() {
-      _metadata[friendId] = newMetadata;
-      _applyMetadataToDecodedSchedules();
-    });
-
-    await _saveMetadata();
+    final nextMetadata = Map<String, FriendMetadata>.from(_metadata)
+      ..[friendId] = newMetadata;
+    try {
+      await _store.saveAllMetadata(nextMetadata);
+      if (!mounted) return;
+      setState(() {
+        _metadata = nextMetadata;
+        _applyMetadataToDecodedSchedules();
+      });
+    } catch (_) {
+      if (!mounted) return;
+      showAppSnackBar(context, 'Could not update favorite');
+    }
   }
 
   Future<String?> _editNickname(FriendScheduleItem item) async {
@@ -341,6 +425,7 @@ class _FriendSchedulePageState extends State<FriendSchedulePage>
         );
       },
     );
+    controller.dispose();
     if (result == null) return null;
 
     final friendId = item.friend.id;
@@ -348,12 +433,20 @@ class _FriendSchedulePageState extends State<FriendSchedulePage>
     final newMetadata = (currentMetadata ?? FriendMetadata(friendId: friendId))
         .copyWith(nickname: result.isEmpty ? null : result);
 
-    setState(() {
-      _metadata[friendId] = newMetadata;
-      _applyMetadataToDecodedSchedules();
-    });
-
-    await _saveMetadata();
+    final nextMetadata = Map<String, FriendMetadata>.from(_metadata)
+      ..[friendId] = newMetadata;
+    try {
+      await _store.saveAllMetadata(nextMetadata);
+      if (!mounted) return null;
+      setState(() {
+        _metadata = nextMetadata;
+        _applyMetadataToDecodedSchedules();
+      });
+    } catch (_) {
+      if (!mounted) return null;
+      showAppSnackBar(context, 'Could not update nickname');
+      return null;
+    }
     return newMetadata.nickname?.trim().isNotEmpty == true
         ? newMetadata.nickname!
         : item.friend.name;
@@ -411,123 +504,12 @@ class _FriendSchedulePageState extends State<FriendSchedulePage>
                       color: BracuPalette.info,
                       onTap: () async {
                         if (!mounted) return;
-                        await showBracuCustomBottomSheet<void>(
-                          context: context,
-                          backgroundColor: BracuPalette.card(context),
-                          clipBehavior: Clip.antiAlias,
-                          shape: const RoundedRectangleBorder(
-                            borderRadius: BorderRadius.vertical(
-                              top: Radius.circular(28),
-                            ),
+                        await _showScheduleToolSheet(
+                          title: 'Scan Schedule',
+                          subtitle: 'Scan QR from Friends',
+                          builder: (sheetContext) => ScanSchedulePage(
+                            onCompleted: () => Navigator.of(sheetContext).pop(),
                           ),
-                          draggable: false,
-                          isScrollControlled: true,
-                          builder: (sheetContext) {
-                            final textPrimary = BracuPalette.textPrimary(
-                              sheetContext,
-                            );
-                            final textSecondary = BracuPalette.textSecondary(
-                              sheetContext,
-                            );
-                            return SafeArea(
-                              top: false,
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                crossAxisAlignment: CrossAxisAlignment.stretch,
-                                children: [
-                                  Padding(
-                                    padding: const EdgeInsets.fromLTRB(
-                                      18,
-                                      6,
-                                      18,
-                                      0,
-                                    ),
-                                    child: Column(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Center(
-                                          child: Container(
-                                            width: 36,
-                                            height: 3,
-                                            decoration: BoxDecoration(
-                                              color: textSecondary.withValues(
-                                                alpha: 0.28,
-                                              ),
-                                              borderRadius:
-                                                  BorderRadius.circular(999),
-                                            ),
-                                          ),
-                                        ),
-                                        const Gap(6),
-                                        Row(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.center,
-                                          children: [
-                                            Expanded(
-                                              child: Padding(
-                                                padding:
-                                                    const EdgeInsets.symmetric(
-                                                      vertical: 8,
-                                                    ),
-                                                child: Column(
-                                                  mainAxisSize:
-                                                      MainAxisSize.min,
-                                                  crossAxisAlignment:
-                                                      CrossAxisAlignment.start,
-                                                  children: [
-                                                    Text(
-                                                      'Scan Schedule',
-                                                      maxLines: 2,
-                                                      overflow:
-                                                          TextOverflow.ellipsis,
-                                                      style: TextStyle(
-                                                        color: textPrimary,
-                                                        fontSize: 16.5,
-                                                        fontWeight:
-                                                            FontWeight.w700,
-                                                      ),
-                                                    ),
-                                                    const Gap(4),
-                                                    Text(
-                                                      'Scan QR from Friends',
-                                                      style: TextStyle(
-                                                        color: textSecondary,
-                                                        fontSize: 12,
-                                                        height: 1.3,
-                                                      ),
-                                                    ),
-                                                  ],
-                                                ),
-                                              ),
-                                            ),
-                                            const Gap(8),
-                                            IconButton(
-                                              onPressed: () => Navigator.of(
-                                                sheetContext,
-                                              ).maybePop(),
-                                              icon: const Icon(
-                                                Icons.close_rounded,
-                                                size: 20,
-                                              ),
-                                              style: IconButton.styleFrom(
-                                                padding: EdgeInsets.zero,
-                                                minimumSize: const Size(36, 36),
-                                                tapTargetSize:
-                                                    MaterialTapTargetSize
-                                                        .shrinkWrap,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                        const Gap(4),
-                                      ],
-                                    ),
-                                  ),
-                                  const ScanSchedulePage(),
-                                ],
-                              ),
-                            );
-                          },
                         );
                         if (mounted) {
                           await _loadSchedules();
@@ -559,123 +541,10 @@ class _FriendSchedulePageState extends State<FriendSchedulePage>
                           return;
                         }
                         if (!context.mounted) return;
-                        await showBracuCustomBottomSheet<void>(
-                          context: context,
-                          backgroundColor: BracuPalette.card(context),
-                          clipBehavior: Clip.antiAlias,
-                          shape: const RoundedRectangleBorder(
-                            borderRadius: BorderRadius.vertical(
-                              top: Radius.circular(28),
-                            ),
-                          ),
-                          draggable: false,
-                          isScrollControlled: true,
-                          builder: (sheetContext) {
-                            final textPrimary = BracuPalette.textPrimary(
-                              sheetContext,
-                            );
-                            final textSecondary = BracuPalette.textSecondary(
-                              sheetContext,
-                            );
-                            return SafeArea(
-                              top: false,
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                crossAxisAlignment: CrossAxisAlignment.stretch,
-                                children: [
-                                  Padding(
-                                    padding: const EdgeInsets.fromLTRB(
-                                      18,
-                                      6,
-                                      18,
-                                      0,
-                                    ),
-                                    child: Column(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Center(
-                                          child: Container(
-                                            width: 36,
-                                            height: 3,
-                                            decoration: BoxDecoration(
-                                              color: textSecondary.withValues(
-                                                alpha: 0.28,
-                                              ),
-                                              borderRadius:
-                                                  BorderRadius.circular(999),
-                                            ),
-                                          ),
-                                        ),
-                                        const Gap(6),
-                                        Row(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.center,
-                                          children: [
-                                            Expanded(
-                                              child: Padding(
-                                                padding:
-                                                    const EdgeInsets.symmetric(
-                                                      vertical: 8,
-                                                    ),
-                                                child: Column(
-                                                  mainAxisSize:
-                                                      MainAxisSize.min,
-                                                  crossAxisAlignment:
-                                                      CrossAxisAlignment.start,
-                                                  children: [
-                                                    Text(
-                                                      'Share Schedule',
-                                                      maxLines: 2,
-                                                      overflow:
-                                                          TextOverflow.ellipsis,
-                                                      style: TextStyle(
-                                                        color: textPrimary,
-                                                        fontSize: 16.5,
-                                                        fontWeight:
-                                                            FontWeight.w700,
-                                                      ),
-                                                    ),
-                                                    const Gap(4),
-                                                    Text(
-                                                      'Generate QR for Friends',
-                                                      style: TextStyle(
-                                                        color: textSecondary,
-                                                        fontSize: 12,
-                                                        height: 1.3,
-                                                      ),
-                                                    ),
-                                                  ],
-                                                ),
-                                              ),
-                                            ),
-                                            const Gap(8),
-                                            IconButton(
-                                              onPressed: () => Navigator.of(
-                                                sheetContext,
-                                              ).maybePop(),
-                                              icon: const Icon(
-                                                Icons.close_rounded,
-                                                size: 20,
-                                              ),
-                                              style: IconButton.styleFrom(
-                                                padding: EdgeInsets.zero,
-                                                minimumSize: const Size(36, 36),
-                                                tapTargetSize:
-                                                    MaterialTapTargetSize
-                                                        .shrinkWrap,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                        const Gap(4),
-                                      ],
-                                    ),
-                                  ),
-                                  const ShareSchedulePage(),
-                                ],
-                              ),
-                            );
-                          },
+                        await _showScheduleToolSheet(
+                          title: 'Share Schedule',
+                          subtitle: 'Generate QR for Friends',
+                          builder: (_) => const ShareSchedulePage(),
                         );
                       },
                     ),

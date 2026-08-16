@@ -31,7 +31,6 @@ class _ShareSchedulePageState extends State<ShareSchedulePage>
     with RefreshBusState {
   static const int _qrPayloadVersion = 4;
   String? _base64Data;
-  bool isLoading = false;
   String? errorMessage;
   final GlobalKey _qrKey = GlobalKey();
   bool _isRefreshing = false;
@@ -55,9 +54,7 @@ class _ShareSchedulePageState extends State<ShareSchedulePage>
   @override
   void initState() {
     super.initState();
-    unawaited(ProfileService().fetchProfile());
-    unawaited(_primeCurrentSemesterSchedule());
-    _loadCachedAndRefresh();
+    unawaited(_loadCachedAndRefresh());
     bindRefreshBus(_onRefreshSignal);
   }
 
@@ -70,22 +67,9 @@ class _ShareSchedulePageState extends State<ShareSchedulePage>
   void _onRefreshSignal() {
     if (!mounted) return;
     final reason = refreshBusReason;
-    if (reason == 'share_schedule') {
-      return;
-    }
-    if (reason == 'auth' ||
-        reason == 'friend_schedule' ||
-        reason == 'cache_cleared') {
+    if (reason == 'auth' || reason == 'cache_cleared') {
       unawaited(_refreshIfOnline());
     }
-  }
-
-  Future<void> _primeCurrentSemesterSchedule() async {
-    final semesterSessionId = await resolveCurrentSessionSemesterIdWithRetry();
-    if (semesterSessionId == null) return;
-    await ScheduleService().fetchStudentScheduleForSemester(
-      semesterSessionId: semesterSessionId,
-    );
   }
 
   Future<void> _refreshIfOnline({bool notify = false}) async {
@@ -119,7 +103,6 @@ class _ShareSchedulePageState extends State<ShareSchedulePage>
         cachedVersion == _qrPayloadVersion) {
       _safeSetState(() {
         _base64Data = cachedBase64;
-        isLoading = false;
       });
       unawaited(_refreshIfOnline(notify: false));
       return;
@@ -149,9 +132,16 @@ class _ShareSchedulePageState extends State<ShareSchedulePage>
       final profile = forceRefresh
           ? await ProfileService().fetchProfile()
           : (cachedProfile ?? await ProfileService().fetchProfile());
-      final fullName = profile?['fullName'] ?? '';
-      final studentId = profile?['studentId'] ?? '';
-      final photoFilePath = profile?['photoFilePath'] ?? '';
+      final fullName = profile?['fullName'];
+      final studentId = profile?['studentId'];
+      final photoFilePath = profile?['photoFilePath'];
+      final currentSemester = profile?['currentSemester'];
+      if (fullName is! String ||
+          fullName.trim().isEmpty ||
+          studentId is! String ||
+          studentId.trim().isEmpty) {
+        throw const FormatException('Incomplete profile data');
+      }
 
       final semesterSessionId =
           await resolveCurrentSessionSemesterIdWithRetry();
@@ -182,19 +172,13 @@ class _ShareSchedulePageState extends State<ShareSchedulePage>
         return;
       }
 
-      final currentSemester = profile?['currentSemester'] ?? '';
-      final shortCode = profile?['shortCode'] ?? '';
-
       final fingerprint = _fastHash(
-        'v$_qrPayloadVersion|$studentId|$fullName|$photoFilePath|$shortCode|$currentSemester|$jsonString',
+        'v$_qrPayloadVersion|$studentId|$fullName|$photoFilePath|$currentSemester|$jsonString',
       );
       if (!forceRefresh &&
           cachedBase64 != null &&
           cachedHash == fingerprint &&
           cachedVersion == _qrPayloadVersion) {
-        _safeSetState(() {
-          isLoading = false;
-        });
         return;
       }
 
@@ -236,9 +220,6 @@ class _ShareSchedulePageState extends State<ShareSchedulePage>
       });
     } finally {
       _isRefreshing = false;
-      _safeSetState(() {
-        isLoading = false;
-      });
     }
   }
 
@@ -309,15 +290,15 @@ class _ShareSchedulePageState extends State<ShareSchedulePage>
 
   @override
   Widget build(BuildContext context) {
-    if (isLoading || _base64Data == null) {
-      return const _ShareScheduleLoadingState();
-    }
-
     if (errorMessage != null) {
       return Padding(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 20),
         child: BracuEmptyState(message: 'Error: $errorMessage'),
       );
+    }
+
+    if (_base64Data == null) {
+      return const _ShareScheduleLoadingState();
     }
 
     return Column(

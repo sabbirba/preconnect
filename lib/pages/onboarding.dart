@@ -191,9 +191,11 @@ class _OnboardingPageState extends State<OnboardingPage> {
   }
 
   Future<void> _openOnboardingQuickPage(Widget page) async {
-    await Navigator.of(
-      context,
-    ).push(MaterialPageRoute<void>(builder: (_) => page));
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => _OnboardingQuickNavigator(page: page),
+      ),
+    );
   }
 
   Future<void> _startWebExtensionLogin({String? idp}) async {
@@ -392,7 +394,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
                                 icon: Icons.people_outline_rounded,
                                 color: const Color(0xFF5B8DEF),
                                 onTap: () => _openOnboardingQuickPage(
-                                  FriendSchedulePage(onNavigate: (_) {}),
+                                  const FriendSchedulePage(),
                                 ),
                               ),
                               _CompactQuickAccessCard(
@@ -496,6 +498,45 @@ class _OnboardingPageState extends State<OnboardingPage> {
               ],
             ),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _OnboardingQuickNavigator extends StatefulWidget {
+  const _OnboardingQuickNavigator({required this.page});
+
+  final Widget page;
+
+  @override
+  State<_OnboardingQuickNavigator> createState() =>
+      _OnboardingQuickNavigatorState();
+}
+
+class _OnboardingQuickNavigatorState extends State<_OnboardingQuickNavigator> {
+  final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
+
+  void _goBack() {
+    final navigator = _navigatorKey.currentState;
+    if (navigator?.canPop() == true) {
+      navigator!.pop();
+      return;
+    }
+    Navigator.of(context).pop();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return NavigatorPopHandler<void>(
+      onPopWithResult: (_) => _goBack(),
+      child: BracuBackScope(
+        canGoBack: true,
+        onBack: _goBack,
+        child: Navigator(
+          key: _navigatorKey,
+          onGenerateRoute: (_) =>
+              MaterialPageRoute<void>(builder: (_) => widget.page),
         ),
       ),
     );

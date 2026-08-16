@@ -26,7 +26,7 @@ class _FreeRoomSlot {
   const _FreeRoomSlot({
     required this.roomNumber,
     required this.roomName,
-    required this.courseTitlesLabel,
+    required this.courses,
     required this.dominantProgramCode,
     required this.startTime,
     required this.endTime,
@@ -36,12 +36,27 @@ class _FreeRoomSlot {
 
   final String roomNumber;
   final String roomName;
-  final String courseTitlesLabel;
+  final List<_RoomCourse> courses;
   final String dominantProgramCode;
   final String startTime;
   final String endTime;
   final String statusLabel;
   final List<_OccupiedClass> occupiedClasses;
+}
+
+class _RoomCourse {
+  const _RoomCourse({required this.code, required this.name});
+
+  final String code;
+  final String name;
+
+  @override
+  bool operator ==(Object other) {
+    return other is _RoomCourse && other.code == code && other.name == name;
+  }
+
+  @override
+  int get hashCode => Object.hash(code, name);
 }
 
 class _BusySlotDetails {
@@ -73,7 +88,7 @@ class _RoomSeed {
   final String roomName;
   final Map<String, int> programCounts = <String, int>{};
   final List<_BusySlotDetails> busySlots = <_BusySlotDetails>[];
-  final Set<String> courseTitles = <String>{};
+  final Set<_RoomCourse> courses = <_RoomCourse>{};
 }
 
 class _TimeSlot {

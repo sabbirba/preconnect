@@ -6,58 +6,32 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:preconnect/api/friend_store.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/token_storage.dart';
-import 'package:preconnect/tools/refresh_bus.dart';
-import 'package:mobile_scanner/mobile_scanner.dart'
+import 'package:flutter_zxing/flutter_zxing.dart'
     if (dart.library.js_interop) 'package:preconnect/tools/scanner_stub.dart';
 import 'package:preconnect/tools/clipboard_stub.dart'
     if (dart.library.js_interop) 'package:preconnect/tools/clipboard_web.dart';
 
 class ScanSchedulePage extends StatefulWidget {
-  const ScanSchedulePage({super.key});
+  const ScanSchedulePage({super.key, required this.onCompleted});
+
+  final VoidCallback onCompleted;
 
   @override
   State<ScanSchedulePage> createState() => _ScanSchedulePageState();
 }
 
-class _ScanSchedulePageState extends State<ScanSchedulePage>
-    with WidgetsBindingObserver {
+class _ScanSchedulePageState extends State<ScanSchedulePage> {
   final FriendScheduleStore _store = FriendScheduleStore();
-  final MobileScannerController _controller = MobileScannerController(
-    autoStart: false,
-  );
   String? scannedValue;
   bool? _cameraGranted;
+  bool _cameraFailed = false;
   bool _isEnablingCamera = false;
-  bool _isRescanning = false;
+  bool _isSaving = false;
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addObserver(this);
     _ensureCameraPermission();
-  }
-
-  @override
-  void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (!mounted) return;
-    if (state == AppLifecycleState.resumed) {
-      if (_cameraGranted == true && scannedValue == null) {
-        _startScanner();
-      }
-      return;
-    }
-    if (state == AppLifecycleState.inactive ||
-        state == AppLifecycleState.paused ||
-        state == AppLifecycleState.hidden) {
-      _controller.stop();
-    }
   }
 
   Future<void> _ensureCameraPermission({
@@ -68,9 +42,7 @@ class _ScanSchedulePageState extends State<ScanSchedulePage>
     final granted = await PlatformPermissions.requestScannerCameraPermission();
     if (!mounted) return;
     setState(() => _cameraGranted = granted);
-    if (granted) {
-      _startScanner();
-    } else if (openSettingsOnDeny) {
+    if (!granted && openSettingsOnDeny) {
       await openAppSettings();
     }
     if (mounted) {
@@ -78,28 +50,22 @@ class _ScanSchedulePageState extends State<ScanSchedulePage>
     }
   }
 
-  Future<void> _startScanner() async {
-    if (!mounted || _cameraGranted != true || scannedValue != null) {
-      return;
+  Future<void> _acceptScannedValue(String value) async {
+    if (_isSaving || scannedValue != null) return;
+    _isSaving = true;
+    try {
+      await _store.importPayload(value);
+      if (!mounted) return;
+      setState(() => scannedValue = value);
+    } on FormatException {
+      if (!mounted) return;
+      showAppSnackBar(context, 'Invalid friend schedule QR code');
+    } catch (_) {
+      if (!mounted) return;
+      showAppSnackBar(context, 'Could not save friend schedule');
+    } finally {
+      _isSaving = false;
     }
-    if (_controller.value.isRunning) {
-      return;
-    }
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
-      if (!mounted || _controller.value.isRunning) return;
-      try {
-        await _controller.start();
-      } catch (_) {}
-    });
-  }
-
-  Future<void> _saveScannedValue(String value) async {
-    final exportSchedules = FriendScheduleStore.extractExportSchedules(value);
-    if (exportSchedules != null && exportSchedules.isNotEmpty) {
-      await _store.upsertEncodedSchedules(exportSchedules);
-      return;
-    }
-    await _store.upsertEncodedSchedule(value);
   }
 
   Future<void> _pasteCode() async {
@@ -124,28 +90,14 @@ class _ScanSchedulePageState extends State<ScanSchedulePage>
       return;
     }
     final value = text.trim();
-    if (!mounted) return;
-    setState(() => scannedValue = value);
-    await _saveScannedValue(value);
-    try {
-      await _controller.stop();
-    } catch (_) {}
-    RefreshBus.instance.notify(reason: 'scan_schedule');
+    await _acceptScannedValue(value);
   }
 
-  Future<void> _restartScanner() async {
-    if (_isRescanning) return;
-    setState(() => _isRescanning = true);
-    try {
-      await _controller.stop();
-      if (!mounted) return;
-      setState(() => scannedValue = null);
-      await _startScanner();
-    } finally {
-      if (mounted) {
-        setState(() => _isRescanning = false);
-      }
-    }
+  void _restartScanner() {
+    setState(() {
+      scannedValue = null;
+      _cameraFailed = false;
+    });
   }
 
   @override
@@ -201,9 +153,7 @@ class _ScanSchedulePageState extends State<ScanSchedulePage>
             ),
             const Gap(24),
             BracuActionButton(
-              onPressed: () {
-                Navigator.of(context).maybePop();
-              },
+              onPressed: widget.onCompleted,
               icon: Icons.check_circle_rounded,
               label: 'Done',
               outlined: false,
@@ -212,11 +162,10 @@ class _ScanSchedulePageState extends State<ScanSchedulePage>
             ),
             const Gap(12),
             BracuActionButton(
-              onPressed: _isRescanning ? null : _restartScanner,
+              onPressed: _restartScanner,
               icon: Icons.qr_code_scanner,
               label: 'Scan Another',
               outlined: true,
-              isLoading: _isRescanning,
             ),
           ],
         ),
@@ -235,62 +184,73 @@ class _ScanSchedulePageState extends State<ScanSchedulePage>
               child: AspectRatio(
                 aspectRatio: 1,
                 child: _cameraGranted == true
-                    ? MobileScanner(
-                        controller: _controller,
-                        errorBuilder: (context, error) {
-                          return Container(
-                            color: Colors.black,
-                            alignment: Alignment.center,
-                            padding: const EdgeInsets.all(16),
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const Icon(
-                                  Icons.error_outline,
-                                  color: Colors.white,
-                                  size: 34,
-                                ),
-                                const Gap(12),
-                                const Text(
-                                  'Camera unavailable',
-                                  textAlign: TextAlign.center,
-                                  style: TextStyle(
+                    ? _cameraFailed
+                          ? Container(
+                              color: Colors.black,
+                              alignment: Alignment.center,
+                              padding: const EdgeInsets.all(16),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(
+                                    Icons.error_outline,
                                     color: Colors.white,
-                                    fontSize: 16,
+                                    size: 34,
                                   ),
-                                ),
-                                const Gap(12),
-                                BracuActionButton(
-                                  onPressed: () => _ensureCameraPermission(
-                                    openSettingsOnDeny: true,
+                                  const Gap(12),
+                                  const Text(
+                                    'Camera unavailable',
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 16,
+                                    ),
                                   ),
-                                  label: 'Retry Camera',
-                                  outlined: true,
-                                  foregroundColor: Colors.white,
-                                ),
-                              ],
-                            ),
-                          );
-                        },
-                        onDetect: (capture) async {
-                          if (scannedValue != null) return;
-                          if (capture.barcodes.isEmpty) return;
-                          final barcode = capture.barcodes.first;
-                          final value = barcode.rawValue;
-                          if (value == null || value.trim().isEmpty) return;
-                          if (!mounted) return;
-                          setState(() => scannedValue = value);
-                          await _saveScannedValue(value);
-                          await _controller.stop();
-                          RefreshBus.instance.notify(reason: 'scan_schedule');
-                        },
-                      )
+                                  const Gap(12),
+                                  BracuActionButton(
+                                    onPressed: () => _ensureCameraPermission(
+                                      openSettingsOnDeny: true,
+                                    ),
+                                    label: 'Retry Camera',
+                                    outlined: true,
+                                    foregroundColor: Colors.white,
+                                  ),
+                                ],
+                              ),
+                            )
+                          : ReaderWidget(
+                              codeFormat: Format.qrCode,
+                              resolution: ResolutionPreset.high,
+                              cropPercent: 0.85,
+                              tryHarder: false,
+                              tryRotate: true,
+                              tryInverted: false,
+                              tryDownscale: true,
+                              maxNumberOfSymbols: 1,
+                              showScannerOverlay: false,
+                              showFlashlight: false,
+                              showGallery: false,
+                              showToggleCamera: false,
+                              allowPinchZoom: false,
+                              onControllerCreated: (_, error) {
+                                if (error == null || !mounted) return;
+                                setState(() => _cameraFailed = true);
+                              },
+                              onScan: (code) async {
+                                if (scannedValue != null || _isSaving) return;
+                                final value = code.text;
+                                if (value == null || value.trim().isEmpty) {
+                                  return;
+                                }
+                                final normalized = value.trim();
+                                await _acceptScannedValue(normalized);
+                              },
+                            )
                     : Center(
                         child: BracuActionButton(
                           onPressed: () {
                             if (kIsWeb) {
                               setState(() => _cameraGranted = true);
-                              _startScanner();
                               return;
                             }
                             _ensureCameraPermission(openSettingsOnDeny: true);

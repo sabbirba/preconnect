@@ -13,7 +13,6 @@
 
 # ── Don't warn for other transient packages ──────────────────────────────────
 -dontwarn io.flutter.**
--dontwarn com.google.mlkit.**
 -dontwarn com.google.android.gms.**
 -dontwarn com.google.android.play.**
 
@@ -50,9 +49,3 @@
     public static **[] values();
     public static ** valueOf(java.lang.String);
 }
-
-# ── Mobile Scanner (ML Kit Barcode / ZXing) ──────────────────────────────────
--dontwarn com.google.mlkit.**
--dontwarn com.google.android.gms.**
--keep class dev.steenbakker.mobile_scanner.** { *; }
--dontwarn dev.steenbakker.mobile_scanner.**

@@ -226,7 +226,11 @@ class _FreeLabsPageState extends State<FreeLabsPage> {
           slot.roomName.toLowerCase().contains(query);
       final programMatch =
           slot.dominantProgramCode.toLowerCase().contains(query) ||
-          slot.courseTitlesLabel.toLowerCase().contains(query);
+          slot.courses.any(
+            (course) =>
+                course.code.toLowerCase().contains(query) ||
+                course.name.toLowerCase().contains(query),
+          );
       return roomMatch || programMatch;
     }).toList();
   }
@@ -532,7 +536,8 @@ class _FreeLabsPageState extends State<FreeLabsPage> {
           _FreeRoomSlot(
             roomNumber: room.roomNumber,
             roomName: room.roomName.isEmpty ? 'Room' : room.roomName,
-            courseTitlesLabel: (room.courseTitles.toList()..sort()).join(', '),
+            courses: room.courses.toList()
+              ..sort((a, b) => a.code.compareTo(b.code)),
             dominantProgramCode: _dominantProgramCode(room),
             startTime: _formatTimeOfDay(free.start),
             endTime: _formatTimeOfDay(free.end),
@@ -657,12 +662,10 @@ class _FreeLabsPageState extends State<FreeLabsPage> {
       }
     }
     final normalizedCourseTitle = courseTitle.trim();
-    if (normalizedCourseTitle.isNotEmpty && normalizedCourseCode.isNotEmpty) {
-      room.courseTitles.add('$normalizedCourseTitle ($normalizedCourseCode)');
-    } else if (normalizedCourseTitle.isNotEmpty) {
-      room.courseTitles.add(normalizedCourseTitle);
-    } else if (normalizedCourseCode.isNotEmpty) {
-      room.courseTitles.add(normalizedCourseCode);
+    if (normalizedCourseTitle.isNotEmpty || normalizedCourseCode.isNotEmpty) {
+      room.courses.add(
+        _RoomCourse(code: normalizedCourseCode, name: normalizedCourseTitle),
+      );
     }
     for (final slot in schedules) {
       if (_normalizeDay(slot.day) != day) continue;
@@ -865,6 +868,41 @@ class _FreeLabsPageState extends State<FreeLabsPage> {
         return ListView(
           controller: dragController,
           children: [
+            if (slot.courses.isNotEmpty) ...[
+              Text.rich(
+                TextSpan(
+                  children: [
+                    for (
+                      var index = 0;
+                      index < slot.courses.length;
+                      index++
+                    ) ...[
+                      if (slot.courses[index].name.isNotEmpty)
+                        TextSpan(text: slot.courses[index].name),
+                      if (slot.courses[index].code.isNotEmpty)
+                        TextSpan(
+                          text: slot.courses[index].name.isEmpty
+                              ? slot.courses[index].code
+                              : ' (${slot.courses[index].code})',
+                          style: const TextStyle(
+                            color: BracuPalette.primary,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      if (index < slot.courses.length - 1)
+                        const TextSpan(text: ', '),
+                    ],
+                  ],
+                ),
+                style: TextStyle(
+                  color: textSecondary,
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w500,
+                  height: 1.35,
+                ),
+              ),
+              const Gap(16),
+            ],
             Row(
               children: [
                 Expanded(
@@ -1004,16 +1042,11 @@ class _FreeLabsPageState extends State<FreeLabsPage> {
   }
 
   String _roomHeaderSubtitle(_FreeRoomSlot slot) {
-    final parts = <String>[];
     final roomName = slot.roomName.trim();
     if (roomName.isNotEmpty && roomName != slot.roomNumber.trim()) {
-      parts.add(roomName);
+      return roomName;
     }
-    final courses = slot.courseTitlesLabel.trim();
-    if (courses.isNotEmpty) {
-      parts.add(courses);
-    }
-    return parts.join(' • ');
+    return '';
   }
 
   String _sheetRoomTitle(_FreeRoomSlot slot) {

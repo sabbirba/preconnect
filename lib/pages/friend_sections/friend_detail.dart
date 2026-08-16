@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
 import 'package:preconnect/api/api_config.dart';
+import 'package:preconnect/api/auth.dart';
 import 'package:preconnect/api/schedule.dart';
 import 'package:preconnect/api/exam_map.dart';
 import 'package:preconnect/model/friend_schedule.dart';
@@ -65,6 +66,12 @@ class _FriendDetailPageState extends State<FriendDetailPage> {
 
   Future<void> _loadExamOverrides() async {
     try {
+      if (!await AuthService().isLoggedIn()) {
+        if (mounted) {
+          setState(() => _loadingExamOverrides = false);
+        }
+        return;
+      }
       final semesterSessionId =
           await resolveCurrentSessionSemesterIdWithRetry();
       if (semesterSessionId != null) {
@@ -118,6 +125,7 @@ class _FriendDetailPageState extends State<FriendDetailPage> {
   }
 
   Future<List<Course>?> _loadMyCourses() async {
+    if (!await AuthService().isLoggedIn()) return null;
     final semesterSessionId = await resolveCurrentSessionSemesterIdWithRetry();
     if (semesterSessionId == null) return null;
     final jsonString = await ScheduleService().getStudentScheduleForSemester(
