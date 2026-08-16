@@ -40,6 +40,7 @@ dependencies:
   device_info_plus: ^13.2.0
   gap: ^3.0.1
   cupertino_icons: ^1.0.9
+  home_widget: ^0.9.3
 
 dev_dependencies:
   flutter_test:
