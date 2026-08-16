@@ -664,7 +664,6 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
         title: title,
         date: date,
         items: todayExams
-            .take(3)
             .map(
               (exam) => TodayItem(
                 badge: formatSectionBadge(exam.sectionName),
@@ -712,7 +711,6 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
       title: title,
       date: date,
       items: visibleEntries
-          .take(3)
           .map(
             (entry) => TodayItem(
               badge: formatSectionBadge(entry.sectionName),

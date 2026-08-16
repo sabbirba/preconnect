@@ -56,20 +56,23 @@ struct TodayWidgetProvider: TimelineProvider {
     let title = preferences?.string(forKey: "today_title") ?? "Today"
     let dateText = preferences?.string(forKey: "today_date") ?? ""
     let isSyncing = preferences?.string(forKey: "today_syncing") == "1"
+    let itemCount = preferences?.integer(forKey: "today_item_count") ?? 0
 
     var items: [TodayWidgetItem] = []
-    for slot in 1...3 {
-      let itemTitle = preferences?.string(forKey: "today_item\(slot)_title") ?? ""
-      if itemTitle.isEmpty { continue }
-      items.append(
-        TodayWidgetItem(
-          badge: preferences?.string(forKey: "today_item\(slot)_badge") ?? "",
-          badgeColor: preferences?.string(forKey: "today_item\(slot)_badge_color") ?? "#FF1E6BE3",
-          title: itemTitle,
-          subtitle: preferences?.string(forKey: "today_item\(slot)_subtitle") ?? "",
-          trailing: preferences?.string(forKey: "today_item\(slot)_trailing") ?? "",
-          trailingSub: preferences?.string(forKey: "today_item\(slot)_trailing_sub") ?? ""
-        ))
+    if itemCount > 0 {
+      for slot in 1...itemCount {
+        let itemTitle = preferences?.string(forKey: "today_item\(slot)_title") ?? ""
+        if itemTitle.isEmpty { continue }
+        items.append(
+          TodayWidgetItem(
+            badge: preferences?.string(forKey: "today_item\(slot)_badge") ?? "",
+            badgeColor: preferences?.string(forKey: "today_item\(slot)_badge_color") ?? "#FF1E6BE3",
+            title: itemTitle,
+            subtitle: preferences?.string(forKey: "today_item\(slot)_subtitle") ?? "",
+            trailing: preferences?.string(forKey: "today_item\(slot)_trailing") ?? "",
+            trailingSub: preferences?.string(forKey: "today_item\(slot)_trailing_sub") ?? ""
+          ))
+      }
     }
 
     return TodayWidgetEntry(

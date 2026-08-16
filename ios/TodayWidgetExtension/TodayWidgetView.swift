@@ -71,8 +71,8 @@ struct TodayWidgetEntryView: View {
   @Environment(\.widgetFamily) private var family
   var entry: TodayWidgetProvider.Entry
 
-  private var maxItems: Int {
-    family == .systemMedium ? 1 : 3
+  private var visibleItems: [TodayWidgetItem] {
+    family == .systemMedium ? Array(entry.items.prefix(1)) : entry.items
   }
 
   private var emptyItem: TodayWidgetItem {
@@ -83,18 +83,20 @@ struct TodayWidgetEntryView: View {
 
   var body: some View {
     VStack(alignment: .leading, spacing: 6) {
-      HStack(alignment: .center) {
+      HStack(alignment: .center, spacing: 8) {
         Text(entry.title)
           .font(.system(size: 16, weight: .bold))
           .foregroundStyle(todayTextPrimary)
           .lineLimit(1)
-
-        Spacer()
+          .minimumScaleFactor(0.75)
+          .frame(maxWidth: .infinity, alignment: .leading)
 
         Text(entry.dateText)
           .font(.system(size: 16, weight: .bold))
           .foregroundStyle(todayTextPrimary)
           .lineLimit(1)
+          .minimumScaleFactor(0.75)
+          .fixedSize(horizontal: true, vertical: false)
 
         Button(intent: SyncTodayWidgetIntent()) {
           Image(systemName: "arrow.triangle.2.circlepath")
@@ -104,11 +106,8 @@ struct TodayWidgetEntryView: View {
             .symbolEffect(.rotate, options: .repeating, isActive: entry.isSyncing)
         }
         .buttonStyle(.plain)
-        .padding(.leading, 8)
       }
       .padding(.horizontal, 4)
-
-      let visibleItems = Array(entry.items.prefix(maxItems))
 
       ForEach(Array(visibleItems.enumerated()), id: \.offset) { _, item in
         TodayWidgetCard(item: item)
