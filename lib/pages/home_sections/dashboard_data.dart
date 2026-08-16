@@ -1,5 +1,24 @@
 part of 'package:preconnect/pages/home.dart';
 
+@pragma('vm:entry-point')
+Future<void> syncTodayWidgetInBackground(Uri? uri) async {
+  final action = uri?.host;
+  if (action != 'sync' && action != 'refresh') return;
+
+  final isManualSync = action == 'sync';
+  try {
+    await TodayWidget.setSyncing(true);
+    final data = await _HomeDashboardState.preloadData(
+      forceRefresh: isManualSync,
+    );
+    final state = _HomeDashboardState();
+    final derived = state._deriveDashboardValues(data);
+    await state._syncTodayWidget(data, derived);
+  } catch (_) {
+    await TodayWidget.setSyncing(false);
+  }
+}
+
 class _HomeDashboard extends StatefulWidget {
   const _HomeDashboard({required this.onNavigate, required this.onLogout});
 
@@ -617,7 +636,95 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
     _derivedForData = data;
     _derivedForToday = today;
     _derivedCache = result;
+    unawaited(_syncTodayWidget(data, result));
     return result;
+  }
+
+  Future<void> _syncTodayWidget(
+    _HomeData? data,
+    _DerivedDashboardData derived,
+  ) async {
+    if (!TodayWidget.isSupported) return;
+
+    final isTodayHoliday = data?.holiday.isTodayHoliday ?? false;
+    final holidayStatus = data?.holiday ?? HolidayStatus.empty;
+    final isExamWeekActive = derived.examWeekStatus.isActive;
+    final todayExams = derived.todayExams;
+    final visibleEntries = isTodayHoliday
+        ? const <_ScheduleEntry>[]
+        : (todayExams.isNotEmpty || isExamWeekActive
+              ? const <_ScheduleEntry>[]
+              : derived.todayEntries);
+
+    final title = 'Today is ${derived.today}';
+    final date = derived.todayDate;
+
+    if (todayExams.isNotEmpty) {
+      await TodayWidget.sync(
+        title: title,
+        date: date,
+        items: todayExams
+            .take(3)
+            .map(
+              (exam) => TodayItem(
+                badge: formatSectionBadge(exam.sectionName),
+                badgeColor: TodayWidget.accentColor,
+                title: '${exam.courseCode} ${exam.type}',
+                subtitle: formatTimeRange(exam.startTime, exam.endTime),
+                trailing: (exam.room ?? '').trim(),
+                trailingSub: exam.faculties.trim(),
+              ),
+            )
+            .toList(),
+      );
+      return;
+    }
+
+    if (isTodayHoliday || visibleEntries.isEmpty) {
+      await TodayWidget.sync(
+        title: title,
+        date: date,
+        items: [
+          TodayItem(
+            badge: isExamWeekActive
+                ? '--'
+                : isTodayHoliday
+                ? 'OFF'
+                : '--',
+            badgeColor: TodayWidget.primaryColor,
+            title: isExamWeekActive
+                ? 'No Classes Today'
+                : isTodayHoliday
+                ? 'National holiday'
+                : 'No Classes Today',
+            subtitle: isExamWeekActive
+                ? derived.examWeekStatus.subtitle
+                : isTodayHoliday
+                ? holidayStatus.displayNames
+                : 'Enjoy your day off.',
+          ),
+        ],
+      );
+      return;
+    }
+
+    await TodayWidget.sync(
+      title: title,
+      date: date,
+      items: visibleEntries
+          .take(3)
+          .map(
+            (entry) => TodayItem(
+              badge: formatSectionBadge(entry.sectionName),
+              badgeColor: TodayWidget.primaryColor,
+              title: entry.courseCode,
+              subtitle: formatTimeRange(entry.startTime, entry.endTime),
+              trailing: (entry.roomNumber ?? '').trim(),
+              trailingSub: (entry.faculties ?? '').trim(),
+            ),
+          )
+          .toList(),
+    );
   }
 
   String _todayName() {

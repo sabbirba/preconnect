@@ -5,8 +5,11 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/foundation.dart';
+import 'package:home_widget/home_widget.dart';
 import 'package:preconnect/api/fcm.dart';
+import 'package:preconnect/features/schedule/application/today_widget.dart';
 import 'package:preconnect/firebase_options.dart';
+import 'package:preconnect/pages/home.dart';
 import 'package:preconnect/pages/home_tab.dart';
 import 'app.dart';
 
@@ -61,6 +64,12 @@ Future<void> main() async {
       } catch (error, stackTrace) {
         unawaited(
           AppLog.write('AppStorage initialization failed: $error\n$stackTrace'),
+        );
+      }
+
+      if (TodayWidget.isSupported) {
+        unawaited(
+          HomeWidget.registerInteractivityCallback(syncTodayWidgetInBackground),
         );
       }
 

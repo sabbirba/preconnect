@@ -34,6 +34,7 @@ import 'package:share_plus/share_plus.dart';
 import 'package:preconnect/pages/home_tab.dart';
 import 'package:preconnect/pages/home_sections/exam_countdown.dart';
 import 'package:preconnect/pages/home_sections/student_overview.dart';
+import 'package:preconnect/features/schedule/application/today_widget.dart';
 import 'package:preconnect/features/schedule/application/session_resolver.dart';
 import 'package:preconnect/features/auth/application/auth_bridge.dart';
 import 'package:preconnect/pages/shared_widgets/map_shared.dart';

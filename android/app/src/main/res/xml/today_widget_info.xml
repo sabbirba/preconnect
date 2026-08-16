@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:minWidth="250dp"
+    android:minHeight="150dp"
+    android:minResizeHeight="150dp"
+    android:targetCellWidth="4"
+    android:targetCellHeight="3"
+    android:initialLayout="@layout/today_widget"
+    android:previewLayout="@layout/today_widget"
+    android:previewImage="@mipmap/ic_launcher"
+    android:widgetCategory="home_screen"
+    android:resizeMode="vertical"
+    android:updatePeriodMillis="1800000"
+    tools:targetApi="31" />
