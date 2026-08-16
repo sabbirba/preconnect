@@ -334,6 +334,7 @@ extension _HomeDashboardView on _HomeDashboardState {
                                   Padding(
                                     padding: const EdgeInsets.only(bottom: 12),
                                     child: BracuCard(
+                                      backgroundColor: Colors.transparent,
                                       child: Column(
                                         crossAxisAlignment:
                                             CrossAxisAlignment.start,
