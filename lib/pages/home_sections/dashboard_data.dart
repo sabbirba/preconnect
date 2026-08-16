@@ -1,10 +1,15 @@
 part of 'package:preconnect/pages/home.dart';
 
 class _HomeDashboard extends StatefulWidget {
-  const _HomeDashboard({required this.onNavigate, required this.onLogout});
+  const _HomeDashboard({
+    required this.onNavigate,
+    required this.onLogout,
+    required this.showRating,
+  });
 
   final void Function(HomeTab tab) onNavigate;
   final Future<void> Function() onLogout;
+  final bool showRating;
 
   @override
   State<_HomeDashboard> createState() => _HomeDashboardState();

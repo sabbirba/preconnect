@@ -20,8 +20,8 @@ class StoreActions {
     return await _storeChannel.invokeMethod<bool>('isReviewAvailable') ?? false;
   }
 
-  static Future<void> requestReview() {
-    return _storeChannel.invokeMethod<void>('requestReview');
+  static Future<bool> requestReview() async {
+    return await _storeChannel.invokeMethod<bool>('requestReview') ?? false;
   }
 
   static Future<Map<String, dynamic>> checkForUpdate() async {

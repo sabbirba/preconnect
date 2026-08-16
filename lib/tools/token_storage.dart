@@ -496,26 +496,43 @@ class HomeCardVisibility {
 class InAppReviewPrompt {
   InAppReviewPrompt._();
 
-  static Future<void> requestOnStartup() async {
+  static bool _startupRequested = false;
+
+  static Future<bool> requestReview() async {
     try {
-      if (!(Platform.isAndroid || Platform.isIOS)) return;
-      final available = await StoreActions.isReviewAvailable();
-      if (!available) return;
-      await StoreActions.requestReview();
-    } catch (_) {}
+      if (!(Platform.isAndroid || Platform.isIOS)) return false;
+      if (!await TokenStorage.instance.hasAccessToken()) return false;
+      return _requestAvailableReview();
+    } catch (_) {
+      return false;
+    }
   }
 
-  static Future<bool> openStoreListing({String? iosAppStoreId}) async {
+  static Future<bool> _requestAvailableReview() async {
     try {
-      if (!kIsWeb) {
-        try {
-          final reviewAvailable = await StoreActions.isReviewAvailable();
-          if (reviewAvailable) {
-            unawaited(StoreActions.requestReview());
-          }
-        } catch (_) {}
-      }
+      final available = await StoreActions.isReviewAvailable();
+      if (!available) return false;
+      return StoreActions.requestReview();
+    } catch (_) {
+      return false;
+    }
+  }
 
+  static Future<void> requestOnStartup() async {
+    if (_startupRequested) return;
+    if (!await TokenStorage.instance.hasAccessToken()) return;
+    _startupRequested = true;
+    await _requestAvailableReview();
+  }
+
+  static Future<void> rate() async {
+    if (!await TokenStorage.instance.hasAccessToken()) return;
+    if (await _requestAvailableReview()) return;
+    await _openStoreListing();
+  }
+
+  static Future<bool> _openStoreListing({String? iosAppStoreId}) async {
+    try {
       if (kIsWeb) {
         final playStoreUri = Uri.parse(
           'https://play.google.com/store/apps/details?id=com.sabbirba.preconnect',
@@ -527,42 +544,32 @@ class InAppReviewPrompt {
           );
           if (launched) return true;
         } catch (_) {}
-        try {
-          return await launchUrl(
-            playStoreUri,
-            mode: LaunchMode.platformDefault,
-          );
-        } catch (_) {
-          return false;
-        }
+        return launchUrl(playStoreUri, mode: LaunchMode.platformDefault);
       }
 
       final isApple =
-          !kIsWeb &&
-          (defaultTargetPlatform == TargetPlatform.iOS ||
-              defaultTargetPlatform == TargetPlatform.macOS);
-
+          defaultTargetPlatform == TargetPlatform.iOS ||
+          defaultTargetPlatform == TargetPlatform.macOS;
       if (isApple) {
         var appStoreId = (iosAppStoreId ?? '').trim();
         if (appStoreId.isEmpty) {
           try {
             final packageInfo = await PackageInfo.fromPlatform();
-            final bundleId = packageInfo.packageName;
             final response = await http
                 .get(
                   Uri.parse(
-                    'https://itunes.apple.com/lookup?bundleId=$bundleId',
+                    'https://itunes.apple.com/lookup?bundleId=${packageInfo.packageName}',
                   ),
                 )
                 .timeout(const Duration(seconds: 3));
             if (response.statusCode == 200) {
               final data = jsonDecode(response.body);
-              if (data != null &&
-                  data['resultCount'] != null &&
-                  data['resultCount'] > 0) {
-                final results = data['results'] as List<dynamic>;
-                if (results.isNotEmpty && results[0]['trackId'] != null) {
-                  appStoreId = results[0]['trackId'].toString();
+              if (data is Map &&
+                  data['results'] is List &&
+                  (data['results'] as List).isNotEmpty) {
+                final result = (data['results'] as List).first;
+                if (result is Map && result['trackId'] != null) {
+                  appStoreId = '${result['trackId']}';
                 }
               }
             }
@@ -570,44 +577,40 @@ class InAppReviewPrompt {
         }
 
         if (appStoreId.isNotEmpty) {
-          final nativeItmsUri = Uri.parse(
+          final nativeUri = Uri.parse(
             'itms-apps://itunes.apple.com/app/id$appStoreId?action=write-review',
           );
           try {
             final launched = await launchUrl(
-              nativeItmsUri,
+              nativeUri,
               mode: LaunchMode.externalApplication,
             );
             if (launched) return true;
           } catch (_) {}
 
-          final httpsAppStoreUri = Uri.parse(
+          final webUri = Uri.parse(
             'https://apps.apple.com/app/id$appStoreId?action=write-review',
           );
           try {
             final launched = await launchUrl(
-              httpsAppStoreUri,
+              webUri,
               mode: LaunchMode.externalApplication,
             );
             if (launched) return true;
           } catch (_) {}
         }
 
-        final fallbackAppStoreUri = Uri.parse(
+        final fallbackUri = Uri.parse(
           'https://apps.apple.com/us/app/preconnect-bracu-student-app/id6791423431',
         );
         try {
           final launched = await launchUrl(
-            fallbackAppStoreUri,
+            fallbackUri,
             mode: LaunchMode.externalApplication,
           );
           if (launched) return true;
         } catch (_) {}
-
-        return await launchUrl(
-          fallbackAppStoreUri,
-          mode: LaunchMode.platformDefault,
-        );
+        return launchUrl(fallbackUri, mode: LaunchMode.platformDefault);
       }
 
       var packageName = 'com.sabbirba.preconnect';
@@ -637,12 +640,7 @@ class InAppReviewPrompt {
         );
         if (launched) return true;
       } catch (_) {}
-
-      try {
-        return await launchUrl(playStoreUri, mode: LaunchMode.platformDefault);
-      } catch (_) {}
-
-      return false;
+      return launchUrl(playStoreUri, mode: LaunchMode.platformDefault);
     } catch (_) {
       return false;
     }
