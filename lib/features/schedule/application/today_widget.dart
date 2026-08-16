@@ -21,12 +21,23 @@ class TodayItem {
 
 abstract final class TodayWidget {
   static const String _androidName = 'TodayWidgetProvider';
+  static const String _iOSName = 'TodayWidget';
+  static const String appGroupId = 'group.com.sabbirba.preconnect.widget';
   static const int _maxItems = 3;
   static const String primaryColor = '#FF1E6BE3';
   static const String accentColor = '#FF22B573';
 
   static bool get isSupported =>
-      !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
+      !kIsWeb &&
+      (defaultTargetPlatform == TargetPlatform.android ||
+          defaultTargetPlatform == TargetPlatform.iOS);
+
+  static Future<void> initialize() async {
+    if (defaultTargetPlatform != TargetPlatform.iOS) return;
+    try {
+      await HomeWidget.setAppGroupId(appGroupId);
+    } catch (_) {}
+  }
 
   static Future<void> sync({
     required String title,
@@ -71,7 +82,10 @@ abstract final class TodayWidget {
         );
       }
       await HomeWidget.saveWidgetData<String>('today_syncing', '0');
-      await HomeWidget.updateWidget(androidName: _androidName);
+      await HomeWidget.updateWidget(
+        androidName: _androidName,
+        iOSName: _iOSName,
+      );
     } catch (_) {}
   }
 
@@ -82,7 +96,10 @@ abstract final class TodayWidget {
         'today_syncing',
         syncing ? '1' : '0',
       );
-      await HomeWidget.updateWidget(androidName: _androidName);
+      await HomeWidget.updateWidget(
+        androidName: _androidName,
+        iOSName: _iOSName,
+      );
     } catch (_) {}
   }
 }

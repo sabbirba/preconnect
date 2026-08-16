@@ -2,6 +2,7 @@ import EventKit
 import Flutter
 import StoreKit
 import UIKit
+import home_widget
 
 let preconnectPendingShortcutActionKey = "flutter.pending_shortcut_action"
 
@@ -21,6 +22,11 @@ class AppDelegate: FlutterAppDelegate, FlutterImplicitEngineDelegate,
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
   ) -> Bool {
     purgeLargeUserDefaultsEntries()
+    if #available(iOS 17, *) {
+      HomeWidgetBackgroundWorker.setPluginRegistrantCallback { registry in
+        GeneratedPluginRegistrant.register(with: registry)
+      }
+    }
     if let shortcutItem = launchOptions?[.shortcutItem] as? UIApplicationShortcutItem {
       cacheShortcutAction(shortcutItem.type)
     }
