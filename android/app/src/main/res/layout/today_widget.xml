@@ -7,12 +7,14 @@
     android:padding="14dp">
 
     <LinearLayout
+        android:id="@+id/today_sync"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
         android:gravity="center_vertical"
         android:background="@android:color/transparent"
-        android:paddingHorizontal="4dp">
+        android:paddingHorizontal="4dp"
+        android:paddingVertical="4dp">
 
         <TextView
             android:id="@+id/today_title"
@@ -37,7 +39,6 @@
             android:maxLines="1" />
 
         <FrameLayout
-            android:id="@+id/today_sync"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginStart="8dp"
