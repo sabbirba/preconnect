@@ -137,14 +137,11 @@ class _HomePageState extends State<HomePage> {
     });
     unawaited(_persistSelectedTab(selectedTab));
     if (!kIsWeb) {
-      unawaited(
-        Future<void>.value().then((_) async {
-          await QuietModeController.instance.refresh();
-          await InAppReviewPrompt.maybePrompt();
-        }),
-      );
+      unawaited(QuietModeController.instance.refresh());
       WidgetsBinding.instance.addPostFrameCallback((_) async {
         await BracuPermissionHelper.checkAndRequestOnStartup(context);
+        if (!mounted) return;
+        await InAppReviewPrompt.requestOnStartup();
       });
     }
   }
