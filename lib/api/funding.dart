@@ -3,6 +3,7 @@ import 'package:preconnect/api/api_client.dart';
 import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/api/repository_cache.dart';
 import 'package:preconnect/tools/app_storage.dart';
+import 'package:preconnect/tools/http/http_headers.dart';
 
 class ContributionItem {
   final String name;
@@ -99,8 +100,10 @@ class FundingService {
           ? await RepositoryCache.instance.readString(_etagKey)
           : null;
       final headers = <String, String>{};
-      if (cachedEtag != null && cachedEtag.trim().isNotEmpty) {
-        headers['If-None-Match'] = cachedEtag;
+      if (isValidHttpEtag(cachedEtag)) {
+        headers['If-None-Match'] = cachedEtag!;
+      } else if (cachedEtag != null) {
+        await RepositoryCache.instance.remove(_etagKey);
       }
 
       final response = await ApiClient().publicGet(
@@ -124,8 +127,8 @@ class FundingService {
             await RepositoryCache.instance.writeString(_cacheKey, body);
 
             final etag = response.headers['etag'] ?? response.headers['ETag'];
-            if (etag != null && etag.trim().isNotEmpty) {
-              await RepositoryCache.instance.writeString(_etagKey, etag);
+            if (isValidHttpEtag(etag)) {
+              await RepositoryCache.instance.writeString(_etagKey, etag!);
             }
             return status;
           }

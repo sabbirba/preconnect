@@ -645,9 +645,13 @@ class PreConnectGitHubIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return CustomPaint(
-      size: Size(size, size),
-      painter: _GitHubLogoPainter(color: color ?? BracuPalette.primary),
+    return Center(
+      widthFactor: 1,
+      heightFactor: 1,
+      child: CustomPaint(
+        size: Size.square(size),
+        painter: _GitHubLogoPainter(color: color ?? BracuPalette.primary),
+      ),
     );
   }
 }
