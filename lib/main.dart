@@ -68,6 +68,7 @@ Future<void> main() async {
       }
 
       if (TodayWidget.isSupported) {
+        await TodayWidget.initialize();
         unawaited(
           HomeWidget.registerInteractivityCallback(syncTodayWidgetInBackground),
         );
