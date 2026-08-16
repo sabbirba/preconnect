@@ -321,7 +321,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "/bin/sh \"$FLUTTER_ROOT/packages/flutter_tools/bin/xcode_backend.sh\" build\nif [ -f \"${SRCROOT}/Flutter/ephemeral/Packages/FlutterGeneratedPluginSwiftPackage/Package.swift\" ]; then\n  sed -i '' 's/\\.iOS(\"13\\.0\")/.iOS(\"16\\.0\")/g' \"${SRCROOT}/Flutter/ephemeral/Packages/FlutterGeneratedPluginSwiftPackage/Package.swift\"\nfi\n";
+			shellScript = "/bin/sh \"$FLUTTER_ROOT/packages/flutter_tools/bin/xcode_backend.sh\" build\n";
 		};
 		C1A2B3C4D5E6F7890A1B2C3D /* Embed Flutter */ = {
 			isa = PBXShellScriptBuildPhase;
