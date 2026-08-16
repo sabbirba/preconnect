@@ -688,6 +688,20 @@ class _DevGridTile extends StatelessWidget {
         final avatarSize = (width * 0.44).clamp(50.0, 64.0);
         final nameSize = compact ? 13.0 : 13.8;
         final roleSize = compact ? 11.0 : 11.6;
+        final nameStyle = TextStyle(
+          fontSize: nameSize,
+          fontWeight: FontWeight.w700,
+          height: 1.1,
+        );
+        final name = contributor.name.trim();
+        final isSingleWord = !name.contains(RegExp(r'\s'));
+        final nameText = Text(
+          name,
+          maxLines: isSingleWord ? 1 : 2,
+          softWrap: !isSingleWord,
+          textAlign: TextAlign.center,
+          style: nameStyle,
+        );
         return InkWell(
           onTap: () => openExternalUrl(context, contributor.url),
           borderRadius: BorderRadius.circular(12),
@@ -704,17 +718,10 @@ class _DevGridTile extends StatelessWidget {
                   size: avatarSize,
                 ),
                 const Gap(5),
-                Text(
-                  contributor.name,
-                  maxLines: 2,
-                  softWrap: true,
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: nameSize,
-                    fontWeight: FontWeight.w700,
-                    height: 1.1,
-                  ),
-                ),
+                if (isSingleWord)
+                  FittedBox(fit: BoxFit.scaleDown, child: nameText)
+                else
+                  nameText,
                 const Gap(2),
                 Text(
                   contributor.role,

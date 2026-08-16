@@ -3,6 +3,7 @@ import 'package:preconnect/api/api_client.dart';
 import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/tools/app_storage.dart';
 import 'package:preconnect/tools/holiday.dart';
+import 'package:preconnect/tools/http/http_headers.dart';
 import 'package:preconnect/tools/ramadan.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -22,6 +23,13 @@ void main() {
     expect(ApiConfig.holidayStatusUrl, endsWith('/holiday'));
     expect(ApiConfig.ramadanStatusUrl, endsWith('/ramadan'));
     expect(ApiConfig.coursePrerequisitesUrl, endsWith('/course-prerequisites'));
+  });
+
+  test('HTTP cache accepts only valid entity tags', () {
+    expect(isValidHttpEtag('"abc123"'), isTrue);
+    expect(isValidHttpEtag('W/"abc123"'), isTrue);
+    expect(isValidHttpEtag('[{"title":"Announcement – Fall 2026"}]'), isFalse);
+    expect(isValidHttpEtag('abc123'), isFalse);
   });
 
   test('live holiday and Ramadan response shapes remain parseable', () {

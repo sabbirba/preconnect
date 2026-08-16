@@ -349,10 +349,8 @@ class _OnboardingPageState extends State<OnboardingPage> {
                           iconWidget: const PreConnectGitHubIcon(size: 24),
                           title: 'Open GitHub Repository',
                           subtitle: 'Explore the source code and contribute',
-                          onTap: () => _openLink(
-                            context,
-                            'https://github.com/sabbirba/preconnect',
-                          ),
+                          onTap: () =>
+                              _openLink(context, kPreConnectRepositoryUrl),
                         ),
                         const Gap(12),
                         BracuActionBannerCard(

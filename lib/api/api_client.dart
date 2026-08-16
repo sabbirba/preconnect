@@ -413,13 +413,23 @@ class ApiClient {
         isPreconnectUrl && cacheDuration > Duration.zero;
 
     if (usePersistentValidation) {
-      cachedEtag = AppStorage.instance.getStringSync('etag_$url');
-      cachedBody = AppStorage.instance.getStringSync('etag_resp_$url');
-      if (cachedEtag != null &&
-          cachedEtag.isNotEmpty &&
+      final etagKey = 'etag_$url';
+      final bodyKey = 'etag_resp_$url';
+      cachedEtag = AppStorage.instance.getStringSync(etagKey);
+      cachedBody = AppStorage.instance.getStringSync(bodyKey);
+      if (isValidHttpEtag(cachedEtag) &&
           cachedBody != null &&
           cachedBody.isNotEmpty) {
-        finalHeaders['If-None-Match'] = cachedEtag;
+        finalHeaders['If-None-Match'] = cachedEtag!;
+      } else if (cachedEtag != null) {
+        cachedEtag = null;
+        cachedBody = null;
+        unawaited(
+          Future.wait(<Future<void>>[
+            AppStorage.instance.remove(etagKey),
+            AppStorage.instance.remove(bodyKey),
+          ]),
+        );
       }
     }
 
@@ -462,9 +472,9 @@ class ApiClient {
           );
         } else if (response.statusCode == 200) {
           final etag = response.headers['etag'] ?? response.headers['ETag'];
-          if (etag != null && etag.isNotEmpty) {
+          if (isValidHttpEtag(etag)) {
             if (response.body.length < 10 * 1024 * 1024) {
-              unawaited(AppStorage.instance.setString('etag_$url', etag));
+              unawaited(AppStorage.instance.setString('etag_$url', etag!));
               unawaited(
                 AppStorage.instance.setString('etag_resp_$url', response.body),
               );
