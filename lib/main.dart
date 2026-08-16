@@ -69,9 +69,13 @@ Future<void> main() async {
 
       if (TodayWidget.isSupported) {
         await TodayWidget.initialize();
-        unawaited(
-          HomeWidget.registerInteractivityCallback(syncTodayWidgetInBackground),
-        );
+        if (defaultTargetPlatform == TargetPlatform.android) {
+          unawaited(
+            HomeWidget.registerInteractivityCallback(
+              syncTodayWidgetInBackground,
+            ),
+          );
+        }
       }
 
       PaintingBinding.instance.imageCache.maximumSize = 200;

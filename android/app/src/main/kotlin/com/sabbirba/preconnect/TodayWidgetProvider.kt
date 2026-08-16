@@ -1,21 +1,33 @@
 package com.sabbirba.preconnect
 
+import android.app.AlarmManager
 import android.app.PendingIntent
 import android.appwidget.AppWidgetManager
+import android.content.ComponentName
 import android.content.Context
+import android.content.Intent
 import android.content.SharedPreferences
 import android.graphics.Color
 import android.net.Uri
+import android.os.SystemClock
 import android.view.View
 import android.widget.RemoteViews
 import es.antonborri.home_widget.HomeWidgetBackgroundIntent
 import es.antonborri.home_widget.HomeWidgetLaunchIntent
 import es.antonborri.home_widget.HomeWidgetProvider
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 
 class TodayWidgetProvider : HomeWidgetProvider() {
+    override fun onEnabled(context: Context) {
+        super.onEnabled(context)
+        scheduleRefresh(context)
+    }
+
+    override fun onDisabled(context: Context) {
+        val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+        alarmManager.cancel(refreshIntent(context))
+        super.onDisabled(context)
+    }
+
     override fun onUpdate(
         context: Context,
         appWidgetManager: AppWidgetManager,
@@ -24,24 +36,17 @@ class TodayWidgetProvider : HomeWidgetProvider() {
     ) {
         val title = widgetData.getString("today_title", null).orEmpty()
         val date = widgetData.getString("today_date", null).orEmpty()
-        val isSyncing = widgetData.getString("today_syncing", null) == "1"
-
         for (widgetId in appWidgetIds) {
             val views = RemoteViews(context.packageName, R.layout.today_widget)
             views.setTextViewText(R.id.today_title, title)
             views.setTextViewText(R.id.today_date, date)
-            views.setOnClickPendingIntent(
-                R.id.today_sync,
-                HomeWidgetBackgroundIntent.getBroadcast(context, Uri.parse("todaywidget://sync")),
-            )
-            views.setViewVisibility(R.id.today_sync_icon, if (isSyncing) View.GONE else View.VISIBLE)
-            views.setViewVisibility(R.id.today_sync_progress, if (isSyncing) View.VISIBLE else View.GONE)
             val openAppIntent =
                 HomeWidgetLaunchIntent.getActivity(
                     context,
                     MainActivity::class.java,
                     Uri.parse("preconnect://today"),
                 )
+            views.setOnClickPendingIntent(R.id.today_header, openAppIntent)
 
             val rows =
                 listOf(
@@ -92,18 +97,45 @@ class TodayWidgetProvider : HomeWidgetProvider() {
             appWidgetManager.updateAppWidget(widgetId, views)
         }
 
-        maybeRefreshFromCache(context, widgetData, isSyncing)
+        scheduleRefresh(context)
+        maybeRefreshFromCache(context, widgetData)
+    }
+
+    private fun scheduleRefresh(context: Context) {
+        val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+        alarmManager.setInexactRepeating(
+            AlarmManager.ELAPSED_REALTIME,
+            SystemClock.elapsedRealtime() + REFRESH_INTERVAL_MILLIS,
+            REFRESH_INTERVAL_MILLIS,
+            refreshIntent(context),
+        )
+    }
+
+    private fun refreshIntent(context: Context): PendingIntent {
+        val appWidgetManager = AppWidgetManager.getInstance(context)
+        val widgetIds =
+            appWidgetManager.getAppWidgetIds(ComponentName(context, TodayWidgetProvider::class.java))
+        val intent =
+            Intent(context, TodayWidgetProvider::class.java).apply {
+                action = AppWidgetManager.ACTION_APPWIDGET_UPDATE
+                putExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS, widgetIds)
+            }
+        return PendingIntent.getBroadcast(
+            context,
+            0,
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
     }
 
     private fun maybeRefreshFromCache(
         context: Context,
         widgetData: SharedPreferences,
-        isSyncing: Boolean,
     ) {
-        if (isSyncing) return
-        val todayKey = SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date())
-        val cachedKey = widgetData.getString("today_date_key", null)
-        if (cachedKey == todayKey) return
+        val now = System.currentTimeMillis()
+        val lastRequest = widgetData.getLong("today_last_refresh_request", 0)
+        if (now - lastRequest < REFRESH_INTERVAL_MILLIS) return
+        widgetData.edit().putLong("today_last_refresh_request", now).apply()
         try {
             HomeWidgetBackgroundIntent.getBroadcast(context, Uri.parse("todaywidget://refresh")).send()
         } catch (_: PendingIntent.CanceledException) {}
@@ -118,4 +150,8 @@ class TodayWidgetProvider : HomeWidgetProvider() {
         val trailing: Int,
         val trailingSub: Int,
     )
+
+    private companion object {
+        const val REFRESH_INTERVAL_MILLIS = 300_000L
+    }
 }

@@ -12,9 +12,7 @@
 		3B3967161E833CAA004F5970 /* AppFrameworkInfo.plist in Resources */ = {isa = PBXBuildFile; fileRef = 3B3967151E833CAA004F5970 /* AppFrameworkInfo.plist */; };
 		50E19370BBE5A7AB5FE072B8 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 387F21CB0ADCD64780015C32 /* Foundation.framework */; };
 		5A0D5D8FBD2D3AC3625160AA /* TodayWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = B449BD9D60EC8EEB30DDA22F /* TodayWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
-		6DB9052DC39B20D507130CDD /* SyncIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = DBF76526AF8EB6E588C8EBC5 /* SyncIntent.swift */; };
 		6F9A1D9C3E8B4C7A9012D3E4 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F9A1D9C3E8B4C7A9012D3E3 /* SceneDelegate.swift */; };
-		739D30A6C948B2B22770407A /* SyncIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = DBF76526AF8EB6E588C8EBC5 /* SyncIntent.swift */; };
 		74858FAF1ED2DC5600515810 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74858FAE1ED2DC5600515810 /* AppDelegate.swift */; };
 		78A318202AECB46A00862997 /* FlutterGeneratedPluginSwiftPackage in Frameworks */ = {isa = PBXBuildFile; productRef = 78A3181F2AECB46A00862997 /* FlutterGeneratedPluginSwiftPackage */; };
 		8BB808EB7997BBFF4E69A2BB /* TodayWidgetBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = D16E498E05A114FD535E5D65 /* TodayWidgetBundle.swift */; };
@@ -26,7 +24,6 @@
 		A56D9655DDFC771EF29E49C3 /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = 4C024021E5737066A1335574 /* GoogleService-Info.plist */; };
 		B318179976290BD952090B8E /* TodayWidgetProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = A47C442AB61CFDBC8BE538D9 /* TodayWidgetProvider.swift */; };
 		CF5C0C1EE7517B25F37B5499 /* TodayWidgetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA586C5324E7B050B0595638 /* TodayWidgetView.swift */; };
-		D4F77BCE957564064D12582E /* FlutterGeneratedPluginSwiftPackage in Frameworks */ = {isa = PBXBuildFile; productRef = 78A3181F2AECB46A00862997 /* FlutterGeneratedPluginSwiftPackage */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -107,7 +104,6 @@
 		AA586C5324E7B050B0595638 /* TodayWidgetView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = TodayWidgetView.swift; sourceTree = "<group>"; };
 		B449BD9D60EC8EEB30DDA22F /* TodayWidgetExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = TodayWidgetExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		D16E498E05A114FD535E5D65 /* TodayWidgetBundle.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = TodayWidgetBundle.swift; sourceTree = "<group>"; };
-		DBF76526AF8EB6E588C8EBC5 /* SyncIntent.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SyncIntent.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -131,7 +127,6 @@
 			buildActionMask = 2147483647;
 			files = (
 				50E19370BBE5A7AB5FE072B8 /* Foundation.framework in Frameworks */,
-				D4F77BCE957564064D12582E /* FlutterGeneratedPluginSwiftPackage in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -144,7 +139,6 @@
 				D16E498E05A114FD535E5D65 /* TodayWidgetBundle.swift */,
 				A47C442AB61CFDBC8BE538D9 /* TodayWidgetProvider.swift */,
 				AA586C5324E7B050B0595638 /* TodayWidgetView.swift */,
-				DBF76526AF8EB6E588C8EBC5 /* SyncIntent.swift */,
 			);
 			name = TodayWidgetExtension;
 			path = TodayWidgetExtension;
@@ -300,7 +294,6 @@
 			);
 			name = TodayWidgetExtension;
 			packageProductDependencies = (
-				78A3181F2AECB46A00862997 /* FlutterGeneratedPluginSwiftPackage */,
 			);
 			productName = TodayWidgetExtension;
 			productReference = B449BD9D60EC8EEB30DDA22F /* TodayWidgetExtension.appex */;
@@ -431,7 +424,6 @@
 				A1B2C3D4E5F60001AABB0003 /* NetworkAssist.swift in Sources */,
 				6F9A1D9C3E8B4C7A9012D3E4 /* SceneDelegate.swift in Sources */,
 				1498D2341E8E89220040F4C2 /* GeneratedPluginRegistrant.m in Sources */,
-				739D30A6C948B2B22770407A /* SyncIntent.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -442,7 +434,6 @@
 				8BB808EB7997BBFF4E69A2BB /* TodayWidgetBundle.swift in Sources */,
 				B318179976290BD952090B8E /* TodayWidgetProvider.swift in Sources */,
 				CF5C0C1EE7517B25F37B5499 /* TodayWidgetView.swift in Sources */,
-				6DB9052DC39B20D507130CDD /* SyncIntent.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

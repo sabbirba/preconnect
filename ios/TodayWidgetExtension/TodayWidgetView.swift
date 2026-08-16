@@ -85,7 +85,7 @@ struct TodayWidgetEntryView: View {
 
   var body: some View {
     VStack(alignment: .leading, spacing: 6) {
-      Button(intent: SyncTodayWidgetIntent()) {
+      Link(destination: openAppURL) {
         HStack(alignment: .center, spacing: 8) {
           Text(entry.title)
             .font(.system(size: 16, weight: .bold))
@@ -100,14 +100,6 @@ struct TodayWidgetEntryView: View {
             .lineLimit(1)
             .minimumScaleFactor(0.75)
             .fixedSize(horizontal: true, vertical: false)
-
-          ZStack {
-            Image(systemName: "arrow.triangle.2.circlepath")
-              .font(.system(size: 16, weight: .bold))
-              .symbolEffect(.rotate, options: .repeating, isActive: entry.isSyncing)
-          }
-          .foregroundStyle(Color(hex: "#FF1E6BE3"))
-          .frame(width: 20, height: 20, alignment: .center)
         }
         .padding(.horizontal, 4)
         .contentShape(Rectangle())
