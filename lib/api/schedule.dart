@@ -43,6 +43,20 @@ class SemesterSessionItem {
   };
 }
 
+class StudentPortfolioUnavailableException implements Exception {
+  const StudentPortfolioUnavailableException();
+
+  @override
+  String toString() =>
+      'Student profile is unavailable. Refresh your profile and try again.';
+}
+
+String _safeScheduleError(Object error) {
+  if (error is ApiException) return 'HTTP ${error.statusCode}';
+  if (error is StudentPortfolioUnavailableException) return error.toString();
+  return error.runtimeType.toString();
+}
+
 class ScheduleService {
   static final ScheduleService _instance = ScheduleService._internal();
   factory ScheduleService() => _instance;
@@ -64,6 +78,9 @@ class ScheduleService {
       'student_semester_sessions_v1';
   static const String _semesterSessionsFetchedAtKey =
       'student_semester_sessions_v1_fetched_at';
+  static const String _advisingPhaseCachePrefix =
+      'student_advising_phase_sections_v1';
+  static const String _labSectionsCachePrefix = 'student_lab_sections_v1';
 
   final Map<bool, Future<List<SemesterSessionItem>>> _sessionsFetchInFlight =
       <bool, Future<List<SemesterSessionItem>>>{};
@@ -163,27 +180,79 @@ class ScheduleService {
   }
 
   Future<List<section.Section>> fetchRelatedLabSections(
-    String phaseQueryValue,
-  ) async {
-    final id = await _resolvePortfolioId();
-    if (id == null || id.isEmpty) return const <section.Section>[];
+    String phaseQueryValue, {
+    bool forceRefresh = false,
+  }) async {
+    final id = await _requirePortfolioId(forceRefresh: forceRefresh);
     final url =
         '${ApiConfig.connectApiBase}'
         '${ApiConfig.relatedLabSectionsPath(id, phase: phaseQueryValue)}';
-    final response = await ApiClient().authenticatedGet(url);
-    return parseStudentSections(response.body);
+    final cacheKey = '${_labSectionsCachePrefix}_${id}_$phaseQueryValue';
+    return _fetchSectionList(
+      url: url,
+      cacheKey: cacheKey,
+      logLabel: 'Lab Sections $phaseQueryValue',
+      forceRefresh: forceRefresh,
+    );
   }
 
   Future<List<section.Section>> fetchStudentCoursesForPhase(
-    AdvisingPhase phase,
-  ) async {
-    final id = await _resolvePortfolioId();
-    if (id == null || id.isEmpty) return const <section.Section>[];
+    AdvisingPhase phase, {
+    bool forceRefresh = false,
+  }) async {
+    final id = await _requirePortfolioId(forceRefresh: forceRefresh);
     final url =
         '${ApiConfig.connectApiBase}'
         '${ApiConfig.studentCoursesForPhasePath(id, phase)}';
-    final response = await ApiClient().authenticatedGet(url);
-    return parseStudentSections(response.body);
+    final cacheKey = '${_advisingPhaseCachePrefix}_${id}_${phase.name}';
+    return _fetchSectionList(
+      url: url,
+      cacheKey: cacheKey,
+      logLabel: 'Advising ${phase.queryValue}',
+      forceRefresh: forceRefresh,
+    );
+  }
+
+  Future<String> _requirePortfolioId({required bool forceRefresh}) async {
+    final id = await _resolvePortfolioId(forceRefresh: forceRefresh);
+    if (id == null || id.isEmpty) {
+      throw const StudentPortfolioUnavailableException();
+    }
+    return id;
+  }
+
+  Future<List<section.Section>> _fetchSectionList({
+    required String url,
+    required String cacheKey,
+    required String logLabel,
+    required bool forceRefresh,
+  }) async {
+    try {
+      final response = await ApiClient().authenticatedGet(
+        url,
+        bypassCache: forceRefresh,
+      );
+      final sections = _decodeStudentSections(response.body);
+      await RepositoryCache.instance.writeString(cacheKey, response.body);
+      unawaited(AppLog.write('$logLabel: Synced ${sections.length} sections'));
+      return sections;
+    } catch (error) {
+      final errorLabel = _safeScheduleError(error);
+      final cached = await RepositoryCache.instance.readString(cacheKey);
+      if (cached != null && cached.isNotEmpty) {
+        try {
+          final sections = _decodeStudentSections(cached);
+          unawaited(
+            AppLog.write(
+              '$logLabel: Using ${sections.length} cached sections after $errorLabel',
+            ),
+          );
+          return sections;
+        } catch (_) {}
+      }
+      unawaited(AppLog.write('$logLabel Error: $errorLabel'));
+      rethrow;
+    }
   }
 
   Future<SemesterSessionItem?> resolveSemesterSessionItem(
@@ -209,29 +278,44 @@ class ScheduleService {
       return const <section.Section>[];
     }
     try {
-      final decoded = jsonDecode(scheduleJson);
-      if (decoded case final List<dynamic> list) {
-        final sections = list
-            .whereType<Map>()
-            .map((e) => e.cast<String, dynamic>())
-            .map(section.Section.fromJson)
+      final sections = _decodeStudentSections(scheduleJson);
+      if (semesterSessionId != null && semesterSessionId > 0) {
+        final filtered = sections
+            .where(
+              (s) =>
+                  s.semesterSessionId == semesterSessionId ||
+                  s.semesterSessionId == 0,
+            )
             .toList();
-        if (semesterSessionId != null && semesterSessionId > 0) {
-          final filtered = sections
-              .where(
-                (s) =>
-                    s.semesterSessionId == semesterSessionId ||
-                    s.semesterSessionId == 0,
-              )
-              .toList();
-          if (filtered.isNotEmpty) return filtered;
-        }
-        return sections;
+        if (filtered.isNotEmpty) return filtered;
       }
-      return const <section.Section>[];
+      return sections;
     } catch (_) {
       return const <section.Section>[];
     }
+  }
+
+  List<section.Section> _decodeStudentSections(String raw) {
+    final decoded = jsonDecode(raw);
+    final list = switch (decoded) {
+      final List<dynamic> value => value,
+      final Map<dynamic, dynamic> value when value['courses'] is List =>
+        value['courses'] as List<dynamic>,
+      final Map<dynamic, dynamic> value when value['sections'] is List =>
+        value['sections'] as List<dynamic>,
+      final Map<dynamic, dynamic> value when value['data'] is List =>
+        value['data'] as List<dynamic>,
+      _ => throw const FormatException('Unsupported sections response.'),
+    };
+    final sections = list
+        .whereType<Map>()
+        .map((item) => item.cast<String, dynamic>())
+        .map(section.Section.fromJson)
+        .toList(growable: false);
+    final seen = <String>{};
+    return sections
+        .where((item) => seen.add(item.identityKey))
+        .toList(growable: false);
   }
 
   final Map<int, Future<String?>> _scheduleFetchInFlight =

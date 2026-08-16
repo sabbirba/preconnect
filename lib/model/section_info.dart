@@ -69,6 +69,8 @@ class Section {
   final String? prerequisiteIncompleteGrade;
   final String? prerequisiteResultPublished;
 
+  String get identityKey => '$sectionId|$courseCode|$sectionName|$roomNumber';
+
   Section({
     required this.sectionId,
     this.advisingSectionId,
@@ -343,9 +345,7 @@ List<Section> parseSectionsFromScheduleJson(String? scheduleJson) {
       (e) => e.cast<String, dynamic>(),
     )) {
       final item = Section.fromJson(raw);
-      final key =
-          '${item.sectionId}|${item.courseCode}|${item.sectionName}|${item.roomNumber}';
-      if (!seen.add(key)) continue;
+      if (!seen.add(item.identityKey)) continue;
       sections.add(item);
     }
     sections.sort((a, b) {

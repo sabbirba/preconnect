@@ -32,6 +32,39 @@ class _WishlistPageState extends State<WishlistPage> {
   final List<dynamic> _batchQueue = [];
   String _searchQuery = '';
 
+  ({String title, String message}) _errorDetails(String rawMessage) {
+    var message = rawMessage;
+    try {
+      final startIndex = message.indexOf('{');
+      final endIndex = message.lastIndexOf('}');
+      if (startIndex != -1 && endIndex > startIndex) {
+        final decoded = jsonDecode(message.substring(startIndex, endIndex + 1));
+        if (decoded is Map && decoded['message'] != null) {
+          message = decoded['message'].toString().replaceAll('\n', '').trim();
+        }
+      }
+    } catch (_) {}
+
+    if (message.contains('Wishlist has not been scheduled') ||
+        message.contains('expired') ||
+        message.contains('404')) {
+      return (title: 'Wishlist Closed', message: message);
+    }
+    if (message.contains('SocketException') ||
+        message.contains('Failed host lookup') ||
+        message.contains('Connection failed') ||
+        message.contains('Connection refused') ||
+        message.contains('Connection timed out')) {
+      return (
+        title: 'You\'re Offline',
+        message:
+            'Wishlist requires an active connection to BRACU Connect. '
+            'Check your internet and try again.',
+      );
+    }
+    return (title: 'Advising Status', message: message);
+  }
+
   Map<String, String> _buildHeaders() {
     return {
       'Content-Type': 'application/json',
@@ -395,84 +428,16 @@ class _WishlistPageState extends State<WishlistPage> {
     }
 
     if (_errorMessage != null) {
-      String displayMessage = _errorMessage!;
-      IconData errorIcon = Icons.error_outline_rounded;
-      String errorTitle = 'Advising Status';
-      Color iconColor = BracuPalette.danger;
-
-      try {
-        final startIndex = displayMessage.indexOf('{');
-        final endIndex = displayMessage.lastIndexOf('}');
-        if (startIndex != -1 && endIndex != -1 && endIndex > startIndex) {
-          final jsonPart = displayMessage.substring(startIndex, endIndex + 1);
-          final decoded = jsonDecode(jsonPart);
-          if (decoded is Map && decoded['message'] != null) {
-            displayMessage = decoded['message']
-                .toString()
-                .replaceAll('\n', '')
-                .trim();
-          }
-        }
-      } catch (_) {}
-
-      if (displayMessage.contains('Wishlist has not been scheduled') ||
-          displayMessage.contains('expired') ||
-          displayMessage.contains('404')) {
-        errorIcon = Icons.hourglass_empty_rounded;
-        errorTitle = 'Wishlist Closed';
-        iconColor = BracuPalette.warning;
-      } else if (displayMessage.contains('SocketException') ||
-          displayMessage.contains('Failed host lookup') ||
-          displayMessage.contains('Connection failed') ||
-          displayMessage.contains('Connection refused') ||
-          displayMessage.contains('Connection timed out')) {
-        errorIcon = Icons.wifi_off_rounded;
-        errorTitle = 'You\'re Offline';
-        displayMessage =
-            'Wishlist requires an active connection to BRACU Connect. '
-            'Check your internet and try again.';
-        iconColor = BracuPalette.warning;
-      }
+      final error = _errorDetails(_errorMessage!);
 
       return BracuPageScaffold(
         title: 'Advising',
         subtitle: 'Wishlist',
         icon: Icons.star_outline_rounded,
-        body: Center(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 32),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(errorIcon, size: 72, color: iconColor),
-                const Gap(16),
-                Text(
-                  errorTitle,
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: textPrimary,
-                  ),
-                ),
-                const Gap(12),
-                Text(
-                  displayMessage,
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: textSecondary,
-                    height: 1.5,
-                  ),
-                ),
-                const Gap(28),
-                BracuActionButton(
-                  onPressed: _loadInitialData,
-                  label: 'Retry',
-                  outlined: false,
-                ),
-              ],
-            ),
-          ),
+        body: BracuErrorState(
+          title: error.title,
+          message: error.message,
+          onRetry: _loadInitialData,
         ),
       );
     }
@@ -584,11 +549,11 @@ class _WishlistPageState extends State<WishlistPage> {
 
   Widget _buildWishlistView(Color textPrimary, Color textSecondary) {
     if (_wishlistCourses.isEmpty) {
-      return Center(
-        child: Text(
-          'No courses in your wishlist.',
-          style: TextStyle(color: textSecondary, fontWeight: FontWeight.w500),
-        ),
+      return BracuRefreshList(
+        onRefresh: _refreshWishlistData,
+        children: const [
+          BracuEmptyCard(message: 'No courses in your wishlist.'),
+        ],
       );
     }
 
@@ -657,113 +622,126 @@ class _WishlistPageState extends State<WishlistPage> {
           ),
         ),
         Expanded(
-          child: ListView.builder(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            itemCount: _filteredOfferedCourses.length,
-            itemBuilder: (context, index) {
-              final course = _filteredOfferedCourses[index];
-              final code = course['courseCode'] ?? course['code'] ?? '';
-              final name = course['courseName'] ?? course['name'] ?? '';
-              final credits = course['courseCredit'] ?? course['credits'] ?? 3;
-              final isQueued = _batchQueue.contains(course);
-              final int courseId = course['courseId'] as int;
-              final hasSeats = _hasSeatsForCourse(courseId);
+          child: _filteredOfferedCourses.isEmpty
+              ? BracuRefreshList(
+                  onRefresh: _refreshWishlistData,
+                  children: [
+                    BracuEmptyCard(
+                      message: _searchQuery.trim().isEmpty
+                          ? 'No offered courses are available.'
+                          : 'No offered courses match your search.',
+                    ),
+                  ],
+                )
+              : ListView.builder(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  itemCount: _filteredOfferedCourses.length,
+                  itemBuilder: (context, index) {
+                    final course = _filteredOfferedCourses[index];
+                    final code = course['courseCode'] ?? course['code'] ?? '';
+                    final name = course['courseName'] ?? course['name'] ?? '';
+                    final credits =
+                        course['courseCredit'] ?? course['credits'] ?? 3;
+                    final isQueued = _batchQueue.contains(course);
+                    final int courseId = course['courseId'] as int;
+                    final hasSeats = _hasSeatsForCourse(courseId);
 
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: BracuCard(
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: BracuCard(
+                        child: Row(
                           children: [
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: Text(
-                                    '$code - $name',
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: Text(
+                                          '$code - $name',
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            color: textPrimary,
+                                            fontSize: 15,
+                                          ),
+                                        ),
+                                      ),
+                                      if (!hasSeats)
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 6,
+                                            vertical: 2,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: BracuPalette.danger
+                                                .withValues(alpha: 0.12),
+                                            borderRadius: BorderRadius.circular(
+                                              6,
+                                            ),
+                                          ),
+                                          child: const Text(
+                                            'No Seats',
+                                            style: TextStyle(
+                                              color: BracuPalette.danger,
+                                              fontSize: 10,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                                  const Gap(4),
+                                  Text(
+                                    'Credits: $credits',
                                     style: TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      color: textPrimary,
-                                      fontSize: 15,
+                                      color: textSecondary,
+                                      fontSize: 13,
                                     ),
                                   ),
-                                ),
-                                if (!hasSeats)
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 6,
-                                      vertical: 2,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: BracuPalette.danger.withValues(
-                                        alpha: 0.12,
-                                      ),
-                                      borderRadius: BorderRadius.circular(6),
-                                    ),
-                                    child: const Text(
-                                      'No Seats',
-                                      style: TextStyle(
-                                        color: BracuPalette.danger,
-                                        fontSize: 10,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ),
-                              ],
-                            ),
-                            const Gap(4),
-                            Text(
-                              'Credits: $credits',
-                              style: TextStyle(
-                                color: textSecondary,
-                                fontSize: 13,
+                                ],
                               ),
+                            ),
+                            IconButton(
+                              icon: Icon(
+                                isQueued
+                                    ? Icons.check_box_rounded
+                                    : Icons.add_box_outlined,
+                                color: _isPhaseCompleted || !hasSeats
+                                    ? Colors.grey.withValues(alpha: 0.5)
+                                    : (isQueued
+                                          ? BracuPalette.accent
+                                          : BracuPalette.primary),
+                              ),
+                              onPressed: _isPhaseCompleted || !hasSeats
+                                  ? null
+                                  : () {
+                                      setState(() {
+                                        if (isQueued) {
+                                          _batchQueue.remove(course);
+                                        } else {
+                                          _batchQueue.add(course);
+                                        }
+                                      });
+                                    },
+                            ),
+                            IconButton(
+                              icon: Icon(
+                                Icons.flash_on_rounded,
+                                color: _isPhaseCompleted || !hasSeats
+                                    ? Colors.grey.withValues(alpha: 0.5)
+                                    : BracuPalette.favorite,
+                              ),
+                              onPressed: _isPhaseCompleted || !hasSeats
+                                  ? null
+                                  : () => _addCourse(course),
                             ),
                           ],
                         ),
                       ),
-                      IconButton(
-                        icon: Icon(
-                          isQueued
-                              ? Icons.check_box_rounded
-                              : Icons.add_box_outlined,
-                          color: _isPhaseCompleted || !hasSeats
-                              ? Colors.grey.withValues(alpha: 0.5)
-                              : (isQueued
-                                    ? BracuPalette.accent
-                                    : BracuPalette.primary),
-                        ),
-                        onPressed: _isPhaseCompleted || !hasSeats
-                            ? null
-                            : () {
-                                setState(() {
-                                  if (isQueued) {
-                                    _batchQueue.remove(course);
-                                  } else {
-                                    _batchQueue.add(course);
-                                  }
-                                });
-                              },
-                      ),
-                      IconButton(
-                        icon: Icon(
-                          Icons.flash_on_rounded,
-                          color: _isPhaseCompleted || !hasSeats
-                              ? Colors.grey.withValues(alpha: 0.5)
-                              : BracuPalette.favorite,
-                        ),
-                        onPressed: _isPhaseCompleted || !hasSeats
-                            ? null
-                            : () => _addCourse(course),
-                      ),
-                    ],
-                  ),
+                    );
+                  },
                 ),
-              );
-            },
-          ),
         ),
       ],
     );
