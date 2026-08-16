@@ -5,7 +5,7 @@ import home_widget
 struct SyncTodayWidgetIntent: AppIntent {
   static var title: LocalizedStringResource = "Sync Today's Schedule"
 
-  private static let appGroupId = "group.com.sabbirba.preconnect.widget"
+  private static let appGroupId = "group.com.sabbirba.preconnect.TodayWidgetExtension"
 
   init() {}
 
