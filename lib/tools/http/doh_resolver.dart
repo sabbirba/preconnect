@@ -4,11 +4,26 @@ import 'package:http/http.dart' as http;
 class DohResolver {
   static final Map<String, String> _cache = <String, String>{};
   static final Map<String, DateTime> _cachedAt = <String, DateTime>{};
+  static final Map<String, String> _alpnCache = <String, String>{};
   static const Duration _cacheTtl = Duration(minutes: 5);
 
   static String? parseIpv4Hint(String data) {
     final match = RegExp(r'ipv4hint=([0-9\.,]+)').firstMatch(data);
     return match?.group(1)?.split(',').first.trim();
+  }
+
+  static bool parseAlpnH3(String data) {
+    final match = RegExp(r'alpn=([a-zA-Z0-9,\-_]+)').firstMatch(data);
+    if (match != null) {
+      final alpns = match.group(1)?.split(',') ?? const <String>[];
+      return alpns.contains('h3');
+    }
+    return data.contains('alpn="h3"') || data.contains('alpn=h3');
+  }
+
+  static int? parsePortHint(String data) {
+    final match = RegExp(r'port=(\d+)').firstMatch(data);
+    return match != null ? int.tryParse(match.group(1) ?? '') : null;
   }
 
   static String? parseTypeA(dynamic data) {
@@ -17,6 +32,8 @@ class DohResolver {
     }
     return null;
   }
+
+  static String? getCachedAlpn(String domain) => _alpnCache[domain];
 
   static Future<String?> resolve(String domain, {http.Client? client}) async {
     final now = DateTime.now();
@@ -55,6 +72,9 @@ class DohResolver {
               final ip = isPreconnect
                   ? parseIpv4Hint(raw)
                   : (item['type'] == 1 ? parseTypeA(raw) : null);
+              if (isPreconnect && parseAlpnH3(raw)) {
+                _alpnCache[domain] = 'h3';
+              }
               if (ip != null && ip.isNotEmpty) {
                 _cache[domain] = ip;
                 _cachedAt[domain] = now;
@@ -74,6 +94,7 @@ class DohResolver {
       'preconnect.app',
       'connect.bracu.ac.bd',
       'bracu.ac.bd',
+      'api.github.com',
     ];
     await Future.wait(domains.map((domain) => resolve(domain, client: client)));
   }
