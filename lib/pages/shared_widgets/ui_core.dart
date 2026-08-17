@@ -122,7 +122,12 @@ class BracuActionButton extends StatelessWidget {
     final spinnerColor =
         foregroundColor ??
         (outlined ? BracuPalette.textPrimary(context) : Colors.white);
-    return BracuSpinner(size: iconSize, color: spinnerColor, strokeWidth: 2.2);
+    return BracuSpinner(
+      size: iconSize,
+      color: spinnerColor,
+      strokeWidth: 2.2,
+      icon: icon,
+    );
   }
 
   Widget _buildText(BuildContext context) {
