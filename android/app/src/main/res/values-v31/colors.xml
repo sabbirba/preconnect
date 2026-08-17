@@ -4,5 +4,5 @@
 
     <color name="widget_card_bg">@android:color/system_accent1_50</color>
     <color name="widget_card_border">@android:color/system_accent1_200</color>
-    <color name="widget_text_primary">@android:color/system_on_surface_light</color>
+    <color name="widget_text_primary">#FF000000</color>
 </resources>

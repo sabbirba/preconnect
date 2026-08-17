@@ -10,6 +10,7 @@ import android.content.Intent
 import android.content.SharedPreferences
 import android.content.res.Configuration
 import android.content.res.ColorStateList
+import android.graphics.Color
 import android.net.Uri
 import android.os.Build
 import android.os.SystemClock
@@ -92,9 +93,16 @@ class TodayWidgetProvider : HomeWidgetProvider() {
                 }
             }
 
-            wallpaperTintColor(context)?.let { tint ->
-                val tintList = ColorStateList.valueOf(tint)
-                rows.forEach { row -> views.setColorStateList(row.container, "setBackgroundTintList", tintList) }
+            wallpaperTheme(context)?.let { (background, text) ->
+                val tintList = ColorStateList.valueOf(background)
+                rows.forEach { row ->
+                    views.setColorStateList(row.container, "setBackgroundTintList", tintList)
+                    views.setTextColor(row.badge, text)
+                    views.setTextColor(row.title, text)
+                    views.setTextColor(row.subtitle, text)
+                    views.setTextColor(row.trailing, text)
+                    views.setTextColor(row.trailingSub, text)
+                }
             }
 
             appWidgetManager.updateAppWidget(widgetId, views)
@@ -131,7 +139,7 @@ class TodayWidgetProvider : HomeWidgetProvider() {
         )
     }
 
-    private fun wallpaperTintColor(context: Context): Int? {
+    private fun wallpaperTheme(context: Context): Pair<Int, Int>? {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return null
         val colors =
             WallpaperManager.getInstance(context).getWallpaperColors(WallpaperManager.FLAG_SYSTEM)
@@ -144,7 +152,9 @@ class TodayWidgetProvider : HomeWidgetProvider() {
         ColorUtils.colorToHSL(colors.primaryColor.toArgb(), hsl)
         hsl[1] = if (isNight) 0.28f else 0.35f
         hsl[2] = if (isNight) 0.20f else 0.93f
-        return ColorUtils.HSLToColor(hsl)
+        val background = ColorUtils.HSLToColor(hsl)
+        val text = if (isNight) Color.WHITE else Color.BLACK
+        return background to text
     }
 
     private fun maybeRefreshFromCache(
