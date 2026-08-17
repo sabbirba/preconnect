@@ -1,4 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <color name="notification_icon_color">@android:color/system_accent1_600</color>
+
+    <color name="widget_card_bg">@android:color/system_accent1_50</color>
+    <color name="widget_card_border">@android:color/system_accent1_200</color>
+    <color name="widget_text_primary">@android:color/system_on_surface_light</color>
 </resources>

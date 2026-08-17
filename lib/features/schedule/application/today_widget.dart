@@ -4,7 +4,6 @@ import 'package:home_widget/home_widget.dart';
 class TodayItem {
   const TodayItem({
     required this.badge,
-    required this.badgeColor,
     required this.title,
     required this.subtitle,
     this.trailing = '',
@@ -12,7 +11,6 @@ class TodayItem {
   });
 
   final String badge;
-  final String badgeColor;
   final String title;
   final String subtitle;
   final String trailing;
@@ -24,8 +22,6 @@ abstract final class TodayWidget {
   static const String _iOSName = 'TodayWidget';
   static const String appGroupId =
       'group.com.sabbirba.preconnect.TodayWidgetExtension';
-  static const String primaryColor = '#FF1E6BE3';
-  static const String accentColor = '#FF22B573';
 
   static bool get isSupported =>
       !kIsWeb &&
@@ -61,10 +57,6 @@ abstract final class TodayWidget {
         await HomeWidget.saveWidgetData<String>(
           'today_item${slot}_badge',
           item?.badge ?? '',
-        );
-        await HomeWidget.saveWidgetData<String>(
-          'today_item${slot}_badge_color',
-          item?.badgeColor ?? primaryColor,
         );
         await HomeWidget.saveWidgetData<String>(
           'today_item${slot}_title',

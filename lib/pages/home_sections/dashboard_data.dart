@@ -667,7 +667,6 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
             .map(
               (exam) => TodayItem(
                 badge: formatSectionBadge(exam.sectionName),
-                badgeColor: TodayWidget.accentColor,
                 title: '${exam.courseCode} ${exam.type}',
                 subtitle: formatTimeRange(exam.startTime, exam.endTime),
                 trailing: (exam.room ?? '').trim(),
@@ -690,7 +689,6 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
                 : isTodayHoliday
                 ? 'OFF'
                 : '--',
-            badgeColor: TodayWidget.primaryColor,
             title: isExamWeekActive
                 ? 'No Classes Today'
                 : isTodayHoliday
@@ -714,7 +712,6 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
           .map(
             (entry) => TodayItem(
               badge: formatSectionBadge(entry.sectionName),
-              badgeColor: TodayWidget.primaryColor,
               title: entry.courseCode,
               subtitle: formatTimeRange(entry.startTime, entry.endTime),
               trailing: (entry.roomNumber ?? '').trim(),

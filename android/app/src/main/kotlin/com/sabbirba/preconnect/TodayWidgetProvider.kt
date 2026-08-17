@@ -7,7 +7,6 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
-import android.graphics.Color
 import android.net.Uri
 import android.os.SystemClock
 import android.view.View
@@ -74,12 +73,6 @@ class TodayWidgetProvider : HomeWidgetProvider() {
 
                 val badge = widgetData.getString("today_item${slot}_badge", null).orEmpty()
                 views.setTextViewText(row.badge, badge)
-                val badgeColor = widgetData.getString("today_item${slot}_badge_color", null)
-                if (badgeColor != null) {
-                    try {
-                        views.setTextColor(row.badge, Color.parseColor(badgeColor))
-                    } catch (_: IllegalArgumentException) {}
-                }
 
                 val trailing = widgetData.getString("today_item${slot}_trailing", null).orEmpty()
                 if (trailing.isEmpty()) {
