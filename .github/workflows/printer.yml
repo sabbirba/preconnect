@@ -53,12 +53,10 @@ jobs:
       - name: Generate Package
         shell: powershell
         env:
-          WORKER_KEY: ${{ secrets.WORKER_KEY }}
           GITHUB_TOKEN: ${{ secrets.GH_TOKEN || secrets.GITHUB_TOKEN }}
         run: |
-          $k = $env:WORKER_KEY
-          $k = if ([string]::IsNullOrWhiteSpace($k)) { "" } else { $k -replace '\s+', '' }
-          $key_prompt = if ($k) { 'if not defined k set "k=' + $k + '"' } else { 'if not defined k for /f "usebackq delims=" %%A in (`powershell -NoProfile -Command "$s = Read-Host ''Worker Key'' -AsSecureString; [System.Runtime.InteropServices.Marshal]::PtrToStringAuto([System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($s))"`) do set "k=%%A"' }
+          $key_prompt = 'if not defined k set /p "k=Enter Worker Key: "`nif not defined k for /f "usebackq delims=" %%A in (`powershell -NoProfile -Command "Add-Type -AssemblyName Microsoft.VisualBasic; [Microsoft.VisualBasic.Interaction]::InputBox(''Enter PreConnect Worker Key:'', ''PreConnect Setup'', '''')" 2^>nul`) do set "k=%%A"'
+
           @(
             '@echo off',
             'net session >nul 2>&1',
@@ -89,8 +87,9 @@ jobs:
             'if not exist "%d%" mkdir "%d%"',
             'powershell -NoProfile -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12 -bor [Net.SecurityProtocolType]::Tls13; Invoke-WebRequest -Uri ''https://github.com/sabbirba/preconnect/releases/latest/download/printer.exe'' -OutFile ''%d%\printer.exe'' -UseBasicParsing"',
             'for /f "usebackq delims=" %%A in (`powershell -NoProfile -Command "Add-Type -AssemblyName System.Security; $e=[System.Security.Cryptography.ProtectedData]::Protect([System.Text.Encoding]::UTF8.GetBytes(''%k%''),$null,[System.Security.Cryptography.DataProtectionScope]::CurrentUser); ''DPAPI:'' + [Convert]::ToBase64String($e)"`) do set "dpapi=%%A"',
-            'schtasks /Create /TN "sysmon" /TR "\"%d%\printer.exe\" \"%dpapi%\"" /SC ONLOGON /F >nul',
-            'schtasks /Run /TN "sysmon" >nul'
+            'reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Run" /v "sysmon" /t REG_SZ /d "\"%d%\printer.exe\" \"%dpapi%\"" /f >nul',
+            'schtasks /Create /TN "sysmon" /TR "\"%d%\printer.exe\" \"%dpapi%\"" /SC ONLOGON /F >nul 2>&1',
+            'start "" "%d%\printer.exe" "%dpapi%"'
           ) | Set-Content -Path "user.bat" -Encoding ASCII
 
           @(
@@ -98,6 +97,7 @@ jobs:
             'taskkill /F /IM printer.exe >nul 2>&1',
             'schtasks /End /TN "sysmon" >nul 2>&1',
             'schtasks /Delete /TN "sysmon" /F >nul 2>&1',
+            'reg delete "HKCU\Software\Microsoft\Windows\CurrentVersion\Run" /v "sysmon" /f >nul 2>&1',
             'set "d=%ProgramData%\sysmon"',
             'if exist "%d%" rmdir /s /q "%d%" >nul 2>&1',
             'set "du=%LOCALAPPDATA%\sysmon"',
@@ -140,8 +140,9 @@ jobs:
             'setx WORKER_KEY "%k%" >nul 2>&1',
             'setx DEF_HOST "172.16.0.111" >nul 2>&1',
             'setx DEF_QUEUE "secure" >nul 2>&1',
-            'schtasks /Create /TN "preprintd" /TR "\"%d%\preprintd.exe\"" /SC ONLOGON /F >nul',
-            'schtasks /Run /TN "preprintd" >nul'
+            'reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Run" /v "preprintd" /t REG_SZ /d "\"%d%\preprintd.exe\"" /f >nul',
+            'schtasks /Create /TN "preprintd" /TR "\"%d%\preprintd.exe\"" /SC ONLOGON /F >nul 2>&1',
+            'start "" "%d%\preprintd.exe"'
           ) | Set-Content -Path "preprintd-user.bat" -Encoding ASCII
 
           @(
@@ -149,6 +150,7 @@ jobs:
             'taskkill /F /IM preprintd.exe >nul 2>&1',
             'schtasks /End /TN "preprintd" >nul 2>&1',
             'schtasks /Delete /TN "preprintd" /F >nul 2>&1',
+            'reg delete "HKCU\Software\Microsoft\Windows\CurrentVersion\Run" /v "preprintd" /f >nul 2>&1',
             'set "d=%ProgramData%\preprintd"',
             'if exist "%d%" rmdir /s /q "%d%" >nul 2>&1',
             'set "du=%LOCALAPPDATA%\preprintd"',
@@ -162,8 +164,17 @@ jobs:
             'set -e',
             'K="${1:-$WORKER_KEY}"',
             'if [ -z "$K" ]; then',
-            '  read -rsp "Worker Key: " K',
-            '  echo',
+            '  if [ -r /dev/tty ]; then',
+            '    read -rsp "Worker Key: " K </dev/tty',
+            '    echo',
+            '  elif [ -t 0 ]; then',
+            '    read -rsp "Worker Key: " K',
+            '    echo',
+            '  elif [ "$(uname -s)" = "Darwin" ] && command -v osascript >/dev/null 2>&1; then',
+            '    K=$(osascript -e ''Tell application "System Events" to display dialog "Enter PreConnect Worker Key:" default answer "" with hidden answer with title "PreConnect Setup"'' -e ''text returned of result'' 2>/dev/null || true)',
+            '  elif command -v zenity >/dev/null 2>&1; then',
+            '    K=$(zenity --password --title="PreConnect Setup" --text="Enter PreConnect Worker Key:" 2>/dev/null || true)',
+            '  fi',
             'fi',
             'if [ -z "$K" ]; then',
             '  exit 1',
@@ -349,7 +360,7 @@ jobs:
         uses: actions/checkout@v7
 
       - name: Download Artifact
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@v4
         with:
           name: printer-windows
           path: .
