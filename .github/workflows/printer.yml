@@ -362,7 +362,7 @@ jobs:
         run: |
           $tag = (gh release list --limit 1 --json tagName --jq '.[0].tagName')
           if ($tag) {
-            $files = @("printer.exe", "admin.bat", "user.bat", "uninstall.bat", "preprintd-admin.bat", "preprintd-user.bat", "preprintd-uninstall.bat", "preprintd.sh", "preprintd-uninstall.sh", $env:ZIP_C, $env:ZIP_RUST)
+            $files = @("printer.exe", "admin.bat", "user.bat", "preprintd-admin.bat", "preprintd-user.bat", "preprintd.sh", $env:ZIP_C, $env:ZIP_RUST)
             foreach ($f in $files) {
               if (Test-Path $f) {
                 gh release upload $tag $f --clobber
