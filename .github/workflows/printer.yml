@@ -55,7 +55,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GH_TOKEN || secrets.GITHUB_TOKEN }}
         run: |
-          $key_prompt = 'echo PreConnect Setup`nset /p "k=Enter Worker Key: "`nif not defined k exit /b 1'
+          $key_prompt = 'echo PreConnect Setup`n:ask`nset "k="`nset /p "k=Enter Worker Key: "`nif not defined k goto ask'
 
           @(
             '@echo off',
@@ -161,11 +161,10 @@ jobs:
             '#!/usr/bin/env bash',
             'set -e',
             'echo "PreConnect Preprint Daemon Setup"',
-            'read -rsp "Enter Worker Key: " K',
-            'echo',
-            'if [ -z "$K" ]; then',
-            '  exit 1',
-            'fi',
+            'while [ -z "$K" ]; do',
+            '  read -rsp "Enter Worker Key: " K',
+            '  echo',
+            'done',
             'OS="$(uname -s)"',
             'if [ "$OS" = "Linux" ]; then',
             '  URL="https://github.com/hitblast/preprintd/releases/latest/download/preprintd-linux-musl-x86_64.tar.gz"',
