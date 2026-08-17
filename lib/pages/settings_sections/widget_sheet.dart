@@ -15,7 +15,6 @@ class WidgetSetupSheet extends StatefulWidget {
     return showBracuBottomSheet<void>(
       context,
       title: 'Home Screen Widget',
-      subtitle: 'Today\'s schedule at a glance',
       initialChildSize: 0.72,
       builder: (sheetContext, textPrimary, textSecondary) {
         return const WidgetSetupSheet();

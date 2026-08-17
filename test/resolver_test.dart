@@ -58,4 +58,22 @@ void main() {
     final ip = DohResolver.parseTypeA(recordData);
     expect(ip, '34.160.199.249');
   });
+
+  test('DohResolver detects ALPN h3 capability', () {
+    const record = '1 . alpn=h3,h2 ipv4hint=104.21.51.147';
+    expect(DohResolver.parseAlpnH3(record), isTrue);
+    expect(DohResolver.parseAlpnH3('1 . alpn=h2'), isFalse);
+  });
+
+  test('DohResolver parses port hint from HTTPS record', () {
+    const record = '1 . alpn=h3 port=443';
+    expect(DohResolver.parsePortHint(record), 443);
+    expect(DohResolver.parsePortHint('1 . alpn=h3'), isNull);
+  });
+
+  test('DohResolver parses type A records for GitHub domains', () {
+    const recordData = '20.205.243.168';
+    final ip = DohResolver.parseTypeA(recordData);
+    expect(ip, '20.205.243.168');
+  });
 }
