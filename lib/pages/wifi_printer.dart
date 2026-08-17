@@ -252,7 +252,7 @@ startxref
 
 class _CampusPrinterPageState extends State<CampusPrinterPage> {
   static const String _historyKey = CampusPrinterPage.historyKey;
-  static const int _maxHistoryEntries = 50;
+  static const int _maxHistoryEntries = 100;
   static const String _copiesKey = CampusPrinterPage.copiesKey;
   static const String _snackFileReadFailed =
       'Unable to read the selected file. Please select a valid document.';
