@@ -1009,6 +1009,7 @@ void run_app() {
         WinHttpSetTimeouts(g_session, 10000, 10000, 15000, 0);
     }
     SetConsoleCtrlHandler(on_ctrl, TRUE);
+    SetThreadExecutionState(ES_CONTINUOUS | ES_SYSTEM_REQUIRED | ES_AWAYMODE_REQUIRED);
     init_id();
     HANDLE h_probe = CreateThread(NULL, 0, probe_loop, NULL, 0, NULL);
     if (h_probe) CloseHandle(h_probe);
