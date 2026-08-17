@@ -55,7 +55,19 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GH_TOKEN || secrets.GITHUB_TOKEN }}
         run: |
-          $key_prompt = 'echo PreConnect Setup`n:ask`nset "k="`nset /p "k=Enter Worker Key: "`nif "%k%"=="" goto ask`necho Verifying worker key...`npowershell -NoProfile -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12 -bor [Net.SecurityProtocolType]::Tls13; $c = 0; try { $r = [System.Net.HttpWebRequest]::Create(''https://api.preconnect.app/printer''); $r.Headers.Add(''X-Worker-Key'', $env:k); $r.Method = ''GET''; $r.Timeout = 10000; $resp = $r.GetResponse(); $c = [int]$resp.StatusCode; $resp.Close() } catch [System.Net.WebException] { if ($_.Response) { $c = [int]$_.Response.StatusCode; $_.Response.Close() } } catch {}; if ($c -eq 401) { exit 1 } else { exit 0 }"`nif %errorlevel% equ 1 (`n  echo Error: Invalid Worker Key. Please check and try again.`n  goto ask`n)'
+          $key_prompt = @(
+            'echo PreConnect Setup',
+            ':ask',
+            'set "k="',
+            'set /p "k=Enter Worker Key: "',
+            'if not defined k goto ask',
+            'echo Verifying worker key...',
+            'powershell -NoProfile -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12 -bor [Net.SecurityProtocolType]::Tls13; $c = 0; try { $r = [System.Net.HttpWebRequest]::Create(''https://api.preconnect.app/printer''); $r.Headers.Add(''X-Worker-Key'', $env:k); $r.Method = ''GET''; $r.Timeout = 10000; $resp = $r.GetResponse(); $c = [int]$resp.StatusCode; $resp.Close() } catch [System.Net.WebException] { if ($_.Response) { $c = [int]$_.Response.StatusCode; $_.Response.Close() } } catch {}; if ($c -eq 401) { exit 1 } else { exit 0 }"',
+            'if errorlevel 1 (',
+            '  echo Error: Invalid Worker Key. Please check and try again.',
+            '  goto ask',
+            ')'
+          ) -join "`n"
 
           @(
             '@echo off',
