@@ -383,9 +383,11 @@ class _FriendSchedulePageState extends State<FriendSchedulePage>
       title: 'Edit Nickname',
       initialChildSize: 0.40,
       builder: (sheetContext, textPrimary, textSecondary) {
-        return Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
+        final dragController = bracuBottomSheetScrollController(sheetContext);
+        return ListView(
+          controller: dragController,
+          physics: const ClampingScrollPhysics(),
+          padding: const EdgeInsets.only(bottom: 24),
           children: [
             TextField(
               controller: controller,

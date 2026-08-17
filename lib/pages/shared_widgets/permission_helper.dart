@@ -287,6 +287,7 @@ class _BracuPermissionBottomSheetContentState
 
     return ListView.separated(
       controller: scrollController,
+      physics: const ClampingScrollPhysics(),
       padding: const EdgeInsets.only(bottom: 24, top: 8),
       itemCount: widget.requirements.length,
       separatorBuilder: (context, index) => const Gap(12),

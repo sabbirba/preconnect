@@ -533,81 +533,82 @@ class _DSpaceBrowserPageState extends State<DSpaceBrowserPage> {
               );
             }
 
-            return SingleChildScrollView(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  sortOption(
-                    'Last Modified',
-                    Icons.update_rounded,
-                    _DSpaceSort.lastModified,
-                  ),
-                  sortOption(
-                    'Newest First',
-                    Icons.arrow_downward_rounded,
-                    _DSpaceSort.newestFirst,
-                  ),
-                  sortOption(
-                    'Oldest First',
-                    Icons.arrow_upward_rounded,
-                    _DSpaceSort.oldestFirst,
-                  ),
-                  const Gap(12),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      yearChip(
-                        'From Year',
-                        localFrom,
-                        (v) => setLocal(() => localFrom = v),
+            final dragController = bracuBottomSheetScrollController(
+              sheetContext,
+            );
+            return ListView(
+              controller: dragController,
+              physics: const ClampingScrollPhysics(),
+              padding: const EdgeInsets.only(bottom: 24),
+              children: [
+                sortOption(
+                  'Last Modified',
+                  Icons.update_rounded,
+                  _DSpaceSort.lastModified,
+                ),
+                sortOption(
+                  'Newest First',
+                  Icons.arrow_downward_rounded,
+                  _DSpaceSort.newestFirst,
+                ),
+                sortOption(
+                  'Oldest First',
+                  Icons.arrow_upward_rounded,
+                  _DSpaceSort.oldestFirst,
+                ),
+                const Gap(12),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    yearChip(
+                      'From Year',
+                      localFrom,
+                      (v) => setLocal(() => localFrom = v),
+                    ),
+                    const Gap(12),
+                    yearChip(
+                      'To Year',
+                      localTo,
+                      (v) => setLocal(() => localTo = v),
+                    ),
+                  ],
+                ),
+                const Gap(12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: BracuActionButton(
+                        label: 'Clear',
+                        onPressed: () {
+                          setLocal(() {
+                            localSort = _DSpaceSort.lastModified;
+                            localFrom = null;
+                            localTo = null;
+                          });
+                        },
                       ),
-                      const Gap(12),
-                      yearChip(
-                        'To Year',
-                        localTo,
-                        (v) => setLocal(() => localTo = v),
+                    ),
+                    const Gap(12),
+                    Expanded(
+                      child: BracuActionButton(
+                        label: 'Apply',
+                        outlined: false,
+                        backgroundColor: BracuPalette.primary,
+                        foregroundColor: Colors.white,
+                        onPressed: () {
+                          setState(() {
+                            _sortOrder = localSort;
+                            _filterFromYear = localFrom;
+                            _filterToYear = localTo;
+                            _visibleItemCount = _pageSize;
+                          });
+                          Navigator.of(context).pop();
+                        },
                       ),
-                    ],
-                  ),
-                  const Gap(12),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: BracuActionButton(
-                          label: 'Clear',
-                          onPressed: () {
-                            setLocal(() {
-                              localSort = _DSpaceSort.lastModified;
-                              localFrom = null;
-                              localTo = null;
-                            });
-                          },
-                        ),
-                      ),
-                      const Gap(12),
-                      Expanded(
-                        child: BracuActionButton(
-                          label: 'Apply',
-                          outlined: false,
-                          backgroundColor: BracuPalette.primary,
-                          foregroundColor: Colors.white,
-                          onPressed: () {
-                            setState(() {
-                              _sortOrder = localSort;
-                              _filterFromYear = localFrom;
-                              _filterToYear = localTo;
-                              _visibleItemCount = _pageSize;
-                              _filterItems();
-                            });
-                            Navigator.of(sheetContext).pop();
-                          },
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
+                    ),
+                  ],
+                ),
+              ],
             );
           },
         );
@@ -707,6 +708,7 @@ class _DSpaceBrowserPageState extends State<DSpaceBrowserPage> {
 
         return ListView(
           controller: dragController,
+          physics: const ClampingScrollPhysics(),
           children: [
             if (item.department.isNotEmpty)
               metaRow('Department', item.department),
@@ -1017,61 +1019,61 @@ class _DSpaceBrowserPageState extends State<DSpaceBrowserPage> {
       title: 'DSpace Repository (BRACU IR)',
       initialChildSize: 0.65,
       builder: (sheetContext, textPrimary, textSecondary) {
-        return SingleChildScrollView(
+        final dragController = bracuBottomSheetScrollController(sheetContext);
+        return ListView(
+          controller: dragController,
+          physics: const ClampingScrollPhysics(),
           padding: const EdgeInsets.only(bottom: 24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'BRACU IR is the official Institutional Repository of BRAC University to preserve and provide access to scholarly works.',
-                style: TextStyle(
-                  color: textPrimary,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                ),
+          children: [
+            Text(
+              'BRACU IR is the official Institutional Repository of BRAC University to preserve and provide access to scholarly works.',
+              style: TextStyle(
+                color: textPrimary,
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
               ),
-              const Gap(16),
-              _buildHelpItem(
-                context,
-                icon: Icons.category_rounded,
-                title: 'Browse Categories',
-                body:
-                    'Browse academic documents divided into specific collections such as Thesis, Journal, and Conference Papers.',
-              ),
-              const Gap(12),
-              _buildHelpItem(
-                context,
-                icon: Icons.search_rounded,
-                title: 'Search & Filter',
-                body:
-                    'Use the search bar to filter categories or locate documents by title, author, department, subject, or keywords.',
-              ),
-              const Gap(12),
-              _buildHelpItem(
-                context,
-                icon: Icons.tune_rounded,
-                title: 'Sort & Date Range',
-                body:
-                    'Tap the filter icon to sort by date or last modified, and restrict results to a specific year range.',
-              ),
-              const Gap(12),
-              _buildHelpItem(
-                context,
-                icon: Icons.description_rounded,
-                title: 'Document Details',
-                body:
-                    'Tap any document card to view its metadata, abstract, supervisor, department, and attachments.',
-              ),
-              const Gap(12),
-              _buildHelpItem(
-                context,
-                icon: Icons.download_rounded,
-                title: 'Direct Downloads',
-                body:
-                    'Tapping any PDF attachment card will open/download the file via your external web browser.',
-              ),
-            ],
-          ),
+            ),
+            const Gap(16),
+            _buildHelpItem(
+              context,
+              icon: Icons.category_rounded,
+              title: 'Browse Categories',
+              body:
+                  'Browse academic documents divided into specific collections such as Thesis, Journal, and Conference Papers.',
+            ),
+            const Gap(12),
+            _buildHelpItem(
+              context,
+              icon: Icons.search_rounded,
+              title: 'Search & Filter',
+              body:
+                  'Use the search bar to filter categories or locate documents by title, author, department, subject, or keywords.',
+            ),
+            const Gap(12),
+            _buildHelpItem(
+              context,
+              icon: Icons.tune_rounded,
+              title: 'Sort & Date Range',
+              body:
+                  'Tap the filter icon to sort by date or last modified, and restrict results to a specific year range.',
+            ),
+            const Gap(12),
+            _buildHelpItem(
+              context,
+              icon: Icons.description_rounded,
+              title: 'Document Details',
+              body:
+                  'Tap any document card to view its metadata, abstract, supervisor, department, and attachments.',
+            ),
+            const Gap(12),
+            _buildHelpItem(
+              context,
+              icon: Icons.download_rounded,
+              title: 'Direct Downloads',
+              body:
+                  'Tapping any PDF attachment card will open/download the file via your external web browser.',
+            ),
+          ],
         );
       },
     );

@@ -867,6 +867,7 @@ class _FreeLabsPageState extends State<FreeLabsPage> {
         final dragController = bracuBottomSheetScrollController(sheetContext);
         return ListView(
           controller: dragController,
+          physics: const ClampingScrollPhysics(),
           children: [
             if (slot.courses.isNotEmpty) ...[
               Text.rich(

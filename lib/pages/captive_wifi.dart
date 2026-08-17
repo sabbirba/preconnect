@@ -895,52 +895,52 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
       title: 'Captive Wi-Fi Instructions',
       initialChildSize: 0.52,
       builder: (sheetContext, textPrimary, textSecondary) {
-        return SingleChildScrollView(
+        final dragController = bracuBottomSheetScrollController(sheetContext);
+        return ListView(
+          controller: dragController,
+          physics: const ClampingScrollPhysics(),
           padding: const EdgeInsets.only(bottom: 24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildStepItem(
-                context,
-                stepNumber: '1',
-                title: 'Connect to Wi-Fi',
-                body:
-                    'Ensure your device Wi-Fi is turned on and connected to the Student-WiFi network.',
-              ),
-              const Gap(12),
-              _buildStepItem(
-                context,
-                stepNumber: '2',
-                title: 'Enter Credentials',
-                body:
-                    'Provide your campus Student ID and Portal password correctly in the input fields.',
-              ),
-              const Gap(12),
-              _buildStepItem(
-                context,
-                stepNumber: '3',
-                title: 'Connect Session',
-                body:
-                    'Tap the Connect button. PreConnect will automatically configure and authenticate you.',
-              ),
-              const Gap(12),
-              _buildStepItem(
-                context,
-                stepNumber: '4',
-                title: 'Auto Extend Session',
-                body:
-                    'Enable Auto Extend to allow PreConnect to run in the background and auto-renew your connectivity.',
-              ),
-              const Gap(12),
-              _buildStepItem(
-                context,
-                stepNumber: '5',
-                title: 'Disconnect or Log Out',
-                body:
-                    'Tap Disconnect to log out of the active captive portal network session immediately.',
-              ),
-            ],
-          ),
+          children: [
+            _buildStepItem(
+              context,
+              stepNumber: '1',
+              title: 'Connect to Wi-Fi',
+              body:
+                  'Ensure your device Wi-Fi is turned on and connected to the Student-WiFi network.',
+            ),
+            const Gap(12),
+            _buildStepItem(
+              context,
+              stepNumber: '2',
+              title: 'Enter Credentials',
+              body:
+                  'Provide your campus Student ID and Portal password correctly in the input fields.',
+            ),
+            const Gap(12),
+            _buildStepItem(
+              context,
+              stepNumber: '3',
+              title: 'Connect Session',
+              body:
+                  'Tap the Connect button. PreConnect will automatically configure and authenticate you.',
+            ),
+            const Gap(12),
+            _buildStepItem(
+              context,
+              stepNumber: '4',
+              title: 'Auto Extend Session',
+              body:
+                  'Enable Auto Extend to allow PreConnect to run in the background and auto-renew your connectivity.',
+            ),
+            const Gap(12),
+            _buildStepItem(
+              context,
+              stepNumber: '5',
+              title: 'Disconnect',
+              body:
+                  'Tap Disconnect to log out of the active captive portal network session immediately.',
+            ),
+          ],
         );
       },
     );

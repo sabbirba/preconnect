@@ -16,6 +16,7 @@ import 'app.dart';
 import 'tools/app_log.dart';
 import 'tools/app_storage.dart';
 
+import 'package:preconnect/tools/http/doh_resolver.dart';
 import 'package:preconnect/tools/runtime_stub.dart'
     if (dart.library.js_interop) 'package:preconnect/tools/runtime_web.dart';
 
@@ -30,6 +31,7 @@ Future<void> main() async {
   runZonedGuarded(
     () async {
       WidgetsFlutterBinding.ensureInitialized();
+      unawaited(DohResolver.warmup());
 
       FlutterError.onError = (details) {
         unawaited(

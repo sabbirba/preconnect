@@ -12,7 +12,7 @@ import 'package:preconnect/api/api_client.dart';
 import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/api/profile.dart';
 import 'package:preconnect/features/notifications/data/device_registry.dart';
-import 'package:http/http.dart' as http;
+import 'package:preconnect/tools/http/http_utils.dart';
 import 'package:preconnect/tools/app_storage.dart';
 import 'package:preconnect/tools/preconnect_constants.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
@@ -65,9 +65,9 @@ class FCMService {
 
     const DarwinInitializationSettings initializationSettingsDarwin =
         DarwinInitializationSettings(
-          requestAlertPermission: false,
-          requestBadgePermission: false,
-          requestSoundPermission: false,
+          requestAlertPermission: true,
+          requestBadgePermission: true,
+          requestSoundPermission: true,
         );
 
     const LinuxInitializationSettings initializationSettingsLinux =
@@ -81,7 +81,27 @@ class FCMService {
           linux: initializationSettingsLinux,
         );
 
-    await _localNotifications.initialize(settings: initializationSettings);
+    await _localNotifications.initialize(
+      settings: initializationSettings,
+      onDidReceiveNotificationResponse: (NotificationResponse response) {
+        final payload = response.payload;
+        if (payload != null && payload.isNotEmpty) {
+          if (payload == 'captive_wifi') {
+            _instance._openCaptiveWifi?.call();
+            return;
+          }
+          try {
+            final Map<String, dynamic> data =
+                jsonDecode(payload) as Map<String, dynamic>;
+            _instance._handleNotificationTapAction(data);
+          } catch (error) {
+            unawaited(
+              AppLog.write('Notification payload decode failed: $error'),
+            );
+          }
+        }
+      },
+    );
 
     if (defaultTargetPlatform == TargetPlatform.android) {
       const AndroidNotificationChannel channel = AndroidNotificationChannel(
@@ -89,13 +109,29 @@ class FCMService {
         'High Importance Notifications',
         description: 'This channel is used for important notifications.',
         importance: Importance.max,
+        playSound: true,
+        enableVibration: true,
+        showBadge: true,
       );
 
-      await _localNotifications
+      final androidPlugin = _localNotifications
           .resolvePlatformSpecificImplementation<
             AndroidFlutterLocalNotificationsPlugin
+          >();
+      await androidPlugin?.createNotificationChannel(channel);
+      await androidPlugin?.requestNotificationsPermission();
+    } else if (defaultTargetPlatform == TargetPlatform.iOS) {
+      await _localNotifications
+          .resolvePlatformSpecificImplementation<
+            IOSFlutterLocalNotificationsPlugin
           >()
-          ?.createNotificationChannel(channel);
+          ?.requestPermissions(alert: true, badge: true, sound: true);
+    } else if (defaultTargetPlatform == TargetPlatform.macOS) {
+      await _localNotifications
+          .resolvePlatformSpecificImplementation<
+            MacOSFlutterLocalNotificationsPlugin
+          >()
+          ?.requestPermissions(alert: true, badge: true, sound: true);
     }
   }
 
@@ -305,7 +341,7 @@ class FCMService {
           ? '${ApiConfig.websiteBase}/api/_client/seat-watch/register'
           : '${ApiConfig.websiteBase}/api/_client/seat-watch/unregister';
 
-      final response = await http.post(
+      final response = await HttpUtils.client.post(
         Uri.parse(url),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
@@ -590,7 +626,9 @@ class FCMService {
 
     try {
       final url = Uri.parse('${ApiConfig.realtimeApiBase}/push/topics');
-      final response = await http.get(url).timeout(const Duration(seconds: 3));
+      final response = await HttpUtils.client
+          .get(url)
+          .timeout(const Duration(seconds: 3));
       if (response.statusCode == 200) {
         final decoded = jsonDecode(response.body);
         if (decoded is List) {
@@ -635,7 +673,9 @@ class FCMService {
 
     try {
       final url = Uri.parse('${ApiConfig.realtimeApiBase}/push/topics');
-      final response = await http.get(url).timeout(const Duration(seconds: 3));
+      final response = await HttpUtils.client
+          .get(url)
+          .timeout(const Duration(seconds: 3));
       if (response.statusCode == 200) {
         final decoded = jsonDecode(response.body);
         if (decoded is List) {
@@ -819,7 +859,7 @@ class FCMService {
     List<DarwinNotificationAttachment>? darwinAttachments;
     if (imageUrl != null && imageUrl.isNotEmpty) {
       try {
-        final response = await http
+        final response = await HttpUtils.client
             .get(Uri.parse(imageUrl))
             .timeout(const Duration(seconds: 5));
         if (response.statusCode == 200) {
@@ -965,13 +1005,29 @@ class FCMService {
           'high_importance_channel',
           'High Importance Notifications',
           importance: Importance.max,
-          priority: Priority.high,
+          priority: Priority.max,
           icon: 'status_icon',
+          playSound: true,
+          enableVibration: true,
+          channelShowBadge: true,
+          visibility: NotificationVisibility.public,
+          category: AndroidNotificationCategory.event,
         ),
         iOS: DarwinNotificationDetails(
           presentAlert: true,
           presentBadge: true,
           presentSound: true,
+          presentBanner: true,
+          presentList: true,
+          interruptionLevel: InterruptionLevel.timeSensitive,
+        ),
+        macOS: DarwinNotificationDetails(
+          presentAlert: true,
+          presentBadge: true,
+          presentSound: true,
+          presentBanner: true,
+          presentList: true,
+          interruptionLevel: InterruptionLevel.timeSensitive,
         ),
       ),
     );

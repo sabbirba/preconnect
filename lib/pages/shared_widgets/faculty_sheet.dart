@@ -93,6 +93,7 @@ Future<void> showBracuFacultyScheduleSheet(
 
       return ListView.builder(
         controller: dragController,
+        physics: const ClampingScrollPhysics(),
         itemCount: sortedDays.length,
         itemBuilder: (context, dayIndex) {
           final day = sortedDays[dayIndex];

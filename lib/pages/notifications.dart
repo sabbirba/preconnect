@@ -276,34 +276,37 @@ class _NotificationsPageState extends State<NotificationsPage>
           ConnectNotificationDetailPanel(notificationId: item.id),
     );
     if (!mounted) return;
-    final currentData = _lastData ?? await _future;
-    if (!mounted) return;
-    final updatedConnect = currentData.connect?.copyWith(
-      items: currentData.connect?.items
-          .map(
-            (entry) => entry.id == item.id && !entry.seen
-                ? RecentConnectNotification(
-                    id: entry.id,
-                    title: entry.title,
-                    module: entry.module,
-                    link: entry.link,
-                    createdOn: entry.createdOn,
-                    expireAt: entry.expireAt,
-                    seen: true,
-                  )
-                : entry,
-          )
-          .toList(),
-    );
-    setState(() {
-      _lastData = NotificationsViewData(
-        connect: updatedConnect ?? currentData.connect,
-        scraped: currentData.scraped,
-        seenScraperIds: currentData.seenScraperIds,
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+      final currentData = _lastData ?? await _future;
+      if (!mounted) return;
+      final updatedConnect = currentData.connect?.copyWith(
+        items: currentData.connect?.items
+            .map(
+              (entry) => entry.id == item.id && !entry.seen
+                  ? RecentConnectNotification(
+                      id: entry.id,
+                      title: entry.title,
+                      module: entry.module,
+                      link: entry.link,
+                      createdOn: entry.createdOn,
+                      expireAt: entry.expireAt,
+                      seen: true,
+                    )
+                  : entry,
+            )
+            .toList(),
       );
-      cache.value = _lastData;
+      setState(() {
+        _lastData = NotificationsViewData(
+          connect: updatedConnect ?? currentData.connect,
+          scraped: currentData.scraped,
+          seenScraperIds: currentData.seenScraperIds,
+        );
+        cache.value = _lastData;
+      });
+      RefreshBus.instance.notify(reason: 'notifications');
     });
-    RefreshBus.instance.notify(reason: 'notifications');
   }
 
   Future<void> _openScraperNotification(NotificationListItem item) async {
@@ -315,19 +318,23 @@ class _NotificationsPageState extends State<NotificationsPage>
       builder: (context, textPrimary, textSecondary) =>
           ScraperNotificationDetailPanel(item: item),
     );
-    await NotificationService().markScraperNotificationSeen(item.id);
     if (!mounted) return;
-    setState(() {
-      final current = _lastData;
-      if (current == null) return;
-      _lastData = NotificationsViewData(
-        connect: current.connect,
-        scraped: current.scraped,
-        seenScraperIds: {...current.seenScraperIds, item.id},
-      );
-      cache.value = _lastData;
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+      await NotificationService().markScraperNotificationSeen(item.id);
+      if (!mounted) return;
+      setState(() {
+        final current = _lastData;
+        if (current == null) return;
+        _lastData = NotificationsViewData(
+          connect: current.connect,
+          scraped: current.scraped,
+          seenScraperIds: {...current.seenScraperIds, item.id},
+        );
+        cache.value = _lastData;
+      });
+      RefreshBus.instance.notify(reason: 'notifications');
     });
-    RefreshBus.instance.notify(reason: 'notifications');
   }
 
   @override

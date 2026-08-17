@@ -322,6 +322,7 @@ Future<void> showCampusMapBottomSheet(
             final sheetScroll = bracuBottomSheetScrollController(context);
             return ListView(
               controller: sheetScroll,
+              physics: const ClampingScrollPhysics(),
               children: [
                 Text(
                   'Campus map data is unavailable right now.',
@@ -371,6 +372,7 @@ Future<void> showCampusMapBottomSheet(
               : mapData.transportScheduleUrl;
           return ListView(
             controller: sheetScroll,
+            physics: const ClampingScrollPhysics(),
             children: [
               minimalBlock(
                 child: Column(

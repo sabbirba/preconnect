@@ -80,25 +80,21 @@ doh_cache: Dict[str, Tuple[str, float]] = {}
 def resolve_doh(domain: str) -> str:
     now = time()
     if domain in doh_cache and now - doh_cache[domain][1] < 300: return doh_cache[domain][0]
-    providers = (
-        ("1.1.1.1", f"/dns-query?name={domain}&type=A", {"Accept": "application/dns-json"}, "cloudflare-dns.com"),
-        ("8.8.8.8", f"/resolve?name={domain}&type=A", {"Accept": "application/json"}, "dns.google"),
-    )
-    for ip_addr, path, hdrs, sni_name in providers:
-        try:
-            conn = DohConn(ip_addr, sni_name, 443, timeout=2.0)
-            hdrs["Host"] = sni_name
-            conn.request("GET", path, headers=hdrs)
-            resp = conn.getresponse()
-            if resp.status == 200:
-                for a in loads(resp.read().decode()).get("Answer", []):
-                    if a.get("type") == 1:
-                        ip = str(a.get("data"))
-                        doh_cache[domain] = (ip, now)
-                        conn.close()
-                        return ip
-            conn.close()
-        except Exception: pass
+    try:
+        conn = DohConn("1.1.1.1", "cloudflare-dns.com", 443, timeout=2.0)
+        hdrs = {"Accept": "application/dns-json", "Host": "cloudflare-dns.com"}
+        conn.request("GET", f"/dns-query?name={domain}&type=HTTPS", headers=hdrs)
+        resp = conn.getresponse()
+        if resp.status == 200:
+            for a in loads(resp.read().decode()).get("Answer", []):
+                val = str(a.get("data", ""))
+                if "ipv4hint=" in val:
+                    ip = val.split("ipv4hint=")[1].split()[0].split(",")[0]
+                    doh_cache[domain] = (ip, now)
+                    conn.close()
+                    return ip
+        conn.close()
+    except Exception: pass
     return domain
 
 api_host = b64decode("YXBpLnByZWNvbm5lY3QuYXBw").decode()
