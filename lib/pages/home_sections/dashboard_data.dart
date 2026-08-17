@@ -1,13 +1,21 @@
 part of 'package:preconnect/pages/home.dart';
 
 @pragma('vm:entry-point')
-Future<void> syncTodayWidgetInBackground(Uri? uri) async {
+Future<void> syncTodayWidgetInBackground(
+  Uri? uri, {
+  bool forceRefresh = false,
+}) async {
   final action = uri?.host;
-  if (action != 'refresh') return;
+  if (action != 'refresh' && action != 'sync' && uri?.path != 'refresh') return;
 
   try {
     await AppStorage.initialize();
-    final data = await _HomeDashboardState.preloadData();
+    if (forceRefresh) {
+      ApiClient().clearTransientCaches();
+    }
+    final data = await _HomeDashboardState.preloadData(
+      forceRefresh: forceRefresh,
+    );
     final state = _HomeDashboardState();
     final derived = state._deriveDashboardValues(data, updateWidget: false);
     await state._syncTodayWidget(data, derived);

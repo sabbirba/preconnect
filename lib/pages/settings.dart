@@ -8,6 +8,8 @@ import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/pages/shared_widgets/export_sheet.dart';
 import 'package:preconnect/tools/quiet_controller.dart';
 import 'package:preconnect/tools/token_storage.dart';
+import 'package:preconnect/features/schedule/application/today_widget.dart';
+import 'package:preconnect/pages/settings_sections/widget_sheet.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
 import 'package:preconnect/tools/runtime_stub.dart'
     if (dart.library.js_interop) 'package:preconnect/tools/runtime_web.dart';
@@ -408,6 +410,16 @@ class _SettingsPageState extends State<SettingsPage>
               onChanged: _setAppLock,
             ),
           ),
+          if (!kIsWeb && TodayWidget.isSupported) ...[
+            const Gap(_sectionGap),
+            BracuActionBannerCard(
+              icon: Icons.widgets_rounded,
+              title: 'Home Screen Widget',
+              subtitle: 'Today\'s schedule at a glance',
+              showTrailingIcon: true,
+              onTap: () => WidgetSetupSheet.show(context),
+            ),
+          ],
           if (!kIsWeb || isChromeRuntimeAvailable()) ...[
             const Gap(_sectionGap),
             BracuActionBannerCard(

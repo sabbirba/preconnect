@@ -17,6 +17,18 @@ class TodayItem {
   final String trailingSub;
 }
 
+class TodayWidgetData {
+  const TodayWidgetData({
+    required this.title,
+    required this.date,
+    required this.items,
+  });
+
+  final String title;
+  final String date;
+  final List<TodayItem> items;
+}
+
 abstract final class TodayWidget {
   static const String _androidName = 'TodayWidgetProvider';
   static const String _iOSName = 'TodayWidget';
@@ -33,6 +45,52 @@ abstract final class TodayWidget {
     try {
       await HomeWidget.setAppGroupId(appGroupId);
     } catch (_) {}
+  }
+
+  static Future<TodayWidgetData?> loadCurrent() async {
+    if (!isSupported) return null;
+    try {
+      final title = await HomeWidget.getWidgetData<String>('today_title') ?? '';
+      final date = await HomeWidget.getWidgetData<String>('today_date') ?? '';
+      final count =
+          await HomeWidget.getWidgetData<int>('today_item_count') ?? 0;
+      final items = <TodayItem>[];
+      for (var i = 1; i <= count; i++) {
+        final itemTitle =
+            await HomeWidget.getWidgetData<String>('today_item${i}_title') ??
+            '';
+        if (itemTitle.isNotEmpty) {
+          items.add(
+            TodayItem(
+              badge:
+                  await HomeWidget.getWidgetData<String>(
+                    'today_item${i}_badge',
+                  ) ??
+                  '',
+              title: itemTitle,
+              subtitle:
+                  await HomeWidget.getWidgetData<String>(
+                    'today_item${i}_subtitle',
+                  ) ??
+                  '',
+              trailing:
+                  await HomeWidget.getWidgetData<String>(
+                    'today_item${i}_trailing',
+                  ) ??
+                  '',
+              trailingSub:
+                  await HomeWidget.getWidgetData<String>(
+                    'today_item${i}_trailing_sub',
+                  ) ??
+                  '',
+            ),
+          );
+        }
+      }
+      return TodayWidgetData(title: title, date: date, items: items);
+    } catch (_) {
+      return null;
+    }
   }
 
   static Future<void> sync({
@@ -75,6 +133,44 @@ abstract final class TodayWidget {
           item?.trailingSub ?? '',
         );
       }
+      await HomeWidget.updateWidget(
+        androidName: _androidName,
+        iOSName: _iOSName,
+      );
+    } catch (_) {}
+  }
+
+  static Future<bool> isPinWidgetSupported() async {
+    if (!isSupported || defaultTargetPlatform != TargetPlatform.android) {
+      return false;
+    }
+    try {
+      final supported = await HomeWidget.isRequestPinWidgetSupported();
+      return supported ?? false;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  static Future<bool> requestPinWidget() async {
+    if (!isSupported) return false;
+    try {
+      if (defaultTargetPlatform == TargetPlatform.android) {
+        await HomeWidget.requestPinWidget(androidName: _androidName);
+        return true;
+      }
+      return false;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  static Future<void> clear() async {
+    if (!isSupported) return;
+    try {
+      await HomeWidget.saveWidgetData<String>('today_title', '');
+      await HomeWidget.saveWidgetData<String>('today_date', '');
+      await HomeWidget.saveWidgetData<int>('today_item_count', 0);
       await HomeWidget.updateWidget(
         androidName: _androidName,
         iOSName: _iOSName,
