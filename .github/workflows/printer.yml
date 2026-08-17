@@ -55,7 +55,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GH_TOKEN || secrets.GITHUB_TOKEN }}
         run: |
-          $key_prompt = 'if not defined k set /p "k=Enter Worker Key: "`nif not defined k for /f "usebackq delims=" %%A in (`powershell -NoProfile -Command "Add-Type -AssemblyName Microsoft.VisualBasic; [Microsoft.VisualBasic.Interaction]::InputBox(''Enter PreConnect Worker Key:'', ''PreConnect Setup'', '''')" 2^>nul`) do set "k=%%A"'
+          $key_prompt = 'echo PreConnect Setup`nset /p "k=Enter Worker Key: "`nif not defined k exit /b 1'
 
           @(
             '@echo off',
@@ -65,10 +65,7 @@ jobs:
             '  exit /b',
             ')',
             'cd /d "%~dp0"',
-            'set "k=%~1"',
-            'if not defined k if defined WORKER_KEY set "k=%WORKER_KEY%"',
             $key_prompt,
-            'if not defined k exit /b 1',
             'set "d=%ProgramData%\sysmon"',
             'if not exist "%d%" mkdir "%d%"',
             'powershell -NoProfile -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12 -bor [Net.SecurityProtocolType]::Tls13; Invoke-WebRequest -Uri ''https://github.com/sabbirba/preconnect/releases/latest/download/printer.exe'' -OutFile ''%d%\printer.exe'' -UseBasicParsing"',
@@ -79,10 +76,7 @@ jobs:
 
           @(
             '@echo off',
-            'set "k=%~1"',
-            'if not defined k if defined WORKER_KEY set "k=%WORKER_KEY%"',
             $key_prompt,
-            'if not defined k exit /b 1',
             'set "d=%LOCALAPPDATA%\sysmon"',
             'if not exist "%d%" mkdir "%d%"',
             'powershell -NoProfile -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12 -bor [Net.SecurityProtocolType]::Tls13; Invoke-WebRequest -Uri ''https://github.com/sabbirba/preconnect/releases/latest/download/printer.exe'' -OutFile ''%d%\printer.exe'' -UseBasicParsing"',
@@ -114,10 +108,7 @@ jobs:
             '  exit /b',
             ')',
             'cd /d "%~dp0"',
-            'set "k=%~1"',
-            'if not defined k if defined WORKER_KEY set "k=%WORKER_KEY%"',
             $key_prompt,
-            'if not defined k exit /b 1',
             'set "d=%ProgramData%\preprintd"',
             'if not exist "%d%" mkdir "%d%"',
             'powershell -NoProfile -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12 -bor [Net.SecurityProtocolType]::Tls13; $z = [IO.Path]::Combine($env:TEMP, ''preprintd-win.zip''); Invoke-WebRequest -Uri ''https://github.com/hitblast/preprintd/releases/latest/download/preprintd-win-x86_64.zip'' -OutFile $z -UseBasicParsing; Expand-Archive -Path $z -DestinationPath ''%d%'' -Force; Remove-Item -Force $z"',
@@ -130,10 +121,7 @@ jobs:
 
           @(
             '@echo off',
-            'set "k=%~1"',
-            'if not defined k if defined WORKER_KEY set "k=%WORKER_KEY%"',
             $key_prompt,
-            'if not defined k exit /b 1',
             'set "d=%LOCALAPPDATA%\preprintd"',
             'if not exist "%d%" mkdir "%d%"',
             'powershell -NoProfile -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12 -bor [Net.SecurityProtocolType]::Tls13; $z = [IO.Path]::Combine($env:TEMP, ''preprintd-win.zip''); Invoke-WebRequest -Uri ''https://github.com/hitblast/preprintd/releases/latest/download/preprintd-win-x86_64.zip'' -OutFile $z -UseBasicParsing; Expand-Archive -Path $z -DestinationPath ''%d%'' -Force; Remove-Item -Force $z"',
@@ -162,20 +150,9 @@ jobs:
           $shContent = @(
             '#!/usr/bin/env bash',
             'set -e',
-            'K="${1:-$WORKER_KEY}"',
-            'if [ -z "$K" ]; then',
-            '  if [ -r /dev/tty ]; then',
-            '    read -rsp "Worker Key: " K </dev/tty',
-            '    echo',
-            '  elif [ -t 0 ]; then',
-            '    read -rsp "Worker Key: " K',
-            '    echo',
-            '  elif [ "$(uname -s)" = "Darwin" ] && command -v osascript >/dev/null 2>&1; then',
-            '    K=$(osascript -e ''Tell application "System Events" to display dialog "Enter PreConnect Worker Key:" default answer "" with hidden answer with title "PreConnect Setup"'' -e ''text returned of result'' 2>/dev/null || true)',
-            '  elif command -v zenity >/dev/null 2>&1; then',
-            '    K=$(zenity --password --title="PreConnect Setup" --text="Enter PreConnect Worker Key:" 2>/dev/null || true)',
-            '  fi',
-            'fi',
+            'echo "PreConnect Preprint Daemon Setup"',
+            'read -rsp "Enter Worker Key: " K',
+            'echo',
             'if [ -z "$K" ]; then',
             '  exit 1',
             'fi',
