@@ -1,23 +1,8 @@
 import SwiftUI
 import WidgetKit
 
-extension Color {
-  init(hex: String) {
-    var hexValue = hex.trimmingCharacters(in: .whitespacesAndNewlines)
-    hexValue = hexValue.hasPrefix("#") ? String(hexValue.dropFirst()) : hexValue
-    var rgba: UInt64 = 0
-    Scanner(string: hexValue).scanHexInt64(&rgba)
-    let a = Double((rgba & 0xFF00_0000) >> 24) / 255
-    let r = Double((rgba & 0x00FF_0000) >> 16) / 255
-    let g = Double((rgba & 0x0000_FF00) >> 8) / 255
-    let b = Double(rgba & 0x0000_00FF) / 255
-    self.init(.sRGB, red: r, green: g, blue: b, opacity: a == 0 ? 1 : a)
-  }
-}
-
-private let todayCardBackground = Color.white
-private let todayTextPrimary = Color.black.opacity(0.87)
-private let todayTextSecondary = Color.black.opacity(0.54)
+private let todayCardBorder = Color(uiColor: .separator)
+private let todayTextPrimary = Color(uiColor: .label)
 
 struct TodayWidgetCard: View {
   let item: TodayWidgetItem
@@ -26,7 +11,7 @@ struct TodayWidgetCard: View {
     HStack(alignment: .center, spacing: 12) {
       Text(item.badge)
         .font(.system(size: 16, weight: .bold))
-        .foregroundStyle(Color(hex: item.badgeColor))
+        .foregroundStyle(todayTextPrimary)
         .frame(width: 40)
 
       VStack(alignment: .leading, spacing: 2) {
@@ -36,7 +21,7 @@ struct TodayWidgetCard: View {
           .lineLimit(2)
         Text(item.subtitle)
           .font(.system(size: 11))
-          .foregroundStyle(todayTextSecondary)
+          .foregroundStyle(todayTextPrimary)
           .lineLimit(2)
       }
 
@@ -51,18 +36,17 @@ struct TodayWidgetCard: View {
           if !item.trailingSub.isEmpty {
             Text(item.trailingSub)
               .font(.system(size: 11))
-              .foregroundStyle(todayTextSecondary)
+              .foregroundStyle(todayTextPrimary)
               .lineLimit(1)
           }
         }
       }
     }
     .padding(14)
-    .background(todayCardBackground)
-    .clipShape(RoundedRectangle(cornerRadius: 18))
+    .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 18))
     .overlay {
       RoundedRectangle(cornerRadius: 18)
-        .stroke(Color.black.opacity(0.16), lineWidth: 1)
+        .stroke(todayCardBorder, lineWidth: 1)
     }
   }
 }
@@ -77,7 +61,7 @@ struct TodayWidgetEntryView: View {
 
   private var emptyItem: TodayWidgetItem {
     TodayWidgetItem(
-      badge: "--", badgeColor: "#FF1E6BE3", title: "No Classes Today",
+      badge: "--", title: "No Classes Today",
       subtitle: "Enjoy your day off.", trailing: "", trailingSub: "")
   }
 
