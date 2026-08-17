@@ -1047,180 +1047,180 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
       title: 'Printer Instructions',
       initialChildSize: 0.75,
       builder: (sheetContext, textPrimary, textSecondary) {
-        return SingleChildScrollView(
+        final dragController = bracuBottomSheetScrollController(sheetContext);
+        return ListView(
+          controller: dragController,
+          physics: const ClampingScrollPhysics(),
           padding: const EdgeInsets.only(bottom: 24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildStepItem(
-                context,
-                stepNumber: '1',
-                title: 'Connect to Wi-Fi',
-                body:
-                    'Make sure your device is connected to the Student-WiFi or university network.',
+          children: [
+            _buildStepItem(
+              context,
+              stepNumber: '1',
+              title: 'Connect to Wi-Fi',
+              body:
+                  'Make sure your device is connected to the Student-WiFi or university network.',
+            ),
+            const Gap(12),
+            _buildStepItem(
+              context,
+              stepNumber: '2',
+              title: 'Set Student ID',
+              body:
+                  'Ensure your student ID is entered correctly in the printer identity section above.',
+            ),
+            const Gap(12),
+            _buildStepItem(
+              context,
+              stepNumber: '3',
+              title: 'Choose Documents',
+              body:
+                  'Pick the files you want to print. You can select multiple PDF, JPEG, or PNG files.',
+            ),
+            const Gap(12),
+            _buildStepItem(
+              context,
+              stepNumber: '4',
+              title: 'Send Print Job',
+              body: 'Tap the Print button. Files will be sent sequentially ',
+            ),
+            const Gap(12),
+            _buildStepItem(
+              context,
+              stepNumber: '5',
+              title: 'Release Document',
+              body:
+                  'Tap your physical ID card on any campus card-reader printer to release and print the files.',
+            ),
+            const Gap(16),
+            Text(
+              'Connection Status',
+              style: TextStyle(
+                color: textPrimary,
+                fontSize: 16,
+                fontWeight: FontWeight.w800,
               ),
-              const Gap(12),
-              _buildStepItem(
-                context,
-                stepNumber: '2',
-                title: 'Set Student ID',
-                body:
-                    'Ensure your student ID is entered correctly in the printer identity section above.',
+            ),
+            const Gap(12),
+            _buildStepItem(
+              context,
+              stepNumber: '•',
+              title: 'Connected',
+              body:
+                  'The printer is connected and ready. Your print job will be sent instantly.',
+            ),
+            const Gap(12),
+            _buildStepItem(
+              context,
+              stepNumber: '•',
+              title: 'Not found',
+              body: 'No printer found on your network.',
+            ),
+            const Gap(12),
+            _buildStepItem(
+              context,
+              stepNumber: '•',
+              title: 'Offline',
+              body: 'Your device has no active internet connection.',
+            ),
+            const Gap(16),
+            Text(
+              'Layout & Print Options',
+              style: TextStyle(
+                color: textPrimary,
+                fontSize: 16,
+                fontWeight: FontWeight.w800,
               ),
-              const Gap(12),
-              _buildStepItem(
-                context,
-                stepNumber: '3',
-                title: 'Choose Documents',
-                body:
-                    'Pick the files you want to print. You can select multiple PDF, JPEG, or PNG files.',
-              ),
-              const Gap(12),
-              _buildStepItem(
-                context,
-                stepNumber: '4',
-                title: 'Send Print Job',
-                body: 'Tap the Print button. Files will be sent sequentially ',
-              ),
-              const Gap(12),
-              _buildStepItem(
-                context,
-                stepNumber: '5',
-                title: 'Release Document',
-                body:
-                    'Tap your physical ID card on any campus card-reader printer to release and print the files.',
-              ),
-              const Gap(16),
-              Text(
-                'Connection Status',
-                style: TextStyle(
-                  color: textPrimary,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-              const Gap(12),
-              _buildStepItem(
-                context,
-                stepNumber: '•',
-                title: 'Connected',
-                body:
-                    'The printer is connected and ready. Your print job will be sent instantly.',
-              ),
-              const Gap(12),
-              _buildStepItem(
-                context,
-                stepNumber: '•',
-                title: 'Not found',
-                body: 'No printer found on your network.',
-              ),
-              const Gap(12),
-              _buildStepItem(
-                context,
-                stepNumber: '•',
-                title: 'Offline',
-                body: 'Your device has no active internet connection.',
-              ),
-              const Gap(16),
-              Text(
-                'Layout & Print Options',
-                style: TextStyle(
-                  color: textPrimary,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-              const Gap(12),
-              _buildStepItem(
-                context,
-                stepNumber: '•',
-                title: 'Copies',
-                body:
-                    'Specify the exact number of page copies to print by tapping the minus/plus buttons or typing directly.',
-              ),
-              const Gap(12),
-              _buildStepItem(
-                context,
-                stepNumber: '•',
-                title: 'Duplex Mode - One or Both Side',
-                body:
-                    'Toggle between single-sided or double-sided printing to save paper.',
-              ),
-              const Gap(12),
-              _buildStepItem(
-                context,
-                stepNumber: '•',
-                title: 'Collate Mode',
-                body:
-                    'Sort pages in multi-page documents sequentially instead of grouping identical pages.',
-              ),
-              const Gap(12),
-              _buildStepItem(
-                context,
-                stepNumber: '•',
-                title: 'Pages Per Sheet',
-                body:
-                    'Choose "1-in-1" (default) for standard layout. Use "2-in-1" or "4-in-1" to fit multiple pages on a single sheet of paper to save page quota.',
-              ),
-              const Gap(12),
-              _buildStepItem(
-                context,
-                stepNumber: '•',
-                title: 'Fitting Mode',
-                body:
-                    'Select "Fit Paper" (default) for normal margins, "Fit Printable" to shrink to margins, or "Edge-to-Edge" to print borderless full pages.',
-              ),
-              const Gap(12),
-              _buildStepItem(
-                context,
-                stepNumber: '•',
-                title: 'Stapling & Hole Punching',
-                body:
-                    'Configure staple location or punch hole counts for automatic document binding.',
-              ),
-              const Gap(12),
-              _buildStepItem(
-                context,
-                stepNumber: '•',
-                title: 'Offset & Slip Sheets',
-                body:
-                    'Toggle "Offset" to shift printed sets sideways for easy separation. Toggle "Slip Sheet" to insert blank separator sheets between print jobs.',
-              ),
-              const Gap(12),
-              _buildStepItem(
-                context,
-                stepNumber: '•',
-                title: 'Booklet Printing',
-                bodyWidget: Text.rich(
-                  TextSpan(
-                    style: TextStyle(
-                      color: textSecondary,
-                      fontSize: 12,
-                      height: 1.4,
-                      fontWeight: FontWeight.w500,
-                    ),
-                    children: [
-                      const TextSpan(
-                        text:
-                            'Enable "Booklet" to auto-impose document pages, fold them down the center, and saddle-stitch them like a booklet/pamphlet.\n',
-                      ),
-                      TextSpan(
-                        text: 'Note: ',
-                        style: TextStyle(
-                          color: textSecondary,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                      const TextSpan(
-                        text:
-                            'Total pages should be a multiple of 4 for ideal saddle stitching.',
-                      ),
-                    ],
+            ),
+            const Gap(12),
+            _buildStepItem(
+              context,
+              stepNumber: '•',
+              title: 'Copies',
+              body:
+                  'Specify the exact number of page copies to print by tapping the minus/plus buttons or typing directly.',
+            ),
+            const Gap(12),
+            _buildStepItem(
+              context,
+              stepNumber: '•',
+              title: 'Duplex Mode - One or Both Side',
+              body:
+                  'Toggle between single-sided or double-sided printing to save paper.',
+            ),
+            const Gap(12),
+            _buildStepItem(
+              context,
+              stepNumber: '•',
+              title: 'Collate Mode',
+              body:
+                  'Sort pages in multi-page documents sequentially instead of grouping identical pages.',
+            ),
+            const Gap(12),
+            _buildStepItem(
+              context,
+              stepNumber: '•',
+              title: 'Pages Per Sheet',
+              body:
+                  'Choose "1-in-1" (default) for standard layout. Use "2-in-1" or "4-in-1" to fit multiple pages on a single sheet of paper to save page quota.',
+            ),
+            const Gap(12),
+            _buildStepItem(
+              context,
+              stepNumber: '•',
+              title: 'Fitting Mode',
+              body:
+                  'Select "Fit Paper" (default) for normal margins, "Fit Printable" to shrink to margins, or "Edge-to-Edge" to print borderless full pages.',
+            ),
+            const Gap(12),
+            _buildStepItem(
+              context,
+              stepNumber: '•',
+              title: 'Stapling & Hole Punching',
+              body:
+                  'Configure staple location or punch hole counts for automatic document binding.',
+            ),
+            const Gap(12),
+            _buildStepItem(
+              context,
+              stepNumber: '•',
+              title: 'Offset & Slip Sheets',
+              body:
+                  'Toggle "Offset" to shift printed sets sideways for easy separation. Toggle "Slip Sheet" to insert blank separator sheets between print jobs.',
+            ),
+            const Gap(12),
+            _buildStepItem(
+              context,
+              stepNumber: '•',
+              title: 'Booklet Printing',
+              bodyWidget: Text.rich(
+                TextSpan(
+                  style: TextStyle(
+                    color: textSecondary,
+                    fontSize: 12,
+                    height: 1.4,
+                    fontWeight: FontWeight.w500,
                   ),
+                  children: [
+                    const TextSpan(
+                      text:
+                          'Enable "Booklet" to auto-impose document pages, fold them down the center, and saddle-stitch them like a booklet/pamphlet.\n',
+                    ),
+                    TextSpan(
+                      text: 'Note: ',
+                      style: TextStyle(
+                        color: textSecondary,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const TextSpan(
+                      text:
+                          'Total pages should be a multiple of 4 for ideal saddle stitching.',
+                    ),
+                  ],
                 ),
               ),
-            ],
-          ),
+            ),
+          ],
         );
       },
     );

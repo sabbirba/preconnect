@@ -378,6 +378,7 @@ Future<CustomSchedulesDraft?> showCustomSchedulesEditorSheet(
 
           return ListView(
             controller: bracuBottomSheetScrollController(context),
+            physics: const ClampingScrollPhysics(),
             padding: const EdgeInsets.only(bottom: 4),
             children: [
               TextFormField(

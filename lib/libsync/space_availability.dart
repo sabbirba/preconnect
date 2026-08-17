@@ -363,68 +363,68 @@ class _SpaceAvailabilityPageState extends State<SpaceAvailabilityPage> {
       title: 'Libsync Instructions',
       initialChildSize: 0.55,
       builder: (sheetContext, textPrimary, textSecondary) {
-        return SingleChildScrollView(
+        final dragController = bracuBottomSheetScrollController(sheetContext);
+        return ListView(
+          controller: dragController,
+          physics: const ClampingScrollPhysics(),
           padding: const EdgeInsets.only(bottom: 24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildStepItem(
-                context,
-                stepNumber: '1',
-                title: 'Set Booking Settings',
-                body:
-                    'Choose your reservation date and capacity counter at the top of the availability screen.',
-              ),
-              const Gap(12),
-              _buildStepItem(
-                context,
-                stepNumber: '2',
-                title: 'Select Campus Location',
-                body:
-                    'Use the Campus button in the settings row to toggle between Main Campus and Savar Campus availability slots.',
-              ),
-              const Gap(12),
-              _buildStepItem(
-                context,
-                stepNumber: '3',
-                title: 'Choose Space & Time Slot',
-                body:
-                    'Browse through the list of spaces and tap on an available time slot to start the reservation workflow.',
-              ),
-              const Gap(12),
-              _buildStepItem(
-                context,
-                stepNumber: '4',
-                title: 'Hold Slot & Enter Member IDs',
-                body:
-                    'Tapping a time slot holds it temporarily. A dialog will open where you must enter the student IDs for all members.',
-              ),
-              const Gap(12),
-              _buildStepItem(
-                context,
-                stepNumber: '5',
-                title: 'Verify & Confirm Booking',
-                body:
-                    'Tap the Verify button next to each external student ID. Once all member IDs are verified successfully, tap Confirm Booking.',
-              ),
-              const Gap(12),
-              _buildStepItem(
-                context,
-                stepNumber: '6',
-                title: 'Check In on Campus',
-                body:
-                    'When you arrive at the library, tap the Check In button on your active reservation card. Ensure you are connected to the campus network.',
-              ),
-              const Gap(12),
-              _buildStepItem(
-                context,
-                stepNumber: '7',
-                title: 'Cancel Booking',
-                body:
-                    'If your plans change, you can cancel your confirmed reservation from the dashboard to free up slots.',
-              ),
-            ],
-          ),
+          children: [
+            _buildStepItem(
+              context,
+              stepNumber: '1',
+              title: 'Set Booking Settings',
+              body:
+                  'Choose your reservation date and capacity counter at the top of the availability screen.',
+            ),
+            const Gap(12),
+            _buildStepItem(
+              context,
+              stepNumber: '2',
+              title: 'Select Space Category',
+              body:
+                  'Filter by room types like Discussion Room, Silent Zone, or Reading Area based on your study needs.',
+            ),
+            const Gap(12),
+            _buildStepItem(
+              context,
+              stepNumber: '3',
+              title: 'Pick a Time Slot',
+              body:
+                  'Tap on an available green slot in the room cards. You can reserve individual 30-minute intervals.',
+            ),
+            const Gap(12),
+            _buildStepItem(
+              context,
+              stepNumber: '4',
+              title: 'Provide Member IDs',
+              body:
+                  'For group bookings, enter and verify your teammates\' student IDs to confirm the reservation.',
+            ),
+            const Gap(12),
+            _buildStepItem(
+              context,
+              stepNumber: '5',
+              title: 'Review Booking',
+              body:
+                  'Once confirmed, your booking details and status will appear under the active bookings view.',
+            ),
+            const Gap(12),
+            _buildStepItem(
+              context,
+              stepNumber: '6',
+              title: 'Check In on Campus',
+              body:
+                  'When you arrive at the library, tap the Check In button on your active reservation card. Ensure you are connected to the campus network.',
+            ),
+            const Gap(12),
+            _buildStepItem(
+              context,
+              stepNumber: '7',
+              title: 'Cancel Booking',
+              body:
+                  'If your plans change, you can cancel your confirmed reservation from the dashboard to free up slots.',
+            ),
+          ],
         );
       },
     );
@@ -926,113 +926,113 @@ class _MemberIdsDialogState extends State<_MemberIdsDialog> {
   Widget build(BuildContext context) {
     final textPrimary = BracuPalette.textPrimary(context);
     final allVerified = _verified.every((v) => v);
+    final dragController = bracuBottomSheetScrollController(context);
 
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Flexible(
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: List.generate(widget.totalCapacity, (index) {
-                final controller = _controllers[index];
-                final isSelf = index == 0;
-                final isLoading = _loading[index];
-                final isVerified = _verified[index];
-                final error = _errors[index];
+          child: ListView.builder(
+            controller: dragController,
+            physics: const ClampingScrollPhysics(),
+            shrinkWrap: true,
+            itemCount: widget.totalCapacity,
+            itemBuilder: (context, index) {
+              final controller = _controllers[index];
+              final isSelf = index == 0;
+              final isLoading = _loading[index];
+              final isVerified = _verified[index];
+              final error = _errors[index];
 
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 14),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        isSelf ? 'Member 1 (You)' : 'Member ${index + 1}',
-                        style: TextStyle(
-                          color: textPrimary,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
-                        ),
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 14),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      isSelf ? 'Member 1 (You)' : 'Member ${index + 1}',
+                      style: TextStyle(
+                        color: textPrimary,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
                       ),
-                      const Gap(6),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: TextField(
-                              controller: controller,
-                              keyboardType: TextInputType.number,
-                              enabled: !isSelf && !isLoading,
-                              style: TextStyle(
-                                color: textPrimary,
-                                fontSize: 14,
-                                fontWeight: FontWeight.w600,
-                              ),
-                              decoration: bracuInputDecoration(
-                                context,
-                                hintText: 'Student ID',
-                                contentPadding: const EdgeInsets.symmetric(
-                                  horizontal: 12,
-                                  vertical: 10,
-                                ),
-                                borderRadius: 8,
-                              ),
-                              onChanged: (_) {
-                                if (isVerified) {
-                                  setState(() {
-                                    _verified[index] = false;
-                                    _names[index] = '';
-                                  });
-                                }
-                              },
+                    ),
+                    const Gap(6),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            controller: controller,
+                            keyboardType: TextInputType.number,
+                            enabled: !isSelf && !isLoading,
+                            style: TextStyle(
+                              color: textPrimary,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
                             ),
-                          ),
-                          const Gap(8),
-                          SizedBox(
-                            height: 42,
-                            child: BracuActionButton(
-                              onPressed: (isLoading || isVerified)
-                                  ? null
-                                  : () => _verifyId(index, controller.text),
-                              isLoading: isLoading,
-                              label: isVerified ? 'Verified' : 'Verify',
-                              icon: isVerified
-                                  ? Icons.check_circle_rounded
-                                  : Icons.shield_outlined,
-                              outlined: !isVerified,
-                              backgroundColor: isVerified
-                                  ? Colors.green.withValues(alpha: 0.12)
-                                  : null,
-                              foregroundColor: isVerified ? Colors.green : null,
-                              borderRadius: 8,
-                              padding: const EdgeInsets.symmetric(
+                            decoration: bracuInputDecoration(
+                              context,
+                              hintText: 'Student ID',
+                              contentPadding: const EdgeInsets.symmetric(
                                 horizontal: 12,
+                                vertical: 10,
                               ),
+                              borderRadius: 8,
                             ),
+                            onChanged: (_) {
+                              if (isVerified) {
+                                setState(() {
+                                  _verified[index] = false;
+                                  _names[index] = '';
+                                });
+                              }
+                            },
                           ),
-                        ],
-                      ),
-
-                      if (error != null) ...[
-                        const Gap(4),
-                        Text(
-                          error,
-                          style: TextStyle(
-                            color:
-                                error.toLowerCase().contains('invitation') ||
-                                    error.toLowerCase().contains('approve')
-                                ? Colors.amber[700]
-                                : Colors.red,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
+                        ),
+                        const Gap(8),
+                        SizedBox(
+                          height: 42,
+                          child: BracuActionButton(
+                            onPressed: (isLoading || isVerified)
+                                ? null
+                                : () => _verifyId(index, controller.text),
+                            isLoading: isLoading,
+                            label: isVerified ? 'Verified' : 'Verify',
+                            icon: isVerified
+                                ? Icons.check_circle_rounded
+                                : Icons.shield_outlined,
+                            outlined: !isVerified,
+                            backgroundColor: isVerified
+                                ? Colors.green.withValues(alpha: 0.12)
+                                : null,
+                            foregroundColor: isVerified ? Colors.green : null,
+                            borderRadius: 8,
+                            padding: const EdgeInsets.symmetric(horizontal: 12),
                           ),
                         ),
                       ],
+                    ),
+
+                    if (error != null) ...[
+                      const Gap(4),
+                      Text(
+                        error,
+                        style: TextStyle(
+                          color:
+                              error.toLowerCase().contains('invitation') ||
+                                  error.toLowerCase().contains('approve')
+                              ? Colors.amber[700]
+                              : Colors.red,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
                     ],
-                  ),
-                );
-              }),
-            ),
+                  ],
+                ),
+              );
+            },
           ),
         ),
         if (_generalError != null) ...[

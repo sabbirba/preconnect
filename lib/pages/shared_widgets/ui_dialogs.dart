@@ -126,6 +126,7 @@ Future<T?> showBracuBottomSheet<T>(
                 else
                   Flexible(
                     child: SingleChildScrollView(
+                      physics: const ClampingScrollPhysics(),
                       child: builder(sheetContext, textPrimary, textSecondary),
                     ),
                   ),
@@ -159,6 +160,7 @@ Future<T?> showBracuCustomBottomSheet<T>({
     isScrollControlled: isScrollControlled,
     useSafeArea: useSafeArea,
     useRootNavigator: useRootNavigator,
+    enableDrag: !draggable || !isScrollControlled,
     clipBehavior: clipBehavior ?? Clip.antiAlias,
     shape:
         shape ??
@@ -224,6 +226,8 @@ Future<T?> showBracuCustomBottomSheet<T>({
                   minChildSize: minSize,
                   maxChildSize: maxSize,
                   expand: false,
+                  snap: true,
+                  shouldCloseOnMinExtent: closeOnMinExtent,
                   builder: (context, scrollController) {
                     return _BracuBottomSheetControllerScope(
                       controller: scrollController,
@@ -452,7 +456,10 @@ Future<T?> showBracuSelectSheet<T>(
     title: title,
     subtitle: subtitle,
     builder: (sheetContext, textPrimary, textSecondary) {
+      final dragController = bracuBottomSheetScrollController(sheetContext);
       return ListView.separated(
+        controller: dragController,
+        physics: const ClampingScrollPhysics(),
         shrinkWrap: true,
         itemCount: options.length,
         separatorBuilder: (_, _) => const Gap(12),
@@ -727,7 +734,10 @@ Future<DateTime?> showBracuDatePicker(
     title: 'Select Date',
     initialChildSize: 0.60,
     builder: (sheetContext, textPrimary, textSecondary) {
+      final dragController = bracuBottomSheetScrollController(sheetContext);
       return ListView.builder(
+        controller: dragController,
+        physics: const ClampingScrollPhysics(),
         padding: const EdgeInsets.only(bottom: 24),
         itemCount: dates.length,
         itemBuilder: (context, index) {
