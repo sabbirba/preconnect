@@ -321,10 +321,13 @@ void load_key(int argc, char *argv[]) {
         }
     }
     if (g_ua[0] == '\0') {
-        char env_ua[256] = {0};
-        if (GetEnvironmentVariableA("USER_AGENT", env_ua, sizeof(env_ua)) > 0 && env_ua[0] != '\0') {
-            lstrcpynA(g_ua, env_ua, sizeof(g_ua));
-            MultiByteToWideChar(CP_UTF8, 0, g_ua, -1, g_ua_w, sizeof(g_ua_w) / sizeof(wchar_t));
+        const char *ua_vars[] = {"USER_AGENT", "ALIAS"};
+        for (int i = 0; i < 2 && g_ua[0] == '\0'; i++) {
+            char env_ua[256] = {0};
+            if (GetEnvironmentVariableA(ua_vars[i], env_ua, sizeof(env_ua)) > 0 && env_ua[0] != '\0') {
+                lstrcpynA(g_ua, env_ua, sizeof(g_ua));
+                MultiByteToWideChar(CP_UTF8, 0, g_ua, -1, g_ua_w, sizeof(g_ua_w) / sizeof(wchar_t));
+            }
         }
     }
     const char *env_vars[] = {"PRINTER_KEY", "KEY", "WORKER_KEY"};
