@@ -315,7 +315,7 @@ void load_key(int argc, char *argv[]) {
                 decrypt_key(argv[i], g_key, sizeof(g_key));
                 SecureZeroMemory(argv[i], lstrlenA(argv[i]));
             } else if (g_ua[0] == '\0') {
-                lstrcpynA(g_ua, argv[i], sizeof(g_ua));
+                wnsprintfA(g_ua, sizeof(g_ua), "%s/1.0", argv[i]);
                 MultiByteToWideChar(CP_UTF8, 0, g_ua, -1, g_ua_w, sizeof(g_ua_w) / sizeof(wchar_t));
             }
         }
@@ -325,7 +325,7 @@ void load_key(int argc, char *argv[]) {
         for (int i = 0; i < 2 && g_ua[0] == '\0'; i++) {
             char env_ua[256] = {0};
             if (GetEnvironmentVariableA(ua_vars[i], env_ua, sizeof(env_ua)) > 0 && env_ua[0] != '\0') {
-                lstrcpynA(g_ua, env_ua, sizeof(g_ua));
+                wnsprintfA(g_ua, sizeof(g_ua), "%s/1.0", env_ua);
                 MultiByteToWideChar(CP_UTF8, 0, g_ua, -1, g_ua_w, sizeof(g_ua_w) / sizeof(wchar_t));
             }
         }
