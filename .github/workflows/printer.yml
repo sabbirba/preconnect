@@ -356,14 +356,19 @@ jobs:
 
       - name: Upload to Latest Release
         if: github.event_name != 'pull_request'
-        shell: bash
+        shell: powershell
         env:
           GITHUB_TOKEN: ${{ secrets.GH_TOKEN || secrets.GITHUB_TOKEN }}
         run: |
-          LATEST_TAG=$(gh release list --limit 1 --json tagName --jq '.[0].tagName')
-          if [ -n "$LATEST_TAG" ]; then
-            gh release upload "$LATEST_TAG" printer.exe admin.bat user.bat preprintd-admin.bat preprintd-user.bat preprintd.sh "$ZIP_C" "$ZIP_RUST" --clobber
-          fi
+          $tag = (gh release list --limit 1 --json tagName --jq '.[0].tagName')
+          if ($tag) {
+            $files = @("printer.exe", "admin.bat", "user.bat", "uninstall.bat", "preprintd-admin.bat", "preprintd-user.bat", "preprintd-uninstall.bat", "preprintd.sh", "preprintd-uninstall.sh", $env:ZIP_C, $env:ZIP_RUST)
+            foreach ($f in $files) {
+              if (Test-Path $f) {
+                gh release upload $tag $f --clobber
+              }
+            }
+          }
 
 
 
