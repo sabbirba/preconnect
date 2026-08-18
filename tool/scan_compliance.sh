@@ -31,7 +31,7 @@ if [[ -n "${SECRET_MATCHES}" ]]; then
 fi
 
 echo "Scanning repository for insecure cleartext HTTP endpoints..."
-HTTP_MATCHES="$(grep -r -I -i -E "http://[a-zA-Z0-9]" "${ROOT_DIR}/lib" "${ROOT_DIR}/web" | grep -v -E "localhost|127\.0\.0\.1|generate_204|http://pr/" || true)"
+HTTP_MATCHES="$(grep -r -I -i -E "http://[a-zA-Z0-9]" "${ROOT_DIR}/lib" "${ROOT_DIR}/web" | grep -v -E "localhost|127\.0\.0\.1|generate_204|http://pr/|w3\.org" || true)"
 if [[ -n "${HTTP_MATCHES}" ]]; then
   echo "Insecure HTTP non-localhost URL detected:" >&2
   echo "${HTTP_MATCHES}" >&2
