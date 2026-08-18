@@ -29,6 +29,8 @@ sign
 test/IconKitchen-Output/
 test/icon.icon/
 test/*.svg
+tool/generate_icons_*.mjs
+tool/generate_*icons*.mjs
 
 # Local env helpers
 .env.local.sh
