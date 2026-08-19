@@ -63,7 +63,11 @@ trap cleanup EXIT
 if [[ ! -f "${ENV_FILE}" ]]; then
   TEMP_ENV_FILE="$(mktemp)"
   ENV_FILE="${TEMP_ENV_FILE}"
-  echo "No .env file found; continuing with empty optional dart defines." >&2
+  if [[ -n "${GITHUB_TOKEN:-}" ]]; then
+    echo "GITHUB_TOKEN=${GITHUB_TOKEN}" > "${TEMP_ENV_FILE}"
+  else
+    echo "No .env file found; continuing with empty optional dart defines." >&2
+  fi
 fi
 
 rm -rf "${OUT_DIR}" "${FIREFOX_DIR}" "${COMMON_DIR}"
