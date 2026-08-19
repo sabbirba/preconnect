@@ -63,6 +63,8 @@ class CaptiveWifiHttp {
 
   static const Duration _connectionTimeout = Duration(seconds: 10);
   final Map<String, Cookie> sessionCookies = {};
+  String? lastErrorCode;
+  bool isLastFatal = false;
 
   static Uri? resolvePortalUri(AndroidNetworkStatus? status) {
     if (status == null) return defaultProbeUri;
@@ -77,6 +79,12 @@ class CaptiveWifiHttp {
     return defaultProbeUri;
   }
 
+  static const List<String> kProbeUrls = [
+    'http://connectivitycheck.gstatic.com/generate_204',
+    'http://www.google.com/generate_204',
+    'http://gstatic.com/generate_204',
+  ];
+
   static Future<Uri?> detectCaptivePortal() async {
     if (AndroidNetworkAssist.isSupported) {
       await AndroidNetworkAssist.bindToWifiNetwork();
@@ -84,39 +92,95 @@ class CaptiveWifiHttp {
     try {
       final client = HttpClient()
         ..userAgent = kPreConnectUserAgent
-        ..connectionTimeout = const Duration(seconds: 5);
+        ..connectionTimeout = const Duration(seconds: 4);
       client.badCertificateCallback = (cert, host, port) => true;
-      final request = await client.getUrl(defaultProbeUri);
-      request.followRedirects = false;
-      final response = await request.close();
-      final status = response.statusCode;
-      final location =
-          response.headers.value('location') ??
-          response.headers.value('Location');
-      if (status >= 300 && status < 400 && location != null) {
-        return Uri.tryParse(location);
-      }
-      final body = await response.transform(utf8.decoder).join();
-      if (status == 200) {
-        final metaReg = RegExp(
-          r'''<meta\b([^>]*http-equiv\s*=\s*["']refresh["'][^>]*)>''',
-          caseSensitive: false,
-        );
-        final metaMatch = metaReg.firstMatch(body);
-        if (metaMatch != null) {
-          final attrs = metaMatch.group(1) ?? '';
-          final contentReg = RegExp(
-            r'''content\s*=\s*["']\s*(?:\d+\s*;\s*)?url\s*=\s*([^"']+)["']''',
-            caseSensitive: false,
+
+      for (final probeStr in kProbeUrls) {
+        try {
+          final probeUri = Uri.parse(probeStr);
+          final request = await client.getUrl(probeUri);
+          request.followRedirects = false;
+          final response = await request.close().timeout(
+            const Duration(seconds: 4),
           );
-          final contentMatch = contentReg.firstMatch(attrs);
-          if (contentMatch != null) {
-            final targetUrl = contentMatch.group(1)?.trim();
-            if (targetUrl != null && targetUrl.isNotEmpty) {
-              return Uri.tryParse(targetUrl);
+          final status = response.statusCode;
+          final location =
+              response.headers.value('location') ??
+              response.headers.value('Location');
+          if (status >= 300 && status < 400 && location != null) {
+            final parsed = Uri.tryParse(location);
+            if (parsed != null) {
+              return parsed.isAbsolute ? parsed : probeUri.resolve(location);
             }
           }
-        }
+          final body = await response.transform(utf8.decoder).join();
+          if (status == 200) {
+            final metaReg = RegExp(
+              r'''<meta\b([^>]*http-equiv\s*=\s*["']refresh["'][^>]*)>''',
+              caseSensitive: false,
+            );
+            final metaMatch = metaReg.firstMatch(body);
+            if (metaMatch != null) {
+              final attrs = metaMatch.group(1) ?? '';
+              final contentReg = RegExp(
+                r'''content\s*=\s*["']\s*(?:\d+\s*;\s*)?url\s*=\s*([^"']+)["']''',
+                caseSensitive: false,
+              );
+              final contentMatch = contentReg.firstMatch(attrs);
+              if (contentMatch != null) {
+                final targetUrl = contentMatch.group(1)?.trim();
+                if (targetUrl != null && targetUrl.isNotEmpty) {
+                  final parsed = Uri.tryParse(targetUrl);
+                  if (parsed != null) {
+                    return parsed.isAbsolute
+                        ? parsed
+                        : probeUri.resolve(targetUrl);
+                  }
+                }
+              }
+            }
+
+            final jsReg = RegExp(
+              r'''(?:window\.)?location(?:\.href|\.replace)?\s*=\s*["']([^"']+)["']''',
+              caseSensitive: false,
+            );
+            final jsMatch = jsReg.firstMatch(body);
+            if (jsMatch != null) {
+              final targetUrl = jsMatch.group(1)?.trim();
+              if (targetUrl != null && targetUrl.isNotEmpty) {
+                final parsed = Uri.tryParse(targetUrl);
+                if (parsed != null) {
+                  return parsed.isAbsolute
+                      ? parsed
+                      : probeUri.resolve(targetUrl);
+                }
+              }
+            }
+
+            final jsAssignReg = RegExp(
+              r'''(?:window\.)?location\.assign\s*\(\s*["']([^"']+)["']\s*\)''',
+              caseSensitive: false,
+            );
+            final jsAssignMatch = jsAssignReg.firstMatch(body);
+            if (jsAssignMatch != null) {
+              final targetUrl = jsAssignMatch.group(1)?.trim();
+              if (targetUrl != null && targetUrl.isNotEmpty) {
+                final parsed = Uri.tryParse(targetUrl);
+                if (parsed != null) {
+                  return parsed.isAbsolute
+                      ? parsed
+                      : probeUri.resolve(targetUrl);
+                }
+              }
+            }
+
+            if (body.contains('/portalpage/') ||
+                body.contains('portalauth') ||
+                body.contains('wlanuserip')) {
+              return Uri.parse('http://${probeUri.host}/portalpage/index.html');
+            }
+          }
+        } catch (_) {}
       }
     } catch (_) {
     } finally {
@@ -199,6 +263,30 @@ class CaptiveWifiHttp {
 
       inputs[name] = value;
     }
+
+    final jsVarReg = RegExp(
+      r'''\b(?:var|let|const|window\.)\s*([a-zA-Z0-9_]+)\s*=\s*["']([^"']*)["']''',
+      caseSensitive: false,
+    );
+    for (final match in jsVarReg.allMatches(html)) {
+      final key = (match.group(1) ?? '').trim();
+      final val = (match.group(2) ?? '').trim();
+      if (key.isNotEmpty && !inputs.containsKey(key)) {
+        inputs[key] = val;
+      }
+    }
+
+    final jsObjReg = RegExp(
+      r'''["']?([a-zA-Z0-9_]+)["']?\s*:\s*["']([^"']*)["']''',
+    );
+    for (final match in jsObjReg.allMatches(html)) {
+      final key = (match.group(1) ?? '').trim();
+      final val = (match.group(2) ?? '').trim();
+      if (key.isNotEmpty && !inputs.containsKey(key)) {
+        inputs[key] = val;
+      }
+    }
+
     return inputs;
   }
 
@@ -432,6 +520,8 @@ class CaptiveWifiHttp {
     required Uri captiveWifiUrl,
   }) async {
     lastError = null;
+    lastErrorCode = null;
+    isLastFatal = false;
     lastResponseLog = '';
     if (AndroidNetworkAssist.isSupported) {
       await AndroidNetworkAssist.bindToWifiNetwork();
@@ -464,16 +554,20 @@ class CaptiveWifiHttp {
         cookies: cookies,
       );
 
-      if (first.statusCode == 204) {
+      var loginUri = first.uri;
+      var loginPageBody = first.body;
+
+      if (first.statusCode == 204 ||
+          loginUri.path.contains('authSuccess') ||
+          loginPageBody.contains('authSuccess.html')) {
         final validated = await isValidatedViaProbe(
           client: client,
           cookies: cookies,
         );
-        if (validated) return true;
+        if (validated || loginUri.path.contains('authSuccess')) {
+          return true;
+        }
       }
-
-      var loginUri = first.uri;
-      var loginPageBody = first.body;
       if (loginUri.path.contains('/portalpage/')) {
         unawaited(
           CaptiveLoginStore.instance.saveLastPortalUrl(loginUri.toString()),
@@ -514,8 +608,6 @@ class CaptiveWifiHttp {
       } catch (_) {
         assert(true);
       }
-
-      await Future<void>.delayed(const Duration(milliseconds: 1500));
 
       final apiLoginUri = loginUri.replace(
         path: '/portalauth/login',
@@ -628,18 +720,13 @@ class CaptiveWifiHttp {
       final encoded = Uri(queryParameters: payload).query;
       lastRequestUrl = _buildDisplayUrl(apiLoginUri, payload);
 
-      final response = await retryOperation(
-        () => postOnce(
-          client: client,
-          uri: apiLoginUri,
-          body: encoded,
-          cookies: cookies,
-          referer: loginUri,
-        ),
-        isSuccess: (res) => res != null && res.statusCode < 400,
+      final response = await postOnce(
+        client: client,
+        uri: apiLoginUri,
+        body: encoded,
+        cookies: cookies,
+        referer: loginUri,
       );
-
-      if (response == null) return false;
 
       lastResponseLog =
           '--- LOGIN RESPONSE ---\n'
@@ -658,6 +745,17 @@ class CaptiveWifiHttp {
         if (decoded is Map) {
           if (decoded['success'] == false) {
             final errorCode = decoded['errorcode']?.toString() ?? '';
+            if (errorCode == '10105') {
+              return true;
+            }
+            final probeOk = await isValidatedViaProbe(
+              client: client,
+              cookies: cookies,
+            );
+            if (probeOk) return true;
+
+            lastErrorCode = errorCode;
+            isLastFatal = isFatalErrorCode(errorCode);
             lastError = _mapPortalErrorCode(errorCode);
 
             return false;
@@ -729,6 +827,17 @@ class CaptiveWifiHttp {
           if (syncDecoded is Map) {
             if (syncDecoded['success'] == false) {
               final errorCode = syncDecoded['errorcode']?.toString() ?? '';
+              if (errorCode == '10105') {
+                return true;
+              }
+              final probeOk = await isValidatedViaProbe(
+                client: client,
+                cookies: cookies,
+              );
+              if (probeOk) return true;
+
+              lastErrorCode = errorCode;
+              isLastFatal = isFatalErrorCode(errorCode);
               lastError = _mapPortalErrorCode(errorCode);
 
               return false;
@@ -798,17 +907,20 @@ class CaptiveWifiHttp {
         cookies: cookies,
       );
 
-      if (probeSuccess) {
+      if (probeSuccess || response.statusCode == 200) {
         unawaited(
           CaptiveLoginStore.instance.saveLastLoginAt(
             DateTime.now().millisecondsSinceEpoch,
           ),
         );
-      } else {
-        lastError =
-            'Gateway authentication POST completed but probe to generate_204 failed (still captive)';
+        if (AndroidNetworkAssist.isSupported) {
+          unawaited(AndroidNetworkAssist.reportCaptivePortalDismissed());
+        }
+        return true;
       }
-      return probeSuccess;
+      lastError =
+          'Gateway authentication POST completed but probe to generate_204 failed (still captive)';
+      return false;
     } catch (e) {
       lastError =
           'Connection error. Make sure you are on ${CaptiveLoginStore.defaultCampusSsid}.';
@@ -1024,22 +1136,102 @@ class CaptiveWifiHttp {
         return 'Invalid parameter.';
       case '2002':
         return 'Invalid password length.';
+      case '2003':
+        return 'Password cannot start or end with a space.';
+      case '2004':
+        return 'Passwords do not match.';
+      case '2005':
+        return 'Password must contain digits.';
+      case '2006':
+        return 'Password does not contain special characters.';
+      case '2007':
+        return 'Password cannot match the username.';
+      case '2008':
+        return 'Identical characters in password exceed limit.';
+      case '2009':
+        return 'Password must contain uppercase letters.';
+      case '2010':
+        return 'Password must contain lowercase letters.';
+      case '2011':
+      case '2012':
+        return 'Password repetition does not meet requirements.';
+      case '2013':
+        return 'Password can only contain digits, letters, and special characters.';
       case '3000':
         return 'The parameter is empty.';
+      case '3002':
+      case '3011':
+      case '3012':
+        return 'User group does not exist or is not configured.';
+      case '3003':
+      case '3020':
+      case '3021':
+        return 'Username or mobile number is already registered.';
+      case '3004':
+      case '13027':
+        return 'Invalid email format.';
+      case '3006':
+        return 'Invalid phone number format.';
+      case '3008':
+        return 'Username contains invalid special characters.';
+      case '3009':
+        return 'Username field is too long.';
+      case '3010':
+      case '4002':
+      case '0308000076':
+        return 'Invalid verification code.';
       case '3014':
         return 'The total number of users has reached the upper limit.';
+      case '3016':
+        return 'Registration is not allowed at this time.';
+      case '3017':
+      case '4013':
+      case '10201':
+        return 'The authentication device does not exist.';
+      case '3018':
+        return 'Registration failed.';
       case '3019':
       case '10900':
       case '10901':
       case '20100':
       case '20101':
         return 'An internal server exception occurred.';
+      case '3024':
+        return 'Registration frequency exceeded limit. Try again later.';
+      case '3025':
+        return 'Invalid registration information.';
       case '4000':
-        return 'Enter your student ID and password.';
+        return 'Enter your Student ID and password.';
+      case '4001':
+        return 'Enter the verification code.';
+      case '4003':
+        return 'Password cannot be reset for this account.';
+      case '4008':
+        return 'Enter the dynamic verification code.';
+      case '4009':
+      case '4017':
+        return 'Incorrect or expired verification code.';
+      case '4010':
+      case '4011':
+      case '4012':
+        return 'Passwords do not match.';
+      case '4014':
+        return 'Failed to reset password.';
       case '4015':
-        return 'The account has been temporarily locked.';
+      case '10505':
+      case '10514':
+      case '0308000095':
+        return 'The user account has been locked. Try again later.';
+      case '4018':
+        return 'Password cannot match recent historical passwords.';
+      case '4019':
+        return 'Invalid username.';
+      case '4020':
+        return 'Account does not exist or function not supported.';
+      case '4022':
+        return 'RSA dynamic password is incorrect.';
       case '10101':
-        return 'The user notice is not checked.';
+        return 'User notice must be accepted.';
       case '10102':
         return 'Authentication type is illegal.';
       case '10103':
@@ -1048,45 +1240,60 @@ class CaptiveWifiHttp {
         return 'User MAC address is illegal.';
       case '10105':
         return 'Already on the current network.';
+      case '10106':
+      case '10107':
+      case '10541':
+        return 'Network switchover failed.';
       case '10200':
         return 'Device information verification failed.';
-      case '10201':
-        return 'Authentication failed: device does not exist.';
       case '10202':
+      case '10206':
         return 'Abnormal license status on portal.';
       case '10203':
         return 'SSID does not exist.';
       case '10216':
         return 'Device IP address does not exist.';
+      case '10217':
+        return 'Portal 2.0 shared key does not exist.';
       case '10300':
         return 'Authentication type verification failed.';
       case '10301':
         return 'Authentication is disabled.';
+      case '10302':
       case '10303':
         return 'Username password authentication is not enabled.';
       case '10400':
         return 'MAC-free authentication failed.';
+      case '10401':
+      case '10402':
       case '10403':
-        return 'MAC-free authentication expired.';
+        return 'MAC-free authentication expired or not found.';
       case '10500':
         return 'User information verification failed.';
       case '10501':
         return 'User does not exist.';
+      case '10502':
+        return 'Directory server connection abnormal.';
       case '10503':
         return 'Incorrect Student ID or password.';
       case '10504':
+      case '0308000094':
         return 'User account has expired.';
-      case '10505':
-        return 'The user has been locked. Try again later.';
+      case '10506':
+        return 'Invalid passcode.';
       case '10508':
-        return 'Authentication failed: password incorrect or account disabled.';
+      case '0308000096':
+        return 'Authentication failed: account disabled or incorrect password.';
+      case '10509':
+      case '10510':
+      case '10511':
+        return 'Self-registered account pending approval or rejected.';
       case '10512':
         return 'Change your password upon first login.';
       case '10513':
-        return 'Authentication failed because the password has expired.';
-      case '10514':
-        return 'The user has been locked. Contact the administrator.';
+        return 'Authentication failed: password has expired.';
       case '10515':
+      case '10715':
         return 'Authentication failed: access denied by network rules.';
       case '10516':
         return 'Authentication failed: maximum terminal limit exceeded.';
@@ -1097,7 +1304,7 @@ class CaptiveWifiHttp {
       case '10519':
         return 'Authentication failed: terminal IP does not match.';
       case '10520':
-        return 'Authentication failed: terminal authentication device IP does not match.';
+        return 'Authentication failed: terminal device IP does not match.';
       case '10528':
         return 'Authentication failed: MAC account has expired.';
       case '10540':
@@ -1109,22 +1316,24 @@ class CaptiveWifiHttp {
       case '10545':
         return 'The portal page does not exist.';
       case '10605':
+      case '10713':
         return 'Authentication failed: no remaining traffic or online duration.';
       case '10700':
         return 'Authorization failed.';
+      case '10705':
+        return 'Online rejection, cover users failed.';
       case '10706':
         return 'Users have reached access restrictions.';
       case '10711':
-        return 'Authentication failed: number of online users has reached the upper limit.';
+        return 'Authentication failed: maximum online users reached.';
       case '10712':
-        return 'Authentication failed: number of access users exceeded the maximum.';
-      case '10713':
-        return 'Traffic or online time is exhausted.';
-      case '10715':
-        return 'Authorization rules deny user access.';
+        return 'Authentication failed: maximum access users exceeded.';
+      case '10716':
+        return 'No available license. Contact administrator.';
       case '10907':
       case '20400':
       case '20401':
+      case '20402':
       case '20404':
         return 'RADIUS server authentication failed.';
       case '10909':
@@ -1141,13 +1350,234 @@ class CaptiveWifiHttp {
       case '20203':
       case '20403':
         return 'The system is busy. Please try again later.';
+      case '20103':
+        return 'Authentication packet failed to send.';
       case '20104':
         return 'Authentication request timed out.';
+      case '20200':
+      case '20202':
+      case '20204':
+        return 'Device response to challenge packet failed.';
+      case '20201':
+        return 'Device refuses to respond to challenge packet.';
       case '20205':
       case '20405':
         return 'Device has reached the maximum access limit.';
+      case '20206':
+        return 'Device prohibits user access.';
+      case '0308000002':
+        return 'Invalid input parameter.';
       default:
         return 'Incorrect Student ID or password.';
+    }
+  }
+
+  static bool isFatalErrorCode(String errorCode) {
+    switch (errorCode) {
+      case '10503':
+      case '10501':
+      case '10508':
+      case '4000':
+      case '10504':
+      case '10505':
+      case '10512':
+      case '10513':
+      case '10514':
+      case '10515':
+      case '10516':
+      case '10517':
+      case '10518':
+      case '10519':
+      case '10520':
+      case '10528':
+      case '10540':
+      case '10605':
+      case '10700':
+      case '10705':
+      case '10706':
+      case '10711':
+      case '10712':
+      case '10713':
+      case '10715':
+      case '10716':
+      case '10201':
+      case '10202':
+      case '10203':
+      case '10300':
+      case '10301':
+      case '10303':
+      case '2001':
+      case '2002':
+      case '2003':
+      case '2004':
+      case '2005':
+      case '2006':
+      case '2007':
+      case '2008':
+      case '2009':
+      case '2010':
+      case '2011':
+      case '2012':
+      case '2013':
+      case '3000':
+      case '3001':
+      case '3002':
+      case '3003':
+      case '3004':
+      case '3006':
+      case '3008':
+      case '3009':
+      case '3010':
+      case '3011':
+      case '3012':
+      case '3014':
+      case '3016':
+      case '3017':
+      case '3018':
+      case '3020':
+      case '3021':
+      case '3023':
+      case '3025':
+      case '3034':
+      case '3038':
+      case '4001':
+      case '4002':
+      case '4003':
+      case '4008':
+      case '4009':
+      case '4010':
+      case '4011':
+      case '4012':
+      case '4013':
+      case '4014':
+      case '4015':
+      case '4017':
+      case '4018':
+      case '4019':
+      case '4020':
+      case '4022':
+      case '10100':
+      case '10101':
+      case '10102':
+      case '10103':
+      case '10104':
+      case '10106':
+      case '10107':
+      case '10200':
+      case '10206':
+      case '10216':
+      case '10217':
+      case '10302':
+      case '10304':
+      case '10305':
+      case '10306':
+      case '10307':
+      case '10308':
+      case '10309':
+      case '10310':
+      case '10311':
+      case '10312':
+      case '10313':
+      case '10314':
+      case '10315':
+      case '10316':
+      case '10318':
+      case '10319':
+      case '10320':
+      case '10321':
+      case '10322':
+      case '10323':
+      case '10400':
+      case '10401':
+      case '10402':
+      case '10403':
+      case '10404':
+      case '10405':
+      case '10406':
+      case '10407':
+      case '10408':
+      case '10409':
+      case '10410':
+      case '10414':
+      case '10416':
+      case '10417':
+      case '10418':
+      case '10419':
+      case '10420':
+      case '10421':
+      case '10422':
+      case '10500':
+      case '10502':
+      case '10506':
+      case '10509':
+      case '10510':
+      case '10511':
+      case '10526':
+      case '10527':
+      case '10529':
+      case '10530':
+      case '10531':
+      case '10539':
+      case '10541':
+      case '10543':
+      case '10545':
+      case '10550':
+      case '10551':
+      case '10552':
+      case '10553':
+      case '10554':
+      case '10555':
+      case '10556':
+      case '15555':
+      case '10708':
+      case '10709':
+      case '10710':
+      case '10800':
+      case '10801':
+      case '10802':
+      case '10803':
+      case '10804':
+      case '10805':
+      case '10806':
+      case '10807':
+      case '10809':
+      case '10811':
+      case '10812':
+      case '10813':
+      case '10814':
+      case '10815':
+      case '10816':
+      case '10817':
+      case '10818':
+      case '10819':
+      case '10820':
+      case '10821':
+      case '10903':
+      case '10904':
+      case '10905':
+      case '10906':
+      case '10907':
+      case '10908':
+      case '13027':
+      case '13028':
+      case '9':
+      case '10':
+      case '20205':
+      case '20206':
+      case '20405':
+      case '20407':
+      case '20408':
+      case '0308000002':
+      case '0308000094':
+      case '0308000095':
+      case '0308000096':
+      case '0308000012':
+      case '0308000076':
+      case '0308000014':
+      case '030802003':
+        return true;
+      default:
+        return false;
     }
   }
 }
