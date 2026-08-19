@@ -264,7 +264,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
   static const String _snackPrintFailed =
       'Unable to complete print job. Please check your connection.';
   static const String _snackPrinterConnectionFailed =
-      'Failed to connect to printer. Connect to Student Wi-Fi or check your internet connection.';
+      'Failed to connect to printer. Connect to Student-WiFi or check your internet connection.';
 
   List<_SelectedFile> _selectedFiles = const <_SelectedFile>[];
   Map<String, String?>? _profile;

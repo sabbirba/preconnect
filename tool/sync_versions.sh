@@ -21,7 +21,7 @@ read_latest_changelog() {
   local changelog_file="${ROOT_DIR}/CHANGELOG.md"
   if [[ -f "${changelog_file}" ]]; then
     local notes
-    notes="$(perl -0777 -ne 'if (/##\s*\[[0-9]+(?:\.[0-9]+)*\][^\n]*\n+([\s\S]*?)(?=\n+##\s*\[|\z)/) { my $t = $1; $t =~ s/^\s+|\s+$//g; print $t if $t; }' "${changelog_file}")"
+    notes="$(perl -0777 -ne 'if (/##\s*\[[0-9]+(?:\.[0-9]+)*\][^\n]*\n+([\s\S]*?)(?=\n+##\s*\[|\z)/) { my $t = $1; $t =~ s/^\s+|\s+$//g; my @lines = grep { /\S/ } split(/\n/, $t); my $res = join("\n", map { s/^\s+|\s+$//gr } @lines); print $res if $res; }' "${changelog_file}")"
     if [[ -n "${notes}" ]]; then
       printf '%s\n' "${notes}"
       return 0

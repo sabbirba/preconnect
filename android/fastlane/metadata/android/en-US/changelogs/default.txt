@@ -1,3 +1,2 @@
-- Optimize schedule handling and improve connectivity status management.
-- All-Department Payments Sync: Integrated multi-portfolio query flags (`includeInactive=true`) so payment records, dues, and transaction histories across all active and past departments load in full.
-- Semester Session Isolation: Fixed switching between past and current semesters to accurately preserve course schedules, exam rooms, seating details, and grade sheets.
+- Campus Printer: Configured default A4 media sizing across PJL directives and optimized single-pass LPR spooling for exact copy counts.
+- Home Screen Widget: Updated to a translucent glassmorphic look that seamlessly blends with your home screen wallpaper.
