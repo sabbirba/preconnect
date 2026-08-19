@@ -38,6 +38,10 @@ void main() {
 
     expect(prefix, contains('@PJL JOB NAME = "Test Job"\r\n'));
     expect(prefix, contains('@PJL SET COPIES = 1\r\n'));
+    expect(prefix, contains('@PJL SET QTY = 1\r\n'));
+    expect(prefix, contains('@PJL SET PAPER = A4\r\n'));
+    expect(prefix, contains('@PJL SET PAPERSPEC = A4\r\n'));
+    expect(prefix, contains('@PJL SET MEDIASIZE = A4\r\n'));
 
     final fitOnPaperPrefix = HttpUtils.pjlPrefix(
       jobName: 'Test Job',
@@ -98,7 +102,6 @@ void main() {
       dataCommand: 'f',
       dataFileName: 'dfA001192.168.1.10',
       safeFileName: 'test.pdf',
-      copies: 1,
     );
 
     expect(control, contains('H192.168.1.10'));

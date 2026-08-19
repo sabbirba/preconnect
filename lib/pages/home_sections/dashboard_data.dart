@@ -48,6 +48,7 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
   bool _isAutoExtendingSession = false;
   DateTime? _lastAutoAssistantOpenAt;
   DateTime? _lastSilentLoginAt;
+  String? _lastObservedApMac;
 
   Future<CampusMapData?>? _campusMapFuture;
   Future<String?>? _transportScheduleUrlFuture;
@@ -86,11 +87,19 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
         if (!mounted) return;
         unawaited(_consumePostConnectionEvent());
         unawaited(_maybeAutoExtendSession(status));
+        final apMac = status.apMac;
+        final roamedAp =
+            _lastObservedApMac != null &&
+            apMac != null &&
+            apMac != _lastObservedApMac;
+        _lastObservedApMac = apMac;
+
         final shouldOpenAssistant =
             status.captive ||
             (status.transport == 'wifi' &&
                 status.connected &&
-                !status.validated);
+                !status.validated) ||
+            (roamedAp && (status.captive || !status.validated));
         if (shouldOpenAssistant) {
           unawaited(_maybeAutoOpenWifiAssistant(status));
         }
@@ -461,6 +470,9 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
 
     final isCaptiveOrUnvalidated = status.captive || !status.validated;
     if (!isCaptiveOrUnvalidated) {
+      final heartbeatOk = await CaptiveWifiHttp.instance
+          .sendKeepAliveHeartbeat();
+      if (heartbeatOk) return;
       final now = DateTime.now();
       final lastLoginMs = await CaptiveLoginStore.instance.readLastLoginAt();
       final lastLoginAt = lastLoginMs != null
@@ -543,6 +555,10 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
   Future<void> _maybeAutoOpenWifiAssistant(AndroidNetworkStatus status) async {
     if (!mounted) return;
     if (status.transport != 'wifi') return;
+    if (status.validated && !status.captive) return;
+
+    final isOnline = await CaptiveWifiHttp.checkInternetAccess();
+    if (isOnline) return;
 
     final now = DateTime.now();
     if (_lastAutoAssistantOpenAt != null &&

@@ -24,7 +24,6 @@ class PayslipDetailSheet extends StatefulWidget {
     return showBracuBottomSheet<void>(
       context,
       title: 'Payslip Details',
-      subtitle: 'Payslip #$payslipNumber',
       initialChildSize: 0.85,
       builder: (sheetContext, textPrimary, textSecondary) {
         return PayslipDetailSheet(
@@ -227,9 +226,7 @@ class _PayslipDetailSheetState extends State<PayslipDetailSheet> {
               ),
             ],
           ),
-          const Gap(10),
-          const Divider(height: 1),
-          const Gap(10),
+          const Gap(12),
           _DetailRow(
             label: 'Payslip No.',
             value: detail.payslipNumber,

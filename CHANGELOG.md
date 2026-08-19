@@ -5,6 +5,12 @@ Entries are written for students, not developers — plain language, no commit h
 
 ## [Unreleased]
 
+## [2.0.7] — 2026-08-20
+
+- Student Wi-Fi: Added active keep-alive heartbeat for auto-extension, multi-AP roaming re-connection, one-tap Quick Settings tile for direct sign-in, and real-time connection diagnostics.
+- Campus Printer: Configured default A4 media sizing across PJL directives and optimized single-pass LPR spooling for exact copy counts.
+- Home Screen Widget: Updated to a translucent glassmorphic look that seamlessly blends with your home screen wallpaper.
+
 ## [2.0.6] — 2026-08-14
 
 - Campus Wi-Fi: Enhanced Captive Wi-Fi login reliability with a dedicated campus network field and improved gateway connection handling.

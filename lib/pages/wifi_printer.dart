@@ -1491,7 +1491,6 @@ class _LprPrintClient {
         dataCommand: dataCommand,
         dataFileName: dataFileName,
         safeFileName: safeFileName,
-        copies: copies,
       );
       final control = _ascii(controlText);
 

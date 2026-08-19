@@ -210,6 +210,22 @@ class CaptiveWifiHttp {
     return client;
   }
 
+  static Future<bool> checkInternetAccess({Uri? probeUri}) async {
+    final client = HttpClient()..userAgent = kPreConnectUserAgent;
+    client.connectionTimeout = const Duration(seconds: 4);
+    client.badCertificateCallback = (cert, host, port) => true;
+    try {
+      final request = await client.getUrl(probeUri ?? defaultProbeUri);
+      request.followRedirects = false;
+      final response = await request.close();
+      return response.statusCode == 204;
+    } catch (_) {
+      return false;
+    } finally {
+      client.close(force: true);
+    }
+  }
+
   Future<bool> isValidatedViaProbe({
     required HttpClient client,
     required Map<String, Cookie> cookies,
@@ -373,9 +389,7 @@ class CaptiveWifiHttp {
         break;
       }
     }
-    if (xsrfToken != null) {
-      request.headers.set('X-XSRF-TOKEN', xsrfToken);
-    }
+    request.headers.set('X-XSRF-TOKEN', xsrfToken ?? 'null');
 
     if (!cookies.containsKey('countdown')) {
       cookies['countdown'] = Cookie('countdown', '0');
@@ -648,10 +662,38 @@ class CaptiveWifiHttp {
 
             return false;
           }
+          final token = decoded['token']?.toString();
+          if (token != null && token.isNotEmpty) {
+            cookies['XSRF-TOKEN'] = Cookie('XSRF-TOKEN', token);
+            unawaited(CaptiveLoginStore.instance.saveSessionToken(token));
+          }
+          final psessionid = decoded['psessionid']?.toString();
+          if (psessionid != null && psessionid.isNotEmpty) {
+            cookies['PSESSIONID'] = Cookie('PSESSIONID', psessionid);
+            unawaited(CaptiveLoginStore.instance.savePSessionId(psessionid));
+          }
           successUrl = (decoded['successUrl'] ?? decoded['successurl'])
               ?.toString();
           if (successUrl != null && successUrl.isNotEmpty) {
             unawaited(CaptiveLoginStore.instance.saveSuccessUrl(successUrl));
+          } else {
+            final authSuccessUri = loginUri.replace(
+              path: loginUri.path.replaceAll('/auth.html', '/authSuccess.html'),
+              queryParameters: {
+                ...loginUri.queryParameters,
+                'chanFir': 'n',
+                'userInfo': studentId,
+                'remainTime': '',
+                'remainFlow': '',
+                'validPeriod': '',
+                'isEscape': '',
+              },
+            );
+            unawaited(
+              CaptiveLoginStore.instance.saveSuccessUrl(
+                authSuccessUri.toString(),
+              ),
+            );
           }
         }
       } catch (_) {
@@ -684,11 +726,28 @@ class CaptiveWifiHttp {
 
         if (syncResponse.statusCode == 200) {
           final syncDecoded = jsonDecode(syncResponse.body);
-          if (syncDecoded is Map && syncDecoded['success'] == false) {
-            final errorCode = syncDecoded['errorcode']?.toString() ?? '';
-            lastError = _mapPortalErrorCode(errorCode);
+          if (syncDecoded is Map) {
+            if (syncDecoded['success'] == false) {
+              final errorCode = syncDecoded['errorcode']?.toString() ?? '';
+              lastError = _mapPortalErrorCode(errorCode);
 
-            return false;
+              return false;
+            }
+            final data = syncDecoded['data'];
+            if (data is Map) {
+              final validPeriod = data['validPeriod']?.toString();
+              if (validPeriod != null) {
+                unawaited(
+                  CaptiveLoginStore.instance.saveValidPeriod(validPeriod),
+                );
+              }
+              final remainTime = data['remainTime']?.toString();
+              if (remainTime != null) {
+                unawaited(
+                  CaptiveLoginStore.instance.saveRemainTime(remainTime),
+                );
+              }
+            }
           }
         } else {
           final probeOk = await isValidatedViaProbe(
@@ -763,6 +822,71 @@ class CaptiveWifiHttp {
     }
   }
 
+  Future<bool> sendKeepAliveHeartbeat({Uri? captiveWifiUrl}) async {
+    try {
+      final savedToken = await CaptiveLoginStore.instance.readSessionToken();
+      final savedPSessionId = await CaptiveLoginStore.instance.readPSessionId();
+      if (savedToken == null || savedToken.isEmpty) return false;
+      final client = await newClient();
+      final cookies = sessionCookies;
+      cookies['XSRF-TOKEN'] = Cookie('XSRF-TOKEN', savedToken);
+      if (savedPSessionId != null && savedPSessionId.isNotEmpty) {
+        cookies['PSESSIONID'] = Cookie('PSESSIONID', savedPSessionId);
+      }
+      if (!cookies.containsKey('countdown')) {
+        cookies['countdown'] = Cookie('countdown', '0');
+      }
+      final savedSuccessUrl = await CaptiveLoginStore.instance.readSuccessUrl();
+      var targetUrl = savedSuccessUrl != null && savedSuccessUrl.isNotEmpty
+          ? Uri.parse(savedSuccessUrl)
+          : (captiveWifiUrl ?? defaultProbeUri);
+      if (targetUrl == defaultProbeUri) {
+        final savedUrlStr = await CaptiveLoginStore.instance
+            .readLastPortalUrl();
+        if (savedUrlStr != null && savedUrlStr.isNotEmpty) {
+          final parsed = Uri.tryParse(savedUrlStr);
+          if (parsed != null) {
+            targetUrl = parsed;
+          }
+        }
+      }
+      final apiSyncUri = targetUrl.replace(
+        path: '/portalauth/syncPortalResult',
+        queryParameters: {},
+      );
+      final syncResponse = await postOnce(
+        client: client,
+        uri: apiSyncUri,
+        body: 'successUrl=null',
+        cookies: cookies,
+        referer: targetUrl,
+      );
+      client.close(force: true);
+      if (syncResponse.statusCode == 200) {
+        final syncDecoded = jsonDecode(syncResponse.body);
+        if (syncDecoded is Map && syncDecoded['success'] == true) {
+          final data = syncDecoded['data'];
+          if (data is Map) {
+            final validPeriod = data['validPeriod']?.toString();
+            if (validPeriod != null) {
+              unawaited(
+                CaptiveLoginStore.instance.saveValidPeriod(validPeriod),
+              );
+            }
+            final remainTime = data['remainTime']?.toString();
+            if (remainTime != null) {
+              unawaited(CaptiveLoginStore.instance.saveRemainTime(remainTime));
+            }
+          }
+          return true;
+        }
+      }
+      return false;
+    } catch (_) {
+      return false;
+    }
+  }
+
   Future<bool> logoutViaCaptiveApi({required Uri captiveWifiUrl}) async {
     lastError = null;
     lastResponseLog = '';
@@ -771,6 +895,18 @@ class CaptiveWifiHttp {
     }
     final client = await newClient();
     final cookies = sessionCookies;
+
+    final savedToken = await CaptiveLoginStore.instance.readSessionToken();
+    if (savedToken != null && savedToken.isNotEmpty) {
+      cookies['XSRF-TOKEN'] = Cookie('XSRF-TOKEN', savedToken);
+    }
+    final savedPSessionId = await CaptiveLoginStore.instance.readPSessionId();
+    if (savedPSessionId != null && savedPSessionId.isNotEmpty) {
+      cookies['PSESSIONID'] = Cookie('PSESSIONID', savedPSessionId);
+    }
+    if (!cookies.containsKey('countdown')) {
+      cookies['countdown'] = Cookie('countdown', '0');
+    }
 
     final savedSuccessUrl = await CaptiveLoginStore.instance.readSuccessUrl();
     var targetUrl = savedSuccessUrl != null && savedSuccessUrl.isNotEmpty
@@ -785,65 +921,27 @@ class CaptiveWifiHttp {
         }
       }
     }
+    if (targetUrl == defaultProbeUri) {
+      final status = AndroidNetworkAssist.isSupported
+          ? await AndroidNetworkAssist.getNetworkStatus()
+          : null;
+      final host = status?.gatewayAddress ?? 'wifi2.bracu.ac.bd';
+      final port = host.contains('bracu.ac.bd') ? 19008 : 8080;
+      final scheme = port == 19008 ? 'https' : 'http';
+      targetUrl = Uri(
+        scheme: scheme,
+        host: host,
+        port: port,
+        path: '/portalauth/logout',
+      );
+    }
 
     try {
-      final first = await getWithRedirects(
-        client: client,
-        uri: targetUrl,
-        cookies: cookies,
+      final loginUri = targetUrl;
+      final apiLogoutUri = loginUri.replace(
+        path: '/portalauth/logout',
+        queryParameters: {},
       );
-      final loginUri = first.uri;
-
-      String? parsedLogoutPath;
-      final logoutFormReg = RegExp(
-        r'''<form\b[^>]*\baction\s*=\s*(?:["']([^"']*)["']|([^\s>]+))''',
-        caseSensitive: false,
-      );
-      for (final match in logoutFormReg.allMatches(first.body)) {
-        final action = (match.group(1) ?? match.group(2) ?? '').trim();
-        if (action.toLowerCase().contains('logout')) {
-          parsedLogoutPath = action;
-          break;
-        }
-      }
-
-      if (parsedLogoutPath == null) {
-        final logoutLinkReg = RegExp(
-          r'''<a\b[^>]*\bhref\s*=\s*(?:["']([^"']*)["']|([^\s>]+))''',
-          caseSensitive: false,
-        );
-        for (final match in logoutLinkReg.allMatches(first.body)) {
-          final href = (match.group(1) ?? match.group(2) ?? '').trim();
-          if (href.toLowerCase().contains('logout')) {
-            parsedLogoutPath = href;
-            break;
-          }
-        }
-      }
-
-      Uri apiLogoutUri;
-      if (parsedLogoutPath != null && parsedLogoutPath.isNotEmpty) {
-        apiLogoutUri = Uri.parse(parsedLogoutPath).isAbsolute
-            ? Uri.parse(parsedLogoutPath)
-            : loginUri.resolve(parsedLogoutPath);
-      } else {
-        String logoutBasePath = '/portalauth';
-        final initialPath = loginUri.path;
-        if (initialPath.contains('/')) {
-          logoutBasePath = initialPath.substring(
-            0,
-            initialPath.lastIndexOf('/'),
-          );
-        }
-        apiLogoutUri = loginUri.replace(
-          path: '$logoutBasePath/logout',
-          queryParameters: {},
-        );
-      }
-
-      if (!cookies.containsKey('countdown')) {
-        cookies['countdown'] = Cookie('countdown', '0');
-      }
 
       final response = await postOnce(
         client: client,
@@ -878,6 +976,12 @@ class CaptiveWifiHttp {
       }
 
       sessionCookies.clear();
+      await CaptiveLoginStore.instance.saveSuccessUrl('');
+      await CaptiveLoginStore.instance.saveSessionToken('');
+      await CaptiveLoginStore.instance.savePSessionId('');
+      await CaptiveLoginStore.instance.saveValidPeriod('');
+      await CaptiveLoginStore.instance.saveRemainTime('');
+      await CaptiveLoginStore.instance.saveLastLoginAt(0);
 
       return true;
     } catch (e) {
@@ -904,42 +1008,144 @@ class CaptiveWifiHttp {
 
   String _mapPortalErrorCode(String errorCode) {
     switch (errorCode) {
+      case '0':
+        return 'Success';
+      case '1006':
+        return 'Deregistration failed because the session has timed out.';
+      case '1009':
+        return 'Access error.';
+      case '1110':
+        return 'Failed to get password policy.';
+      case '1113':
+        return 'The password will expire.';
+      case '2001':
+      case '3001':
+      case '10100':
+        return 'Invalid parameter.';
+      case '2002':
+        return 'Invalid password length.';
+      case '3000':
+        return 'The parameter is empty.';
+      case '3014':
+        return 'The total number of users has reached the upper limit.';
+      case '3019':
+      case '10900':
+      case '10901':
+      case '20100':
+      case '20101':
+        return 'An internal server exception occurred.';
+      case '4000':
+        return 'Enter your student ID and password.';
+      case '4015':
+        return 'The account has been temporarily locked.';
+      case '10101':
+        return 'The user notice is not checked.';
+      case '10102':
+        return 'Authentication type is illegal.';
+      case '10103':
+        return 'User IP address is illegal.';
+      case '10104':
+        return 'User MAC address is illegal.';
+      case '10105':
+        return 'Already on the current network.';
+      case '10200':
+        return 'Device information verification failed.';
+      case '10201':
+        return 'Authentication failed: device does not exist.';
+      case '10202':
+        return 'Abnormal license status on portal.';
+      case '10203':
+        return 'SSID does not exist.';
+      case '10216':
+        return 'Device IP address does not exist.';
+      case '10300':
+        return 'Authentication type verification failed.';
+      case '10301':
+        return 'Authentication is disabled.';
+      case '10303':
+        return 'Username password authentication is not enabled.';
+      case '10400':
+        return 'MAC-free authentication failed.';
+      case '10403':
+        return 'MAC-free authentication expired.';
+      case '10500':
+        return 'User information verification failed.';
+      case '10501':
+        return 'User does not exist.';
       case '10503':
         return 'Incorrect Student ID or password.';
+      case '10504':
+        return 'User account has expired.';
       case '10505':
-      case '10514':
-        return 'Account is locked. Please try again later.';
+        return 'The user has been locked. Try again later.';
+      case '10508':
+        return 'Authentication failed: password incorrect or account disabled.';
+      case '10512':
+        return 'Change your password upon first login.';
       case '10513':
-        return 'Your password has expired.';
+        return 'Authentication failed because the password has expired.';
+      case '10514':
+        return 'The user has been locked. Contact the administrator.';
       case '10515':
-        return 'Access denied: you do not comply with the access rules.';
+        return 'Authentication failed: access denied by network rules.';
       case '10516':
-        return 'exceeded the limit';
+        return 'Authentication failed: maximum terminal limit exceeded.';
       case '10517':
-        return 'Access not configured for this account.';
+        return 'Authentication failed: account is not configured with access parameters.';
       case '10518':
-        return 'MAC address does not match.';
+        return 'Authentication failed: terminal MAC does not match.';
       case '10519':
-        return 'IP address does not match.';
+        return 'Authentication failed: terminal IP does not match.';
       case '10520':
-        return 'Device IP does not match.';
+        return 'Authentication failed: terminal authentication device IP does not match.';
       case '10528':
-        return 'MAC account has expired.';
+        return 'Authentication failed: MAC account has expired.';
+      case '10540':
+        return 'Account is not allowed to log in during this time.';
+      case '10542':
+        return 'Authentication is too frequent. Please try again later.';
+      case '10543':
+        return 'Failed to verify subscriber information.';
+      case '10545':
+        return 'The portal page does not exist.';
       case '10605':
-        return 'No remaining traffic or time quota.';
+        return 'Authentication failed: no remaining traffic or online duration.';
+      case '10700':
+        return 'Authorization failed.';
       case '10706':
-        return 'Access restriction reached.';
+        return 'Users have reached access restrictions.';
       case '10711':
+        return 'Authentication failed: number of online users has reached the upper limit.';
       case '10712':
-        return 'Online user limit reached.';
+        return 'Authentication failed: number of access users exceeded the maximum.';
       case '10713':
-        return 'Traffic or time quota exhausted.';
+        return 'Traffic or online time is exhausted.';
+      case '10715':
+        return 'Authorization rules deny user access.';
+      case '10907':
+      case '20400':
+      case '20401':
+      case '20404':
+        return 'RADIUS server authentication failed.';
+      case '10909':
+        return 'The user is not online.';
+      case '20000':
+      case '20001':
+      case '20207':
+        return 'Device response is invalid.';
+      case '20002':
+      case '20208':
+      case '20406':
+        return 'Device response timed out.';
       case '20102':
+      case '20203':
+      case '20403':
         return 'The system is busy. Please try again later.';
       case '20104':
         return 'Authentication request timed out.';
-      case '3001':
-        return 'Invalid input. Please check your credentials.';
+      case '20205':
+      case '20405':
+        return 'Device has reached the maximum access limit.';
       default:
         return 'Incorrect Student ID or password.';
     }

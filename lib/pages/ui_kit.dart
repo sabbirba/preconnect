@@ -3,7 +3,7 @@ import 'dart:io';
 import 'dart:math' as math;
 import 'dart:ui' as ui;
 import 'package:flutter/foundation.dart'
-    show ValueListenable, TargetPlatform, defaultTargetPlatform, kIsWeb;
+    show ValueListenable, TargetPlatform, kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
 import 'package:flutter/services.dart';

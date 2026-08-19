@@ -79,7 +79,7 @@ body:
         - Online
         - Offline
         - Unstable Connection
-        - Campus Wi-Fi
+        - Student Wi-Fi
         - Not Relevant
     validations:
       required: true

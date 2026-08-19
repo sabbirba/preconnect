@@ -126,7 +126,7 @@ class BracuActionButton extends StatelessWidget {
       size: iconSize,
       color: spinnerColor,
       strokeWidth: 2.2,
-      icon: icon,
+      icon: icon != null ? Icons.sync_rounded : null,
     );
   }
 
