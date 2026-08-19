@@ -291,18 +291,30 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
 
       await _waitForTargetWifiAssociation();
 
-      final loggedIn =
-          await _loginViaCaptiveApi(
-            studentId: studentId,
-            password: password,
-          ).timeout(
-            _apiLoginTimeout,
-            onTimeout: () {
-              CaptiveWifiHttp.instance.lastError =
-                  'Connection/API login timed out after ${_apiLoginTimeout.inSeconds} seconds.';
-              return false;
-            },
-          );
+      var loggedIn = false;
+      while (_isConnecting && !loggedIn && mounted) {
+        loggedIn =
+            await _loginViaCaptiveApi(
+              studentId: studentId,
+              password: password,
+            ).timeout(
+              _apiLoginTimeout,
+              onTimeout: () {
+                CaptiveWifiHttp.instance.lastError =
+                    'Connection/API login timed out after ${_apiLoginTimeout.inSeconds} seconds.';
+                return false;
+              },
+            );
+
+        if (loggedIn) break;
+
+        if (CaptiveWifiHttp.instance.isLastFatal) {
+          break;
+        }
+
+        if (!_isConnecting || !mounted) break;
+        await Future<void>.delayed(const Duration(seconds: 1));
+      }
 
       if (!mounted) return;
       setState(() {
@@ -356,6 +368,12 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
   }
 
   Future<void> _runDisconnect() async {
+    if (_isConnecting) {
+      setState(() {
+        _isConnecting = false;
+      });
+      return;
+    }
     if (!mounted || _isDisconnecting) {
       return;
     }
@@ -427,17 +445,14 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
           captiveWifiUrl: _detectedPortalUri,
         );
         if (success && mounted) {
-          final validPeriod = await CaptiveLoginStore.instance
-              .readValidPeriod();
           final remainTime = await CaptiveLoginStore.instance.readRemainTime();
           setState(() {
-            _extractedParams = {
-              ...?_extractedParams,
-              if (validPeriod != null && validPeriod.isNotEmpty)
-                'validPeriod': validPeriod,
-              if (remainTime != null && remainTime.isNotEmpty)
+            if (remainTime != null && remainTime.isNotEmpty) {
+              _extractedParams = {
+                ...?_extractedParams,
                 'remainTime': remainTime,
-            };
+              };
+            }
           });
         }
       });
@@ -705,24 +720,35 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
                             label: 'Save',
                           ),
                         ),
-                        if (isBehindPortal || isSessionActive) ...[
+                        if (isBehindPortal ||
+                            isSessionActive ||
+                            _isConnecting) ...[
                           const Gap(12),
                           Expanded(
                             child: BracuActionButton(
-                              onPressed: _isConnecting || _isDisconnecting
+                              onPressed: _isDisconnecting
                                   ? null
-                                  : (isSessionActive
+                                  : (_isConnecting
                                         ? () => unawaited(_runDisconnect())
-                                        : () => unawaited(
-                                            _runOneTapConnect(isManual: true),
-                                          )),
-                              icon: isSessionActive
-                                  ? Icons.wifi_off_rounded
-                                  : Icons.wifi_rounded,
-                              label: isSessionActive ? 'Disconnect' : 'Connect',
-                              isLoading: isSessionActive
-                                  ? _isDisconnecting
-                                  : _isConnecting,
+                                        : (isSessionActive
+                                              ? () =>
+                                                    unawaited(_runDisconnect())
+                                              : () => unawaited(
+                                                  _runOneTapConnect(
+                                                    isManual: true,
+                                                  ),
+                                                ))),
+                              icon: _isConnecting
+                                  ? Icons.stop_rounded
+                                  : (isSessionActive
+                                        ? Icons.wifi_off_rounded
+                                        : Icons.wifi_rounded),
+                              label: _isConnecting
+                                  ? 'Cancel'
+                                  : (isSessionActive
+                                        ? 'Disconnect'
+                                        : 'Connect'),
+                              isLoading: isSessionActive && _isDisconnecting,
                             ),
                           ),
                         ],
@@ -990,8 +1016,8 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
   void _showHelpBottomSheet(BuildContext context) {
     showBracuBottomSheet<void>(
       context,
-      title: 'Captive Wi-Fi Instructions',
-      initialChildSize: 0.52,
+      title: 'Captive Wi-Fi Information',
+      initialChildSize: 0.65,
       builder: (sheetContext, textPrimary, textSecondary) {
         final dragController = bracuBottomSheetScrollController(sheetContext);
         return ListView(
@@ -999,6 +1025,15 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
           physics: const ClampingScrollPhysics(),
           padding: const EdgeInsets.only(bottom: 24),
           children: [
+            Text(
+              'How It Works',
+              style: TextStyle(
+                color: textPrimary,
+                fontSize: 15,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const Gap(12),
             _buildStepItem(
               context,
               stepNumber: '1',
@@ -1020,7 +1055,7 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
               stepNumber: '3',
               title: 'Connect Session',
               body:
-                  'Tap the Connect button. PreConnect will automatically configure and authenticate you.',
+                  'Tap the Connect button. PreConnect will automatically configure parameters and authenticate with the campus gateway.',
             ),
             const Gap(12),
             _buildStepItem(
@@ -1028,7 +1063,7 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
               stepNumber: '4',
               title: 'Auto Extend Session',
               body:
-                  'Enable Auto Extend to allow PreConnect to run in the background and auto-renew your connectivity.',
+                  'Enable Auto Extend to allow PreConnect to run in the background and keep your connectivity active.',
             ),
             const Gap(12),
             _buildStepItem(
@@ -1038,9 +1073,167 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
               body:
                   'Tap Disconnect to log out of the active captive portal network session immediately.',
             ),
+            const Gap(20),
+            Divider(height: 1, color: textSecondary.withValues(alpha: 0.18)),
+            const Gap(16),
+            Text(
+              'Portal Parameters Explained',
+              style: TextStyle(
+                color: textPrimary,
+                fontSize: 15,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const Gap(10),
+            _buildParamItem(
+              context,
+              param: 'uaddress',
+              meaning:
+                  'Your device IP address assigned by the campus router on the local Wi-Fi subnet.',
+            ),
+            const Gap(8),
+            _buildParamItem(
+              context,
+              param: 'umac',
+              meaning:
+                  'Your device physical or randomized MAC address registered with the portal gateway.',
+            ),
+            const Gap(8),
+            _buildParamItem(
+              context,
+              param: 'apmac',
+              meaning:
+                  'The radio MAC address of the campus Access Point router currently connected to your device.',
+            ),
+            const Gap(8),
+            _buildParamItem(
+              context,
+              param: 'pushPageId',
+              meaning:
+                  'Unique portal authentication template pushed by the campus network controller.',
+            ),
+            const Gap(8),
+            _buildParamItem(
+              context,
+              param: 'ssid',
+              meaning: 'Identifier for the Student-WiFi network SSID.',
+            ),
+            const Gap(8),
+            _buildParamItem(
+              context,
+              param: 'psessionid / token',
+              meaning:
+                  'Cryptographic session identifiers returned after successful authentication.',
+            ),
+            const Gap(8),
+            _buildParamItem(
+              context,
+              param: 'validPeriod',
+              meaning: 'Total account or policy validity lifespan.',
+            ),
+            const Gap(8),
+            _buildParamItem(
+              context,
+              param: 'remainTime',
+              meaning:
+                  'Dynamic session countdown timer showing remaining online time.',
+            ),
+            const Gap(8),
+            _buildParamItem(
+              context,
+              param: 'remainFlow',
+              meaning:
+                  'Remaining data bandwidth quota allocated for the current network session.',
+            ),
+            const Gap(20),
+            Divider(height: 1, color: textSecondary.withValues(alpha: 0.18)),
+            const Gap(16),
+            Text(
+              'Common Gateway Response Codes',
+              style: TextStyle(
+                color: textPrimary,
+                fontSize: 15,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const Gap(10),
+            _buildParamItem(
+              context,
+              param: '0 (Success)',
+              meaning:
+                  'Login handshake accepted and authenticated session established.',
+            ),
+            const Gap(8),
+            _buildParamItem(
+              context,
+              param: '10105 (Already Online)',
+              meaning:
+                  'Device is already authorized on the campus network; full internet access is active.',
+            ),
+            const Gap(8),
+            _buildParamItem(
+              context,
+              param: '10503 / 10501',
+              meaning:
+                  'Incorrect Student ID or password, or student account was not found.',
+            ),
+            const Gap(8),
+            _buildParamItem(
+              context,
+              param: '10505 / 4015',
+              meaning:
+                  'Account temporarily locked due to consecutive wrong password attempts.',
+            ),
+            const Gap(8),
+            _buildParamItem(
+              context,
+              param: '10516 / 10711',
+              meaning:
+                  'Maximum concurrent terminal limit or network capacity reached.',
+            ),
+            const Gap(8),
+            _buildParamItem(
+              context,
+              param: '20102 / 20104',
+              meaning:
+                  'Gateway busy or request timed out; PreConnect automatically retries every second.',
+            ),
           ],
         );
       },
+    );
+  }
+
+  Widget _buildParamItem(
+    BuildContext context, {
+    required String param,
+    required String meaning,
+  }) {
+    final textPrimary = BracuPalette.textPrimary(context);
+    final textSecondary = BracuPalette.textSecondary(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          param,
+          style: TextStyle(
+            color: textPrimary,
+            fontSize: 13,
+            fontWeight: FontWeight.w700,
+            fontFamily: 'monospace',
+          ),
+        ),
+        const Gap(2),
+        Text(
+          meaning,
+          style: TextStyle(
+            color: textSecondary,
+            fontSize: 12,
+            height: 1.35,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ],
     );
   }
 
