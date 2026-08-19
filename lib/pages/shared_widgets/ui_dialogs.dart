@@ -26,7 +26,7 @@ Future<T?> showBracuBottomSheet<T>(
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
     ),
-    minChildSize: 0.12,
+    minChildSize: 0.20,
     maxChildSize: 0.98,
     builder: (sheetContext) {
       final textPrimary = BracuPalette.textPrimary(sheetContext);
@@ -186,14 +186,9 @@ Future<T?> showBracuCustomBottomSheet<T>({
       } else {
         final bottomInset = MediaQuery.viewInsetsOf(sheetContext).bottom;
         final screenHeight = MediaQuery.sizeOf(sheetContext).height;
-        final minVisibleSheetHeight = switch (defaultTargetPlatform) {
-          TargetPlatform.macOS => 112.0,
-          TargetPlatform.linux => 112.0,
-          TargetPlatform.windows => 112.0,
-          _ => 88.0,
-        };
+        const minVisibleSheetHeight = 112.0;
         final platformMinSize = (minVisibleSheetHeight / screenHeight).clamp(
-          0.10,
+          0.14,
           0.40,
         );
         sheetBody = AnimatedPadding(
@@ -207,39 +202,24 @@ Future<T?> showBracuCustomBottomSheet<T>({
                   .max(minChildSize, platformMinSize)
                   .clamp(0.10, maxSize);
               final initialSize = initialChildSize.clamp(minSize, maxSize);
-              var dismissed = false;
-              return NotificationListener<DraggableScrollableNotification>(
-                onNotification: (notification) {
-                  if (!closeOnMinExtent || dismissed) return false;
-                  if (notification.extent <= minSize + 0.005) {
-                    dismissed = true;
-                    WidgetsBinding.instance.addPostFrameCallback((_) {
-                      if (context.mounted) {
-                        Navigator.of(context).maybePop();
-                      }
-                    });
-                  }
-                  return false;
-                },
-                child: DraggableScrollableSheet(
-                  initialChildSize: initialSize,
-                  minChildSize: minSize,
-                  maxChildSize: maxSize,
-                  expand: false,
-                  snap: true,
-                  shouldCloseOnMinExtent: closeOnMinExtent,
-                  builder: (context, scrollController) {
-                    return _BracuBottomSheetControllerScope(
+              return DraggableScrollableSheet(
+                initialChildSize: initialSize,
+                minChildSize: minSize,
+                maxChildSize: maxSize,
+                expand: false,
+                snap: true,
+                shouldCloseOnMinExtent: closeOnMinExtent,
+                builder: (context, scrollController) {
+                  return _BracuBottomSheetControllerScope(
+                    controller: scrollController,
+                    child: PrimaryScrollController(
                       controller: scrollController,
-                      child: PrimaryScrollController(
-                        controller: scrollController,
-                        child: Builder(
-                          builder: (innerContext) => builder(innerContext),
-                        ),
+                      child: Builder(
+                        builder: (innerContext) => builder(innerContext),
                       ),
-                    );
-                  },
-                ),
+                    ),
+                  );
+                },
               );
             },
           ),

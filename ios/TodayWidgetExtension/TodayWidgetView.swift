@@ -1,8 +1,9 @@
 import SwiftUI
 import WidgetKit
 
-private let todayCardBorder = Color(uiColor: .separator)
-private let todayTextPrimary = Color(uiColor: .label)
+private let todayCardBackground = Color.white.opacity(0.15)
+private let todayCardBorder = Color.white.opacity(0.20)
+private let todayTextPrimary = Color.white
 
 struct TodayWidgetCard: View {
   let item: TodayWidgetItem
@@ -43,7 +44,7 @@ struct TodayWidgetCard: View {
       }
     }
     .padding(14)
-    .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 18))
+    .background(todayCardBackground, in: RoundedRectangle(cornerRadius: 18))
     .overlay {
       RoundedRectangle(cornerRadius: 18)
         .stroke(todayCardBorder, lineWidth: 1)

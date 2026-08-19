@@ -271,6 +271,10 @@ class CaptiveLoginStore {
   static const String _lastPortalUrlKey = 'wifi_captive_last_portal_url';
   static const String _successUrlKey = 'wifi_captive_success_url';
   static const String _lastLoginAtKey = 'wifi_captive_last_login_at';
+  static const String _sessionTokenKey = 'wifi_captive_session_token';
+  static const String _psessionIdKey = 'wifi_captive_psession_id';
+  static const String _validPeriodKey = 'wifi_captive_valid_period';
+  static const String _remainTimeKey = 'wifi_captive_remain_time';
 
   Future<String?> readLastPortalUrl() {
     return _storage.read(key: _lastPortalUrlKey);
@@ -288,6 +292,38 @@ class CaptiveLoginStore {
     await _storage.write(key: _successUrlKey, value: url);
   }
 
+  Future<String?> readSessionToken() {
+    return _storage.read(key: _sessionTokenKey);
+  }
+
+  Future<void> saveSessionToken(String token) async {
+    await _storage.write(key: _sessionTokenKey, value: token);
+  }
+
+  Future<String?> readPSessionId() {
+    return _storage.read(key: _psessionIdKey);
+  }
+
+  Future<void> savePSessionId(String id) async {
+    await _storage.write(key: _psessionIdKey, value: id);
+  }
+
+  Future<String?> readValidPeriod() {
+    return _storage.read(key: _validPeriodKey);
+  }
+
+  Future<void> saveValidPeriod(String period) async {
+    await _storage.write(key: _validPeriodKey, value: period);
+  }
+
+  Future<String?> readRemainTime() {
+    return _storage.read(key: _remainTimeKey);
+  }
+
+  Future<void> saveRemainTime(String time) async {
+    await _storage.write(key: _remainTimeKey, value: time);
+  }
+
   Future<int?> readLastLoginAt() async {
     final raw = await _storage.read(key: _lastLoginAtKey);
     return raw != null ? int.tryParse(raw) : null;
@@ -303,6 +339,10 @@ class CaptiveLoginStore {
     await _storage.write(key: _lastPortalUrlKey, value: null);
     await _storage.write(key: _successUrlKey, value: null);
     await _storage.write(key: _lastLoginAtKey, value: null);
+    await _storage.write(key: _sessionTokenKey, value: null);
+    await _storage.write(key: _psessionIdKey, value: null);
+    await _storage.write(key: _validPeriodKey, value: null);
+    await _storage.write(key: _remainTimeKey, value: null);
   }
 }
 

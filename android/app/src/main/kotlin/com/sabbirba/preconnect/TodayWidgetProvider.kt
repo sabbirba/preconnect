@@ -2,21 +2,15 @@ package com.sabbirba.preconnect
 
 import android.app.AlarmManager
 import android.app.PendingIntent
-import android.app.WallpaperManager
 import android.appwidget.AppWidgetManager
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
-import android.content.res.Configuration
-import android.content.res.ColorStateList
-import android.graphics.Color
 import android.net.Uri
-import android.os.Build
 import android.os.SystemClock
 import android.view.View
 import android.widget.RemoteViews
-import androidx.core.graphics.ColorUtils
 import es.antonborri.home_widget.HomeWidgetBackgroundIntent
 import es.antonborri.home_widget.HomeWidgetLaunchIntent
 import es.antonborri.home_widget.HomeWidgetProvider
@@ -93,18 +87,6 @@ class TodayWidgetProvider : HomeWidgetProvider() {
                 }
             }
 
-            wallpaperTheme(context)?.let { (background, text) ->
-                val tintList = ColorStateList.valueOf(background)
-                rows.forEach { row ->
-                    views.setColorStateList(row.container, "setBackgroundTintList", tintList)
-                    views.setTextColor(row.badge, text)
-                    views.setTextColor(row.title, text)
-                    views.setTextColor(row.subtitle, text)
-                    views.setTextColor(row.trailing, text)
-                    views.setTextColor(row.trailingSub, text)
-                }
-            }
-
             appWidgetManager.updateAppWidget(widgetId, views)
         }
 
@@ -137,24 +119,6 @@ class TodayWidgetProvider : HomeWidgetProvider() {
             intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
-    }
-
-    private fun wallpaperTheme(context: Context): Pair<Int, Int>? {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return null
-        val colors =
-            WallpaperManager.getInstance(context).getWallpaperColors(WallpaperManager.FLAG_SYSTEM)
-                ?: return null
-        val isNight =
-            (context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) ==
-                Configuration.UI_MODE_NIGHT_YES
-
-        val hsl = FloatArray(3)
-        ColorUtils.colorToHSL(colors.primaryColor.toArgb(), hsl)
-        hsl[1] = if (isNight) 0.28f else 0.35f
-        hsl[2] = if (isNight) 0.20f else 0.93f
-        val background = ColorUtils.HSLToColor(hsl)
-        val text = if (isNight) Color.WHITE else Color.BLACK
-        return background to text
     }
 
     private fun maybeRefreshFromCache(

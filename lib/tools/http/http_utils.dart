@@ -41,18 +41,12 @@ class HttpUtils {
     required String dataCommand,
     required String dataFileName,
     required String safeFileName,
-    int copies = 1,
   }) {
-    final effectiveCopies = copies < 1 ? 1 : copies;
-    final dataCommands = List<String>.generate(
-      effectiveCopies,
-      (_) => '$dataCommand$dataFileName',
-    );
     return [
       'H$client',
       'P$owner',
       'J$printableJobName',
-      ...dataCommands,
+      '$dataCommand$dataFileName',
       'U$dataFileName',
       'N$safeFileName',
       '',
@@ -81,6 +75,10 @@ class HttpUtils {
       '\x1B%-12345X@PJL\r\n',
       '@PJL JOB NAME = "${_escapePjlValue(jobName)}"\r\n',
       '@PJL SET COPIES = $copies\r\n',
+      '@PJL SET QTY = $copies\r\n',
+      '@PJL SET PAPER = A4\r\n',
+      '@PJL SET PAPERSPEC = A4\r\n',
+      '@PJL SET MEDIASIZE = A4\r\n',
       '@PJL SET COLLATE = ${collate == 'OFF' ? 'OFF' : 'ON'}\r\n',
       '@PJL SET ORIENTATION = PORTRAIT\r\n',
       '@PJL SET RESOLUTION = 600\r\n',

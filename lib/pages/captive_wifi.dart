@@ -38,6 +38,8 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
   bool _scanning = false;
   StreamSubscription<AndroidNetworkStatus>? _networkStatusSubscription;
   PollingTimer? _iosProbeTimer;
+  Timer? _heartbeatTimer;
+  String? _lastObservedApMac;
   Uri? _detectedPortalUri;
   bool _isOnCampusNetwork = false;
   final TextEditingController _studentIdController = TextEditingController();
@@ -102,6 +104,8 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
       final autoExtendEnabled = await CaptiveLoginStore.instance
           .readAutoExtendEnabled();
       final creds = await CaptiveLoginStore.instance.read();
+      final validPeriod = await CaptiveLoginStore.instance.readValidPeriod();
+      final remainTime = await CaptiveLoginStore.instance.readRemainTime();
       var studentId =
           (await AppStorage.instance.getString(StorageKeys.studentId) ?? '')
               .trim();
@@ -115,6 +119,15 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
         _autoExtendEnabled = autoExtendEnabled;
         if (creds != null) {
           _passwordController.text = creds.password;
+        }
+        if (validPeriod != null || remainTime != null) {
+          _extractedParams = {
+            ...?_extractedParams,
+            if (validPeriod != null && validPeriod.isNotEmpty)
+              'validPeriod': validPeriod,
+            if (remainTime != null && remainTime.isNotEmpty)
+              'remainTime': remainTime,
+          };
         }
       });
       unawaited(_checkPostConnectionEvent());
@@ -298,10 +311,21 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
             : (CaptiveWifiHttp.instance.lastError ?? 'No response received.');
       });
       if (loggedIn) {
+        final validPeriod = await CaptiveLoginStore.instance.readValidPeriod();
+        final remainTime = await CaptiveLoginStore.instance.readRemainTime();
         if (mounted) {
           setState(() {
             _isOnCampusNetwork = true;
             _detectedPortalUri = null;
+            if (validPeriod != null || remainTime != null) {
+              _extractedParams = {
+                ...?_extractedParams,
+                if (validPeriod != null && validPeriod.isNotEmpty)
+                  'validPeriod': validPeriod,
+                if (remainTime != null && remainTime.isNotEmpty)
+                  'remainTime': remainTime,
+              };
+            }
           });
         }
         unawaited(AndroidNetworkAssist.reportCaptivePortalDismissed());
@@ -393,8 +417,42 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
     }
   }
 
+  void _updateHeartbeatTimer({required bool isSessionActive}) {
+    _heartbeatTimer?.cancel();
+    _heartbeatTimer = null;
+    if (_autoExtendEnabled && isSessionActive) {
+      _heartbeatTimer = Timer.periodic(const Duration(minutes: 10), (_) async {
+        if (!mounted) return;
+        final success = await CaptiveWifiHttp.instance.sendKeepAliveHeartbeat(
+          captiveWifiUrl: _detectedPortalUri,
+        );
+        if (success && mounted) {
+          final validPeriod = await CaptiveLoginStore.instance
+              .readValidPeriod();
+          final remainTime = await CaptiveLoginStore.instance.readRemainTime();
+          setState(() {
+            _extractedParams = {
+              ...?_extractedParams,
+              if (validPeriod != null && validPeriod.isNotEmpty)
+                'validPeriod': validPeriod,
+              if (remainTime != null && remainTime.isNotEmpty)
+                'remainTime': remainTime,
+            };
+          });
+        }
+      });
+    }
+  }
+
   Future<void> _handleNetworkStatusChanged(AndroidNetworkStatus status) async {
     if (!mounted) return;
+    final apMac = status.apMac;
+    final roamedAp =
+        _lastObservedApMac != null &&
+        apMac != null &&
+        apMac != _lastObservedApMac;
+    _lastObservedApMac = apMac;
+
     setState(() {
       _currentStatus = status;
       if (status.transport.trim().toLowerCase() != 'wifi' ||
@@ -404,6 +462,14 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
     });
     final transport = status.transport.trim().toLowerCase();
     if (transport != 'wifi' || !status.connected) {
+      _updateHeartbeatTimer(isSessionActive: false);
+      return;
+    }
+
+    final isSessionActive = !status.captive && status.validated;
+    _updateHeartbeatTimer(isSessionActive: isSessionActive);
+
+    if (isSessionActive && !roamedAp) {
       return;
     }
     if (_isConnecting) return;
@@ -421,7 +487,10 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
       }
     }
     if (isCaptive && hasPassword) {
-      unawaited(_runOneTapConnect());
+      final isOnline = await CaptiveWifiHttp.checkInternetAccess();
+      if (!isOnline && mounted) {
+        unawaited(_runOneTapConnect());
+      }
     }
   }
 
@@ -431,6 +500,11 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
     setState(() {
       _autoExtendEnabled = value;
     });
+    final isSessionActive =
+        _currentStatus != null &&
+        !_currentStatus!.captive &&
+        _currentStatus!.validated;
+    _updateHeartbeatTimer(isSessionActive: isSessionActive);
   }
 
   Future<bool> _loginViaCaptiveApi({
@@ -739,8 +813,9 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
                         ),
                       ],
                     ),
-                    if (_extractedParams != null &&
-                        _extractedParams!.isNotEmpty) ...[
+                    if ((_extractedParams != null &&
+                            _extractedParams!.isNotEmpty) ||
+                        _currentStatus != null) ...[
                       const Gap(12),
                       _buildPortalParamsCard(context),
                     ],
@@ -785,7 +860,27 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
   }
 
   Widget _buildPortalParamsCard(BuildContext context) {
-    if (_extractedParams == null || _extractedParams!.isEmpty) {
+    final params = Map<String, String>.from(_extractedParams ?? {});
+    if (_currentStatus != null) {
+      if (!params.containsKey('uaddress') &&
+          _currentStatus!.ipAddress != null) {
+        params['uaddress'] = _currentStatus!.ipAddress!;
+      }
+      if (!params.containsKey('umac') && _currentStatus!.clientMac != null) {
+        params['umac'] = _currentStatus!.clientMac!;
+      }
+      if (!params.containsKey('apmac') && _currentStatus!.apMac != null) {
+        params['apmac'] = _currentStatus!.apMac!;
+      }
+      if (!params.containsKey('ssid') && _currentStatus!.ssid != null) {
+        params['ssid'] = _currentStatus!.ssid!;
+      }
+      if (!params.containsKey('gatewayAddress') &&
+          _currentStatus!.gatewayAddress != null) {
+        params['gatewayAddress'] = _currentStatus!.gatewayAddress!;
+      }
+    }
+    if (params.isEmpty) {
       return const SizedBox.shrink();
     }
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -793,26 +888,28 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
       context,
     ).withValues(alpha: isDark ? 0.35 : 0.18);
 
-    final parameterLabels = {
-      'pushPageId': 'Page Transaction ID',
-      'apmac': 'Access Point MAC',
-      'uaddress': 'Client IP Address',
-      'umac': 'Client MAC Address',
-      'ssid': 'SSID',
-      'authType': 'Authentication Type',
-    };
-
-    final rows = _extractedParams!.entries
+    final rows = params.entries
         .where((entry) => entry.key != 'redirect-url')
         .map((entry) {
-          final label = parameterLabels[entry.key] ?? entry.key;
-          return (label: label, value: entry.value);
+          final label = entry.key;
+          var val = entry.value;
+          if (entry.key == 'validPeriod' ||
+              entry.key == 'remainTime' ||
+              entry.key == 'remainFlow') {
+            if (val == '0' || val.trim().isEmpty) {
+              val = 'Unlimited';
+            }
+          }
+          return (label: label, value: val);
         })
         .toList();
-    rows.add((
-      label: 'Final Request URL',
-      value: CaptiveWifiHttp.instance.lastRequestUrl ?? 'Pending connect...',
-    ));
+    if (CaptiveWifiHttp.instance.lastRequestUrl != null &&
+        CaptiveWifiHttp.instance.lastRequestUrl!.isNotEmpty) {
+      rows.add((
+        label: 'requestUrl',
+        value: CaptiveWifiHttp.instance.lastRequestUrl!,
+      ));
+    }
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -882,6 +979,7 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
   void dispose() {
     _networkStatusSubscription?.cancel().catchError((_) {});
     _iosProbeTimer?.cancel();
+    _heartbeatTimer?.cancel();
     _studentIdController.removeListener(_handleStudentIdChanged);
     _passwordController.removeListener(_handlePasswordChanged);
     _studentIdController.dispose();

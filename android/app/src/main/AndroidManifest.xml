@@ -113,6 +113,17 @@
             </intent-filter>
         </receiver>
 
+        <service
+            android:name=".PreConnectWifiTileService"
+            android:icon="@drawable/status_icon"
+            android:label="Student Wi-Fi"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+        </service>
+
         <receiver
             android:name=".QuietModeAutomationReceiver"
             android:exported="false" />
