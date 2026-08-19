@@ -1,10 +1,6 @@
 import SwiftUI
 import WidgetKit
 
-private let todayCardBackground = Color.white.opacity(0.15)
-private let todayCardBorder = Color.white.opacity(0.20)
-private let todayTextPrimary = Color.white
-
 struct TodayWidgetCard: View {
   let item: TodayWidgetItem
 
@@ -12,17 +8,17 @@ struct TodayWidgetCard: View {
     HStack(alignment: .center, spacing: 12) {
       Text(item.badge)
         .font(.system(size: 16, weight: .bold))
-        .foregroundStyle(todayTextPrimary)
-        .frame(width: 40)
+        .foregroundStyle(Color.primary)
+        .frame(width: 36)
 
       VStack(alignment: .leading, spacing: 2) {
         Text(item.title)
           .font(.system(size: 14, weight: .bold))
-          .foregroundStyle(todayTextPrimary)
+          .foregroundStyle(Color.primary)
           .lineLimit(2)
         Text(item.subtitle)
-          .font(.system(size: 11))
-          .foregroundStyle(todayTextPrimary)
+          .font(.system(size: 11, weight: .medium))
+          .foregroundStyle(Color.secondary)
           .lineLimit(2)
       }
 
@@ -32,22 +28,22 @@ struct TodayWidgetCard: View {
         VStack(alignment: .trailing, spacing: 2) {
           Text(item.trailing)
             .font(.system(size: 14, weight: .bold))
-            .foregroundStyle(todayTextPrimary)
+            .foregroundStyle(Color.primary)
             .lineLimit(1)
           if !item.trailingSub.isEmpty {
             Text(item.trailingSub)
-              .font(.system(size: 11))
-              .foregroundStyle(todayTextPrimary)
+              .font(.system(size: 11, weight: .medium))
+              .foregroundStyle(Color.secondary)
               .lineLimit(1)
           }
         }
       }
     }
-    .padding(14)
-    .background(todayCardBackground, in: RoundedRectangle(cornerRadius: 18))
+    .padding(12)
+    .background(Color(uiColor: .secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
     .overlay {
-      RoundedRectangle(cornerRadius: 18)
-        .stroke(todayCardBorder, lineWidth: 1)
+      RoundedRectangle(cornerRadius: 16)
+        .stroke(Color.primary.opacity(0.08), lineWidth: 1)
     }
   }
 }
@@ -73,15 +69,15 @@ struct TodayWidgetEntryView: View {
       Link(destination: openAppURL) {
         HStack(alignment: .center, spacing: 8) {
           Text(entry.title)
-            .font(.system(size: 16, weight: .bold))
-            .foregroundStyle(todayTextPrimary)
+            .font(.system(size: 15, weight: .bold))
+            .foregroundStyle(Color.primary)
             .lineLimit(1)
             .minimumScaleFactor(0.75)
             .frame(maxWidth: .infinity, alignment: .leading)
 
           Text(entry.dateText)
-            .font(.system(size: 16, weight: .bold))
-            .foregroundStyle(todayTextPrimary)
+            .font(.system(size: 14, weight: .semibold))
+            .foregroundStyle(Color.secondary)
             .lineLimit(1)
             .minimumScaleFactor(0.75)
             .fixedSize(horizontal: true, vertical: false)
@@ -109,7 +105,7 @@ struct TodayWidgetEntryView: View {
     }
     .padding(14)
     .unredacted()
-    .containerBackground(.clear, for: .widget)
+    .containerBackground(Color(uiColor: .systemGroupedBackground), for: .widget)
   }
 }
 
