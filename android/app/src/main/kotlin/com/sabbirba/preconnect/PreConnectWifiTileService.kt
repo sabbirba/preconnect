@@ -13,7 +13,7 @@ class PreConnectWifiTileService : TileService() {
         super.onStartListening()
         val tile = qsTile ?: return
         tile.state = Tile.STATE_INACTIVE
-        tile.label = "Student Wi-Fi"
+        tile.label = "Student-WiFi"
         tile.updateTile()
     }
 

@@ -116,7 +116,7 @@
         <service
             android:name=".PreConnectWifiTileService"
             android:icon="@drawable/status_icon"
-            android:label="Student Wi-Fi"
+            android:label="Student-WiFi"
             android:permission="android.permission.BIND_QUICK_SETTINGS_TILE"
             android:exported="true">
             <intent-filter>

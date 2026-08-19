@@ -509,8 +509,12 @@ jobs:
             | sed 's/^[-*] /• /' \
             | sed 's/^#+[[:space:]]*//' \
             | awk -v max=480 '
+                /^[[:space:]]*$/ { next }
                 BEGIN { len = 0 }
                 {
+                  sub(/^[[:space:]]+/, "")
+                  sub(/[[:space:]]+$/, "")
+                  if (length($0) == 0) next
                   add = length($0) + (len > 0 ? 1 : 0)
                   if (len + add <= max) {
                     if (len > 0) printf "\n"

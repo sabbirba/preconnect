@@ -1121,7 +1121,7 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
             const Gap(8),
             _buildParamItem(
               context,
-              param: 'psessionid / token',
+              param: 'psessionid',
               meaning:
                   'Cryptographic session identifiers returned after successful authentication.',
             ),
@@ -1168,7 +1168,7 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
               context,
               param: '10105 (Already Online)',
               meaning:
-                  'Device is already authorized on the campus network; full internet access is active.',
+                  'Device is already authorized on the campus network, full internet access is active.',
             ),
             const Gap(8),
             _buildParamItem(
