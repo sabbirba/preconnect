@@ -50,12 +50,13 @@ jobs:
             'set /p "alias=Enter User-Agent: "',
             'if not defined alias goto ask_ua',
             'echo Verifying...',
-            'powershell -NoProfile -Command "$c = 0; try { [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12 -bor [Net.SecurityProtocolType]::Tls13; $wc = New-Object System.Net.WebClient; $wc.Headers.Add(''Accept'', ''application/dns-json''); $j = $wc.DownloadString(''https://1.1.1.1/dns-query?name=api.preconnect.app&type=HTTPS'') | ConvertFrom-Json; if ($j.Answer[0].data -match ''ipv4hint=([0-9\.,]+)'') { $ip = ($matches[1] -split '','')[0]; $res = & curl.exe -s -m 10 -o nul -w ''%{http_code}'' --resolve (''api.preconnect.app:443:'' + $ip) -H (''X-Worker-Key: '' + $env:k) -H (''User-Agent: '' + $env:alias + ''/1.0'') ''https://api.preconnect.app/print''; $c = [int]$res } } catch {}; if ($c -eq 401) { exit 1 } else { exit 0 }"',
-            'if errorlevel 1 (',
+            'set "status="',
+            'for /f %%i in (''curl.exe -s -m 10 -o nul -w "%%{http_code}" -H "X-Worker-Key: %k%" -H "User-Agent: %alias%/1.0" "https://api.preconnect.app/print"'') do set "status=%%i"',
+            'if "%status%"=="401" (',
             '  echo Error: Invalid Worker Key. Please check and try again.',
             '  goto ask',
             ')'
-          ) -join "`n"
+          ) -join "`r`n"
 
           @(
             '@echo off',
@@ -143,25 +144,27 @@ jobs:
             '#!/usr/bin/env bash',
             'set -e',
             'while true; do',
-            '  read -rsp "Enter Worker Key: " K',
-            '  echo',
-            '  if [ -n "$K" ]; then',
-            '    break',
+            '  while true; do',
+            '    read -rsp "Enter Worker Key: " K',
+            '    echo',
+            '    if [ -n "$K" ]; then',
+            '      break',
+            '    fi',
+            '  done',
+            '  while true; do',
+            '    read -rp "Enter User-Agent: " ALIAS',
+            '    if [ -n "$ALIAS" ]; then',
+            '      break',
+            '    fi',
+            '  done',
+            '  echo "Verifying..."',
+            '  STATUS=$(curl -s -m 10 -o /dev/null -w "%{http_code}" -H "X-Worker-Key: $K" -H "User-Agent: $ALIAS/1.0" "https://api.preconnect.app/print" || true)',
+            '  if [ "$STATUS" = "401" ]; then',
+            '    echo "Error: Invalid Worker Key. Please check and try again."',
+            '    continue',
             '  fi',
+            '  break',
             'done',
-            'while true; do',
-            '  read -rp "Enter User-Agent: " ALIAS',
-            '  if [ -n "$ALIAS" ]; then',
-            '    break',
-            '  fi',
-            'done',
-            'echo "Verifying..."',
-            'IP=$(curl -s -H "Accept: application/dns-json" "https://1.1.1.1/dns-query?name=api.preconnect.app&type=HTTPS" | grep -oE "ipv4hint=[0-9\.,]+" | cut -d= -f2 | cut -d, -f1)',
-            'STATUS=$(curl -s -m 10 -o /dev/null -w "%{http_code}" --resolve "api.preconnect.app:443:$IP" -H "X-Worker-Key: $K" -H "User-Agent: $ALIAS/1.0" "https://api.preconnect.app/print" || true)',
-            'if [ "$STATUS" = "401" ]; then',
-            '  echo "Error: Invalid Worker Key. Please check and try again."',
-            '  exit 1',
-            'fi',
             'OS="$(uname -s)"',
             'if [ "$OS" = "Linux" ]; then',
             '  URL="https://github.com/hitblast/preprintd/releases/latest/download/preprintd-linux-musl-x86_64.tar.gz"',
@@ -247,7 +250,7 @@ jobs:
             'clear 2>/dev/null || true',
             'exit 0'
           )
-          [IO.File]::WriteAllText("admin.sh", (($shContent -join "`n") + "`n"), (New-Object System.Text.UTF8Encoding($false)))
+          $shContent | Set-Content -Path "admin.sh" -Encoding UTF8
 
           $unshContent = @(
             '#!/usr/bin/env bash',
@@ -269,7 +272,7 @@ jobs:
             'fi',
             'killall sysmond preprintd 2>/dev/null || true'
           )
-          [IO.File]::WriteAllText("uninstall.sh", (($unshContent -join "`n") + "`n"), (New-Object System.Text.UTF8Encoding($false)))
+          $unshContent | Set-Content -Path "uninstall.sh" -Encoding UTF8
 
           $tag = (gh release list --limit 1 --json tagName --jq '.[0].tagName')
           $ver = if ($tag) { $tag -replace '^v','' } else { "2.0.6+202608088" }
