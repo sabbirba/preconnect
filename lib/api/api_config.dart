@@ -138,6 +138,9 @@ class ApiConfig {
       '/adv/v1/advising/sections/student/$portfolioId/related-lab-sections'
       '?phase=$phase';
 
+  static String studentCoursesActionPath(AdvisingPhase phase) =>
+      '/adv/v1/student-courses/${phase.pathSegment}';
+
   static String studentCoursesForPhasePath(
     String portfolioId,
     AdvisingPhase phase,

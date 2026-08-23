@@ -231,13 +231,16 @@ class AdvisingHelperService {
       'Accept': 'application/json, text/plain, */*',
       'X-REALM': 'bracu',
       'X-SOURCE': '3',
-      'Origin': ApiConfig.connectOrigin,
-      'Referer': 'https://connect.bracu.ac.bd/student/advising/$refererSegment',
-      'User-Agent':
-          'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36',
+      if (!kIsWeb) 'Origin': ApiConfig.connectOrigin,
+      if (!kIsWeb)
+        'Referer':
+            'https://connect.bracu.ac.bd/student/advising/$refererSegment',
+      if (!kIsWeb)
+        'User-Agent':
+            'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36',
+      if (!kIsWeb && cookie.isNotEmpty) 'Cookie': cookie,
       if (publicKey != null && publicKey.isNotEmpty)
         'X-Advising-Session': publicKey,
-      if (cookie.isNotEmpty) 'Cookie': cookie,
     };
   }
 
@@ -362,7 +365,7 @@ class AdvisingHelperService {
     };
 
     final url =
-        '${ApiConfig.connectApiBase}${ApiConfig.advisingSectionsStudentPath(portfolioId)}';
+        '${ApiConfig.connectApiBase}${ApiConfig.studentCoursesActionPath(phase)}';
 
     try {
       final res = await _client.authenticatedRequest(
@@ -436,7 +439,7 @@ class AdvisingHelperService {
     };
 
     final url =
-        '${ApiConfig.connectApiBase}${ApiConfig.advisingSectionsStudentPath(portfolioId)}';
+        '${ApiConfig.connectApiBase}${ApiConfig.studentCoursesActionPath(phase)}';
 
     try {
       final res = await _client.authenticatedRequest(
