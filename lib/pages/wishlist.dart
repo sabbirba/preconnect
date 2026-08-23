@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
 import 'package:preconnect/api/api_client.dart';
@@ -69,9 +70,11 @@ class _WishlistPageState extends State<WishlistPage> {
     return {
       'Content-Type': 'application/json',
       'Accept': 'application/json, text/plain, */*',
-      'Referer': 'https://connect.bracu.ac.bd/student/advising/wish-list',
-      'User-Agent':
-          'Mozilla/5.0 (Linux; Android 15; Pixel 9) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150.0.0.0 Mobile Safari/537.36',
+      if (!kIsWeb)
+        'Referer': 'https://connect.bracu.ac.bd/student/advising/wish-list',
+      if (!kIsWeb)
+        'User-Agent':
+            'Mozilla/5.0 (Linux; Android 15; Pixel 9) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150.0.0.0 Mobile Safari/537.36',
       'X-Advising-Session': _publicKey ?? '',
     };
   }
