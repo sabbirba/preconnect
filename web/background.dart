@@ -63,6 +63,8 @@ const String _openScanScheduleCommand =
     PreConnectBrowserActionIds.openScanScheduleCommand;
 const String _openSeatStatusCommand =
     PreConnectBrowserActionIds.openSeatStatusCommand;
+const String _openAdvisingHelperCommand =
+    PreConnectBrowserActionIds.openAdvisingHelperCommand;
 const String _menuRootId = PreConnectBrowserActionIds.menuRootId;
 const String _menuSidePanelId = PreConnectBrowserActionIds.menuSidePanelId;
 const String _menuDashboardId = PreConnectBrowserActionIds.menuDashboardId;
@@ -73,6 +75,8 @@ const String _menuFriendsId = PreConnectBrowserActionIds.menuFriendsId;
 const String _menuShareId = PreConnectBrowserActionIds.menuShareId;
 const String _menuScanId = PreConnectBrowserActionIds.menuScanId;
 const String _menuSeatStatusId = PreConnectBrowserActionIds.menuSeatStatusId;
+const String _menuAdvisingHelperId =
+    PreConnectBrowserActionIds.menuAdvisingHelperId;
 const String _shortcutCustomSchedule =
     PreConnectBrowserActionIds.shortcutCustomSchedule;
 const String _shortcutProfile = PreConnectBrowserActionIds.shortcutProfile;
@@ -83,6 +87,8 @@ const String _shortcutShare = PreConnectBrowserActionIds.shortcutShare;
 const String _shortcutScan = PreConnectBrowserActionIds.shortcutScan;
 const String _shortcutSeatStatus =
     PreConnectBrowserActionIds.shortcutSeatStatus;
+const String _shortcutAdvisingHelper =
+    PreConnectBrowserActionIds.shortcutAdvisingHelper;
 const String _cookieSnapshotConnectKey = 'preconnect.cookies.connect';
 const String _cookieSnapshotSsoKey = 'preconnect.cookies.sso';
 const String _cookieSnapshotUpdatedAtKey = 'preconnect.cookies.updatedAt';
@@ -459,6 +465,14 @@ Future<void> _configureBrowserSurfaces() async {
       contexts: [cm.ContextType.action],
     ),
   );
+  _safeContextMenuCreate(
+    cm.CreateProperties(
+      id: _menuAdvisingHelperId,
+      parentId: _menuRootId,
+      title: 'Advising Helper',
+      contexts: [cm.ContextType.action],
+    ),
+  );
 }
 
 Future<void> _handleCommand(String command, Tab? tab) async {
@@ -489,6 +503,9 @@ Future<void> _handleCommand(String command, Tab? tab) async {
       return;
     case _openSeatStatusCommand:
       await _activateBrowserShortcut(_shortcutSeatStatus, tab: tab);
+      return;
+    case _openAdvisingHelperCommand:
+      await _activateBrowserShortcut(_shortcutAdvisingHelper, tab: tab);
       return;
   }
 }
@@ -522,6 +539,9 @@ Future<void> _handleContextMenu(cm.OnClickData info, Tab? tab) async {
       return;
     case _menuSeatStatusId:
       await _activateBrowserShortcut(_shortcutSeatStatus, tab: tab);
+      return;
+    case _menuAdvisingHelperId:
+      await _activateBrowserShortcut(_shortcutAdvisingHelper, tab: tab);
       return;
   }
 }

@@ -524,6 +524,27 @@ extension _HomeDashboardView on _HomeDashboardState {
                                   ),
                                 ],
                                 const Gap(12),
+                                if (kIsWeb && isChromeRuntimeAvailable()) ...[
+                                  Padding(
+                                    padding: const EdgeInsets.only(bottom: 12),
+                                    child: BracuActionBannerCard(
+                                      icon: Icons.bolt_rounded,
+                                      title: 'Advising Helper',
+                                      subtitle:
+                                          'Auto-add sections & advising manager',
+                                      iconColor: const Color(0xFF22B573),
+                                      onTap: () {
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (context) =>
+                                                const AdvisingHelperPage(),
+                                          ),
+                                        );
+                                      },
+                                    ),
+                                  ),
+                                ],
                                 if (data == null)
                                   const Padding(
                                     padding: EdgeInsets.only(bottom: 12),

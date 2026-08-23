@@ -24,6 +24,7 @@ import 'package:preconnect/pages/login.dart';
 import 'package:preconnect/pages/wifi_printer.dart';
 import 'package:preconnect/pages/home_tab.dart';
 import 'package:preconnect/pages/onboarding.dart';
+import 'package:preconnect/pages/advising_helper.dart';
 import 'package:preconnect/pages/captive_wifi.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/pages/shared_widgets/map_shared.dart';
@@ -664,9 +665,31 @@ class _MyAppState extends State<MyApp>
       _openCaptiveWifi();
       return;
     }
+    if (action == PreConnectBrowserActionIds.shortcutAdvisingHelper ||
+        action == 'advising_helper' ||
+        action == 'advisingHelper') {
+      _openAdvisingHelper();
+      return;
+    }
     final tab = _tabFromShortcutAction(action);
     if (tab == null) return;
     _openHomeTab(tab);
+    unawaited(_clearPendingShortcutAction());
+  }
+
+  void _openAdvisingHelper() {
+    final navigator = AppNavigator.key.currentState;
+    if (navigator != null) {
+      navigator.push(
+        MaterialPageRoute(builder: (context) => const AdvisingHelperPage()),
+      );
+    } else {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        AppNavigator.key.currentState?.push(
+          MaterialPageRoute(builder: (context) => const AdvisingHelperPage()),
+        );
+      });
+    }
     unawaited(_clearPendingShortcutAction());
   }
 
