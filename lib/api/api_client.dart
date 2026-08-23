@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'package:connectivity_plus/connectivity_plus.dart';
-import 'package:flutter/foundation.dart' show visibleForTesting;
+import 'package:flutter/foundation.dart' show kIsWeb, visibleForTesting;
 import 'package:http/http.dart' as http;
 import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/api/auth.dart';
@@ -363,7 +363,7 @@ class ApiClient {
 
     final uri = Uri.tryParse(url);
     headers.addAll(compressionHeadersForUri(uri));
-    if (uri != null && uri.host == 'connect.bracu.ac.bd') {
+    if (!kIsWeb && uri != null && uri.host == 'connect.bracu.ac.bd') {
       headers['Origin'] = ApiConfig.connectOrigin;
     }
 
@@ -507,26 +507,41 @@ class ApiClient {
     required String body,
   }) {
     final uri = Uri.parse(url);
+    final sanitizedHeaders = kIsWeb
+        ? (Map<String, String>.from(headers)..removeWhere((k, _) {
+            final lower = k.toLowerCase();
+            return lower == 'origin' ||
+                lower == 'referer' ||
+                lower == 'user-agent' ||
+                lower == 'cookie' ||
+                lower == 'host' ||
+                lower == 'connection';
+          }))
+        : headers;
     switch (method) {
       case 'GET':
         return HttpUtils.client
-            .get(uri, headers: headers)
+            .get(uri, headers: sanitizedHeaders)
             .timeout(_requestTimeout);
       case 'POST':
         return HttpUtils.client
-            .post(uri, headers: headers, body: body)
+            .post(uri, headers: sanitizedHeaders, body: body)
             .timeout(_requestTimeout);
       case 'PUT':
         return HttpUtils.client
-            .put(uri, headers: headers, body: body)
+            .put(uri, headers: sanitizedHeaders, body: body)
             .timeout(_requestTimeout);
       case 'PATCH':
         return HttpUtils.client
-            .patch(uri, headers: headers, body: body)
+            .patch(uri, headers: sanitizedHeaders, body: body)
             .timeout(_requestTimeout);
       case 'DELETE':
         return HttpUtils.client
-            .delete(uri, headers: headers, body: body.isEmpty ? null : body)
+            .delete(
+              uri,
+              headers: sanitizedHeaders,
+              body: body.isEmpty ? null : body,
+            )
             .timeout(_requestTimeout);
       default:
         throw ArgumentError.value(method, 'method', 'Unsupported HTTP method');
