@@ -711,19 +711,14 @@ class ExamScheduleService {
     final midRoom = _pickRoom(override?.midRoomNumber);
     final finalRoom = _pickRoom(override?.finalRoomNumber);
     return ExamSectionResolved(
-      midDate: override?.midDate ?? section.sectionSchedule.midExamDate,
-      midStartTime:
-          override?.midStartTime ?? section.sectionSchedule.midExamStartTime,
-      midEndTime:
-          override?.midEndTime ?? section.sectionSchedule.midExamEndTime,
+      midDate: override?.midDate,
+      midStartTime: override?.midStartTime,
+      midEndTime: override?.midEndTime,
       midRoomNumber: midRoom,
       midPdfUrl: override?.midPdfUrl,
-      finalDate: override?.finalDate ?? section.sectionSchedule.finalExamDate,
-      finalStartTime:
-          override?.finalStartTime ??
-          section.sectionSchedule.finalExamStartTime,
-      finalEndTime:
-          override?.finalEndTime ?? section.sectionSchedule.finalExamEndTime,
+      finalDate: override?.finalDate,
+      finalStartTime: override?.finalStartTime,
+      finalEndTime: override?.finalEndTime,
       finalRoomNumber: finalRoom,
       finalPdfUrl: override?.finalPdfUrl,
     );
