@@ -708,11 +708,8 @@ class ExamScheduleService {
     }
     override ??= overrides['$course|$sec'];
 
-    final fallbackRoom =
-        _pickRoom(section.roomName) ?? _pickRoom(section.roomNumber);
-    final midRoom = _pickRoom(override?.midRoomNumber) ?? fallbackRoom;
-    final finalRoom =
-        _pickRoom(override?.finalRoomNumber) ?? midRoom ?? fallbackRoom;
+    final midRoom = _pickRoom(override?.midRoomNumber);
+    final finalRoom = _pickRoom(override?.finalRoomNumber);
     return ExamSectionResolved(
       midDate: override?.midDate ?? section.sectionSchedule.midExamDate,
       midStartTime:
