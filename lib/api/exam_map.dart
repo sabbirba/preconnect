@@ -711,17 +711,43 @@ class ExamScheduleService {
     final midRoom = _pickRoom(override?.midRoomNumber);
     final finalRoom = _pickRoom(override?.finalRoomNumber);
     return ExamSectionResolved(
-      midDate: override?.midDate,
-      midStartTime: override?.midStartTime,
-      midEndTime: override?.midEndTime,
+      midDate: _pickValue(
+        override?.midDate,
+        section.sectionSchedule.midExamDate,
+      ),
+      midStartTime: _pickValue(
+        override?.midStartTime,
+        section.sectionSchedule.midExamStartTime,
+      ),
+      midEndTime: _pickValue(
+        override?.midEndTime,
+        section.sectionSchedule.midExamEndTime,
+      ),
       midRoomNumber: midRoom,
       midPdfUrl: override?.midPdfUrl,
-      finalDate: override?.finalDate,
-      finalStartTime: override?.finalStartTime,
-      finalEndTime: override?.finalEndTime,
+      finalDate: _pickValue(
+        override?.finalDate,
+        section.sectionSchedule.finalExamDate,
+      ),
+      finalStartTime: _pickValue(
+        override?.finalStartTime,
+        section.sectionSchedule.finalExamStartTime,
+      ),
+      finalEndTime: _pickValue(
+        override?.finalEndTime,
+        section.sectionSchedule.finalExamEndTime,
+      ),
       finalRoomNumber: finalRoom,
       finalPdfUrl: override?.finalPdfUrl,
     );
+  }
+
+  String? _pickValue(String? preferred, String? fallback) {
+    final first = (preferred ?? '').trim();
+    if (first.isNotEmpty) return first;
+    final second = (fallback ?? '').trim();
+    if (second.isNotEmpty) return second;
+    return null;
   }
 
   String? _pickRoom(String? preferred) {
