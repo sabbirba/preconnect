@@ -533,16 +533,6 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
             captiveWifiUrl: captiveWifiUri,
           )
           .timeout(_silentLoginTimeout, onTimeout: () => false);
-      if (success && mounted) {
-        unawaited(
-          FCMService.instance.showNotification(
-            id: 9987,
-            title: 'Wi-Fi Auto-Login Successful',
-            body:
-                'Automatically connected to ${CaptiveLoginStore.defaultCampusSsid}.',
-          ),
-        );
-      }
       return success;
     } catch (_) {
       return false;
@@ -575,16 +565,6 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
         captiveWifiUri.toString(),
       );
     }
-
-    unawaited(
-      FCMService.instance.showNotification(
-        id: 9987,
-        title: 'Sign In to Wi-Fi Network',
-        body:
-            'Tap to sign in to ${CaptiveLoginStore.defaultCampusSsid} via PreConnect.',
-        payload: 'captive_wifi',
-      ),
-    );
 
     final creds = await CaptiveLoginStore.instance.read();
     if (!mounted || creds == null) return;
