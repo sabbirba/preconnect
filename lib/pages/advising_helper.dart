@@ -15,7 +15,6 @@ import 'package:preconnect/pages/seat_status.dart'
 import 'package:preconnect/pages/shared_widgets/faculty_sheet.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/app_storage.dart';
-import 'package:preconnect/tools/storage_keys.dart';
 
 class AdvisingHelperPage extends StatefulWidget {
   const AdvisingHelperPage({super.key});
@@ -31,7 +30,6 @@ class _AdvisingHelperPageState extends State<AdvisingHelperPage> {
   bool _isLoading = true;
   String? _errorMessage;
   String? _portfolioId;
-  String? _studentId;
   String? _publicKey;
   String? _sessionId;
 
@@ -40,6 +38,7 @@ class _AdvisingHelperPageState extends State<AdvisingHelperPage> {
   Map<int, SeatStatusDetailsResponse> _seatDetails = const {};
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
+  int _loadGeneration = 0;
 
   @override
   void initState() {
@@ -66,11 +65,14 @@ class _AdvisingHelperPageState extends State<AdvisingHelperPage> {
 
   Future<void> _load({bool openBrowser = true}) async {
     if (!mounted) return;
+    if (_engine.isRunning) _engine.stop();
+    final generation = ++_loadGeneration;
+    final phase = _phase;
     if (openBrowser && kIsWeb) {
       unawaited(
         openExternalUrl(
           context,
-          'https://connect.bracu.ac.bd/student/advising/${_phase.pathSegment}',
+          'https://connect.bracu.ac.bd/student/advising/${phase.pathSegment}',
         ),
       );
     }
@@ -80,50 +82,51 @@ class _AdvisingHelperPageState extends State<AdvisingHelperPage> {
     });
 
     try {
-      _portfolioId = await resolvePortfolioId(
+      final resolvedPortfolioId = await resolvePortfolioId(
         prefs: AppStorage.instance,
         refreshProfile: () => ProfileService().getProfile(fromFetch: true),
       );
-      _studentId = await AppStorage.instance.getString(StorageKeys.studentId);
 
-      if (_portfolioId == null || _studentId == null) {
+      if (resolvedPortfolioId == null) {
         throw Exception('Failed to resolve student portfolio profile.');
       }
 
-      _publicKey = DateTime.now().millisecondsSinceEpoch.toString();
+      final publicKey = DateTime.now().millisecondsSinceEpoch.toString();
+      final portfolioId = resolvedPortfolioId;
+      final sessionId = portfolioId;
 
-      final sessions = await _service.fetchActiveSessions(
-        _studentId!,
-        phase: _phase,
-      );
-      if (sessions.isEmpty) {
-        throw Exception(
-          'No active ${_phase.label} advising session was found.',
-        );
-      }
-
-      final session = sessions.first;
-      if (session.id.isEmpty) {
-        throw Exception('The advising session returned an invalid portfolio.');
-      }
-      _portfolioId = session.id;
-      _sessionId = session.id;
       final started = await _service.startSession(
-        _sessionId!,
-        _publicKey!,
-        phasePathSegment: _phase.pathSegment,
+        sessionId,
+        publicKey,
+        phase: phase,
       );
+
+      final enrolledFuture = _fetchAdvisedSections(
+        portfolioId,
+        phase: phase,
+        publicKey: publicKey,
+      );
+      final seatsFuture = _service.fetchRealtimeSections();
+      final enrolled = await enrolledFuture;
+      final seatDetails = await seatsFuture;
+
+      if (!mounted || generation != _loadGeneration) return;
+      _portfolioId = portfolioId;
+      _publicKey = publicKey;
+      _sessionId = sessionId;
       if (!started) {
-        throw Exception(
-          'BRACU Connect rejected the advising session handshake. Open Connect, sign in, then retry.',
+        _engine.addLog(
+          '${phase.label} is not active yet. The helper will retry while running.',
         );
       }
 
-      await Future.wait([_refreshEnrolled(), _refreshSeats()]);
-
-      if (mounted) setState(() => _isLoading = false);
+      setState(() {
+        _enrolled = enrolled;
+        _seatDetails = seatDetails;
+        _isLoading = false;
+      });
     } catch (e) {
-      if (!mounted) return;
+      if (!mounted || generation != _loadGeneration) return;
       setState(() {
         _errorMessage = e.toString();
         _isLoading = false;
@@ -132,22 +135,53 @@ class _AdvisingHelperPageState extends State<AdvisingHelperPage> {
   }
 
   Future<void> _refreshEnrolled() async {
-    if (_portfolioId == null) return;
-    final sections = await _service.fetchAdvisedSections(
-      _portfolioId!,
-      phase: _phase,
-      publicKey: _publicKey,
+    final portfolioId = _portfolioId;
+    final publicKey = _publicKey;
+    final phase = _phase;
+    if (portfolioId == null || publicKey == null) return;
+    final sections = await _fetchAdvisedSections(
+      portfolioId,
+      phase: phase,
+      publicKey: publicKey,
     );
-    if (mounted) setState(() => _enrolled = sections);
+    if (mounted &&
+        phase == _phase &&
+        portfolioId == _portfolioId &&
+        publicKey == _publicKey) {
+      setState(() => _enrolled = sections);
+    }
+  }
+
+  Future<List<AdvisingSectionRecord>> _fetchAdvisedSections(
+    String portfolioId, {
+    required AdvisingPhase phase,
+    required String publicKey,
+  }) async {
+    try {
+      return await _service.fetchAdvisedSections(
+        portfolioId,
+        phase: phase,
+        publicKey: publicKey,
+      );
+    } on ApiException catch (error) {
+      if (isUnavailableAdvisingPhaseResponse(error)) {
+        return const <AdvisingSectionRecord>[];
+      }
+      rethrow;
+    }
   }
 
   Future<void> _refreshSeats() async {
-    try {
-      final details = await SeatStatusService().preloadData(forceRefresh: true);
-      if (mounted) setState(() => _seatDetails = details);
-    } catch (_) {
-      final cached = SeatStatusService().cachedDetails;
-      if (cached != null && mounted) setState(() => _seatDetails = cached);
+    final portfolioId = _portfolioId;
+    final publicKey = _publicKey;
+    final phase = _phase;
+    if (portfolioId == null || publicKey == null) return;
+    final details = await _service.fetchRealtimeSections();
+    if (mounted &&
+        portfolioId == _portfolioId &&
+        publicKey == _publicKey &&
+        phase == _phase) {
+      setState(() => _seatDetails = details);
     }
   }
 
@@ -185,7 +219,7 @@ class _AdvisingHelperPageState extends State<AdvisingHelperPage> {
       return a.sectionName.compareTo(b.sectionName);
     });
 
-    return filtered.take(80).toList();
+    return filtered;
   }
 
   Future<void> _confirmDrop(AdvisingSectionRecord sec) async {
@@ -207,25 +241,21 @@ class _AdvisingHelperPageState extends State<AdvisingHelperPage> {
     if (!mounted) return;
     setState(() => _isLoading = true);
     try {
-      final ok = await _service.dropSection(
+      await _service.dropSection(
         portfolioId: _portfolioId!,
         sectionId: sec.sectionId,
         advisingSectionId: sec.advisingSectionId,
         publicKey: _publicKey!,
         phase: _phase,
       );
-      if (ok) {
-        _engine.addLog('Dropped ${sec.courseCode} Sec ${sec.sectionName}');
-        if (mounted) {
-          showAppSnackBar(
-            context,
-            'Dropped ${sec.courseCode} Sec ${sec.sectionName}',
-          );
-        }
-        await _refreshEnrolled();
-      } else {
-        throw Exception('Drop was rejected by the server.');
+      _engine.addLog('Dropped ${sec.courseCode} Sec ${sec.sectionName}');
+      if (mounted) {
+        showAppSnackBar(
+          context,
+          'Dropped ${sec.courseCode} Sec ${sec.sectionName}',
+        );
       }
+      await _refreshEnrolled();
     } catch (e) {
       if (mounted) showAppSnackBar(context, e.toString());
     } finally {
@@ -304,19 +334,15 @@ class _AdvisingHelperPageState extends State<AdvisingHelperPage> {
         if (!mounted) return;
         setState(() => _isLoading = true);
         try {
-          final ok = await _service.confirmAdvising(
+          await _service.confirmAdvising(
             portfolioId: _portfolioId!,
             sessionId: _sessionId!,
             publicKey: _publicKey!,
             phase: _phase,
           );
-          if (ok) {
-            _engine.addLog('Advising confirmed');
-            if (mounted) showAppSnackBar(context, 'Advising confirmed!');
-            await _refreshEnrolled();
-          } else {
-            throw Exception('Confirmation rejected by the server.');
-          }
+          _engine.addLog('Advising confirmed');
+          if (mounted) showAppSnackBar(context, 'Advising confirmed!');
+          await _refreshEnrolled();
         } catch (e) {
           if (mounted) showAppSnackBar(context, e.toString());
         } finally {
@@ -355,12 +381,15 @@ class _AdvisingHelperPageState extends State<AdvisingHelperPage> {
     if (_engine.isRunning) {
       _engine.stop();
     } else {
-      if (_portfolioId == null || _publicKey == null) return;
+      if (_portfolioId == null || _sessionId == null || _publicKey == null) {
+        return;
+      }
       _engine.start(
         portfolioId: _portfolioId!,
-        sessionId: _sessionId ?? _portfolioId!,
+        sessionId: _sessionId!,
         publicKey: _publicKey!,
         phase: _phase,
+        onSectionAdded: _refreshEnrolled,
       );
     }
     if (mounted) setState(() {});
@@ -435,7 +464,15 @@ class _AdvisingHelperPageState extends State<AdvisingHelperPage> {
                         selected: _phase == phase,
                         onSelected: (selected) {
                           if (selected && _phase != phase) {
-                            setState(() => _phase = phase);
+                            _engine.reset();
+                            setState(() {
+                              _phase = phase;
+                              _enrolled = const [];
+                              _portfolioId = null;
+                              _sessionId = null;
+                              _publicKey = null;
+                              _errorMessage = null;
+                            });
                             unawaited(_load(openBrowser: true));
                           }
                         },
@@ -572,7 +609,7 @@ class _AdvisingHelperPageState extends State<AdvisingHelperPage> {
             courseCode: sec.courseCode,
             sectionName: sec.sectionName,
             courseName: detail?.courseName ?? '',
-            courseType: detail?.courseType ?? 'Theory',
+            courseType: detail?.courseType ?? '',
             faculty: detail?.faculty,
             facultyInitial: sec.faculty ?? detail?.faculties ?? '',
             credits: sec.courseCredit,
@@ -680,7 +717,7 @@ class _AdvisingHelperPageState extends State<AdvisingHelperPage> {
             courseCode: item.courseCode,
             sectionName: item.sectionName,
             courseName: item.courseName ?? '',
-            courseType: detail?.courseType ?? 'Theory',
+            courseType: detail?.courseType ?? '',
             faculty: detail?.faculty,
             facultyInitial: detail?.faculties ?? '',
             credits: item.courseCredit,
@@ -754,7 +791,7 @@ class _AdvisingHelperPageState extends State<AdvisingHelperPage> {
                   children: [
                     BracuEmptyCard(
                       message: _searchQuery.isEmpty
-                          ? 'No offered sections available.'
+                          ? 'No realtime sections available.'
                           : 'No sections match your search.',
                     ),
                   ],
@@ -853,7 +890,7 @@ class _AdvisingSeatStatusCard extends StatelessWidget {
     required this.consumed,
     required this.total,
     required this.action,
-    this.courseType = 'Theory',
+    required this.courseType,
     this.faculty,
     this.isPinned = false,
     this.onTap,
@@ -1126,7 +1163,7 @@ class _AdvisingSeatStatusCard extends StatelessWidget {
 
   String _titleCaseText(String input) {
     final trimmed = input.trim();
-    if (trimmed.isEmpty) return 'Theory';
+    if (trimmed.isEmpty) return '';
     return trimmed
         .split(RegExp(r'\s+'))
         .map(
@@ -1165,7 +1202,7 @@ class _RoomBlock extends StatelessWidget {
     if (theoryRoom.trim().isNotEmpty) {
       lines.add(
         TextSpan(
-          text: '$theoryLabel: ',
+          text: '${theoryLabel.isEmpty ? 'Room' : theoryLabel}: ',
           style: TextStyle(
             color: BracuPalette.textSecondary(context),
             fontWeight: FontWeight.w500,
