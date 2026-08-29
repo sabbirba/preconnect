@@ -531,7 +531,7 @@ extension _HomeDashboardView on _HomeDashboardState {
                                       icon: Icons.bolt_rounded,
                                       title: 'Advising Helper',
                                       subtitle:
-                                          'Auto-add sections & advising manager',
+                                          'Registration & advising manager',
                                       iconColor: const Color(0xFF22B573),
                                       onTap: () {
                                         Navigator.push(
