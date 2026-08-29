@@ -121,18 +121,18 @@ void main() {
     const portfolioId = '123';
     expect(
       ApiConfig.studentCoursesForPhasePath(portfolioId, AdvisingPhase.phaseOne),
-      '/adv/v1/student-courses/schedules?studentPortfolioId=123',
+      '/adv/v1/student-courses/123/phase-one',
     );
     expect(
       ApiConfig.studentCoursesForPhasePath(portfolioId, AdvisingPhase.phaseTwo),
-      '/adv/v1/student-courses/schedules?studentPortfolioId=123',
+      '/adv/v1/student-courses/123/phase-two',
     );
     expect(
       ApiConfig.studentCoursesForPhasePath(
         portfolioId,
         AdvisingPhase.selfRegistration,
       ),
-      '/adv/v1/student-courses/schedules?studentPortfolioId=123',
+      '/adv/v1/student-courses/123/self-registration',
     );
     for (final phase in AdvisingPhase.values) {
       expect(

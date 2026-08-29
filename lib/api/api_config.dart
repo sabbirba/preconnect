@@ -106,17 +106,8 @@ class ApiConfig {
   static String advisingSectionsStudentPath(String portfolioId) =>
       '/adv/v1/advising/sections/student/$portfolioId';
 
-  static String advisingOfferedCoursesPath(
-    String portfolioId, {
-    String? phase,
-  }) =>
-      '/adv/v1/advising/sections/student/$portfolioId/offered-courses'
-      '${phase != null ? '?advisingPhase=$phase' : ''}';
-
   static String advisingConfirmPath(String sessionId) =>
       '/adv/v1/advising/$sessionId/confirm';
-
-  static const String advisingActionPath = '/adv/v1/advising';
 
   static String wishlistPath(String studentId) =>
       '/adv/v1/advising/$studentId/active-wishlist-sessions';
@@ -138,13 +129,10 @@ class ApiConfig {
       '/adv/v1/advising/sections/student/$portfolioId/related-lab-sections'
       '?phase=$phase';
 
-  static String studentCoursesActionPath(String portfolioId) =>
-      advisingSectionsStudentPath(portfolioId);
-
   static String studentCoursesForPhasePath(
     String portfolioId,
     AdvisingPhase phase,
-  ) => schedulePath(portfolioId);
+  ) => '/adv/v1/student-courses/$portfolioId/${phase.pathSegment}';
 
   static String attendancePath(String portfolioId) =>
       '/exc/v1/student-courses/$portfolioId/current-semester-attendance';

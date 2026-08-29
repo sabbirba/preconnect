@@ -46,6 +46,10 @@ class SeatStatusService {
     return preloadData(forceRefresh: forceRefresh);
   }
 
+  Future<Map<int, SeatStatusDetailsResponse>> fetchRealtimeSections() {
+    return _loadDetailsRealtimeOnly(forceRefresh: true);
+  }
+
   Future<Map<int, SeatStatusDetailsResponse>> preloadData({
     bool forceRefresh = false,
   }) async {

@@ -16,46 +16,8 @@ enum TargetSectionStatus {
   skippedZeroSeats,
 }
 
-class AdvisingSessionInfo {
-  final String id;
-  final int semesterSessionId;
-  final String phase;
-  final String? title;
-
-  const AdvisingSessionInfo({
-    required this.id,
-    required this.semesterSessionId,
-    required this.phase,
-    this.title,
-  });
-
-  factory AdvisingSessionInfo.fromJson(Map<String, dynamic> json) {
-    final rawId = json['id'] ?? json['sessionId'] ?? json['advisingSessionId'];
-    final rawSemesterId = json['semesterSessionId'] ?? json['sessionId'];
-    final id = (rawId ?? '').toString();
-    final semesterId = rawSemesterId is num
-        ? rawSemesterId.toInt()
-        : int.tryParse(rawSemesterId?.toString() ?? '') ?? 0;
-    final phase =
-        (json['advisingPhase'] ??
-                json['phase'] ??
-                json['advisingPhaseName'] ??
-                'PHASE_TWO')
-            .toString();
-    final title =
-        (json['title'] ??
-                json['description'] ??
-                json['semesterSessionName'] ??
-                '')
-            .toString();
-
-    return AdvisingSessionInfo(
-      id: id,
-      semesterSessionId: semesterId,
-      phase: phase,
-      title: title.isEmpty ? null : title,
-    );
-  }
+bool isUnavailableAdvisingPhaseResponse(ApiException error) {
+  return const <int>{400, 404, 412, 500}.contains(error.statusCode);
 }
 
 class AdvisingSectionRecord {
@@ -89,65 +51,30 @@ class AdvisingSectionRecord {
     this.labSectionName,
   });
 
-  int get remainingSeats => (capacity - consumedSeat).clamp(0, 9999);
+  int get remainingSeats => capacity - consumedSeat;
 
   factory AdvisingSectionRecord.fromJson(Map<String, dynamic> json) {
-    final rawSectionId = json['sectionId'] ?? json['id'];
-    final sectionId = rawSectionId is num
-        ? rawSectionId.toInt()
-        : int.tryParse(rawSectionId?.toString() ?? '') ?? 0;
-
-    final rawAdvId = json['advisingSectionId'] ?? json['studentCourseId'];
-    final advisingSectionId = rawAdvId is num
-        ? rawAdvId.toInt()
-        : int.tryParse(rawAdvId?.toString() ?? '');
-
-    final rawCourseId = json['courseId'];
-    final courseId = rawCourseId is num
-        ? rawCourseId.toInt()
-        : int.tryParse(rawCourseId?.toString() ?? '');
-
-    final rawCap = json['capacity'] ?? 0;
-    final capacity = rawCap is num
-        ? rawCap.toInt()
-        : int.tryParse(rawCap.toString()) ?? 0;
-
-    final rawConsumed = json['consumedSeat'] ?? 0;
-    final consumedSeat = rawConsumed is num
-        ? rawConsumed.toInt()
-        : int.tryParse(rawConsumed.toString()) ?? 0;
-
-    final rawCredit = json['courseCredit'] ?? json['credit'] ?? 3;
-    final courseCredit = rawCredit is num
-        ? rawCredit.toInt()
-        : int.tryParse(rawCredit.toString()) ?? 3;
-
-    final rawLabId = json['labSectionId'];
-    final labSectionId = rawLabId is num
-        ? rawLabId.toInt()
-        : int.tryParse(rawLabId?.toString() ?? '');
-
     return AdvisingSectionRecord(
-      sectionId: sectionId,
-      advisingSectionId: advisingSectionId,
-      courseId: courseId,
-      courseCode: (json['courseCode'] ?? json['code'] ?? '').toString(),
-      courseName: (json['courseName'] ?? json['name'])?.toString(),
-      sectionName: (json['sectionName'] ?? json['section'] ?? '').toString(),
-      capacity: capacity,
-      consumedSeat: consumedSeat,
-      courseCredit: courseCredit,
-      faculty: (json['faculties'] ?? json['faculty'])?.toString(),
-      roomNumber: (json['roomNumber'] ?? json['roomName'])?.toString(),
-      labSectionId: labSectionId,
-      labSectionName: json['labSectionName']?.toString(),
+      sectionId: _requiredInt(json, 'sectionId'),
+      advisingSectionId: _nullableInt(json, 'advisingSectionId'),
+      courseId: _nullableInt(json, 'courseId'),
+      courseCode: _requiredString(json, 'courseCode'),
+      courseName: _nullableString(json, 'name'),
+      sectionName: _requiredString(json, 'sectionName'),
+      capacity: _requiredInt(json, 'capacity'),
+      consumedSeat: _requiredInt(json, 'consumedSeat'),
+      courseCredit: _requiredInt(json, 'courseCredit'),
+      faculty: _nullableString(json, 'faculties'),
+      roomNumber: _nullableString(json, 'roomNumber'),
+      labSectionId: _nullableInt(json, 'labSectionId'),
+      labSectionName: _nullableString(json, 'labSectionName'),
     );
   }
 }
 
 class TargetSectionItem {
   final int sectionId;
-  final int? courseId;
+  final int courseId;
   final String courseCode;
   final String? courseName;
   final String sectionName;
@@ -162,7 +89,7 @@ class TargetSectionItem {
 
   TargetSectionItem({
     required this.sectionId,
-    this.courseId,
+    required this.courseId,
     required this.courseCode,
     this.courseName,
     required this.sectionName,
@@ -176,7 +103,51 @@ class TargetSectionItem {
     this.message,
   });
 
-  int get remainingSeats => (capacity - consumedSeat).clamp(0, 9999);
+  int get remainingSeats => capacity - consumedSeat;
+}
+
+int _requiredInt(Map<String, dynamic> json, String key) {
+  final value = json[key];
+  final parsed = value is num ? value.toInt() : int.tryParse('$value');
+  if (parsed == null) throw FormatException('Missing or invalid $key.');
+  return parsed;
+}
+
+int? _nullableInt(Map<String, dynamic> json, String key) {
+  final value = json[key];
+  if (value == null) return null;
+  final parsed = value is num ? value.toInt() : int.tryParse('$value');
+  if (parsed == null) throw FormatException('Invalid $key.');
+  return parsed;
+}
+
+String _requiredString(Map<String, dynamic> json, String key) {
+  final value = json[key]?.toString().trim() ?? '';
+  if (value.isEmpty) throw FormatException('Missing or invalid $key.');
+  return value;
+}
+
+String? _nullableString(Map<String, dynamic> json, String key) {
+  final value = json[key]?.toString().trim();
+  return value == null || value.isEmpty ? null : value;
+}
+
+List<AdvisingSectionRecord> parseAdvisedSectionsResponse(String body) {
+  final decoded = jsonDecode(body);
+  if (decoded is! List) {
+    throw const FormatException('Invalid advised sections response.');
+  }
+  final sections = <int, AdvisingSectionRecord>{};
+  for (final item in decoded) {
+    if (item is! Map) {
+      throw const FormatException('Invalid advised section record.');
+    }
+    final section = AdvisingSectionRecord.fromJson(
+      item.cast<String, dynamic>(),
+    );
+    sections[section.sectionId] = section;
+  }
+  return sections.values.toList(growable: false);
 }
 
 class AdvisingHelperService {
@@ -191,35 +162,33 @@ class AdvisingHelperService {
     final connectJson = await AppStorage.instance.getString(
       'preconnect.cookies.connect',
     );
-    final parts = <String>[];
-    void extractCookies(String? raw) {
-      if (raw == null || raw.trim().isEmpty) return;
-      try {
-        final decoded = jsonDecode(raw);
-        if (decoded is List) {
-          for (final item in decoded) {
-            if (item is Map) {
-              final name = '${item['name'] ?? ''}'.trim();
-              final val = '${item['value'] ?? ''}'.trim();
-              if (name.isNotEmpty) {
-                parts.add('$name=$val');
-              }
-            }
-          }
-        }
-      } catch (_) {}
+    if (connectJson == null || connectJson.trim().isEmpty) return '';
+    final decoded = jsonDecode(connectJson);
+    if (decoded is! List) {
+      throw const FormatException('Invalid BRACU Connect cookie snapshot.');
     }
-
-    extractCookies(connectJson);
-    return parts.join('; ');
+    return decoded
+        .map((item) {
+          if (item is! Map) {
+            throw const FormatException('Invalid BRACU Connect cookie entry.');
+          }
+          final name = '${item['name'] ?? ''}'.trim();
+          final value = '${item['value'] ?? ''}'.trim();
+          if (name.isEmpty) {
+            throw const FormatException(
+              'BRACU Connect cookie name is missing.',
+            );
+          }
+          return '$name=$value';
+        })
+        .join('; ');
   }
 
   Future<Map<String, String>> buildRequestHeaders({
     String? publicKey,
-    String? phasePathSegment,
+    required AdvisingPhase phase,
   }) async {
-    final cookie = await buildCookieHeader();
-    final refererSegment = phasePathSegment ?? 'phase-two';
+    final cookie = kIsWeb ? '' : await buildCookieHeader();
 
     return <String, String>{
       'Content-Type': 'application/json',
@@ -229,7 +198,7 @@ class AdvisingHelperService {
       if (!kIsWeb) 'Origin': ApiConfig.connectOrigin,
       if (!kIsWeb)
         'Referer':
-            'https://connect.bracu.ac.bd/student/advising/$refererSegment',
+            'https://connect.bracu.ac.bd/student/advising/${phase.pathSegment}',
       if (!kIsWeb)
         'User-Agent':
             'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36',
@@ -239,45 +208,16 @@ class AdvisingHelperService {
     };
   }
 
-  Future<List<AdvisingSessionInfo>> fetchActiveSessions(
-    String studentId, {
-    AdvisingPhase? phase,
-  }) async {
-    final query = phase != null
-        ? 'advisingPhase=${phase.queryValue}'
-        : 'advisingPhase=PHASE_ONE&advisingPhase=PHASE_TWO&advisingPhase=SELF_REGISTRATION';
-    final url =
-        '${ApiConfig.connectApiBase}${ApiConfig.advisingPath(studentId)}?$query';
-
-    final headers = await buildRequestHeaders();
-    final res = await _client.authenticatedGet(
-      url,
-      additionalHeaders: headers,
-      bypassCache: true,
-    );
-
-    if (res.statusCode == 200) {
-      final decoded = jsonDecode(res.body);
-      if (decoded is List) {
-        return decoded
-            .whereType<Map>()
-            .map((e) => AdvisingSessionInfo.fromJson(e.cast<String, dynamic>()))
-            .toList();
-      }
-    }
-    return const <AdvisingSessionInfo>[];
-  }
-
   Future<bool> startSession(
     String sessionId,
     String publicKey, {
-    String? phasePathSegment,
+    required AdvisingPhase phase,
   }) async {
     final url =
         '${ApiConfig.connectApiBase}${ApiConfig.advisingSessionStartPath(sessionId, publicKey: publicKey)}';
     final headers = await buildRequestHeaders(
       publicKey: publicKey,
-      phasePathSegment: phasePathSegment,
+      phase: phase,
     );
 
     try {
@@ -285,26 +225,25 @@ class AdvisingHelperService {
         'GET',
         url,
         additionalHeaders: headers,
-        acceptedStatusCodes: const <int>{200, 201, 204},
+        acceptedStatusCodes: const <int>{200},
       );
-      return res.statusCode == 200 ||
-          res.statusCode == 201 ||
-          res.statusCode == 204;
-    } catch (_) {
-      return false;
+      return res.statusCode == 200;
+    } on ApiException catch (error) {
+      if (isUnavailableAdvisingPhaseResponse(error)) return false;
+      rethrow;
     }
   }
 
   Future<List<AdvisingSectionRecord>> fetchAdvisedSections(
     String portfolioId, {
-    AdvisingPhase phase = AdvisingPhase.phaseTwo,
-    String? publicKey,
+    required AdvisingPhase phase,
+    required String publicKey,
   }) async {
     final url =
         '${ApiConfig.connectApiBase}${ApiConfig.studentCoursesForPhasePath(portfolioId, phase)}';
     final headers = await buildRequestHeaders(
       publicKey: publicKey,
-      phasePathSegment: phase.pathSegment,
+      phase: phase,
     );
 
     final res = await _client.authenticatedGet(
@@ -314,199 +253,105 @@ class AdvisingHelperService {
     );
 
     if (res.statusCode == 200) {
-      final decoded = jsonDecode(res.body);
-      List<dynamic>? list;
-      if (decoded is List) {
-        list = decoded;
-      } else if (decoded is Map && decoded['courses'] is List) {
-        list = decoded['courses'];
-      } else if (decoded is Map && decoded['sections'] is List) {
-        list = decoded['sections'];
-      }
-      if (list != null) {
-        return list
-            .whereType<Map>()
-            .map(
-              (e) => AdvisingSectionRecord.fromJson(e.cast<String, dynamic>()),
-            )
-            .toList();
-      }
+      return parseAdvisedSectionsResponse(res.body);
     }
-    return const <AdvisingSectionRecord>[];
+    throw ApiException(res.statusCode, res.body);
   }
 
-  Future<bool> addSection({
+  Future<Map<int, SeatStatusDetailsResponse>> fetchRealtimeSections() {
+    return SeatStatusService().fetchRealtimeSections();
+  }
+
+  Future<void> addSection({
     required String portfolioId,
     required int sectionId,
-    int? courseId,
+    required int courseId,
     int? labSectionId,
-    int? courseCredit,
+    required int courseCredit,
     required String publicKey,
-    AdvisingPhase phase = AdvisingPhase.phaseTwo,
-    void Function(String)? onError,
+    required AdvisingPhase phase,
   }) async {
     final headers = await buildRequestHeaders(
       publicKey: publicKey,
-      phasePathSegment: phase.pathSegment,
+      phase: phase,
     );
 
-    final parsedPortfolioId = int.tryParse(portfolioId);
     final payload = <String, dynamic>{
       'sectionId': sectionId,
-      'studentPortfolioId': parsedPortfolioId ?? portfolioId,
-      'courseId': ?courseId,
-      'labSectionId': ?labSectionId,
-      'courseCredit': ?courseCredit,
+      'studentPortfolioId': int.parse(portfolioId),
+      'courseId': courseId,
+      'labSectionId': labSectionId,
+      'courseCredit': courseCredit,
     };
 
     final url =
-        '${ApiConfig.connectApiBase}${ApiConfig.studentCoursesActionPath(portfolioId)}';
+        '${ApiConfig.connectApiBase}${ApiConfig.advisingSectionsStudentPath(portfolioId)}';
 
-    try {
-      final res = await _client.authenticatedRequest(
-        'POST',
-        url,
-        body: jsonEncode(payload),
-        additionalHeaders: headers,
-        acceptedStatusCodes: const <int>{
-          200,
-          201,
-          204,
-          400,
-          403,
-          404,
-          409,
-          422,
-          500,
-        },
-      );
-      if (res.statusCode == 200 ||
-          res.statusCode == 201 ||
-          res.statusCode == 204) {
-        return true;
-      }
-      final msg = _extractErrorMessage(res.body);
-      if (onError != null) {
-        onError(
-          msg.isNotEmpty ? msg : 'Status ${res.statusCode}: ${res.body.trim()}',
-        );
-      }
-    } catch (e) {
-      if (onError != null) onError('$e');
-    }
-    return false;
+    await _client.authenticatedRequest(
+      'POST',
+      url,
+      body: jsonEncode(payload),
+      additionalHeaders: headers,
+      acceptedStatusCodes: const <int>{200, 201},
+    );
   }
 
-  String _extractErrorMessage(String body) {
-    try {
-      final decoded = jsonDecode(body);
-      if (decoded is Map<String, dynamic>) {
-        final msg =
-            decoded['message'] ??
-            decoded['error'] ??
-            decoded['description'] ??
-            decoded['title'] ??
-            decoded['detail'];
-        if (msg != null && msg.toString().trim().isNotEmpty) {
-          return msg.toString().trim();
-        }
-      }
-    } catch (_) {}
-    return '';
-  }
-
-  Future<bool> dropSection({
+  Future<void> dropSection({
     required String portfolioId,
     required int sectionId,
     int? advisingSectionId,
     required String publicKey,
-    AdvisingPhase phase = AdvisingPhase.phaseTwo,
+    required AdvisingPhase phase,
   }) async {
     final headers = await buildRequestHeaders(
       publicKey: publicKey,
-      phasePathSegment: phase.pathSegment,
+      phase: phase,
     );
 
-    final parsedPortfolioId = int.tryParse(portfolioId);
     final payload = <String, dynamic>{
       'sectionId': sectionId,
-      'studentPortfolioId': parsedPortfolioId ?? portfolioId,
-      'advisingSectionId': ?advisingSectionId,
+      'studentPortfolioId': int.parse(portfolioId),
+      'advisingSectionId': advisingSectionId,
     };
 
     final url =
-        '${ApiConfig.connectApiBase}${ApiConfig.studentCoursesActionPath(portfolioId)}';
+        '${ApiConfig.connectApiBase}${ApiConfig.advisingSectionsStudentPath(portfolioId)}';
 
-    try {
-      final res = await _client.authenticatedRequest(
-        'DELETE',
-        url,
-        body: jsonEncode(payload),
-        additionalHeaders: headers,
-        acceptedStatusCodes: const <int>{
-          200,
-          201,
-          204,
-          400,
-          403,
-          404,
-          409,
-          422,
-        },
-      );
-      if (res.statusCode == 200 ||
-          res.statusCode == 204 ||
-          res.statusCode == 201) {
-        return true;
-      }
-    } catch (_) {}
-    return false;
+    await _client.authenticatedRequest(
+      'DELETE',
+      url,
+      body: jsonEncode(payload),
+      additionalHeaders: headers,
+      acceptedStatusCodes: const <int>{200, 204},
+    );
   }
 
-  Future<bool> confirmAdvising({
+  Future<void> confirmAdvising({
     required String portfolioId,
     required String sessionId,
     required String publicKey,
-    AdvisingPhase phase = AdvisingPhase.phaseTwo,
+    required AdvisingPhase phase,
   }) async {
     final headers = await buildRequestHeaders(
       publicKey: publicKey,
-      phasePathSegment: phase.pathSegment,
+      phase: phase,
     );
 
-    final parsedPortfolioId = int.tryParse(portfolioId);
     final payload = jsonEncode(<String, dynamic>{
-      'studentPortfolioId': parsedPortfolioId ?? portfolioId,
+      'studentPortfolioId': int.parse(portfolioId),
       'sessionId': sessionId,
     });
 
     final url =
         '${ApiConfig.connectApiBase}${ApiConfig.advisingConfirmPath(sessionId)}';
 
-    try {
-      final res = await _client.authenticatedRequest(
-        'POST',
-        url,
-        body: payload,
-        additionalHeaders: headers,
-        acceptedStatusCodes: const <int>{
-          200,
-          201,
-          204,
-          400,
-          403,
-          404,
-          409,
-          422,
-        },
-      );
-      if (res.statusCode == 200 ||
-          res.statusCode == 201 ||
-          res.statusCode == 204) {
-        return true;
-      }
-    } catch (_) {}
-    return false;
+    await _client.authenticatedRequest(
+      'POST',
+      url,
+      body: payload,
+      additionalHeaders: headers,
+      acceptedStatusCodes: const <int>{200},
+    );
   }
 }
 
@@ -516,11 +361,17 @@ class AdvisingAutoEngine extends ChangeNotifier {
 
   bool isRunning = false;
   bool _isTicking = false;
+  bool _sessionStarted = false;
+  bool _reportedSessionWait = false;
+  String? _lastSessionError;
+  String? _lastOfferedSectionsError;
+  int _runGeneration = 0;
   Timer? _loopTimer;
   String? portfolioId;
   String? sessionId;
   String? publicKey;
-  AdvisingPhase phase = AdvisingPhase.phaseTwo;
+  Future<void> Function()? onSectionAdded;
+  late AdvisingPhase phase;
 
   void addLog(String text) {
     final timeStr = DateTime.now().toIso8601String().substring(11, 19);
@@ -536,7 +387,6 @@ class AdvisingAutoEngine extends ChangeNotifier {
     if (targetSections.any((e) => e.sectionId == item.sectionId)) return;
     targetSections.add(item);
     addLog('Queued: ${item.courseCode} Section ${item.sectionName}');
-    notifyListeners();
   }
 
   void removeSectionFromQueue(int sectionId) {
@@ -544,7 +394,6 @@ class AdvisingAutoEngine extends ChangeNotifier {
     if (index != -1) {
       final item = targetSections.removeAt(index);
       addLog('Removed: ${item.courseCode} Section ${item.sectionName}');
-      notifyListeners();
     }
   }
 
@@ -554,20 +403,44 @@ class AdvisingAutoEngine extends ChangeNotifier {
     notifyListeners();
   }
 
+  void reset() {
+    _runGeneration++;
+    isRunning = false;
+    _loopTimer?.cancel();
+    _loopTimer = null;
+    _sessionStarted = false;
+    _reportedSessionWait = false;
+    _lastSessionError = null;
+    _lastOfferedSectionsError = null;
+    portfolioId = null;
+    sessionId = null;
+    publicKey = null;
+    onSectionAdded = null;
+    targetSections.clear();
+    activityLogs.clear();
+    notifyListeners();
+  }
+
   void start({
     required String portfolioId,
     required String sessionId,
     required String publicKey,
-    AdvisingPhase phase = AdvisingPhase.phaseTwo,
+    required AdvisingPhase phase,
+    Future<void> Function()? onSectionAdded,
   }) {
     if (isRunning) return;
+    _runGeneration++;
     this.portfolioId = portfolioId;
     this.sessionId = sessionId;
     this.publicKey = publicKey;
     this.phase = phase;
+    this.onSectionAdded = onSectionAdded;
+    _sessionStarted = false;
+    _reportedSessionWait = false;
+    _lastSessionError = null;
+    _lastOfferedSectionsError = null;
     isRunning = true;
     addLog('Advising Helper started');
-    notifyListeners();
 
     _loopTimer?.cancel();
     _loopTimer = Timer.periodic(const Duration(milliseconds: 1000), (_) {
@@ -578,6 +451,7 @@ class AdvisingAutoEngine extends ChangeNotifier {
 
   void stop() {
     if (!isRunning) return;
+    _runGeneration++;
     isRunning = false;
     _loopTimer?.cancel();
     _loopTimer = null;
@@ -588,7 +462,6 @@ class AdvisingAutoEngine extends ChangeNotifier {
       }
     }
     addLog('Advising Helper stopped');
-    notifyListeners();
   }
 
   Future<void> _tick() async {
@@ -596,6 +469,7 @@ class AdvisingAutoEngine extends ChangeNotifier {
       return;
     }
     _isTicking = true;
+    final runGeneration = _runGeneration;
 
     try {
       final pending = targetSections
@@ -608,12 +482,71 @@ class AdvisingAutoEngine extends ChangeNotifier {
 
       if (pending.isEmpty) return;
 
+      if (!_sessionStarted) {
+        bool sessionStarted;
+        try {
+          sessionStarted = await AdvisingHelperService().startSession(
+            sessionId!,
+            publicKey!,
+            phase: phase,
+          );
+        } catch (error) {
+          if (!isRunning || runGeneration != _runGeneration) return;
+          final message = '$error';
+          for (final item in pending) {
+            item.status = TargetSectionStatus.failed;
+            item.message = message;
+          }
+          if (_lastSessionError != message) {
+            _lastSessionError = message;
+            addLog('${phase.label} session request failed: $message');
+          } else {
+            notifyListeners();
+          }
+          return;
+        }
+        if (!isRunning || runGeneration != _runGeneration) return;
+        _lastSessionError = null;
+        _sessionStarted = sessionStarted;
+        if (!_sessionStarted) {
+          for (final item in pending) {
+            item.status = TargetSectionStatus.watching;
+            item.message = 'Waiting for ${phase.label} to become active';
+          }
+          if (!_reportedSessionWait) {
+            addLog(
+              '${phase.label} session is not active. Waiting and retrying...',
+            );
+            _reportedSessionWait = true;
+          } else {
+            notifyListeners();
+          }
+          return;
+        }
+        _reportedSessionWait = false;
+        addLog('${phase.label} session is active');
+      }
+
       Map<int, SeatStatusDetailsResponse>? detailsMap;
       try {
-        detailsMap = await SeatStatusService().preloadData(forceRefresh: true);
-      } catch (_) {
-        detailsMap = SeatStatusService().cachedDetails;
+        detailsMap = await AdvisingHelperService().fetchRealtimeSections();
+      } catch (error) {
+        if (!isRunning || runGeneration != _runGeneration) return;
+        final message = '$error';
+        for (final item in pending) {
+          item.status = TargetSectionStatus.failed;
+          item.message = message;
+        }
+        if (_lastOfferedSectionsError != message) {
+          _lastOfferedSectionsError = message;
+          addLog('Failed to refresh realtime Connect sections: $message');
+        } else {
+          notifyListeners();
+        }
+        return;
       }
+      if (!isRunning || runGeneration != _runGeneration) return;
+      _lastOfferedSectionsError = null;
 
       for (final item in pending) {
         if (!isRunning ||
@@ -621,9 +554,15 @@ class AdvisingAutoEngine extends ChangeNotifier {
           continue;
         }
 
-        final detail = detailsMap?[item.sectionId];
-        final currentCap = detail?.capacity ?? item.capacity;
-        final currentConsumed = detail?.consumedSeat ?? item.consumedSeat;
+        final detail = detailsMap[item.sectionId];
+        if (detail == null) {
+          item.status = TargetSectionStatus.failed;
+          item.message = 'Section is not present in the realtime Connect data';
+          notifyListeners();
+          continue;
+        }
+        final currentCap = detail.capacity;
+        final currentConsumed = detail.consumedSeat;
         final remaining = currentCap - currentConsumed;
 
         if (remaining <= 0) {
@@ -642,36 +581,33 @@ class AdvisingAutoEngine extends ChangeNotifier {
         );
         notifyListeners();
 
-        String? serverError;
         try {
-          final success = await AdvisingHelperService().addSection(
+          await AdvisingHelperService().addSection(
             portfolioId: portfolioId!,
             sectionId: item.sectionId,
-            courseId: item.courseId,
-            labSectionId: item.labSectionId,
-            courseCredit: item.courseCredit,
+            courseId: detail.courseId,
+            labSectionId: detail.labSectionId,
+            courseCredit: detail.courseCredit,
             publicKey: publicKey!,
             phase: phase,
-            onError: (err) => serverError = err,
           );
 
           if (!targetSections.any((e) => e.sectionId == item.sectionId)) {
             continue;
           }
 
-          if (success) {
-            item.status = TargetSectionStatus.added;
-            item.message = 'Successfully added!';
-            addLog(
-              'Success: ${item.courseCode} Sec ${item.sectionName} enrolled',
-            );
-          } else {
-            item.status = TargetSectionStatus.failed;
-            final failReason = serverError ?? 'Add request failed';
-            item.message = failReason;
-            addLog(
-              'Failed to add ${item.courseCode} Sec ${item.sectionName}: $failReason',
-            );
+          item.status = TargetSectionStatus.added;
+          item.message = 'Successfully added!';
+          addLog(
+            'Success: ${item.courseCode} Sec ${item.sectionName} enrolled',
+          );
+          final refreshEnrolled = onSectionAdded;
+          if (refreshEnrolled != null) {
+            try {
+              await refreshEnrolled();
+            } catch (error) {
+              addLog('Enrolled list refresh failed: $error');
+            }
           }
         } catch (e) {
           if (!targetSections.any((e) => e.sectionId == item.sectionId)) {

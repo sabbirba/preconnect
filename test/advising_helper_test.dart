@@ -1,8 +1,10 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:preconnect/api/api_client.dart';
 import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/api/advising_service.dart';
+import 'package:preconnect/model/advising_phase.dart';
 import 'package:preconnect/pages/advising_helper.dart';
 import 'package:preconnect/tools/app_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -15,38 +17,42 @@ void main() {
     await AppStorage.initialize();
   });
 
-  group('AdvisingSessionInfo & AdvisingSectionRecord', () {
+  group('AdvisingSectionRecord', () {
+    test('recognizes exact unavailable-phase response statuses', () {
+      for (final status in <int>[400, 404, 412, 500]) {
+        expect(isUnavailableAdvisingPhaseResponse(ApiException(status)), true);
+      }
+      expect(
+        isUnavailableAdvisingPhaseResponse(const ApiException(401)),
+        false,
+      );
+      expect(
+        isUnavailableAdvisingPhaseResponse(const ApiException(403)),
+        false,
+      );
+      expect(
+        isUnavailableAdvisingPhaseResponse(const ApiException(502)),
+        false,
+      );
+    });
+
     test('uses the current advising endpoint contracts', () {
       expect(
         ApiConfig.advisingSessionStartPath('70801', publicKey: 'key'),
         '/adv/v1/advising/70801/advising-session?publicKey=key',
       );
       expect(
-        ApiConfig.studentCoursesActionPath('70801'),
+        ApiConfig.advisingSectionsStudentPath('70801'),
         '/adv/v1/advising/sections/student/70801',
       );
       expect(
-        ApiConfig.schedulePath('70801'),
-        '/adv/v1/student-courses/schedules?studentPortfolioId=70801',
+        ApiConfig.studentCoursesForPhasePath('70801', AdvisingPhase.phaseOne),
+        '/adv/v1/student-courses/70801/phase-one',
       );
       expect(
         ApiConfig.advisingConfirmPath('70801'),
         '/adv/v1/advising/70801/confirm',
       );
-    });
-
-    test('parses active session info correctly', () {
-      final json = <String, dynamic>{
-        'id': '10042',
-        'semesterSessionId': 20261,
-        'advisingPhase': 'PHASE_TWO',
-        'title': 'Spring 2026 Phase 2',
-      };
-      final session = AdvisingSessionInfo.fromJson(json);
-      expect(session.id, '10042');
-      expect(session.semesterSessionId, 20261);
-      expect(session.phase, 'PHASE_TWO');
-      expect(session.title, 'Spring 2026 Phase 2');
     });
 
     test('parses advising section record and computes remaining seats', () {
@@ -55,7 +61,7 @@ void main() {
         'advisingSectionId': 801,
         'courseId': 501,
         'courseCode': 'CSE220',
-        'courseName': 'Data Structures',
+        'name': 'Data Structures',
         'sectionName': '01',
         'capacity': 35,
         'consumedSeat': 30,
@@ -77,9 +83,61 @@ void main() {
         'sectionName': '02',
         'capacity': 35,
         'consumedSeat': 35,
+        'courseCredit': 3,
       };
       final record = AdvisingSectionRecord.fromJson(json);
       expect(record.remainingSeats, 0);
+    });
+
+    test('rejects response aliases and missing exact fields', () {
+      expect(
+        () => AdvisingSectionRecord.fromJson(<String, dynamic>{
+          'id': 402,
+          'code': 'CSE221',
+          'section': '02',
+          'capacity': 35,
+          'consumedSeat': 35,
+          'credit': 3,
+        }),
+        throwsFormatException,
+      );
+    });
+
+    test('preserves the server seat arithmetic without clamping', () {
+      final record = AdvisingSectionRecord.fromJson(<String, dynamic>{
+        'sectionId': 402,
+        'courseCode': 'CSE221',
+        'sectionName': '02',
+        'capacity': 35,
+        'consumedSeat': 37,
+        'courseCredit': 3,
+      });
+
+      expect(record.remainingSeats, -2);
+    });
+
+    test('rejects wrapped section responses and removes duplicate IDs', () {
+      final section = <String, dynamic>{
+        'sectionId': 402,
+        'courseCode': 'CSE221',
+        'sectionName': '02',
+        'capacity': 35,
+        'consumedSeat': 30,
+        'courseCredit': 3,
+      };
+
+      expect(
+        () => parseAdvisedSectionsResponse(
+          jsonEncode(<String, dynamic>{
+            'sections': <Map<String, dynamic>>[section],
+          }),
+        ),
+        throwsFormatException,
+      );
+      expect(
+        parseAdvisedSectionsResponse(jsonEncode(<Object>[section, section])),
+        hasLength(1),
+      );
     });
   });
 
@@ -88,6 +146,7 @@ void main() {
       final engine = AdvisingAutoEngine();
       final item = TargetSectionItem(
         sectionId: 101,
+        courseId: 1001,
         courseCode: 'CSE110',
         sectionName: '01',
         capacity: 30,
@@ -96,6 +155,7 @@ void main() {
       );
 
       engine.addSectionToQueue(item);
+      engine.addSectionToQueue(item);
       expect(engine.targetSections.length, 1);
       expect(engine.targetSections.first.sectionId, 101);
 
@@ -103,10 +163,35 @@ void main() {
       expect(engine.targetSections.isEmpty, true);
     });
 
+    test('reset removes every phase-specific state value', () {
+      final engine = AdvisingAutoEngine();
+      engine.addSectionToQueue(
+        TargetSectionItem(
+          sectionId: 101,
+          courseId: 1001,
+          courseCode: 'CSE110',
+          sectionName: '01',
+          capacity: 30,
+          consumedSeat: 30,
+          courseCredit: 3,
+        ),
+      );
+
+      engine.reset();
+
+      expect(engine.targetSections, isEmpty);
+      expect(engine.activityLogs, isEmpty);
+      expect(engine.isRunning, isFalse);
+      expect(engine.portfolioId, isNull);
+      expect(engine.sessionId, isNull);
+      expect(engine.publicKey, isNull);
+    });
+
     test('skips network hit if remaining seats is 0', () {
       final engine = AdvisingAutoEngine();
       final zeroSeatItem = TargetSectionItem(
         sectionId: 999,
+        courseId: 1999,
         courseCode: 'CSE420',
         sectionName: '01',
         capacity: 30,
@@ -123,6 +208,7 @@ void main() {
       final engine = AdvisingAutoEngine();
       final item = TargetSectionItem(
         sectionId: 500,
+        courseId: 1500,
         courseCode: 'MAT215',
         sectionName: '06',
         capacity: 35,
