@@ -80,6 +80,9 @@
         "mac": "Command+Shift+3"
       },
       "description": "Open Share Schedule"
+    },
+    "open_advising_helper": {
+      "description": "Open Advising Helper"
     }
   },
   "host_permissions": ["<all_urls>"],

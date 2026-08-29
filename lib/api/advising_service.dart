@@ -191,10 +191,6 @@ class AdvisingHelperService {
     final connectJson = await AppStorage.instance.getString(
       'preconnect.cookies.connect',
     );
-    final ssoJson = await AppStorage.instance.getString(
-      'preconnect.cookies.sso',
-    );
-
     final parts = <String>[];
     void extractCookies(String? raw) {
       if (raw == null || raw.trim().isEmpty) return;
@@ -215,7 +211,6 @@ class AdvisingHelperService {
     }
 
     extractCookies(connectJson);
-    extractCookies(ssoJson);
     return parts.join('; ');
   }
 
@@ -287,10 +282,10 @@ class AdvisingHelperService {
 
     try {
       final res = await _client.authenticatedRequest(
-        'POST',
+        'GET',
         url,
-        body: '',
         additionalHeaders: headers,
+        acceptedStatusCodes: const <int>{200, 201, 204},
       );
       return res.statusCode == 200 ||
           res.statusCode == 201 ||
@@ -365,7 +360,7 @@ class AdvisingHelperService {
     };
 
     final url =
-        '${ApiConfig.connectApiBase}${ApiConfig.studentCoursesActionPath(phase)}';
+        '${ApiConfig.connectApiBase}${ApiConfig.studentCoursesActionPath(portfolioId)}';
 
     try {
       final res = await _client.authenticatedRequest(
@@ -382,6 +377,7 @@ class AdvisingHelperService {
           404,
           409,
           422,
+          500,
         },
       );
       if (res.statusCode == 200 ||
@@ -439,7 +435,7 @@ class AdvisingHelperService {
     };
 
     final url =
-        '${ApiConfig.connectApiBase}${ApiConfig.studentCoursesActionPath(phase)}';
+        '${ApiConfig.connectApiBase}${ApiConfig.studentCoursesActionPath(portfolioId)}';
 
     try {
       final res = await _client.authenticatedRequest(
