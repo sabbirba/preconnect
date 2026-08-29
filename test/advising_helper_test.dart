@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/api/advising_service.dart';
 import 'package:preconnect/pages/advising_helper.dart';
 import 'package:preconnect/tools/app_storage.dart';
@@ -15,6 +16,25 @@ void main() {
   });
 
   group('AdvisingSessionInfo & AdvisingSectionRecord', () {
+    test('uses the current advising endpoint contracts', () {
+      expect(
+        ApiConfig.advisingSessionStartPath('70801', publicKey: 'key'),
+        '/adv/v1/advising/70801/advising-session?publicKey=key',
+      );
+      expect(
+        ApiConfig.studentCoursesActionPath('70801'),
+        '/adv/v1/advising/sections/student/70801',
+      );
+      expect(
+        ApiConfig.schedulePath('70801'),
+        '/adv/v1/student-courses/schedules?studentPortfolioId=70801',
+      );
+      expect(
+        ApiConfig.advisingConfirmPath('70801'),
+        '/adv/v1/advising/70801/confirm',
+      );
+    });
+
     test('parses active session info correctly', () {
       final json = <String, dynamic>{
         'id': '10042',
@@ -130,6 +150,9 @@ void main() {
           {'name': 'JSESSIONID', 'value': 'test_session_123'},
           {'name': 'XSRF-TOKEN', 'value': 'xsrf_token_456'},
         ]),
+        'preconnect.cookies.sso': jsonEncode([
+          {'name': 'SSO_SESSION', 'value': 'must_not_be_forwarded'},
+        ]),
       });
       await AppStorage.initialize();
 
@@ -137,6 +160,7 @@ void main() {
       final cookieHeader = await service.buildCookieHeader();
       expect(cookieHeader, contains('JSESSIONID=test_session_123'));
       expect(cookieHeader, contains('XSRF-TOKEN=xsrf_token_456'));
+      expect(cookieHeader, isNot(contains('SSO_SESSION')));
     });
   });
 

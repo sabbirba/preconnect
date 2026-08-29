@@ -138,13 +138,13 @@ class ApiConfig {
       '/adv/v1/advising/sections/student/$portfolioId/related-lab-sections'
       '?phase=$phase';
 
-  static String studentCoursesActionPath(AdvisingPhase phase) =>
-      '/adv/v1/student-courses/${phase.pathSegment}';
+  static String studentCoursesActionPath(String portfolioId) =>
+      advisingSectionsStudentPath(portfolioId);
 
   static String studentCoursesForPhasePath(
     String portfolioId,
     AdvisingPhase phase,
-  ) => '/adv/v1/student-courses/$portfolioId/${phase.pathSegment}';
+  ) => schedulePath(portfolioId);
 
   static String attendancePath(String portfolioId) =>
       '/exc/v1/student-courses/$portfolioId/current-semester-attendance';

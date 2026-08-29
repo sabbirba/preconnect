@@ -92,23 +92,31 @@ class _AdvisingHelperPageState extends State<AdvisingHelperPage> {
 
       _publicKey = DateTime.now().millisecondsSinceEpoch.toString();
 
-      try {
-        final sessions = await _service.fetchActiveSessions(
-          _studentId!,
-          phase: _phase,
+      final sessions = await _service.fetchActiveSessions(
+        _studentId!,
+        phase: _phase,
+      );
+      if (sessions.isEmpty) {
+        throw Exception(
+          'No active ${_phase.label} advising session was found.',
         );
-        if (sessions.isNotEmpty) {
-          _sessionId = sessions.first.id;
-          await _service.startSession(
-            _sessionId!,
-            _publicKey!,
-            phasePathSegment: _phase.pathSegment,
-          );
-        } else {
-          _sessionId = _portfolioId;
-        }
-      } catch (_) {
-        _sessionId = _portfolioId;
+      }
+
+      final session = sessions.first;
+      if (session.id.isEmpty) {
+        throw Exception('The advising session returned an invalid portfolio.');
+      }
+      _portfolioId = session.id;
+      _sessionId = session.id;
+      final started = await _service.startSession(
+        _sessionId!,
+        _publicKey!,
+        phasePathSegment: _phase.pathSegment,
+      );
+      if (!started) {
+        throw Exception(
+          'BRACU Connect rejected the advising session handshake. Open Connect, sign in, then retry.',
+        );
       }
 
       await Future.wait([_refreshEnrolled(), _refreshSeats()]);
@@ -125,14 +133,12 @@ class _AdvisingHelperPageState extends State<AdvisingHelperPage> {
 
   Future<void> _refreshEnrolled() async {
     if (_portfolioId == null) return;
-    try {
-      final sections = await _service.fetchAdvisedSections(
-        _portfolioId!,
-        phase: _phase,
-        publicKey: _publicKey,
-      );
-      if (mounted) setState(() => _enrolled = sections);
-    } catch (_) {}
+    final sections = await _service.fetchAdvisedSections(
+      _portfolioId!,
+      phase: _phase,
+      publicKey: _publicKey,
+    );
+    if (mounted) setState(() => _enrolled = sections);
   }
 
   Future<void> _refreshSeats() async {
