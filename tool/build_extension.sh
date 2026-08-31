@@ -102,6 +102,7 @@ for f in \
   favicon.png \
   touch_icon.png \
   auto_logout.js \
+  connect_bridge.js \
   remove_hash.js \
   remove_loader.js \
   index.html; do
@@ -194,6 +195,11 @@ for required_file in \
     exit 1
   fi
 done
+
+if [[ ! -f "${COMMON_DIR}/connect_bridge.js" ]]; then
+  echo "Missing Connect browser relay: connect_bridge.js" >&2
+  exit 1
+fi
 
 if ! grep -q 'renderer:"canvaskit"' "${COMMON_DIR}/flutter_bootstrap.js"; then
   echo "Flutter extension bootstrap is not configured for CanvasKit" >&2

@@ -14,10 +14,10 @@ import 'package:preconnect/pages/friend_sections/friend_header.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/preconnect_constants.dart';
 import 'package:preconnect/tools/token_storage.dart';
-import 'package:preconnect/tools/time_utils.dart';
 import 'package:preconnect/api/fcm.dart';
 import 'package:preconnect/tools/ramadan.dart';
 import 'package:preconnect/pages/shared_widgets/faculty_sheet.dart';
+import 'package:preconnect/pages/shared_widgets/seat_filters.dart';
 part 'shared_widgets/seat_status.dart';
 
 String seatStatusFacultySummaryLabel(section.SectionFaculty? faculty) {
@@ -70,17 +70,6 @@ class SeatStatusPage extends StatefulWidget {
 class _SeatStatusPageState extends State<SeatStatusPage>
     with WidgetsBindingObserver {
   static const String _pinScope = 'seat_status';
-  static const List<String> _weekdayOrder = <String>[
-    'SUNDAY',
-    'MONDAY',
-    'TUESDAY',
-    'WEDNESDAY',
-    'THURSDAY',
-    'FRIDAY',
-    'SATURDAY',
-  ];
-  static const List<String> _modeOrder = <String>["Labs", "Theory"];
-
   final SeatStatusService _service = SeatStatusService();
   final List<_SeatStatusCardData> _cards = <_SeatStatusCardData>[];
   final List<_SeatStatusCardData> _visibleCards = <_SeatStatusCardData>[];
@@ -791,35 +780,6 @@ String _titleCaseText(String value) {
         return part[0].toUpperCase() + part.substring(1).toLowerCase();
       })
       .join(' ');
-}
-
-class _SeatFilterChip extends StatelessWidget {
-  const _SeatFilterChip({
-    required this.icon,
-    required this.label,
-    this.selected = false,
-    this.onTap,
-    this.showArrow = true,
-  });
-
-  final IconData icon;
-  final String label;
-  final bool selected;
-  final VoidCallback? onTap;
-  final bool showArrow;
-
-  @override
-  Widget build(BuildContext context) {
-    return BracuSelectChip(
-      icon: icon,
-      label: label,
-      selected: selected,
-      onTap: onTap,
-      showArrow: showArrow,
-      compact: true,
-      borderRadius: 16,
-    );
-  }
 }
 
 class _PinIconButton extends StatelessWidget {

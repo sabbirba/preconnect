@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
 import 'package:preconnect/api/api_client.dart';
@@ -7,14 +6,17 @@ import 'package:preconnect/api/advising_service.dart';
 import 'package:preconnect/api/profile.dart';
 import 'package:preconnect/api/seat_status.dart';
 import 'package:preconnect/model/advising_phase.dart';
+import 'package:preconnect/model/seat_timetable.dart';
 import 'package:preconnect/model/section_info.dart' as section;
 import 'package:preconnect/pages/friend_sections/friend_header.dart'
     show FriendAvatar;
 import 'package:preconnect/pages/seat_status.dart'
     show seatStatusFacultyHasVisuals;
 import 'package:preconnect/pages/shared_widgets/faculty_sheet.dart';
+import 'package:preconnect/pages/shared_widgets/seat_filters.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/app_storage.dart';
+import 'package:preconnect/tools/storage_keys.dart';
 
 class AdvisingHelperPage extends StatefulWidget {
   const AdvisingHelperPage({super.key});
@@ -32,11 +34,21 @@ class _AdvisingHelperPageState extends State<AdvisingHelperPage> {
   String? _portfolioId;
   String? _publicKey;
   String? _sessionId;
+  String? _enrolledError;
 
   AdvisingPhase _phase = AdvisingPhase.phaseOne;
   List<AdvisingSectionRecord> _enrolled = const [];
   Map<int, SeatStatusDetailsResponse> _seatDetails = const {};
   final TextEditingController _searchController = TextEditingController();
+  Timer? _enrolledRefreshTimer;
+  bool _isRefreshingEnrolled = false;
+  bool _availableOnly = false;
+  String _selectedModeFilter = '';
+  String _selectedDayFilter = '';
+  SeatTimetable _selectedTimeFilter = const SeatTimetable(
+    startTime: '',
+    endTime: '',
+  );
   String _searchQuery = '';
   int _loadGeneration = 0;
 
@@ -48,6 +60,10 @@ class _AdvisingHelperPageState extends State<AdvisingHelperPage> {
       if (mounted) setState(() => _searchQuery = _searchController.text.trim());
     });
     unawaited(_load());
+    _enrolledRefreshTimer = Timer.periodic(
+      const Duration(seconds: 2),
+      (_) => unawaited(_pollEnrolled()),
+    );
   }
 
   @override
@@ -55,6 +71,7 @@ class _AdvisingHelperPageState extends State<AdvisingHelperPage> {
     _engine.removeListener(_onEngineChange);
     _engine.stop();
     _engine.dispose();
+    _enrolledRefreshTimer?.cancel();
     _searchController.dispose();
     super.dispose();
   }
@@ -63,22 +80,15 @@ class _AdvisingHelperPageState extends State<AdvisingHelperPage> {
     if (mounted) setState(() {});
   }
 
-  Future<void> _load({bool openBrowser = true}) async {
+  Future<void> _load() async {
     if (!mounted) return;
     if (_engine.isRunning) _engine.stop();
     final generation = ++_loadGeneration;
     final phase = _phase;
-    if (openBrowser && kIsWeb) {
-      unawaited(
-        openExternalUrl(
-          context,
-          'https://connect.bracu.ac.bd/student/advising/${phase.pathSegment}',
-        ),
-      );
-    }
     setState(() {
       _isLoading = true;
       _errorMessage = null;
+      _enrolledError = null;
     });
 
     try {
@@ -93,30 +103,55 @@ class _AdvisingHelperPageState extends State<AdvisingHelperPage> {
 
       final publicKey = DateTime.now().millisecondsSinceEpoch.toString();
       final portfolioId = resolvedPortfolioId;
-      final sessionId = portfolioId;
-
-      final started = await _service.startSession(
-        sessionId,
-        publicKey,
-        phase: phase,
+      final studentId = await AppStorage.instance.getString(
+        StorageKeys.studentId,
       );
-
-      final enrolledFuture = _fetchAdvisedSections(
-        portfolioId,
-        phase: phase,
-        publicKey: publicKey,
-      );
+      if (studentId == null || studentId.trim().isEmpty) {
+        throw Exception('Failed to resolve student ID.');
+      }
+      String? activeSessionId;
+      String? activeSessionError;
+      try {
+        activeSessionId = await _service.fetchActiveSessionId(
+          studentId,
+          phase: phase,
+        );
+      } on ApiException catch (error) {
+        if (isMissingAdvisingPhaseResponse(error)) {
+          activeSessionId = null;
+        } else {
+          activeSessionError = advisingErrorMessage(error);
+        }
+      } catch (error) {
+        activeSessionError = advisingErrorMessage(error);
+      }
       final seatsFuture = _service.fetchRealtimeSections();
-      final enrolled = await enrolledFuture;
+      List<AdvisingSectionRecord> enrolled = const [];
+      String? enrolledError;
+      try {
+        enrolled = await _fetchAdvisedSections(
+          portfolioId,
+          phase: phase,
+          publicKey: publicKey,
+        );
+      } catch (error) {
+        enrolledError = advisingErrorMessage(error);
+      }
       final seatDetails = await seatsFuture;
 
       if (!mounted || generation != _loadGeneration) return;
       _portfolioId = portfolioId;
       _publicKey = publicKey;
-      _sessionId = sessionId;
-      if (!started) {
+      _sessionId = activeSessionId;
+      _enrolledError = enrolledError;
+      if (activeSessionError != null) {
         _engine.addLog(
-          '${phase.label} is not active yet. The helper will retry while running.',
+          '${phase.label} session response unavailable: $activeSessionError',
+        );
+      }
+      if (enrolledError != null) {
+        _engine.addLog(
+          '${phase.label} enrolled sections request failed: $enrolledError',
         );
       }
 
@@ -139,16 +174,41 @@ class _AdvisingHelperPageState extends State<AdvisingHelperPage> {
     final publicKey = _publicKey;
     final phase = _phase;
     if (portfolioId == null || publicKey == null) return;
-    final sections = await _fetchAdvisedSections(
-      portfolioId,
-      phase: phase,
-      publicKey: publicKey,
-    );
+    List<AdvisingSectionRecord> sections;
+    try {
+      sections = await _fetchAdvisedSections(
+        portfolioId,
+        phase: phase,
+        publicKey: publicKey,
+      );
+    } catch (error) {
+      if (mounted &&
+          phase == _phase &&
+          portfolioId == _portfolioId &&
+          publicKey == _publicKey) {
+        setState(() => _enrolledError = advisingErrorMessage(error));
+      }
+      rethrow;
+    }
     if (mounted &&
         phase == _phase &&
         portfolioId == _portfolioId &&
         publicKey == _publicKey) {
-      setState(() => _enrolled = sections);
+      setState(() {
+        _enrolled = sections;
+        _enrolledError = null;
+      });
+    }
+  }
+
+  Future<void> _pollEnrolled() async {
+    if (_isLoading || _isRefreshingEnrolled) return;
+    _isRefreshingEnrolled = true;
+    try {
+      await _refreshEnrolled();
+    } catch (_) {
+    } finally {
+      _isRefreshingEnrolled = false;
     }
   }
 
@@ -164,7 +224,7 @@ class _AdvisingHelperPageState extends State<AdvisingHelperPage> {
         publicKey: publicKey,
       );
     } on ApiException catch (error) {
-      if (isUnavailableAdvisingPhaseResponse(error)) {
+      if (isMissingAdvisingPhaseResponse(error)) {
         return const <AdvisingSectionRecord>[];
       }
       rethrow;
@@ -188,17 +248,25 @@ class _AdvisingHelperPageState extends State<AdvisingHelperPage> {
   List<SeatStatusDetailsResponse> get _filteredSections {
     final all = _seatDetails.values.toList();
     final q = _searchQuery.toLowerCase();
-    final filtered = q.isEmpty
-        ? all
-        : all
-              .where(
-                (s) =>
-                    s.courseCode.toLowerCase().contains(q) ||
-                    s.courseName.toLowerCase().contains(q) ||
-                    s.sectionName.toLowerCase().contains(q) ||
-                    s.faculties.toLowerCase().contains(q),
-              )
-              .toList();
+    final filtered = all.where((section) {
+      if (q.isNotEmpty &&
+          !section.courseCode.toLowerCase().contains(q) &&
+          !section.courseName.toLowerCase().contains(q) &&
+          !section.sectionName.toLowerCase().contains(q) &&
+          !section.faculties.toLowerCase().contains(q)) {
+        return false;
+      }
+      return matchesSeatFilters(
+        availableOnly: _availableOnly,
+        remaining: section.capacity - section.consumedSeat,
+        mode: _selectedModeFilter,
+        hasLabSection: section.labSectionId != null,
+        theorySchedules: section.sectionSchedule.classSchedules,
+        labSchedules: section.labSchedules,
+        day: _selectedDayFilter,
+        time: _selectedTimeFilter,
+      );
+    }).toList();
 
     final queuedSet = _engine.targetSections.map((e) => e.sectionId).toSet();
     final enrolledSet = _enrolled.map((e) => e.sectionId).toSet();
@@ -244,7 +312,6 @@ class _AdvisingHelperPageState extends State<AdvisingHelperPage> {
       await _service.dropSection(
         portfolioId: _portfolioId!,
         sectionId: sec.sectionId,
-        advisingSectionId: sec.advisingSectionId,
         publicKey: _publicKey!,
         phase: _phase,
       );
@@ -381,12 +448,11 @@ class _AdvisingHelperPageState extends State<AdvisingHelperPage> {
     if (_engine.isRunning) {
       _engine.stop();
     } else {
-      if (_portfolioId == null || _sessionId == null || _publicKey == null) {
+      if (_portfolioId == null || _publicKey == null) {
         return;
       }
       _engine.start(
         portfolioId: _portfolioId!,
-        sessionId: _sessionId!,
         publicKey: _publicKey!,
         phase: _phase,
         onSectionAdded: _refreshEnrolled,
@@ -415,7 +481,7 @@ class _AdvisingHelperPageState extends State<AdvisingHelperPage> {
         subtitle: 'Helper',
         icon: Icons.bolt_rounded,
         body: BracuErrorState(
-          title: 'Session Error',
+          title: 'Load Error',
           message: _errorMessage!,
           onRetry: _load,
         ),
@@ -443,10 +509,7 @@ class _AdvisingHelperPageState extends State<AdvisingHelperPage> {
             icon: const Icon(Icons.check_circle_outline_rounded),
             onPressed: _confirmAdvising,
           ),
-        BracuRefreshButton(
-          onPressed: () => _load(openBrowser: false),
-          isLoading: _isLoading,
-        ),
+        BracuRefreshButton(onPressed: _load, isLoading: _isLoading),
       ],
       body: Column(
         children: [
@@ -472,8 +535,9 @@ class _AdvisingHelperPageState extends State<AdvisingHelperPage> {
                               _sessionId = null;
                               _publicKey = null;
                               _errorMessage = null;
+                              _enrolledError = null;
                             });
-                            unawaited(_load(openBrowser: true));
+                            unawaited(_load());
                           }
                         },
                         selectedColor: BracuPalette.primary.withValues(
@@ -543,7 +607,7 @@ class _AdvisingHelperPageState extends State<AdvisingHelperPage> {
             ),
           Expanded(
             child: DefaultTabController(
-              length: 3,
+              length: 2,
               child: Column(
                 children: [
                   TabBar(
@@ -551,16 +615,18 @@ class _AdvisingHelperPageState extends State<AdvisingHelperPage> {
                     unselectedLabelColor: textSecondary,
                     indicatorColor: BracuPalette.primary,
                     tabs: [
-                      Tab(text: 'Enrolled (${_enrolled.length})'),
-                      Tab(text: 'Queue (${queue.length})'),
+                      Tab(
+                        text: _enrolledError == null
+                            ? 'Enrolled & Queue (${_enrolled.length + queue.length})'
+                            : 'Enrolled & Queue (?)',
+                      ),
                       const Tab(text: 'Sections'),
                     ],
                   ),
                   Expanded(
                     child: TabBarView(
                       children: [
-                        _buildEnrolledTab(textPrimary, textSecondary),
-                        _buildQueueTab(textPrimary, textSecondary),
+                        _buildEnrolledAndQueueTab(textPrimary, textSecondary),
                         _buildSectionsTab(textPrimary, textSecondary),
                       ],
                     ),
@@ -574,17 +640,40 @@ class _AdvisingHelperPageState extends State<AdvisingHelperPage> {
     );
   }
 
-  Widget _buildEnrolledTab(Color textPrimary, Color textSecondary) {
+  Widget _buildEnrolledAndQueueTab(Color textPrimary, Color textSecondary) {
+    return BracuRefreshList(
+      onRefresh: () async {
+        await _refreshEnrolled();
+        await _refreshSeats();
+      },
+      children: [
+        _buildQueueTab(textPrimary, textSecondary, embedded: true),
+        if (_engine.targetSections.isNotEmpty ||
+            _engine.activityLogs.isNotEmpty)
+          const Divider(height: 28),
+        _buildEnrolledTab(textPrimary, textSecondary, embedded: true),
+      ],
+    );
+  }
+
+  Widget _buildEnrolledTab(
+    Color textPrimary,
+    Color textSecondary, {
+    bool embedded = false,
+  }) {
     if (_enrolled.isEmpty) {
-      return BracuRefreshList(
-        onRefresh: _refreshEnrolled,
-        children: const [
-          BracuEmptyCard(message: 'No sections enrolled in this phase yet.'),
-        ],
+      final empty = BracuEmptyCard(
+        message: _enrolledError == null
+            ? 'No sections enrolled in this phase yet.'
+            : 'Unable to load enrolled sections. Pull to retry.',
       );
+      if (embedded) return empty;
+      return BracuRefreshList(onRefresh: _refreshEnrolled, children: [empty]);
     }
 
     return ListView.builder(
+      shrinkWrap: embedded,
+      physics: embedded ? const NeverScrollableScrollPhysics() : null,
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
       itemCount: _enrolled.length + 1,
       itemBuilder: (context, index) {
@@ -646,38 +735,53 @@ class _AdvisingHelperPageState extends State<AdvisingHelperPage> {
     );
   }
 
-  Widget _buildQueueTab(Color textPrimary, Color textSecondary) {
+  Widget _buildQueueTab(
+    Color textPrimary,
+    Color textSecondary, {
+    bool embedded = false,
+  }) {
     final queue = _engine.targetSections;
     final logs = _engine.activityLogs;
 
-    if (queue.isEmpty) {
+    if (queue.isEmpty && logs.isEmpty) {
+      const empty = BracuEmptyCard(
+        message:
+            'No sections queued. Add sections from the Sections tab to auto-add.',
+      );
+      if (embedded) return empty;
       return BracuRefreshList(
         onRefresh: _refreshSeats,
-        children: const [
-          BracuEmptyCard(
-            message:
-                'No sections queued. Add sections from the Sections tab to auto-snipe.',
-          ),
-        ],
+        children: const [empty],
       );
     }
 
     return ListView.builder(
+      shrinkWrap: embedded,
+      physics: embedded ? const NeverScrollableScrollPhysics() : null,
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
       itemCount: queue.length + (logs.isNotEmpty ? 1 : 0),
       itemBuilder: (context, index) {
-        if (index == queue.length) {
+        if (logs.isNotEmpty && index == 0) {
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Gap(8),
-              Text(
-                'Activity Log',
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                  color: textSecondary,
-                ),
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      'Activity Log',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: textSecondary,
+                      ),
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: _engine.clearActivityLogs,
+                    child: const Text('Clear'),
+                  ),
+                ],
               ),
               const Gap(6),
               BracuCard(
@@ -696,11 +800,13 @@ class _AdvisingHelperPageState extends State<AdvisingHelperPage> {
                   ],
                 ),
               ),
+              const Gap(12),
             ],
           );
         }
 
-        final item = queue[index];
+        final queueIndex = logs.isNotEmpty ? index - 1 : index;
+        final item = queue[queueIndex];
         final isAdded = item.status == TargetSectionStatus.added;
         final isAdding = item.status == TargetSectionStatus.adding;
         final detail = _seatDetails[item.sectionId];
@@ -773,6 +879,16 @@ class _AdvisingHelperPageState extends State<AdvisingHelperPage> {
 
   Widget _buildSectionsTab(Color textPrimary, Color textSecondary) {
     final filtered = _filteredSections;
+    final times = sortedSeatFilterTimes(
+      _seatDetails.values
+          .expand(
+            (section) => <SeatStatusClassSchedule>[
+              ...section.sectionSchedule.classSchedules,
+              ...section.labSchedules,
+            ],
+          )
+          .map((schedule) => schedule.toTimetable()),
+    );
 
     return Column(
       children: [
@@ -782,6 +898,23 @@ class _AdvisingHelperPageState extends State<AdvisingHelperPage> {
             controller: _searchController,
             hintText: 'Search course code, section or faculty...',
             query: _searchQuery,
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+          child: SeatFilterBar(
+            availableOnly: _availableOnly,
+            mode: _selectedModeFilter,
+            day: _selectedDayFilter,
+            time: _selectedTimeFilter,
+            times: times,
+            onAvailableChanged: (value) =>
+                setState(() => _availableOnly = value),
+            onModeChanged: (value) =>
+                setState(() => _selectedModeFilter = value),
+            onDayChanged: (value) => setState(() => _selectedDayFilter = value),
+            onTimeChanged: (value) =>
+                setState(() => _selectedTimeFilter = value),
           ),
         ),
         Expanded(

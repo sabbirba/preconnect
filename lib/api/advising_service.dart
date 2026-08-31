@@ -16,9 +16,26 @@ enum TargetSectionStatus {
   skippedZeroSeats,
 }
 
-bool isUnavailableAdvisingPhaseResponse(ApiException error) {
-  return const <int>{400, 404, 412, 500}.contains(error.statusCode);
+bool isMissingAdvisingPhaseResponse(ApiException error) {
+  return const <int>{400, 404, 412}.contains(error.statusCode);
 }
+
+String advisingErrorMessage(Object error) {
+  if (error is TimeoutException) return 'BRACU Connect request timed out';
+  final message = '$error';
+  if (message.contains('Failed to fetch')) {
+    return 'Browser could not reach the BRACU Connect API';
+  }
+  return message.replaceAll(RegExp(r'https?://\S+'), 'BRACU Connect API');
+}
+
+Map<String, dynamic> advisingSectionMutationPayload({
+  required String portfolioId,
+  required int sectionId,
+}) => <String, dynamic>{
+  'studentPortfolioId': int.parse(portfolioId),
+  'sectionId': sectionId,
+};
 
 class AdvisingSectionRecord {
   final int sectionId;
@@ -150,6 +167,28 @@ List<AdvisingSectionRecord> parseAdvisedSectionsResponse(String body) {
   return sections.values.toList(growable: false);
 }
 
+String? parseActiveAdvisingSessionId(String body, AdvisingPhase phase) {
+  final decoded = jsonDecode(body);
+  if (decoded is! List) {
+    throw const FormatException('Invalid active advising sessions response.');
+  }
+  String? sessionId;
+  for (final item in decoded) {
+    if (item is! Map) {
+      throw const FormatException('Invalid active advising session record.');
+    }
+    final json = item.cast<String, dynamic>();
+    final responsePhase = _requiredString(json, 'advisingPhase').toUpperCase();
+    if (responsePhase != phase.queryValue) continue;
+    final id = _requiredString(json, 'id');
+    if (sessionId != null && sessionId != id) {
+      throw const FormatException('Multiple active advising sessions found.');
+    }
+    sessionId = id;
+  }
+  return sessionId;
+}
+
 class AdvisingHelperService {
   static final AdvisingHelperService _instance =
       AdvisingHelperService._internal();
@@ -208,30 +247,19 @@ class AdvisingHelperService {
     };
   }
 
-  Future<bool> startSession(
-    String sessionId,
-    String publicKey, {
+  Future<String?> fetchActiveSessionId(
+    String studentId, {
     required AdvisingPhase phase,
   }) async {
     final url =
-        '${ApiConfig.connectApiBase}${ApiConfig.advisingSessionStartPath(sessionId, publicKey: publicKey)}';
-    final headers = await buildRequestHeaders(
-      publicKey: publicKey,
-      phase: phase,
+        '${ApiConfig.connectApiBase}${ApiConfig.advisingPath(studentId)}'
+        '?advisingPhase=${phase.queryValue}';
+    final response = await _client.authenticatedGet(
+      url,
+      additionalHeaders: await buildRequestHeaders(phase: phase),
+      bypassCache: true,
     );
-
-    try {
-      final res = await _client.authenticatedRequest(
-        'GET',
-        url,
-        additionalHeaders: headers,
-        acceptedStatusCodes: const <int>{200},
-      );
-      return res.statusCode == 200;
-    } on ApiException catch (error) {
-      if (isUnavailableAdvisingPhaseResponse(error)) return false;
-      rethrow;
-    }
+    return parseActiveAdvisingSessionId(response.body, phase);
   }
 
   Future<List<AdvisingSectionRecord>> fetchAdvisedSections(
@@ -265,9 +293,6 @@ class AdvisingHelperService {
   Future<void> addSection({
     required String portfolioId,
     required int sectionId,
-    required int courseId,
-    int? labSectionId,
-    required int courseCredit,
     required String publicKey,
     required AdvisingPhase phase,
   }) async {
@@ -276,16 +301,13 @@ class AdvisingHelperService {
       phase: phase,
     );
 
-    final payload = <String, dynamic>{
-      'sectionId': sectionId,
-      'studentPortfolioId': int.parse(portfolioId),
-      'courseId': courseId,
-      'labSectionId': labSectionId,
-      'courseCredit': courseCredit,
-    };
+    final payload = advisingSectionMutationPayload(
+      portfolioId: portfolioId,
+      sectionId: sectionId,
+    );
 
     final url =
-        '${ApiConfig.connectApiBase}${ApiConfig.advisingSectionsStudentPath(portfolioId)}';
+        '${ApiConfig.connectApiBase}${ApiConfig.advisingStudentCoursesPath(phase)}';
 
     await _client.authenticatedRequest(
       'POST',
@@ -299,7 +321,6 @@ class AdvisingHelperService {
   Future<void> dropSection({
     required String portfolioId,
     required int sectionId,
-    int? advisingSectionId,
     required String publicKey,
     required AdvisingPhase phase,
   }) async {
@@ -308,14 +329,13 @@ class AdvisingHelperService {
       phase: phase,
     );
 
-    final payload = <String, dynamic>{
-      'sectionId': sectionId,
-      'studentPortfolioId': int.parse(portfolioId),
-      'advisingSectionId': advisingSectionId,
-    };
+    final payload = advisingSectionMutationPayload(
+      portfolioId: portfolioId,
+      sectionId: sectionId,
+    );
 
     final url =
-        '${ApiConfig.connectApiBase}${ApiConfig.advisingSectionsStudentPath(portfolioId)}';
+        '${ApiConfig.connectApiBase}${ApiConfig.advisingStudentCoursesPath(phase)}';
 
     await _client.authenticatedRequest(
       'DELETE',
@@ -361,17 +381,25 @@ class AdvisingAutoEngine extends ChangeNotifier {
 
   bool isRunning = false;
   bool _isTicking = false;
-  bool _sessionStarted = false;
-  bool _reportedSessionWait = false;
-  String? _lastSessionError;
   String? _lastOfferedSectionsError;
   int _runGeneration = 0;
   Timer? _loopTimer;
   String? portfolioId;
-  String? sessionId;
   String? publicKey;
   Future<void> Function()? onSectionAdded;
   late AdvisingPhase phase;
+
+  bool get hasCompletedQueue =>
+      targetSections.isNotEmpty &&
+      targetSections.every((item) => item.status == TargetSectionStatus.added);
+
+  bool clearCompletedQueue() {
+    if (!hasCompletedQueue) return false;
+    if (isRunning) stop();
+    targetSections.clear();
+    notifyListeners();
+    return true;
+  }
 
   void addLog(String text) {
     final timeStr = DateTime.now().toIso8601String().substring(11, 19);
@@ -403,17 +431,18 @@ class AdvisingAutoEngine extends ChangeNotifier {
     notifyListeners();
   }
 
+  void clearActivityLogs() {
+    activityLogs.clear();
+    notifyListeners();
+  }
+
   void reset() {
     _runGeneration++;
     isRunning = false;
     _loopTimer?.cancel();
     _loopTimer = null;
-    _sessionStarted = false;
-    _reportedSessionWait = false;
-    _lastSessionError = null;
     _lastOfferedSectionsError = null;
     portfolioId = null;
-    sessionId = null;
     publicKey = null;
     onSectionAdded = null;
     targetSections.clear();
@@ -423,7 +452,6 @@ class AdvisingAutoEngine extends ChangeNotifier {
 
   void start({
     required String portfolioId,
-    required String sessionId,
     required String publicKey,
     required AdvisingPhase phase,
     Future<void> Function()? onSectionAdded,
@@ -431,13 +459,9 @@ class AdvisingAutoEngine extends ChangeNotifier {
     if (isRunning) return;
     _runGeneration++;
     this.portfolioId = portfolioId;
-    this.sessionId = sessionId;
     this.publicKey = publicKey;
     this.phase = phase;
     this.onSectionAdded = onSectionAdded;
-    _sessionStarted = false;
-    _reportedSessionWait = false;
-    _lastSessionError = null;
     _lastOfferedSectionsError = null;
     isRunning = true;
     addLog('Advising Helper started');
@@ -482,57 +506,12 @@ class AdvisingAutoEngine extends ChangeNotifier {
 
       if (pending.isEmpty) return;
 
-      if (!_sessionStarted) {
-        bool sessionStarted;
-        try {
-          sessionStarted = await AdvisingHelperService().startSession(
-            sessionId!,
-            publicKey!,
-            phase: phase,
-          );
-        } catch (error) {
-          if (!isRunning || runGeneration != _runGeneration) return;
-          final message = '$error';
-          for (final item in pending) {
-            item.status = TargetSectionStatus.failed;
-            item.message = message;
-          }
-          if (_lastSessionError != message) {
-            _lastSessionError = message;
-            addLog('${phase.label} session request failed: $message');
-          } else {
-            notifyListeners();
-          }
-          return;
-        }
-        if (!isRunning || runGeneration != _runGeneration) return;
-        _lastSessionError = null;
-        _sessionStarted = sessionStarted;
-        if (!_sessionStarted) {
-          for (final item in pending) {
-            item.status = TargetSectionStatus.watching;
-            item.message = 'Waiting for ${phase.label} to become active';
-          }
-          if (!_reportedSessionWait) {
-            addLog(
-              '${phase.label} session is not active. Waiting and retrying...',
-            );
-            _reportedSessionWait = true;
-          } else {
-            notifyListeners();
-          }
-          return;
-        }
-        _reportedSessionWait = false;
-        addLog('${phase.label} session is active');
-      }
-
       Map<int, SeatStatusDetailsResponse>? detailsMap;
       try {
         detailsMap = await AdvisingHelperService().fetchRealtimeSections();
       } catch (error) {
         if (!isRunning || runGeneration != _runGeneration) return;
-        final message = '$error';
+        final message = advisingErrorMessage(error);
         for (final item in pending) {
           item.status = TargetSectionStatus.failed;
           item.message = message;
@@ -585,9 +564,6 @@ class AdvisingAutoEngine extends ChangeNotifier {
           await AdvisingHelperService().addSection(
             portfolioId: portfolioId!,
             sectionId: item.sectionId,
-            courseId: detail.courseId,
-            labSectionId: detail.labSectionId,
-            courseCredit: detail.courseCredit,
             publicKey: publicKey!,
             phase: phase,
           );
@@ -614,11 +590,13 @@ class AdvisingAutoEngine extends ChangeNotifier {
             continue;
           }
           item.status = TargetSectionStatus.failed;
-          item.message = 'Error: $e';
-          addLog('Error adding ${item.courseCode}: $e');
+          final message = advisingErrorMessage(e);
+          item.message = 'Error: $message';
+          addLog('Error adding ${item.courseCode}: $message');
         }
         notifyListeners();
       }
+      clearCompletedQueue();
     } finally {
       _isTicking = false;
     }

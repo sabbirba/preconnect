@@ -224,141 +224,16 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
   }
 
   Widget _buildFilterActions(BuildContext context) {
-    return SizedBox(
-      width: double.infinity,
-      child: Wrap(
-        alignment: WrapAlignment.center,
-        spacing: 8,
-        runSpacing: 8,
-        children: [
-          _buildAvailabilityFilterAction(),
-          _buildModeFilterAction(),
-          _buildDayFilterAction(context),
-          _buildTimeFilterAction(context),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildAvailabilityFilterAction() {
-    return _SeatFilterChip(
-      icon: Icons.event_available_outlined,
-      label: 'Available',
-      selected: _availableOnly,
-      onTap: () => _setAvailableFilter(!_availableOnly),
-      showArrow: false,
-    );
-  }
-
-  Widget _buildModeFilterAction() {
-    final label = _selectedModeFilter.isEmpty
-        ? 'Labs + Theory'
-        : _selectedModeFilter;
-    return BracuSelectDropdownChip<String>(
-      icon: Icons.explore,
-      label: label,
-      selected: _selectedModeFilter.isNotEmpty,
-      compact: true,
-      borderRadius: 999,
-      title: 'Change Mode',
-      subtitle: 'Show seat status for labs or theories, or both',
-      selectedValue: _selectedModeFilter,
-      options: <BracuSelectOption<String>>[
-        const BracuSelectOption<String>(
-          value: '',
-          label: 'Labs + Theory',
-          icon: Icons.all_inclusive_rounded,
-          subtitle: 'All Schedules',
-        ),
-        ..._SeatStatusPageState._modeOrder.map(
-          (mode) => BracuSelectOption<String>(
-            value: mode,
-            label: mode,
-            icon: Icons.settings,
-            subtitle: 'Only $mode',
-          ),
-        ),
-      ],
-      onSelected: _setModeFilter,
-    );
-  }
-
-  Widget _buildDayFilterAction(BuildContext context) {
-    final label = _selectedDayFilter.isEmpty
-        ? 'Any Day'
-        : formatWeekdayTitle(_selectedDayFilter);
-    return BracuSelectDropdownChip<String>(
-      icon: Icons.calendar_today_outlined,
-      label: label,
-      selected: _selectedDayFilter.isNotEmpty,
-      compact: true,
-      borderRadius: 999,
-      title: 'Filter by Day',
-      subtitle: 'Show seat status for a specific weekday',
-      selectedValue: _selectedDayFilter,
-      options: <BracuSelectOption<String>>[
-        const BracuSelectOption<String>(
-          value: '',
-          label: 'Any Day',
-          icon: Icons.all_inclusive_rounded,
-          subtitle: 'Everyday',
-        ),
-        ..._SeatStatusPageState._weekdayOrder.map(
-          (day) => BracuSelectOption<String>(
-            value: day,
-            label: formatWeekdayTitle(day),
-            icon: Icons.calendar_today_outlined,
-            subtitle: 'Only ${formatWeekdayTitle(day)}',
-          ),
-        ),
-      ],
-      onSelected: _setDayFilter,
-    );
-  }
-
-  Widget _buildTimeFilterAction(BuildContext context) {
-    final label = _selectedTimeFilter.isEmpty
-        ? 'Any Time'
-        : formatWeekdayTitle(_selectedTimeFilter.toString());
-
-    final assortedTimes =
-        _cards.expand((card) => card.timetables).toSet().toList()..sort((a, b) {
-          final startA = BracuTime.toMinutes(a.startTime) ?? 24 * 60;
-          final startB = BracuTime.toMinutes(b.startTime) ?? 24 * 60;
-          final startCmp = startA.compareTo(startB);
-          if (startCmp != 0) return startCmp;
-
-          final endA = BracuTime.toMinutes(a.endTime) ?? 24 * 60;
-          final endB = BracuTime.toMinutes(b.endTime) ?? 24 * 60;
-          return endA.compareTo(endB);
-        });
-
-    return BracuSelectDropdownChip<SeatTimetable>(
-      icon: Icons.lock_clock,
-      label: label,
-      selected: _selectedTimeFilter.isNotEmpty,
-      compact: true,
-      borderRadius: 999,
-      title: 'Filter by Time',
-      subtitle: 'Show seat status for a specific time',
-      selectedValue: _selectedTimeFilter,
-      options: <BracuSelectOption<SeatTimetable>>[
-        const BracuSelectOption<SeatTimetable>(
-          value: SeatTimetable(startTime: '', endTime: ''),
-          label: 'Any Time',
-          icon: Icons.all_inclusive_rounded,
-          subtitle: 'Possible times',
-        ),
-        ...assortedTimes.map(
-          (data) => BracuSelectOption<SeatTimetable>(
-            value: data,
-            label: data.label,
-            icon: Icons.lock_clock,
-            subtitle: 'Only ${data.label}',
-          ),
-        ),
-      ],
-      onSelected: _setTimeFilter,
+    return SeatFilterBar(
+      availableOnly: _availableOnly,
+      mode: _selectedModeFilter,
+      day: _selectedDayFilter,
+      time: _selectedTimeFilter,
+      times: sortedSeatFilterTimes(_cards.expand((card) => card.timetables)),
+      onAvailableChanged: _setAvailableFilter,
+      onModeChanged: _setModeFilter,
+      onDayChanged: _setDayFilter,
+      onTimeChanged: _setTimeFilter,
     );
   }
 
@@ -440,52 +315,16 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
     final q = query.trim().toLowerCase();
     return source.where((card) {
       if (q.isNotEmpty && !card.searchToken.contains(q)) return false;
-      if (availableOnly && card.remaining <= 0) return false;
-
-      final List<SeatStatusClassSchedule> schedules;
-
-      if (modeFilter == "Labs") {
-        schedules = <SeatStatusClassSchedule>[...card.labSchedule];
-
-        if (card.labSectionId == null) {
-          return false;
-        }
-      } else if (modeFilter == "Theory") {
-        schedules = <SeatStatusClassSchedule>[...card.classSchedule];
-      } else {
-        schedules = <SeatStatusClassSchedule>[
-          ...card.classSchedule,
-          ...card.labSchedule,
-        ];
-      }
-
-      for (SeatStatusClassSchedule sc in schedules) {
-        if (dayFilter.isNotEmpty) {
-          if (!(normalizeWeekday(sc.day) == dayFilter)) {
-            continue;
-          }
-
-          if (timeFilter.isNotEmpty) {
-            if (!(timeFilter == sc.toTimetable())) {
-              continue;
-            } else {
-              return true;
-            }
-          } else {
-            return true;
-          }
-        } else if (timeFilter.isNotEmpty) {
-          if (!(timeFilter == sc.toTimetable())) {
-            continue;
-          }
-
-          return true;
-        } else {
-          return true;
-        }
-      }
-
-      return false;
+      return matchesSeatFilters(
+        availableOnly: availableOnly,
+        remaining: card.remaining,
+        mode: modeFilter,
+        hasLabSection: card.labSectionId != null,
+        theorySchedules: card.classSchedule,
+        labSchedules: card.labSchedule,
+        day: dayFilter,
+        time: timeFilter,
+      );
     }).toList();
   }
 

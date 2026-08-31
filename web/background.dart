@@ -102,6 +102,14 @@ const String _extensionAlarmId = 'preconnect.syncAlarm';
 const String _connectCookieUrl = 'https://connect.bracu.ac.bd/';
 const String _ssoCookieUrl =
     'https://sso.bracu.ac.bd/realms/bracu/protocol/openid-connect/';
+final Map<int, String> _connectAuthorizationByTab = <int, String>{};
+final Map<int, Map<String, String>> _connectHeadersByTab =
+    <int, Map<String, String>>{};
+
+String _connectAuthorizationKey(int tabId) =>
+    'preconnect.connectAuthorization.$tabId';
+
+String _connectHeadersKey(int tabId) => 'preconnect.connectHeaders.$tabId';
 
 @JS('fetch')
 external JSPromise<Response> _fetch(String input, [RequestInit? init]);
@@ -132,7 +140,63 @@ Headers _headersFromMap(Map<String, String> values) {
   return headers;
 }
 
+void _registerConnectAuthorizationObserver() {
+  try {
+    final extensionApi = _getExtensionApi();
+    if (extensionApi == null) return;
+    final webRequestValue = extensionApi.getProperty('webRequest'.toJS);
+    if (webRequestValue.isUndefinedOrNull) return;
+    final beforeHeadersValue = (webRequestValue as JSObject).getProperty(
+      'onBeforeSendHeaders'.toJS,
+    );
+    if (beforeHeadersValue.isUndefinedOrNull) return;
+    (beforeHeadersValue as JSObject).callMethod(
+      'addListener'.toJS,
+      ((JSAny? rawDetails) {
+        final details = rawDetails?.dartify();
+        if (details is! Map) return;
+        final tabId = details['tabId'];
+        final headers = details['requestHeaders'];
+        if (tabId is! num || tabId < 0 || headers is! List) return;
+        for (final rawHeader in headers) {
+          if (rawHeader is! Map) continue;
+          final name = '${rawHeader['name'] ?? ''}'.toLowerCase();
+          final value = '${rawHeader['value'] ?? ''}'.trim();
+          final resolvedTabId = tabId.toInt();
+          if (name == 'authorization' &&
+              value.toLowerCase().startsWith('bearer ')) {
+            _connectAuthorizationByTab[resolvedTabId] = value;
+            unawaited(
+              chrome.storage.session.set(<String, Object>{
+                _connectAuthorizationKey(resolvedTabId): value,
+              }),
+            );
+          } else if (name.startsWith('x-') && value.isNotEmpty) {
+            final observedHeaders = _connectHeadersByTab.putIfAbsent(
+              resolvedTabId,
+              () => <String, String>{},
+            );
+            observedHeaders[name] = value;
+            unawaited(
+              chrome.storage.session.set(<String, Object>{
+                _connectHeadersKey(resolvedTabId): observedHeaders,
+              }),
+            );
+          }
+        }
+      }).toJS,
+      <String, dynamic>{
+        'urls': <String>['https://connect.bracu.ac.bd/api/*'],
+      }.jsify(),
+      <String>['requestHeaders', 'extraHeaders'].jsify(),
+    );
+  } catch (error, stackTrace) {
+    _reportBackgroundError(error, stackTrace);
+  }
+}
+
 Future<void> main() async {
+  _registerConnectAuthorizationObserver();
   if (chrome.cookies.isAvailable) {
     chrome.cookies.onChanged.listen((changeInfo) {
       final cookie = changeInfo.cookie;
@@ -196,6 +260,14 @@ Future<void> main() async {
   _registerTabUpdatedListener();
 
   chrome.tabs.onRemoved.listen((event) {
+    _connectAuthorizationByTab.remove(event.tabId);
+    _connectHeadersByTab.remove(event.tabId);
+    unawaited(
+      chrome.storage.session.remove(<String>[
+        _connectAuthorizationKey(event.tabId),
+        _connectHeadersKey(event.tabId),
+      ]),
+    );
     unawaited(_guarded(() => _handleTabRemoved(event)));
   });
 
@@ -287,6 +359,9 @@ void _handleRuntimeMessage(dynamic event) {
       break;
     case 'preconnect.libsyncRequest':
       action = () => _handleLibsyncRequest(msg);
+      break;
+    case 'preconnect.connectRequest':
+      action = () => _handleConnectRequest(msg);
       break;
     case 'preconnect.startLibsyncOauth':
       action = () => _startLibsyncOauth(msg);
@@ -1828,6 +1903,107 @@ Future<void> _handleLibsyncRequest(Map message) async {
       'type': 'preconnect.libsyncResponse',
       'requestId': requestId,
       'error': e.toString(),
+    });
+  }
+}
+
+Future<void> _handleConnectRequest(Map message) async {
+  final requestId = '${message['requestId'] ?? ''}';
+  try {
+    final method = '${message['method'] ?? 'GET'}'.trim().toUpperCase();
+    final url = '${message['url'] ?? ''}';
+    final uri = Uri.parse(url);
+    if (uri.scheme != 'https' ||
+        uri.host != 'connect.bracu.ac.bd' ||
+        !uri.path.startsWith('/api/')) {
+      throw StateError('Connect request target is not allowed');
+    }
+    final activeTabs = await chrome.tabs.query(
+      QueryInfo(active: true, currentWindow: true),
+    );
+    final tabs = <Tab>[...activeTabs, ...await chrome.tabs.query(QueryInfo())];
+    Tab? connectTab;
+    for (final tab in tabs) {
+      final tabUri = Uri.tryParse(tab.url ?? '');
+      if (tabUri?.scheme == 'https' && tabUri?.host == 'connect.bracu.ac.bd') {
+        if (tab.active) {
+          connectTab = tab;
+          break;
+        }
+        connectTab ??= tab;
+      }
+    }
+    final tabId = connectTab?.id;
+    if (tabId == null) {
+      throw StateError('Open a signed-in BRACU Connect tab');
+    }
+    var browserAuthorization = _connectAuthorizationByTab[tabId];
+    if (browserAuthorization == null) {
+      final stored = await chrome.storage.session.get(
+        _connectAuthorizationKey(tabId),
+      );
+      final value = stored[_connectAuthorizationKey(tabId)];
+      if (value is String && value.toLowerCase().startsWith('bearer ')) {
+        browserAuthorization = value;
+        _connectAuthorizationByTab[tabId] = value;
+      }
+    }
+    if (browserAuthorization == null) {
+      throw StateError(
+        'Reload the signed-in Connect page so its API authorization can be observed',
+      );
+    }
+    var browserHeaders = _connectHeadersByTab[tabId];
+    if (browserHeaders == null) {
+      final stored = await chrome.storage.session.get(
+        _connectHeadersKey(tabId),
+      );
+      final value = stored[_connectHeadersKey(tabId)];
+      if (value is Map) {
+        browserHeaders = value.map(
+          (key, value) => MapEntry(key.toString(), value.toString()),
+        );
+        _connectHeadersByTab[tabId] = browserHeaders;
+      }
+    }
+    final rawHeaders = message['headers'];
+    final requestHeaders = <String, String>{};
+    if (rawHeaders is Map) {
+      rawHeaders.forEach((key, value) {
+        final name = key.toString().toLowerCase();
+        if (name != 'cookie' &&
+            name != 'authorization' &&
+            !name.startsWith('x-')) {
+          requestHeaders[key.toString()] = value.toString();
+        }
+      });
+    }
+    requestHeaders['Authorization'] = browserAuthorization;
+    if (browserHeaders != null) {
+      requestHeaders.addAll(browserHeaders);
+    }
+    final rawResponse = await chrome.tabs.sendMessage(tabId, <String, dynamic>{
+      'type': 'preconnect.pageConnectRequest',
+      'method': method,
+      'url': url,
+      'headers': requestHeaders,
+      'body': '${message['body'] ?? ''}',
+    }, null);
+    if (rawResponse is! Map) throw StateError('Invalid Connect tab response');
+    final error = rawResponse['error'];
+    if (error != null) throw Exception('$error');
+    _safeSendMessage(<String, dynamic>{
+      'type': 'preconnect.connectResponse',
+      'requestId': requestId,
+      'statusCode': rawResponse['statusCode'],
+      'headers': rawResponse['headers'],
+      'body': rawResponse['body'],
+    });
+  } catch (error) {
+    _safeSendMessage(<String, dynamic>{
+      'type': 'preconnect.connectResponse',
+      'requestId': requestId,
+      'error': '$error',
     });
   }
 }
