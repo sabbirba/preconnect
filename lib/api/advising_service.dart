@@ -100,6 +100,7 @@ class TargetSectionItem {
   final int courseCredit;
   final int? labSectionId;
   final String? labSectionName;
+  final AdvisingReplacementSource? replacement;
   TargetSectionStatus status;
   DateTime? lastAttempt;
   String? message;
@@ -115,12 +116,27 @@ class TargetSectionItem {
     required this.courseCredit,
     this.labSectionId,
     this.labSectionName,
+    this.replacement,
     this.status = TargetSectionStatus.idle,
     this.lastAttempt,
     this.message,
   });
 
   int get remainingSeats => capacity - consumedSeat;
+}
+
+class AdvisingReplacementSource {
+  const AdvisingReplacementSource({
+    required this.sectionId,
+    required this.courseCode,
+    required this.sectionName,
+  });
+
+  final int sectionId;
+  final String courseCode;
+  final String sectionName;
+
+  String get groupKey => 'replace:$sectionId';
 }
 
 int _requiredInt(Map<String, dynamic> json, String key) {
@@ -376,6 +392,7 @@ class AdvisingHelperService {
 }
 
 class AdvisingAutoEngine extends ChangeNotifier {
+  final AdvisingHelperService _service = AdvisingHelperService();
   final List<TargetSectionItem> targetSections = <TargetSectionItem>[];
   final List<String> activityLogs = <String>[];
 
@@ -387,6 +404,7 @@ class AdvisingAutoEngine extends ChangeNotifier {
   String? portfolioId;
   String? publicKey;
   Future<void> Function()? onSectionAdded;
+  VoidCallback? onReplacementCompleted;
   late AdvisingPhase phase;
 
   bool get hasCompletedQueue =>
@@ -414,7 +432,48 @@ class AdvisingAutoEngine extends ChangeNotifier {
   void addSectionToQueue(TargetSectionItem item) {
     if (targetSections.any((e) => e.sectionId == item.sectionId)) return;
     targetSections.add(item);
-    addLog('Queued: ${item.courseCode} Section ${item.sectionName}');
+    final replacement = item.replacement;
+    if (replacement == null) {
+      addLog('Queued: ${item.courseCode} Section ${item.sectionName}');
+    } else {
+      addLog(
+        'Queued replacement priority ${_replacementPriority(item)}: '
+        '${replacement.courseCode} Sec ${replacement.sectionName} → '
+        '${item.courseCode} Sec ${item.sectionName}',
+      );
+    }
+  }
+
+  int _replacementPriority(TargetSectionItem item) {
+    final groupKey = item.replacement?.groupKey;
+    if (groupKey == null) return 0;
+    return targetSections
+            .where((entry) => entry.replacement?.groupKey == groupKey)
+            .toList()
+            .indexOf(item) +
+        1;
+  }
+
+  void moveSectionPriority(int sectionId, int offset) {
+    final index = targetSections.indexWhere((e) => e.sectionId == sectionId);
+    if (index == -1) return;
+    final item = targetSections[index];
+    final groupKey = item.replacement?.groupKey;
+    if (groupKey == null) return;
+    final group = targetSections
+        .where((entry) => entry.replacement?.groupKey == groupKey)
+        .toList();
+    final groupIndex = group.indexOf(item);
+    final nextGroupIndex = groupIndex + offset;
+    if (nextGroupIndex < 0 || nextGroupIndex >= group.length) return;
+    final other = group[nextGroupIndex];
+    final otherIndex = targetSections.indexOf(other);
+    targetSections[index] = other;
+    targetSections[otherIndex] = item;
+    addLog(
+      '${item.courseCode} Sec ${item.sectionName} moved to replacement '
+      'priority ${nextGroupIndex + 1}',
+    );
   }
 
   void removeSectionFromQueue(int sectionId) {
@@ -445,6 +504,7 @@ class AdvisingAutoEngine extends ChangeNotifier {
     portfolioId = null;
     publicKey = null;
     onSectionAdded = null;
+    onReplacementCompleted = null;
     targetSections.clear();
     activityLogs.clear();
     notifyListeners();
@@ -455,6 +515,7 @@ class AdvisingAutoEngine extends ChangeNotifier {
     required String publicKey,
     required AdvisingPhase phase,
     Future<void> Function()? onSectionAdded,
+    VoidCallback? onReplacementCompleted,
   }) {
     if (isRunning) return;
     _runGeneration++;
@@ -462,6 +523,7 @@ class AdvisingAutoEngine extends ChangeNotifier {
     this.publicKey = publicKey;
     this.phase = phase;
     this.onSectionAdded = onSectionAdded;
+    this.onReplacementCompleted = onReplacementCompleted;
     _lastOfferedSectionsError = null;
     isRunning = true;
     addLog('Advising Helper started');
@@ -508,7 +570,7 @@ class AdvisingAutoEngine extends ChangeNotifier {
 
       Map<int, SeatStatusDetailsResponse>? detailsMap;
       try {
-        detailsMap = await AdvisingHelperService().fetchRealtimeSections();
+        detailsMap = await _service.fetchRealtimeSections();
       } catch (error) {
         if (!isRunning || runGeneration != _runGeneration) return;
         final message = advisingErrorMessage(error);
@@ -527,6 +589,7 @@ class AdvisingAutoEngine extends ChangeNotifier {
       if (!isRunning || runGeneration != _runGeneration) return;
       _lastOfferedSectionsError = null;
 
+      final handledReplacementGroups = <String>{};
       for (final item in pending) {
         if (!isRunning ||
             !targetSections.any((e) => e.sectionId == item.sectionId)) {
@@ -544,6 +607,30 @@ class AdvisingAutoEngine extends ChangeNotifier {
         final currentConsumed = detail.consumedSeat;
         final remaining = currentCap - currentConsumed;
 
+        final replacementGroup = item.replacement?.groupKey;
+        if (replacementGroup != null &&
+            !handledReplacementGroups.add(replacementGroup)) {
+          continue;
+        }
+
+        TargetSectionItem candidate = item;
+        if (replacementGroup != null) {
+          final alternatives = pending
+              .where((entry) => entry.replacement?.groupKey == replacementGroup)
+              .toList();
+          final available = alternatives.where((entry) {
+            final current = detailsMap![entry.sectionId];
+            return current != null &&
+                current.capacity - current.consumedSeat > 0;
+          });
+          if (available.isNotEmpty) candidate = available.first;
+        }
+
+        if (candidate.sectionId != item.sectionId) {
+          await _attemptSection(candidate, detailsMap, runGeneration);
+          continue;
+        }
+
         if (remaining <= 0) {
           item.status = TargetSectionStatus.skippedZeroSeats;
           item.message = '0 seats remaining (Checked)';
@@ -551,54 +638,197 @@ class AdvisingAutoEngine extends ChangeNotifier {
           continue;
         }
 
-        item.status = TargetSectionStatus.adding;
-        item.lastAttempt = DateTime.now();
-        item.message =
-            '$remaining seat${remaining == 1 ? '' : 's'} available! Adding...';
-        addLog(
-          'Seat opened: ${item.courseCode} Sec ${item.sectionName} ($remaining seats). Attempting add...',
-        );
-        notifyListeners();
+        await _attemptSection(item, detailsMap, runGeneration);
+      }
+    } finally {
+      _isTicking = false;
+    }
+  }
 
-        try {
-          await AdvisingHelperService().addSection(
+  Future<void> _attemptSection(
+    TargetSectionItem item,
+    Map<int, SeatStatusDetailsResponse> detailsMap,
+    int runGeneration,
+  ) async {
+    final detail = detailsMap[item.sectionId];
+    if (detail == null) return;
+    final remaining = detail.capacity - detail.consumedSeat;
+    if (remaining <= 0) return;
+
+    item.status = TargetSectionStatus.adding;
+    item.lastAttempt = DateTime.now();
+    item.message =
+        '$remaining seat${remaining == 1 ? '' : 's'} available! Adding...';
+    addLog(
+      'Seat opened: ${item.courseCode} Sec ${item.sectionName} ($remaining seats). Attempting add...',
+    );
+    notifyListeners();
+
+    try {
+      final replacement = item.replacement;
+      var sourceWasDropped = false;
+      if (replacement != null) {
+        final enrolled = await _service.fetchAdvisedSections(
+          portfolioId!,
+          phase: phase,
+          publicKey: publicKey!,
+        );
+        if (!isRunning || runGeneration != _runGeneration) return;
+        if (enrolled.any((entry) => entry.sectionId == item.sectionId)) {
+          await _completeReplacement(item);
+          return;
+        }
+        if (enrolled.any((entry) => entry.sectionId == replacement.sectionId)) {
+          addLog(
+            'Dropping ${replacement.courseCode} Sec '
+            '${replacement.sectionName} for replacement',
+          );
+          await _service.dropSection(
             portfolioId: portfolioId!,
-            sectionId: item.sectionId,
+            sectionId: replacement.sectionId,
             publicKey: publicKey!,
             phase: phase,
           );
-
-          if (!targetSections.any((e) => e.sectionId == item.sectionId)) {
-            continue;
-          }
-
-          item.status = TargetSectionStatus.added;
-          item.message = 'Successfully added!';
+          sourceWasDropped = true;
+        } else {
           addLog(
-            'Success: ${item.courseCode} Sec ${item.sectionName} enrolled',
+            '${replacement.courseCode} Sec ${replacement.sectionName} '
+            'was already removed; continuing with add',
           );
-          final refreshEnrolled = onSectionAdded;
-          if (refreshEnrolled != null) {
-            try {
-              await refreshEnrolled();
-            } catch (error) {
-              addLog('Enrolled list refresh failed: $error');
-            }
-          }
-        } catch (e) {
-          if (!targetSections.any((e) => e.sectionId == item.sectionId)) {
-            continue;
-          }
-          item.status = TargetSectionStatus.failed;
-          final message = advisingErrorMessage(e);
-          item.message = 'Error: $message';
-          addLog('Error adding ${item.courseCode}: $message');
         }
-        notifyListeners();
       }
-      clearCompletedQueue();
-    } finally {
-      _isTicking = false;
+
+      try {
+        await _service.addSection(
+          portfolioId: portfolioId!,
+          sectionId: item.sectionId,
+          publicKey: publicKey!,
+          phase: phase,
+        );
+      } catch (error) {
+        try {
+          if (await _waitForEnrollment(item.sectionId)) {
+            await _recordSuccess(item);
+            await _refreshEnrolledAfterMutation();
+            return;
+          }
+          if (sourceWasDropped && replacement != null) {
+            await _restoreReplacementSource(replacement);
+          }
+        } catch (verificationError) {
+          addLog(
+            'Could not verify the add after Connect returned an error: '
+            '${advisingErrorMessage(verificationError)}',
+          );
+        }
+        rethrow;
+      }
+
+      if (!targetSections.any((e) => e.sectionId == item.sectionId)) {
+        return;
+      }
+
+      if (!await _waitForEnrollment(item.sectionId)) {
+        if (sourceWasDropped && replacement != null) {
+          await _restoreReplacementSource(replacement);
+        }
+        throw StateError('Connect did not confirm the new enrollment');
+      }
+
+      await _recordSuccess(item);
+      await _refreshEnrolledAfterMutation();
+    } catch (e) {
+      if (!targetSections.any((e) => e.sectionId == item.sectionId)) {
+        return;
+      }
+      item.status = TargetSectionStatus.failed;
+      final message = advisingErrorMessage(e);
+      item.message = 'Error: $message';
+      addLog('Error adding ${item.courseCode}: $message');
+    }
+    notifyListeners();
+    clearCompletedQueue();
+  }
+
+  Future<bool> _waitForEnrollment(int sectionId) async {
+    for (var attempt = 0; attempt < 3; attempt++) {
+      final enrolled = await _service.fetchAdvisedSections(
+        portfolioId!,
+        phase: phase,
+        publicKey: publicKey!,
+      );
+      if (enrolled.any((entry) => entry.sectionId == sectionId)) return true;
+      if (attempt < 2) {
+        await Future<void>.delayed(const Duration(milliseconds: 250));
+      }
+    }
+    return false;
+  }
+
+  Future<void> _recordSuccess(TargetSectionItem item) async {
+    if (item.replacement == null) {
+      item.status = TargetSectionStatus.added;
+      item.message = 'Successfully added!';
+      addLog('Success: ${item.courseCode} Sec ${item.sectionName} enrolled');
+    } else {
+      await _completeReplacement(item);
+    }
+  }
+
+  Future<void> _refreshEnrolledAfterMutation() async {
+    final refreshEnrolled = onSectionAdded;
+    if (refreshEnrolled == null) return;
+    try {
+      await refreshEnrolled();
+    } catch (error) {
+      addLog('Enrolled list refresh failed: $error');
+    }
+  }
+
+  Future<void> _completeReplacement(TargetSectionItem item) async {
+    final replacement = item.replacement!;
+    addLog(
+      'Success: ${replacement.courseCode} Sec ${replacement.sectionName} '
+      'replaced with ${item.courseCode} Sec ${item.sectionName}',
+    );
+    targetSections.removeWhere(
+      (entry) => entry.replacement?.groupKey == replacement.groupKey,
+    );
+    onReplacementCompleted?.call();
+    if (targetSections.isEmpty) stop();
+    notifyListeners();
+  }
+
+  Future<void> _restoreReplacementSource(
+    AdvisingReplacementSource replacement,
+  ) async {
+    addLog(
+      'Add failed; attempting to restore ${replacement.courseCode} '
+      'Sec ${replacement.sectionName}',
+    );
+    try {
+      await _service.addSection(
+        portfolioId: portfolioId!,
+        sectionId: replacement.sectionId,
+        publicKey: publicKey!,
+        phase: phase,
+      );
+      final enrolled = await _service.fetchAdvisedSections(
+        portfolioId!,
+        phase: phase,
+        publicKey: publicKey!,
+      );
+      if (!enrolled.any((entry) => entry.sectionId == replacement.sectionId)) {
+        throw StateError('Connect did not confirm the restored enrollment');
+      }
+      addLog(
+        'Restored ${replacement.courseCode} Sec ${replacement.sectionName}',
+      );
+    } catch (error) {
+      addLog(
+        'URGENT: Could not restore ${replacement.courseCode} Sec '
+        '${replacement.sectionName}: ${advisingErrorMessage(error)}',
+      );
     }
   }
 

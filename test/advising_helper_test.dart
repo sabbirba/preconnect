@@ -230,6 +230,80 @@ void main() {
       expect(engine.targetSections.isEmpty, true);
     });
 
+    test('keeps replacement alternatives in explicit priority order', () {
+      final engine = AdvisingAutoEngine();
+      const replacement = AdvisingReplacementSource(
+        sectionId: 100,
+        courseCode: 'CSE110',
+        sectionName: '10',
+      );
+      for (final section in <(int, String)>[
+        (106, '06'),
+        (107, '07'),
+        (108, '08'),
+      ]) {
+        engine.addSectionToQueue(
+          TargetSectionItem(
+            sectionId: section.$1,
+            courseId: 1001,
+            courseCode: 'CSE110',
+            sectionName: section.$2,
+            capacity: 30,
+            consumedSeat: 30,
+            courseCredit: 3,
+            replacement: replacement,
+          ),
+        );
+      }
+
+      expect(engine.targetSections.map((item) => item.sectionName), <String>[
+        '06',
+        '07',
+        '08',
+      ]);
+
+      engine.moveSectionPriority(108, -1);
+      expect(engine.targetSections.map((item) => item.sectionName), <String>[
+        '06',
+        '08',
+        '07',
+      ]);
+      engine.moveSectionPriority(108, -1);
+      expect(engine.targetSections.map((item) => item.sectionName), <String>[
+        '08',
+        '06',
+        '07',
+      ]);
+    });
+
+    test('does not reorder targets across replacement groups', () {
+      final engine = AdvisingAutoEngine();
+      for (final sourceId in <int>[100, 200]) {
+        engine.addSectionToQueue(
+          TargetSectionItem(
+            sectionId: sourceId + 1,
+            courseId: sourceId,
+            courseCode: sourceId == 100 ? 'CSE110' : 'MAT215',
+            sectionName: '01',
+            capacity: 30,
+            consumedSeat: 30,
+            courseCredit: 3,
+            replacement: AdvisingReplacementSource(
+              sectionId: sourceId,
+              courseCode: sourceId == 100 ? 'CSE110' : 'MAT215',
+              sectionName: '10',
+            ),
+          ),
+        );
+      }
+
+      engine.moveSectionPriority(201, -1);
+      expect(engine.targetSections.map((item) => item.sectionId), <int>[
+        101,
+        201,
+      ]);
+    });
+
     test('reset removes every phase-specific state value', () {
       final engine = AdvisingAutoEngine();
       engine.addSectionToQueue(
