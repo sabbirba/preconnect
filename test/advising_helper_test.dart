@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -5,7 +6,10 @@ import 'package:preconnect/api/api_client.dart';
 import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/api/advising_service.dart';
 import 'package:preconnect/model/advising_phase.dart';
+import 'package:preconnect/model/seat_timetable.dart';
 import 'package:preconnect/pages/advising_helper.dart';
+import 'package:preconnect/pages/shared_widgets/seat_filters.dart';
+import 'package:preconnect/api/seat_status.dart';
 import 'package:preconnect/tools/app_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -18,32 +22,72 @@ void main() {
   });
 
   group('AdvisingSectionRecord', () {
-    test('recognizes exact unavailable-phase response statuses', () {
-      for (final status in <int>[400, 404, 412, 500]) {
-        expect(isUnavailableAdvisingPhaseResponse(ApiException(status)), true);
-      }
-      expect(
-        isUnavailableAdvisingPhaseResponse(const ApiException(401)),
-        false,
+    test('shared seat filters apply availability, mode, day, and time', () {
+      final theory = SeatStatusClassSchedule(
+        day: 'MONDAY',
+        startTime: '11:00',
+        endTime: '12:20',
       );
       expect(
-        isUnavailableAdvisingPhaseResponse(const ApiException(403)),
-        false,
+        matchesSeatFilters(
+          availableOnly: true,
+          remaining: 1,
+          mode: 'Theory',
+          hasLabSection: false,
+          theorySchedules: <SeatStatusClassSchedule>[theory],
+          labSchedules: const <SeatStatusClassSchedule>[],
+          day: 'MONDAY',
+          time: const SeatTimetable(startTime: '11:00', endTime: '12:20'),
+        ),
+        true,
       );
       expect(
-        isUnavailableAdvisingPhaseResponse(const ApiException(502)),
+        matchesSeatFilters(
+          availableOnly: true,
+          remaining: 0,
+          mode: 'Theory',
+          hasLabSection: false,
+          theorySchedules: <SeatStatusClassSchedule>[theory],
+          labSchedules: const <SeatStatusClassSchedule>[],
+          day: '',
+          time: const SeatTimetable(startTime: '', endTime: ''),
+        ),
         false,
       );
     });
 
-    test('uses the current advising endpoint contracts', () {
+    test('sanitizes browser and timeout errors for activity logs', () {
       expect(
-        ApiConfig.advisingSessionStartPath('70801', publicKey: 'key'),
-        '/adv/v1/advising/70801/advising-session?publicKey=key',
+        advisingErrorMessage(
+          TimeoutException('Future not completed', const Duration(seconds: 12)),
+        ),
+        'BRACU Connect request timed out',
       );
+      expect(
+        advisingErrorMessage(
+          Exception(
+            'Failed to fetch https://connect.bracu.ac.bd/api/adv/v1/advising/70801/advising-session?publicKey=secret',
+          ),
+        ),
+        'Browser could not reach the BRACU Connect API',
+      );
+    });
+
+    test('recognizes exact missing-phase response statuses', () {
+      for (final status in <int>[400, 404, 412]) {
+        expect(isMissingAdvisingPhaseResponse(ApiException(status)), true);
+      }
+      expect(isMissingAdvisingPhaseResponse(const ApiException(500)), false);
+    });
+
+    test('uses the current advising endpoint contracts', () {
       expect(
         ApiConfig.advisingSectionsStudentPath('70801'),
         '/adv/v1/advising/sections/student/70801',
+      );
+      expect(
+        ApiConfig.advisingStudentCoursesPath(AdvisingPhase.phaseTwo),
+        '/adv/v1/student-courses/phase-two',
       );
       expect(
         ApiConfig.studentCoursesForPhasePath('70801', AdvisingPhase.phaseOne),
@@ -52,6 +96,29 @@ void main() {
       expect(
         ApiConfig.advisingConfirmPath('70801'),
         '/adv/v1/advising/70801/confirm',
+      );
+    });
+
+    test('uses the exact browser section mutation payload', () {
+      expect(
+        advisingSectionMutationPayload(portfolioId: '70801', sectionId: 190461),
+        <String, dynamic>{'studentPortfolioId': 70801, 'sectionId': 190461},
+      );
+    });
+
+    test('selects only the exact active advising phase session', () {
+      final body = jsonEncode(<Map<String, dynamic>>[
+        <String, dynamic>{'id': 70001, 'advisingPhase': 'PHASE_ONE'},
+        <String, dynamic>{'id': 70002, 'advisingPhase': 'PHASE_TWO'},
+      ]);
+
+      expect(
+        parseActiveAdvisingSessionId(body, AdvisingPhase.phaseTwo),
+        '70002',
+      );
+      expect(
+        parseActiveAdvisingSessionId(body, AdvisingPhase.selfRegistration),
+        isNull,
       );
     });
 
@@ -183,8 +250,27 @@ void main() {
       expect(engine.activityLogs, isEmpty);
       expect(engine.isRunning, isFalse);
       expect(engine.portfolioId, isNull);
-      expect(engine.sessionId, isNull);
       expect(engine.publicKey, isNull);
+    });
+
+    test('clears activity logs without clearing queued sections', () {
+      final engine = AdvisingAutoEngine();
+      engine.addSectionToQueue(
+        TargetSectionItem(
+          sectionId: 101,
+          courseId: 1001,
+          courseCode: 'CSE110',
+          sectionName: '01',
+          capacity: 30,
+          consumedSeat: 30,
+          courseCredit: 3,
+        ),
+      );
+
+      engine.clearActivityLogs();
+
+      expect(engine.activityLogs, isEmpty);
+      expect(engine.targetSections, hasLength(1));
     });
 
     test('skips network hit if remaining seats is 0', () {
@@ -228,6 +314,28 @@ void main() {
 
       expect(pending.length, 1);
       expect(pending.first.sectionId, 500);
+    });
+
+    test('detects when every queued section has finished', () {
+      final engine = AdvisingAutoEngine();
+      final item = TargetSectionItem(
+        sectionId: 500,
+        courseId: 1500,
+        courseCode: 'MAT215',
+        sectionName: '06',
+        capacity: 35,
+        consumedSeat: 30,
+        courseCredit: 3,
+      );
+      engine.addSectionToQueue(item);
+
+      expect(engine.hasCompletedQueue, false);
+      item.status = TargetSectionStatus.added;
+      expect(engine.hasCompletedQueue, true);
+      expect(engine.clearCompletedQueue(), true);
+      expect(engine.targetSections, isEmpty);
+      engine.addSectionToQueue(item);
+      expect(engine.targetSections, hasLength(1));
     });
 
     test('cookie extraction builds header format', () async {

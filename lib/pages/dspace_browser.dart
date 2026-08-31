@@ -178,6 +178,17 @@ class _DSpaceBrowserPageState extends State<DSpaceBrowserPage> {
 
   static List<DSpaceCategory>? _cachedCategories;
 
+  bool _handleInternalBack() {
+    if (_selectedCategory == null) return false;
+    _searchController.clear();
+    setState(() {
+      _selectedCategory = null;
+      _items = null;
+      _filteredItems = [];
+    });
+    return true;
+  }
+
   void _seedCategoriesSync() {
     if (_cachedCategories != null && _cachedCategories!.isNotEmpty) {
       _categories = _cachedCategories;
@@ -209,6 +220,7 @@ class _DSpaceBrowserPageState extends State<DSpaceBrowserPage> {
   @override
   void initState() {
     super.initState();
+    HomeTabRegistry.registerBackHandler(HomeTab.dspace, _handleInternalBack);
     _seedCategoriesSync();
     _searchController.addListener(() {
       final val = _searchController.text;
@@ -227,6 +239,7 @@ class _DSpaceBrowserPageState extends State<DSpaceBrowserPage> {
 
   @override
   void dispose() {
+    HomeTabRegistry.unregisterBackHandler(HomeTab.dspace, _handleInternalBack);
     _searchController.dispose();
     _itemsScrollController.dispose();
     super.dispose();
@@ -1126,105 +1139,85 @@ class _DSpaceBrowserPageState extends State<DSpaceBrowserPage> {
         : _selectedCategory!.category;
     final subtitle = _selectedCategory == null ? 'Repository' : 'DSpace';
 
-    return PopScope(
-      canPop: _selectedCategory == null,
-      onPopInvokedWithResult: (didPop, result) {
-        if (!didPop && _selectedCategory != null) {
-          _searchController.clear();
-          setState(() {
-            _selectedCategory = null;
-            _items = null;
-            _filteredItems = [];
-          });
+    return BracuBackScope(
+      canGoBack: true,
+      onBack: () {
+        if (!_handleInternalBack()) {
+          if (Navigator.of(context).canPop()) {
+            Navigator.of(context).pop();
+          } else {
+            HomeTabRegistry.setActive(HomeTab.dashboard);
+          }
         }
       },
-      child: BracuBackScope(
-        canGoBack: true,
-        onBack: () {
-          if (_selectedCategory != null) {
-            _searchController.clear();
-            setState(() {
-              _selectedCategory = null;
-              _items = null;
-              _filteredItems = [];
-            });
-          } else {
-            if (Navigator.of(context).canPop()) {
-              Navigator.of(context).pop();
-            } else {
-              HomeTabRegistry.setActive(HomeTab.dashboard);
-            }
-          }
-        },
-        child: BracuPageScaffold(
-          title: title,
-          subtitle: subtitle,
-          icon: Icons.library_books_rounded,
-          showBack: true,
-          actions: [
-            if (_selectedCategory == null)
-              IconButton(
-                tooltip: 'Help',
-                onPressed: () => _showHelpBottomSheet(context),
-                icon: const Icon(
-                  Icons.help_outline_rounded,
-                  color: BracuPalette.primary,
-                ),
-              )
-            else ...[
-              Stack(
-                children: [
-                  IconButton(
-                    tooltip: 'Filter & Sort',
-                    onPressed: _items != null && _items!.isNotEmpty
-                        ? () => _showFilterSheet(context)
-                        : null,
-                    icon: Icon(
-                      Icons.tune_rounded,
-                      color: _hasActiveFilters
-                          ? BracuPalette.primary
-                          : BracuPalette.primary.withValues(alpha: 0.6),
-                    ),
+      child: BracuPageScaffold(
+        title: title,
+        subtitle: subtitle,
+        icon: Icons.library_books_rounded,
+        showBack: true,
+        actions: [
+          if (_selectedCategory == null)
+            IconButton(
+              tooltip: 'Help',
+              onPressed: () => _showHelpBottomSheet(context),
+              icon: const Icon(
+                Icons.help_outline_rounded,
+                color: BracuPalette.primary,
+              ),
+            )
+          else ...[
+            Stack(
+              children: [
+                IconButton(
+                  tooltip: 'Filter & Sort',
+                  onPressed: _items != null && _items!.isNotEmpty
+                      ? () => _showFilterSheet(context)
+                      : null,
+                  icon: Icon(
+                    Icons.tune_rounded,
+                    color: _hasActiveFilters
+                        ? BracuPalette.primary
+                        : BracuPalette.primary.withValues(alpha: 0.6),
                   ),
-                  if (_hasActiveFilters)
-                    Positioned(
-                      top: 10,
-                      right: 10,
-                      child: Container(
-                        width: 7,
-                        height: 7,
-                        decoration: const BoxDecoration(
-                          color: BracuPalette.primary,
-                          shape: BoxShape.circle,
-                        ),
+                ),
+                if (_hasActiveFilters)
+                  Positioned(
+                    top: 10,
+                    right: 10,
+                    child: Container(
+                      width: 7,
+                      height: 7,
+                      decoration: const BoxDecoration(
+                        color: BracuPalette.primary,
+                        shape: BoxShape.circle,
                       ),
                     ),
-                ],
-              ),
-              BracuRefreshButton(
-                onPressed: () => _loadCategoryItems(_selectedCategory!),
-                isLoading: _isLoadingItems,
-              ),
-            ],
-          ],
-          body: Padding(
-            padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
-            child: Column(
-              children: [
-                BracuSearchField(
-                  controller: _searchController,
-                  hintText: 'Search...',
-                ),
-                const Gap(12),
-                if (_selectedCategory != null) _buildActiveFilterBar(context),
-                if (_selectedCategory != null && !_hasActiveFilters)
-                  const Gap(12),
-                if (_selectedCategory == null)
-                  _buildCategoriesView(context)
-                else
-                  _buildItemsView(context),
+                  ),
               ],
             ),
+            BracuRefreshButton(
+              onPressed: () => _loadCategoryItems(_selectedCategory!),
+              isLoading: _isLoadingItems,
+            ),
+          ],
+        ],
+        body: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+          child: Column(
+            children: [
+              BracuSearchField(
+                controller: _searchController,
+                hintText: 'Search...',
+              ),
+              const Gap(12),
+              if (_selectedCategory != null) _buildActiveFilterBar(context),
+              if (_selectedCategory != null && !_hasActiveFilters)
+                const Gap(12),
+              if (_selectedCategory == null)
+                _buildCategoriesView(context)
+              else
+                _buildItemsView(context),
+            ],
           ),
         ),
       ),

@@ -197,6 +197,7 @@ class _HomePageState extends State<HomePage> {
 
   void _handleBack() {
     if (selectedTab == HomeTab.dashboard) return;
+    if (HomeTabRegistry.handleBack(selectedTab)) return;
     _setTab(HomeTab.dashboard);
   }
 

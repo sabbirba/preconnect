@@ -16,6 +16,13 @@
   "background": {
     "service_worker": "background.dart.js"
   },
+  "content_scripts": [
+    {
+      "matches": ["https://connect.bracu.ac.bd/*"],
+      "js": ["connect_bridge.js"],
+      "run_at": "document_start"
+    }
+  ],
   "browser_specific_settings": {
     "gecko": {
       "id": "preconnect@sabbirba.com",
@@ -28,6 +35,7 @@
   "permissions": [
     "alarms",
     "cookies",
+    "webRequest",
     "sidePanel",
     "contextMenus",
     "notifications",

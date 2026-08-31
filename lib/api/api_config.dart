@@ -98,13 +98,11 @@ class ApiConfig {
   static String advisingPath(String studentId) =>
       '/adv/v1/advising/$studentId/active-advising-sessions';
 
-  static String advisingSessionStartPath(
-    String sessionId, {
-    required String publicKey,
-  }) => '/adv/v1/advising/$sessionId/advising-session?publicKey=$publicKey';
-
   static String advisingSectionsStudentPath(String portfolioId) =>
       '/adv/v1/advising/sections/student/$portfolioId';
+
+  static String advisingStudentCoursesPath(AdvisingPhase phase) =>
+      '/adv/v1/student-courses/${phase.pathSegment}';
 
   static String advisingConfirmPath(String sessionId) =>
       '/adv/v1/advising/$sessionId/confirm';
