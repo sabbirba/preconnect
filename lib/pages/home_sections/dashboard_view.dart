@@ -530,8 +530,6 @@ extension _HomeDashboardView on _HomeDashboardState {
                                     child: BracuActionBannerCard(
                                       icon: Icons.bolt_rounded,
                                       title: 'Advising Helper',
-                                      subtitle:
-                                          'Registration & advising manager',
                                       iconColor: const Color(0xFF22B573),
                                       onTap: () {
                                         Navigator.push(

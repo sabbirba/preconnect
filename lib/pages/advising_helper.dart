@@ -16,7 +16,8 @@ import 'package:preconnect/pages/shared_widgets/faculty_sheet.dart';
 import 'package:preconnect/pages/shared_widgets/seat_filters.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/app_storage.dart';
-import 'package:preconnect/tools/storage_keys.dart';
+
+enum _ReplacementQueueAction { higher, lower, remove }
 
 class AdvisingHelperPage extends StatefulWidget {
   const AdvisingHelperPage({super.key});
@@ -33,8 +34,8 @@ class _AdvisingHelperPageState extends State<AdvisingHelperPage> {
   String? _errorMessage;
   String? _portfolioId;
   String? _publicKey;
-  String? _sessionId;
   String? _enrolledError;
+  AdvisingSectionRecord? _replacementSource;
 
   AdvisingPhase _phase = AdvisingPhase.phaseOne;
   List<AdvisingSectionRecord> _enrolled = const [];
@@ -42,6 +43,7 @@ class _AdvisingHelperPageState extends State<AdvisingHelperPage> {
   final TextEditingController _searchController = TextEditingController();
   Timer? _enrolledRefreshTimer;
   bool _isRefreshingEnrolled = false;
+  bool _showAllActivityLogs = false;
   bool _availableOnly = false;
   String _selectedModeFilter = '';
   String _selectedDayFilter = '';
@@ -103,28 +105,6 @@ class _AdvisingHelperPageState extends State<AdvisingHelperPage> {
 
       final publicKey = DateTime.now().millisecondsSinceEpoch.toString();
       final portfolioId = resolvedPortfolioId;
-      final studentId = await AppStorage.instance.getString(
-        StorageKeys.studentId,
-      );
-      if (studentId == null || studentId.trim().isEmpty) {
-        throw Exception('Failed to resolve student ID.');
-      }
-      String? activeSessionId;
-      String? activeSessionError;
-      try {
-        activeSessionId = await _service.fetchActiveSessionId(
-          studentId,
-          phase: phase,
-        );
-      } on ApiException catch (error) {
-        if (isMissingAdvisingPhaseResponse(error)) {
-          activeSessionId = null;
-        } else {
-          activeSessionError = advisingErrorMessage(error);
-        }
-      } catch (error) {
-        activeSessionError = advisingErrorMessage(error);
-      }
       final seatsFuture = _service.fetchRealtimeSections();
       List<AdvisingSectionRecord> enrolled = const [];
       String? enrolledError;
@@ -142,18 +122,7 @@ class _AdvisingHelperPageState extends State<AdvisingHelperPage> {
       if (!mounted || generation != _loadGeneration) return;
       _portfolioId = portfolioId;
       _publicKey = publicKey;
-      _sessionId = activeSessionId;
       _enrolledError = enrolledError;
-      if (activeSessionError != null) {
-        _engine.addLog(
-          '${phase.label} session response unavailable: $activeSessionError',
-        );
-      }
-      if (enrolledError != null) {
-        _engine.addLog(
-          '${phase.label} enrolled sections request failed: $enrolledError',
-        );
-      }
 
       setState(() {
         _enrolled = enrolled;
@@ -304,6 +273,31 @@ class _AdvisingHelperPageState extends State<AdvisingHelperPage> {
     );
   }
 
+  Future<void> _beginReplacement(AdvisingSectionRecord sec) async {
+    await showBracuConfirmationWithActionDialog(
+      context,
+      icon: Icons.swap_horiz_rounded,
+      title: 'Replace This Enrollment?',
+      message:
+          'Keep ${sec.courseCode} Section ${sec.sectionName} enrolled while '
+          'watching your prioritized alternatives. When a target seat opens, '
+          'the helper must drop this section before adding the target. Connect '
+          'does not guarantee an atomic swap, so the original seat could be lost.',
+      confirmLabel: 'Choose Targets',
+      cancelLabel: 'Cancel',
+      confirmColor: BracuPalette.warning,
+      onConfirm: () async {
+        if (!mounted) return;
+        setState(() => _replacementSource = sec);
+      },
+    );
+  }
+
+  void _cancelReplacementSelection() {
+    if (_engine.isRunning) return;
+    setState(() => _replacementSource = null);
+  }
+
   Future<void> _drop(AdvisingSectionRecord sec) async {
     if (_portfolioId == null || _publicKey == null) return;
     if (!mounted) return;
@@ -316,6 +310,9 @@ class _AdvisingHelperPageState extends State<AdvisingHelperPage> {
         phase: _phase,
       );
       _engine.addLog('Dropped ${sec.courseCode} Sec ${sec.sectionName}');
+      if (_replacementSource?.sectionId == sec.sectionId && mounted) {
+        setState(() => _replacementSource = null);
+      }
       if (mounted) {
         showAppSnackBar(
           context,
@@ -384,41 +381,6 @@ class _AdvisingHelperPageState extends State<AdvisingHelperPage> {
     );
   }
 
-  Future<void> _confirmAdvising() async {
-    if (_portfolioId == null || _sessionId == null || _publicKey == null) {
-      return;
-    }
-    await showBracuConfirmationWithActionDialog(
-      context,
-      icon: Icons.check_circle_outline_rounded,
-      title: 'Confirm Advising?',
-      message:
-          'This will finalize your advising selection for ${_phase.label}.',
-      confirmLabel: 'Confirm',
-      cancelLabel: 'Cancel',
-      confirmColor: BracuPalette.primary,
-      onConfirm: () async {
-        if (!mounted) return;
-        setState(() => _isLoading = true);
-        try {
-          await _service.confirmAdvising(
-            portfolioId: _portfolioId!,
-            sessionId: _sessionId!,
-            publicKey: _publicKey!,
-            phase: _phase,
-          );
-          _engine.addLog('Advising confirmed');
-          if (mounted) showAppSnackBar(context, 'Advising confirmed!');
-          await _refreshEnrolled();
-        } catch (e) {
-          if (mounted) showAppSnackBar(context, e.toString());
-        } finally {
-          if (mounted) setState(() => _isLoading = false);
-        }
-      },
-    );
-  }
-
   void _toggleQueue(SeatStatusDetailsResponse s) {
     final alreadyQueued = _engine.targetSections.any(
       (e) => e.sectionId == s.sectionId,
@@ -426,6 +388,7 @@ class _AdvisingHelperPageState extends State<AdvisingHelperPage> {
     if (alreadyQueued) {
       _engine.removeSectionFromQueue(s.sectionId);
     } else {
+      final replacementSource = _replacementSource;
       _engine.addSectionToQueue(
         TargetSectionItem(
           sectionId: s.sectionId,
@@ -438,6 +401,13 @@ class _AdvisingHelperPageState extends State<AdvisingHelperPage> {
           courseCredit: s.courseCredit,
           labSectionId: s.labSectionId,
           labSectionName: s.labName,
+          replacement: replacementSource == null
+              ? null
+              : AdvisingReplacementSource(
+                  sectionId: replacementSource.sectionId,
+                  courseCode: replacementSource.courseCode,
+                  sectionName: replacementSource.sectionName,
+                ),
         ),
       );
     }
@@ -456,6 +426,9 @@ class _AdvisingHelperPageState extends State<AdvisingHelperPage> {
         publicKey: _publicKey!,
         phase: _phase,
         onSectionAdded: _refreshEnrolled,
+        onReplacementCompleted: () {
+          if (mounted) setState(() => _replacementSource = null);
+        },
       );
     }
     if (mounted) setState(() {});
@@ -503,12 +476,6 @@ class _AdvisingHelperPageState extends State<AdvisingHelperPage> {
             'https://connect.bracu.ac.bd/student/advising/${_phase.pathSegment}',
           ),
         ),
-        if (_enrolled.isNotEmpty)
-          IconButton(
-            tooltip: 'Confirm Advising',
-            icon: const Icon(Icons.check_circle_outline_rounded),
-            onPressed: _confirmAdvising,
-          ),
         BracuRefreshButton(onPressed: _load, isLoading: _isLoading),
       ],
       body: Column(
@@ -532,10 +499,10 @@ class _AdvisingHelperPageState extends State<AdvisingHelperPage> {
                               _phase = phase;
                               _enrolled = const [];
                               _portfolioId = null;
-                              _sessionId = null;
                               _publicKey = null;
                               _errorMessage = null;
                               _enrolledError = null;
+                              _replacementSource = null;
                             });
                             unawaited(_load());
                           }
@@ -578,81 +545,154 @@ class _AdvisingHelperPageState extends State<AdvisingHelperPage> {
           if (queue.isNotEmpty)
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+              child: Center(
+                child: BracuActionButton(
+                  key: const ValueKey('advising-auto-add-button'),
+                  onPressed: _toggleEngine,
+                  label: _engine.isRunning ? 'Stop' : 'Start',
+                ),
+              ),
+            ),
+          if (_replacementSource != null)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
               child: BracuCard(
-                backgroundColor: BracuPalette.info.withValues(alpha: 0.12),
+                backgroundColor: BracuPalette.warning.withValues(alpha: 0.12),
                 child: Row(
                   children: [
+                    const Icon(
+                      Icons.swap_horiz_rounded,
+                      color: BracuPalette.warning,
+                    ),
+                    const Gap(10),
                     Expanded(
                       child: Text(
-                        '${queue.length} section(s) queued for auto-add.',
+                        'Replacing ${_replacementSource!.courseCode} Sec '
+                        '${_replacementSource!.sectionName}. Select target '
+                        'sections in priority order.',
                         style: TextStyle(
-                          fontWeight: FontWeight.bold,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
                           color: textPrimary,
                         ),
                       ),
                     ),
-                    BracuActionButton(
-                      onPressed: _toggleEngine,
-                      label: _engine.isRunning ? 'Stop' : 'Start',
-                      outlined: false,
-                      borderRadius: 10,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 10,
-                      ),
+                    TextButton(
+                      onPressed: _engine.isRunning
+                          ? null
+                          : _cancelReplacementSelection,
+                      child: const Text('Cancel'),
                     ),
                   ],
                 ),
               ),
             ),
-          Expanded(
-            child: DefaultTabController(
-              length: 2,
-              child: Column(
-                children: [
-                  TabBar(
-                    labelColor: BracuPalette.primary,
-                    unselectedLabelColor: textSecondary,
-                    indicatorColor: BracuPalette.primary,
-                    tabs: [
-                      Tab(
-                        text: _enrolledError == null
-                            ? 'Enrolled & Queue (${_enrolled.length + queue.length})'
-                            : 'Enrolled & Queue (?)',
-                      ),
-                      const Tab(text: 'Sections'),
-                    ],
-                  ),
-                  Expanded(
-                    child: TabBarView(
-                      children: [
-                        _buildEnrolledAndQueueTab(textPrimary, textSecondary),
-                        _buildSectionsTab(textPrimary, textSecondary),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
+          Expanded(child: _buildUnifiedPage(textPrimary, textSecondary)),
         ],
       ),
     );
   }
 
-  Widget _buildEnrolledAndQueueTab(Color textPrimary, Color textSecondary) {
-    return BracuRefreshList(
+  Widget _buildUnifiedPage(Color textPrimary, Color textSecondary) {
+    final hasQueueContent =
+        _engine.targetSections.isNotEmpty || _engine.activityLogs.isNotEmpty;
+    final showsEnrolledContent =
+        _enrolled.isNotEmpty ||
+        (_enrolledError != null && _engine.activityLogs.isEmpty);
+    final filtered = _filteredSections;
+    final times = sortedSeatFilterTimes(
+      _seatDetails.values
+          .expand(
+            (section) => <SeatStatusClassSchedule>[
+              ...section.sectionSchedule.classSchedules,
+              ...section.labSchedules,
+            ],
+          )
+          .map((schedule) => schedule.toTimetable()),
+    );
+
+    return RefreshIndicator(
       onRefresh: () async {
         await _refreshEnrolled();
         await _refreshSeats();
       },
-      children: [
-        _buildQueueTab(textPrimary, textSecondary, embedded: true),
-        if (_engine.targetSections.isNotEmpty ||
-            _engine.activityLogs.isNotEmpty)
-          const Divider(height: 28),
-        _buildEnrolledTab(textPrimary, textSecondary, embedded: true),
-      ],
+      child: CustomScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        slivers: [
+          SliverToBoxAdapter(
+            child: _buildQueueTab(textPrimary, textSecondary, embedded: true),
+          ),
+          if (hasQueueContent && showsEnrolledContent)
+            const SliverToBoxAdapter(child: Divider(height: 20)),
+          SliverToBoxAdapter(
+            child: _buildEnrolledTab(
+              textPrimary,
+              textSecondary,
+              embedded: true,
+            ),
+          ),
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: EdgeInsets.fromLTRB(
+                14,
+                hasQueueContent || showsEnrolledContent ? 10 : 8,
+                14,
+                10,
+              ),
+              child: BracuSearchField(
+                controller: _searchController,
+                hintText: 'Search course, section or faculty...',
+                query: _searchQuery,
+              ),
+            ),
+          ),
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(14, 0, 14, 12),
+              child: SeatFilterBar(
+                availableOnly: _availableOnly,
+                mode: _selectedModeFilter,
+                day: _selectedDayFilter,
+                time: _selectedTimeFilter,
+                times: times,
+                onAvailableChanged: (value) =>
+                    setState(() => _availableOnly = value),
+                onModeChanged: (value) =>
+                    setState(() => _selectedModeFilter = value),
+                onDayChanged: (value) =>
+                    setState(() => _selectedDayFilter = value),
+                onTimeChanged: (value) =>
+                    setState(() => _selectedTimeFilter = value),
+              ),
+            ),
+          ),
+          if (filtered.isEmpty)
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(14, 0, 14, 28),
+                child: BracuEmptyCard(
+                  message: _searchQuery.isEmpty
+                      ? 'No realtime sections available.'
+                      : 'No sections match your search.',
+                ),
+              ),
+            )
+          else
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(14, 0, 14, 28),
+              sliver: SliverList.builder(
+                itemCount: filtered.length,
+                itemBuilder: (context, index) => Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: _buildAvailableSectionCard(
+                    filtered[index],
+                    textSecondary,
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
     );
   }
 
@@ -662,33 +702,39 @@ class _AdvisingHelperPageState extends State<AdvisingHelperPage> {
     bool embedded = false,
   }) {
     if (_enrolled.isEmpty) {
+      if (embedded &&
+          (_engine.targetSections.isNotEmpty ||
+              _engine.activityLogs.isNotEmpty)) {
+        return const SizedBox.shrink();
+      }
+      if (embedded && _enrolledError == null) {
+        return const SizedBox.shrink();
+      }
       final empty = BracuEmptyCard(
         message: _enrolledError == null
-            ? 'No sections enrolled in this phase yet.'
-            : 'Unable to load enrolled sections. Pull to retry.',
+            ? 'Nothing enrolled or queued. Add sections from Sections.'
+            : 'Unable to load enrolled sections.',
       );
-      if (embedded) return empty;
+      if (embedded) {
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14),
+          child: empty,
+        );
+      }
       return BracuRefreshList(onRefresh: _refreshEnrolled, children: [empty]);
     }
 
     return ListView.builder(
       shrinkWrap: embedded,
       physics: embedded ? const NeverScrollableScrollPhysics() : null,
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-      itemCount: _enrolled.length + 1,
+      padding: EdgeInsets.fromLTRB(
+        embedded ? 14 : 20,
+        4,
+        embedded ? 14 : 20,
+        embedded ? 0 : 12,
+      ),
+      itemCount: _enrolled.length,
       itemBuilder: (context, index) {
-        if (index == _enrolled.length) {
-          return Padding(
-            padding: const EdgeInsets.only(top: 4, bottom: 16),
-            child: BracuActionButton(
-              onPressed: _confirmAdvising,
-              label: 'Confirm Advising',
-              outlined: false,
-              borderRadius: 12,
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-            ),
-          );
-        }
         final sec = _enrolled[index];
         final detail = _seatDetails[sec.sectionId];
 
@@ -721,13 +767,30 @@ class _AdvisingHelperPageState extends State<AdvisingHelperPage> {
               sec.faculty ?? detail?.faculties ?? '',
               detail?.faculty?.staffName,
             ),
-            action: IconButton(
-              icon: const Icon(
-                Icons.remove_circle_outline_rounded,
-                color: BracuPalette.danger,
-                size: 26,
-              ),
-              onPressed: () => _confirmDrop(sec),
+            action: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                IconButton(
+                  tooltip: 'Replace with prioritized sections',
+                  icon: const Icon(
+                    Icons.swap_horiz_rounded,
+                    color: BracuPalette.warning,
+                    size: 26,
+                  ),
+                  onPressed: _engine.isRunning
+                      ? null
+                      : () => _beginReplacement(sec),
+                ),
+                IconButton(
+                  tooltip: 'Drop section',
+                  icon: const Icon(
+                    Icons.remove_circle_outline_rounded,
+                    color: BracuPalette.danger,
+                    size: 26,
+                  ),
+                  onPressed: () => _confirmDrop(sec),
+                ),
+              ],
             ),
           ),
         );
@@ -742,13 +805,15 @@ class _AdvisingHelperPageState extends State<AdvisingHelperPage> {
   }) {
     final queue = _engine.targetSections;
     final logs = _engine.activityLogs;
+    final visibleLogs = _showAllActivityLogs ? logs.take(20) : logs.take(3);
+    final canToggleLogs = logs.length > 3;
 
     if (queue.isEmpty && logs.isEmpty) {
+      if (embedded) return const SizedBox.shrink();
       const empty = BracuEmptyCard(
         message:
             'No sections queued. Add sections from the Sections tab to auto-add.',
       );
-      if (embedded) return empty;
       return BracuRefreshList(
         onRefresh: _refreshSeats,
         children: const [empty],
@@ -758,7 +823,12 @@ class _AdvisingHelperPageState extends State<AdvisingHelperPage> {
     return ListView.builder(
       shrinkWrap: embedded,
       physics: embedded ? const NeverScrollableScrollPhysics() : null,
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+      padding: EdgeInsets.fromLTRB(
+        embedded ? 14 : 20,
+        4,
+        embedded ? 14 : 20,
+        embedded ? 0 : 12,
+      ),
       itemCount: queue.length + (logs.isNotEmpty ? 1 : 0),
       itemBuilder: (context, index) {
         if (logs.isNotEmpty && index == 0) {
@@ -777,30 +847,53 @@ class _AdvisingHelperPageState extends State<AdvisingHelperPage> {
                       ),
                     ),
                   ),
+                  if (canToggleLogs)
+                    TextButton(
+                      key: const ValueKey('advising-activity-log-toggle'),
+                      onPressed: () => setState(
+                        () => _showAllActivityLogs = !_showAllActivityLogs,
+                      ),
+                      child: Text(
+                        _showAllActivityLogs ? 'Show Less' : 'Show More',
+                      ),
+                    ),
                   TextButton(
-                    onPressed: _engine.clearActivityLogs,
+                    onPressed: () {
+                      setState(() => _showAllActivityLogs = false);
+                      _engine.clearActivityLogs();
+                    },
                     child: const Text('Clear'),
                   ),
                 ],
               ),
               const Gap(6),
-              BracuCard(
-                backgroundColor: BracuPalette.card(context),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    for (final log in logs.take(20))
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 4),
-                        child: Text(
-                          log,
-                          style: TextStyle(fontSize: 12, color: textSecondary),
+              SizedBox(
+                width: double.infinity,
+                child: BracuCard(
+                  backgroundColor: BracuPalette.card(context),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      for (final log in visibleLogs)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 4),
+                          child: Text(
+                            log,
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: textSecondary,
+                            ),
+                            maxLines: _showAllActivityLogs ? null : 2,
+                            overflow: _showAllActivityLogs
+                                ? TextOverflow.visible
+                                : TextOverflow.ellipsis,
+                          ),
                         ),
-                      ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
-              const Gap(12),
+              if (queue.isNotEmpty) const Gap(8),
             ],
           );
         }
@@ -810,6 +903,17 @@ class _AdvisingHelperPageState extends State<AdvisingHelperPage> {
         final isAdded = item.status == TargetSectionStatus.added;
         final isAdding = item.status == TargetSectionStatus.adding;
         final detail = _seatDetails[item.sectionId];
+        final replacement = item.replacement;
+        final replacementPriority = replacement == null
+            ? 0
+            : queue
+                      .where(
+                        (entry) =>
+                            entry.replacement?.groupKey == replacement.groupKey,
+                      )
+                      .toList()
+                      .indexOf(item) +
+                  1;
 
         final remaining = detail != null
             ? detail.capacity - detail.consumedSeat
@@ -844,6 +948,10 @@ class _AdvisingHelperPageState extends State<AdvisingHelperPage> {
               detail?.faculties ?? '',
               detail?.faculty?.staffName,
             ),
+            badge: replacement == null
+                ? null
+                : 'Priority $replacementPriority • replaces '
+                      '${replacement.courseCode} Sec ${replacement.sectionName}',
             action: isAdding
                 ? const Padding(
                     padding: EdgeInsets.all(8),
@@ -862,14 +970,62 @@ class _AdvisingHelperPageState extends State<AdvisingHelperPage> {
                       size: 26,
                     ),
                   )
-                : IconButton(
+                : replacement == null
+                ? IconButton(
+                    tooltip: 'Remove from queue',
                     icon: const Icon(
                       Icons.remove_circle_outline_rounded,
                       color: BracuPalette.danger,
                       size: 26,
                     ),
-                    onPressed: () =>
-                        _engine.removeSectionFromQueue(item.sectionId),
+                    onPressed: _engine.isRunning
+                        ? null
+                        : () => _engine.removeSectionFromQueue(item.sectionId),
+                  )
+                : PopupMenuButton<_ReplacementQueueAction>(
+                    tooltip: 'Replacement options',
+                    enabled: !_engine.isRunning,
+                    icon: const Icon(Icons.more_vert_rounded),
+                    onSelected: (action) {
+                      switch (action) {
+                        case _ReplacementQueueAction.higher:
+                          _engine.moveSectionPriority(item.sectionId, -1);
+                          return;
+                        case _ReplacementQueueAction.lower:
+                          _engine.moveSectionPriority(item.sectionId, 1);
+                          return;
+                        case _ReplacementQueueAction.remove:
+                          _engine.removeSectionFromQueue(item.sectionId);
+                          return;
+                      }
+                    },
+                    itemBuilder: (context) => const [
+                      PopupMenuItem(
+                        value: _ReplacementQueueAction.higher,
+                        child: ListTile(
+                          leading: Icon(Icons.arrow_upward_rounded),
+                          title: Text('Higher priority'),
+                        ),
+                      ),
+                      PopupMenuItem(
+                        value: _ReplacementQueueAction.lower,
+                        child: ListTile(
+                          leading: Icon(Icons.arrow_downward_rounded),
+                          title: Text('Lower priority'),
+                        ),
+                      ),
+                      PopupMenuDivider(),
+                      PopupMenuItem(
+                        value: _ReplacementQueueAction.remove,
+                        child: ListTile(
+                          leading: Icon(
+                            Icons.remove_circle_outline_rounded,
+                            color: BracuPalette.danger,
+                          ),
+                          title: Text('Remove'),
+                        ),
+                      ),
+                    ],
                   ),
           ),
         );
@@ -877,127 +1033,61 @@ class _AdvisingHelperPageState extends State<AdvisingHelperPage> {
     );
   }
 
-  Widget _buildSectionsTab(Color textPrimary, Color textSecondary) {
-    final filtered = _filteredSections;
-    final times = sortedSeatFilterTimes(
-      _seatDetails.values
-          .expand(
-            (section) => <SeatStatusClassSchedule>[
-              ...section.sectionSchedule.classSchedules,
-              ...section.labSchedules,
-            ],
-          )
-          .map((schedule) => schedule.toTimetable()),
+  Widget _buildAvailableSectionCard(
+    SeatStatusDetailsResponse sectionDetails,
+    Color textSecondary,
+  ) {
+    final isQueued = _engine.targetSections.any(
+      (item) => item.sectionId == sectionDetails.sectionId,
     );
-
-    return Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-          child: BracuSearchField(
-            controller: _searchController,
-            hintText: 'Search course code, section or faculty...',
-            query: _searchQuery,
-          ),
-        ),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
-          child: SeatFilterBar(
-            availableOnly: _availableOnly,
-            mode: _selectedModeFilter,
-            day: _selectedDayFilter,
-            time: _selectedTimeFilter,
-            times: times,
-            onAvailableChanged: (value) =>
-                setState(() => _availableOnly = value),
-            onModeChanged: (value) =>
-                setState(() => _selectedModeFilter = value),
-            onDayChanged: (value) => setState(() => _selectedDayFilter = value),
-            onTimeChanged: (value) =>
-                setState(() => _selectedTimeFilter = value),
-          ),
-        ),
-        Expanded(
-          child: filtered.isEmpty
-              ? BracuRefreshList(
-                  onRefresh: _refreshSeats,
-                  children: [
-                    BracuEmptyCard(
-                      message: _searchQuery.isEmpty
-                          ? 'No realtime sections available.'
-                          : 'No sections match your search.',
-                    ),
-                  ],
-                )
-              : ListView.builder(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  itemCount: filtered.length,
-                  itemBuilder: (context, index) {
-                    final s = filtered[index];
-                    final isQueued = _engine.targetSections.any(
-                      (e) => e.sectionId == s.sectionId,
-                    );
-                    final isEnrolled = _enrolled.any(
-                      (e) => e.sectionId == s.sectionId,
-                    );
-                    final remaining = s.capacity - s.consumedSeat;
-
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 12),
-                      child: _AdvisingSeatStatusCard(
-                        courseCode: s.courseCode,
-                        sectionName: s.sectionName,
-                        courseName: s.courseName,
-                        courseType: s.courseType,
-                        faculty: s.faculty,
-                        facultyInitial: s.faculties,
-                        credits: s.courseCredit,
-                        classSchedule: s.sectionSchedule.classSchedules,
-                        labSchedule: s.labSchedules,
-                        room: s.roomNumber,
-                        labRoom: s.labRoomName ?? '',
-                        midExamDate: s.sectionSchedule.midExamDate,
-                        midExamStartTime: s.sectionSchedule.midExamStartTime,
-                        midExamEndTime: s.sectionSchedule.midExamEndTime,
-                        finalExamDate: s.sectionSchedule.finalExamDate,
-                        finalExamStartTime:
-                            s.sectionSchedule.finalExamStartTime,
-                        finalExamEndTime: s.sectionSchedule.finalExamEndTime,
-                        remaining: remaining,
-                        consumed: s.consumedSeat,
-                        total: s.capacity,
-                        isPinned: isQueued,
-                        onTap: () => _showFacultyScheduleSheet(
-                          s.faculties,
-                          s.faculty?.staffName,
-                        ),
-                        action: isEnrolled
-                            ? const Padding(
-                                padding: EdgeInsets.all(8),
-                                child: Icon(
-                                  Icons.check_circle_rounded,
-                                  color: BracuPalette.accent,
-                                  size: 28,
-                                ),
-                              )
-                            : IconButton(
-                                icon: Icon(
-                                  isQueued
-                                      ? Icons.check_box_rounded
-                                      : Icons.check_box_outline_blank_rounded,
-                                  color: isQueued
-                                      ? BracuPalette.accent
-                                      : textSecondary,
-                                  size: 28,
-                                ),
-                                onPressed: () => _toggleQueue(s),
-                              ),
-                      ),
-                    );
-                  },
-                ),
-        ),
-      ],
+    final isEnrolled = _enrolled.any(
+      (item) => item.sectionId == sectionDetails.sectionId,
+    );
+    return _AdvisingSeatStatusCard(
+      courseCode: sectionDetails.courseCode,
+      sectionName: sectionDetails.sectionName,
+      courseName: sectionDetails.courseName,
+      courseType: sectionDetails.courseType,
+      faculty: sectionDetails.faculty,
+      facultyInitial: sectionDetails.faculties,
+      credits: sectionDetails.courseCredit,
+      classSchedule: sectionDetails.sectionSchedule.classSchedules,
+      labSchedule: sectionDetails.labSchedules,
+      room: sectionDetails.roomNumber,
+      labRoom: sectionDetails.labRoomName ?? '',
+      midExamDate: sectionDetails.sectionSchedule.midExamDate,
+      midExamStartTime: sectionDetails.sectionSchedule.midExamStartTime,
+      midExamEndTime: sectionDetails.sectionSchedule.midExamEndTime,
+      finalExamDate: sectionDetails.sectionSchedule.finalExamDate,
+      finalExamStartTime: sectionDetails.sectionSchedule.finalExamStartTime,
+      finalExamEndTime: sectionDetails.sectionSchedule.finalExamEndTime,
+      remaining: sectionDetails.capacity - sectionDetails.consumedSeat,
+      consumed: sectionDetails.consumedSeat,
+      total: sectionDetails.capacity,
+      isPinned: isQueued,
+      onTap: () => _showFacultyScheduleSheet(
+        sectionDetails.faculties,
+        sectionDetails.faculty?.staffName,
+      ),
+      action: isEnrolled
+          ? const Padding(
+              padding: EdgeInsets.all(8),
+              child: Icon(
+                Icons.check_circle_rounded,
+                color: BracuPalette.accent,
+                size: 28,
+              ),
+            )
+          : IconButton(
+              icon: Icon(
+                isQueued
+                    ? Icons.check_box_rounded
+                    : Icons.check_box_outline_blank_rounded,
+                color: isQueued ? BracuPalette.accent : textSecondary,
+                size: 28,
+              ),
+              onPressed: () => _toggleQueue(sectionDetails),
+            ),
     );
   }
 }
@@ -1027,6 +1117,7 @@ class _AdvisingSeatStatusCard extends StatelessWidget {
     this.faculty,
     this.isPinned = false,
     this.onTap,
+    this.badge,
   });
 
   final String courseCode;
@@ -1052,6 +1143,7 @@ class _AdvisingSeatStatusCard extends StatelessWidget {
   final Widget action;
   final bool isPinned;
   final VoidCallback? onTap;
+  final String? badge;
 
   @override
   Widget build(BuildContext context) {
@@ -1091,6 +1183,17 @@ class _AdvisingSeatStatusCard extends StatelessWidget {
                         color: textPrimary,
                       ),
                     ),
+                    if (badge != null) ...[
+                      const Gap(4),
+                      Text(
+                        badge!,
+                        style: const TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: BracuPalette.warning,
+                        ),
+                      ),
+                    ],
                     if (courseName.trim().isNotEmpty) ...[
                       const Gap(2),
                       Text(
