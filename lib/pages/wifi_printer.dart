@@ -462,7 +462,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
               'Expires': '0',
             },
           )
-          .timeout(const Duration(milliseconds: 2000));
+          .timeout(const Duration(seconds: 10));
       if (response.statusCode == 200) {
         final Map<String, dynamic> data =
             jsonDecode(response.body) as Map<String, dynamic>;
@@ -485,7 +485,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
         _WifiPrinterDiscovery._probe(
           _CampusPrinterConfig.current.hosts.first,
           _CampusPrinterConfig.current.port,
-          const Duration(milliseconds: 1200),
+          const Duration(seconds: 10),
         ),
         _checkWorkerStatus(),
       ]);
