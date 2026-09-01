@@ -5,6 +5,12 @@ Entries are written for students, not developers — plain language, no commit h
 
 ## [Unreleased]
 
+## [2.0.8] — 2026-08-31
+
+- Exam Schedule Accuracy: Polished exam schedule resolution to strictly match verified exam rooms, dates, and time slots without classroom fallbacks.
+- DSpace Digital Library: Integrated native back navigation to make browsing digital library archives smoother and more intuitive.
+- Student-WiFi: Streamlined Wi-Fi connection handling with a quieter, distraction-free connection experience.
+
 ## [2.0.7] — 2026-08-20
 
 - Student-WiFi: Instant one-tap sign-in with active keep-alive heartbeat, multi-AP roaming auto-reconnect, and real-time connection diagnostics.
