@@ -481,33 +481,73 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
       final networkKey = await _currentNetworkFingerprint();
       _lastNetworkFingerprint = networkKey;
 
-      final results = await Future.wait([
-        _WifiPrinterDiscovery._probe(
-          _CampusPrinterConfig.current.hosts.first,
-          _CampusPrinterConfig.current.port,
-          const Duration(seconds: 10),
-        ),
-        _checkWorkerStatus(),
-      ]);
+      final directHost = _CampusPrinterConfig.current.hosts.first;
+      final directPort = _CampusPrinterConfig.current.port;
 
-      final directPrinterOnline = results[0];
-      final workerOnline = results[1];
+      final connectionCompleter = Completer<void>();
 
-      if (mounted) {
+      final directProbeFuture = _WifiPrinterDiscovery._probe(
+        directHost,
+        directPort,
+        const Duration(seconds: 10),
+      );
+      final workerStatusFuture = _checkWorkerStatus();
+
+      var directPrinterOnline = false;
+      var workerOnline = false;
+
+      final directFuture = directProbeFuture
+          .then((online) {
+            directPrinterOnline = online;
+            if (online && mounted) {
+              setState(() {
+                _printerHost = directHost;
+                _workerAvailable = false;
+                _discovering = false;
+              });
+              if (!connectionCompleter.isCompleted) {
+                connectionCompleter.complete();
+              }
+            }
+          })
+          .catchError((_) {});
+
+      final workerFuture = workerStatusFuture
+          .then((online) {
+            workerOnline = online;
+            if (online && !directPrinterOnline && mounted) {
+              setState(() {
+                _printerHost = '';
+                _workerAvailable = true;
+                _discovering = false;
+              });
+              if (!connectionCompleter.isCompleted) {
+                connectionCompleter.complete();
+              }
+            }
+          })
+          .catchError((_) {});
+
+      final allDone = Future.wait([directFuture, workerFuture]);
+
+      await Future.any([connectionCompleter.future, allDone]);
+
+      if (mounted && _discovering) {
         setState(() {
           if (directPrinterOnline) {
-            _printerHost = _CampusPrinterConfig.current.hosts.first;
+            _printerHost = directHost;
             _workerAvailable = false;
           } else {
             _printerHost = '';
             _workerAvailable = workerOnline;
           }
+          _discovering = false;
         });
       }
     } catch (e) {
       await AppLog.write('Printer discovery failed: $e');
     } finally {
-      if (mounted) {
+      if (mounted && _discovering) {
         setState(() {
           _discovering = false;
         });
