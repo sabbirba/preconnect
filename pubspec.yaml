@@ -41,7 +41,6 @@ dependencies:
   gap: ^3.0.1
   cupertino_icons: ^1.0.9
   home_widget: ^0.9.3
-  cupertino_http: ^3.0.2
 
 dev_dependencies:
   flutter_test:

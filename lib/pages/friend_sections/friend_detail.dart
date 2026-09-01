@@ -183,30 +183,15 @@ class _FriendDetailPageState extends State<FriendDetailPage> {
         continue;
       }
 
-      if (weekday != now.weekday) {
-        continue;
-      }
-      final startTime = DateTime(
-        now.year,
-        now.month,
-        now.day,
-        start ~/ 60,
-        start % 60,
+      final occurrence = nextWeeklyOccurrence(
+        weekday: weekday,
+        startMinutes: start,
+        endMinutes: end,
+        now: now,
       );
-      final endTime = DateTime(
-        now.year,
-        now.month,
-        now.day,
-        end ~/ 60,
-        end % 60,
-      );
-      if (!now.isBefore(endTime)) {
-        continue;
-      }
-
-      final effectiveStart = now.isBefore(startTime) ? startTime : now;
-      if (nextStart == null || effectiveStart.isBefore(nextStart)) {
-        nextStart = effectiveStart;
+      if (occurrence != null &&
+          (nextStart == null || occurrence.isBefore(nextStart))) {
+        nextStart = occurrence;
         nextKey = key;
       }
     }
@@ -420,14 +405,9 @@ class _FriendDetailPageState extends State<FriendDetailPage> {
 
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
-    var saturday = today;
-    while (saturday.weekday != DateTime.saturday) {
-      saturday = saturday.subtract(const Duration(days: 1));
-    }
-
     final renderedSections = <(String, DateTime)>[];
     for (var dayOffset = 0; dayOffset < 7; dayOffset++) {
-      final date = saturday.add(Duration(days: dayOffset));
+      final date = today.add(Duration(days: dayOffset));
       final day = weekdayNames[date.weekday - 1];
       if (!grouped.containsKey(day)) continue;
       renderedSections.add((day, date));

@@ -225,7 +225,6 @@ class _ClassScheduleState extends State<ClassSchedulePage>
     section.ClassSchedule? scrollSchedule;
     DateTime? scrollDateTime;
     final now = DateTime.now();
-    final nowMinutes = now.hour * 60 + now.minute;
 
     for (final section in sections) {
       for (final classSchedule in section.sectionSchedule.classSchedules) {
@@ -241,7 +240,6 @@ class _ClassScheduleState extends State<ClassSchedulePage>
             endTime: classSchedule.endTime,
             isRamadan: isRamadan,
             now: now,
-            nowMinutes: nowMinutes,
           );
           if (candidate != null &&
               (scrollDateTime == null || candidate.isBefore(scrollDateTime))) {
@@ -297,7 +295,6 @@ class _ClassScheduleState extends State<ClassSchedulePage>
     required String endTime,
     required bool isRamadan,
     required DateTime now,
-    required int nowMinutes,
   }) {
     final targetWeekday = BracuTime.weekdayFromName(day);
     if (targetWeekday == null) return null;
@@ -318,13 +315,12 @@ class _ClassScheduleState extends State<ClassSchedulePage>
     final endMinute = endParsed?.$2 ?? 0;
     final endMinutes = endHour * 60 + endMinute;
 
-    if (targetWeekday != now.weekday || nowMinutes >= endMinutes) {
-      return null;
-    }
-    if (nowMinutes <= startMinutes) {
-      return DateTime(now.year, now.month, now.day, startHour, startMinute);
-    }
-    return now;
+    return nextWeeklyOccurrence(
+      weekday: targetWeekday,
+      startMinutes: startMinutes,
+      endMinutes: endMinutes,
+      now: now,
+    );
   }
 
   Future<void> _handleRefresh({bool notify = true}) async {

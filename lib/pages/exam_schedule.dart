@@ -414,9 +414,6 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
             for (final s in sections) {
               final midTime = BracuTime.parseDateTime(midDate(s), midStart(s));
               if (midTime != null &&
-                  midTime.year == today.year &&
-                  midTime.month == today.month &&
-                  midTime.day == today.day &&
                   ExamVisibility.isUpcomingOrOngoingSchedule(
                     date: midDate(s),
                     start: midStart(s),
@@ -433,9 +430,6 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
                 finalStart(s),
               );
               if (finalTime != null &&
-                  finalTime.year == today.year &&
-                  finalTime.month == today.month &&
-                  finalTime.day == today.day &&
                   ExamVisibility.isUpcomingOrOngoingSchedule(
                     date: finalDate(s),
                     start: finalStart(s),

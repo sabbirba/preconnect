@@ -5,7 +5,6 @@ import 'package:preconnect/api/api_client.dart';
 import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/api/seat_status.dart';
 import 'package:preconnect/model/advising_phase.dart';
-import 'package:preconnect/tools/app_storage.dart';
 
 enum TargetSectionStatus {
   idle,
@@ -23,8 +22,13 @@ bool isMissingAdvisingPhaseResponse(ApiException error) {
 String advisingErrorMessage(Object error) {
   if (error is TimeoutException) return 'BRACU Connect request timed out';
   final message = '$error';
-  if (message.contains('Failed to fetch')) {
-    return 'Browser could not reach the BRACU Connect API';
+  if (message.contains('Failed to fetch') ||
+      message.contains('ClientException') ||
+      message.contains('SocketException') ||
+      message.contains('Failed host lookup') ||
+      message.contains('Connection refused') ||
+      message.contains('Connection timed out')) {
+    return 'Could not reach the BRACU Connect API';
   }
   return message.replaceAll(RegExp(r'https?://\S+'), 'BRACU Connect API');
 }
@@ -213,51 +217,15 @@ class AdvisingHelperService {
 
   final ApiClient _client = ApiClient();
 
-  Future<String> buildCookieHeader() async {
-    final connectJson = await AppStorage.instance.getString(
-      'preconnect.cookies.connect',
-    );
-    if (connectJson == null || connectJson.trim().isEmpty) return '';
-    final decoded = jsonDecode(connectJson);
-    if (decoded is! List) {
-      throw const FormatException('Invalid BRACU Connect cookie snapshot.');
-    }
-    return decoded
-        .map((item) {
-          if (item is! Map) {
-            throw const FormatException('Invalid BRACU Connect cookie entry.');
-          }
-          final name = '${item['name'] ?? ''}'.trim();
-          final value = '${item['value'] ?? ''}'.trim();
-          if (name.isEmpty) {
-            throw const FormatException(
-              'BRACU Connect cookie name is missing.',
-            );
-          }
-          return '$name=$value';
-        })
-        .join('; ');
-  }
-
   Future<Map<String, String>> buildRequestHeaders({
     String? publicKey,
     required AdvisingPhase phase,
   }) async {
-    final cookie = kIsWeb ? '' : await buildCookieHeader();
-
     return <String, String>{
       'Content-Type': 'application/json',
       'Accept': 'application/json, text/plain, */*',
       'X-REALM': 'bracu',
       'X-SOURCE': '3',
-      if (!kIsWeb) 'Origin': ApiConfig.connectOrigin,
-      if (!kIsWeb)
-        'Referer':
-            'https://connect.bracu.ac.bd/student/advising/${phase.pathSegment}',
-      if (!kIsWeb)
-        'User-Agent':
-            'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36',
-      if (!kIsWeb && cookie.isNotEmpty) 'Cookie': cookie,
       if (publicKey != null && publicKey.isNotEmpty)
         'X-Advising-Session': publicKey,
     };

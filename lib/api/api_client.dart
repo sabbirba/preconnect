@@ -9,8 +9,24 @@ import 'package:preconnect/tools/app_storage.dart';
 import 'package:preconnect/tools/http/http_utils.dart';
 import 'package:preconnect/tools/http/http_headers.dart';
 import 'package:preconnect/tools/preconnect_constants.dart';
+import 'package:preconnect/tools/runtime_stub.dart'
+    if (dart.library.js_interop) 'package:preconnect/tools/runtime_web.dart';
 import 'package:preconnect/tools/token_refresh.dart';
 import 'package:preconnect/tools/token_storage.dart';
+
+@visibleForTesting
+bool usesBrowserConnectSession({
+  required String url,
+  required bool isWeb,
+  required bool runtimeAvailable,
+}) {
+  final uri = Uri.tryParse(url);
+  return isWeb &&
+      runtimeAvailable &&
+      uri?.scheme == 'https' &&
+      uri?.host == 'connect.bracu.ac.bd' &&
+      uri!.path.startsWith('/api/');
+}
 
 class ApiClient {
   static final ApiClient _instance = ApiClient._internal();
@@ -150,8 +166,13 @@ class ApiClient {
     Duration cacheDuration = _defaultGetCacheTtl,
     bool bypassCache = false,
   }) async {
+    final usesBrowserSession = usesBrowserConnectSession(
+      url: url,
+      isWeb: kIsWeb,
+      runtimeAvailable: isChromeRuntimeAvailable(),
+    );
     final token = await getAccessToken();
-    if (token == null || token.isEmpty) {
+    if ((token == null || token.isEmpty) && !usesBrowserSession) {
       unawaited(AuthService().logout(force: true));
       throw const UnauthenticatedException();
     }
@@ -172,6 +193,9 @@ class ApiClient {
     }
 
     if (response.statusCode == 401) {
+      if (usesBrowserSession) {
+        throw ApiException(response.statusCode, response.body);
+      }
       await _refreshTokensWithRetry();
 
       final newToken = await getAccessToken();
@@ -228,8 +252,13 @@ class ApiClient {
         cacheDuration: cacheDuration,
       );
     }
+    final usesBrowserSession = usesBrowserConnectSession(
+      url: url,
+      isWeb: kIsWeb,
+      runtimeAvailable: isChromeRuntimeAvailable(),
+    );
     final token = await getAccessToken();
-    if (token == null || token.isEmpty) {
+    if ((token == null || token.isEmpty) && !usesBrowserSession) {
       throw const UnauthenticatedException();
     }
     final headers = await _authHeaders(
@@ -254,6 +283,9 @@ class ApiClient {
     }
 
     if (response.statusCode == 401) {
+      if (usesBrowserSession) {
+        throw ApiException(response.statusCode, response.body);
+      }
       unawaited(
         AppLog.write(
           'Auth Session (401): $normalizedMethod $url - Retrying with token refresh',
@@ -344,13 +376,13 @@ class ApiClient {
   }
 
   Future<Map<String, String>> _authHeaders(
-    String token, {
+    String? token, {
     required String method,
     required String url,
     String body = '',
   }) async {
     final headers = <String, String>{
-      'Authorization': 'Bearer $token',
+      if (token != null && token.isNotEmpty) 'Authorization': 'Bearer $token',
       ...ApiConfig.apiHeaders,
     };
 

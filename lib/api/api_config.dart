@@ -110,6 +110,17 @@ class ApiConfig {
   static String wishlistPath(String studentId) =>
       '/adv/v1/advising/$studentId/active-wishlist-sessions';
 
+  static String wishlistSessionPath(String portfolioId, String publicKey) =>
+      '/adv/v1/advising/$portfolioId/wishlist-session?publicKey=$publicKey';
+
+  static String wishlistCoursesPath(String portfolioId) =>
+      '/adv/v1/wishlists/$portfolioId';
+
+  static String wishlistOfferedCoursesPath(String portfolioId) =>
+      '/adv/v1/wishlists/$portfolioId/offered-courses';
+
+  static const String wishlistMutationPath = '/adv/v1/wishlists';
+
   static String schedulePath(String portfolioId, {int? semesterSessionId}) {
     final semesterQuery = semesterSessionId == null
         ? ''

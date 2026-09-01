@@ -1,14 +1,58 @@
 import 'dart:convert';
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
 import 'package:preconnect/api/api_client.dart';
 import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/app_storage.dart';
-import 'package:preconnect/tools/storage_keys.dart';
 import 'package:preconnect/api/profile.dart';
-import 'package:preconnect/api/seat_status.dart';
+
+List<Map<String, dynamic>> parseWishlistCourseList(String body) {
+  final decoded = jsonDecode(body);
+  if (decoded is! List) {
+    throw const FormatException('Invalid Wishlist course response.');
+  }
+  return decoded
+      .map((item) {
+        if (item is! Map) {
+          throw const FormatException('Invalid Wishlist course record.');
+        }
+        final course = item.cast<String, dynamic>();
+        if (course['courseId'] is! num ||
+            '${course['courseCode'] ?? ''}'.trim().isEmpty ||
+            '${course['name'] ?? ''}'.trim().isEmpty ||
+            course['courseCredit'] is! num) {
+          throw const FormatException('Incomplete Wishlist course record.');
+        }
+        return course;
+      })
+      .toList(growable: false);
+}
+
+int wishlistCourseId(Map<String, dynamic> course) =>
+    (course['courseId'] as num).toInt();
+
+bool wishlistContainsCourse(
+  Iterable<Map<String, dynamic>> courses,
+  Map<String, dynamic> course,
+) {
+  final courseId = wishlistCourseId(course);
+  return courses.any((item) => wishlistCourseId(item) == courseId);
+}
+
+List<Map<String, dynamic>> mergeWishlistCourseOptions(
+  Iterable<Map<String, dynamic>> selectedCourses,
+  Iterable<Map<String, dynamic>> offeredCourses,
+) {
+  final coursesById = <int, Map<String, dynamic>>{};
+  for (final course in selectedCourses) {
+    coursesById[wishlistCourseId(course)] = course;
+  }
+  for (final course in offeredCourses) {
+    coursesById.putIfAbsent(wishlistCourseId(course), () => course);
+  }
+  return coursesById.values.toList(growable: false);
+}
 
 class WishlistPage extends StatefulWidget {
   const WishlistPage({super.key});
@@ -22,15 +66,13 @@ class _WishlistPageState extends State<WishlistPage> {
   bool _isLoading = true;
   bool _isPhaseCompleted = false;
   String? _errorMessage;
-  String? _studentId;
   String? _portfolioId;
   String? _publicKey;
-  List<dynamic> _wishlistCourses = [];
-  List<dynamic> _offeredCourses = [];
-  List<dynamic> _filteredOfferedCourses = [];
-  Map<int, bool> _seatAvailabilityByCourseId = const <int, bool>{};
+  List<Map<String, dynamic>> _wishlistCourses = [];
+  List<Map<String, dynamic>> _offeredCourses = [];
+  List<Map<String, dynamic>> _filteredOfferedCourses = [];
   final TextEditingController _searchController = TextEditingController();
-  final List<dynamic> _batchQueue = [];
+  final List<Map<String, dynamic>> _batchQueue = [];
   String _searchQuery = '';
 
   ({String title, String message}) _errorDetails(String rawMessage) {
@@ -70,11 +112,6 @@ class _WishlistPageState extends State<WishlistPage> {
     return {
       'Content-Type': 'application/json',
       'Accept': 'application/json, text/plain, */*',
-      if (!kIsWeb)
-        'Referer': 'https://connect.bracu.ac.bd/student/advising/wish-list',
-      if (!kIsWeb)
-        'User-Agent':
-            'Mozilla/5.0 (Linux; Android 15; Pixel 9) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150.0.0.0 Mobile Safari/537.36',
       'X-Advising-Session': _publicKey ?? '',
     };
   }
@@ -110,35 +147,19 @@ class _WishlistPageState extends State<WishlistPage> {
         prefs: AppStorage.instance,
         refreshProfile: () => ProfileService().getProfile(fromFetch: true),
       );
-      _studentId = await AppStorage.instance.getString(StorageKeys.studentId);
 
-      if (_studentId == null || _portfolioId == null) {
+      if (_portfolioId == null) {
         throw Exception('Failed to resolve student portfolio profile.');
       }
 
       _publicKey = DateTime.now().millisecondsSinceEpoch.toString();
-      String? sessionId = _portfolioId;
 
       try {
-        final sessionRes = await _client.authenticatedGet(
-          '${ApiConfig.connectApiBase}/adv/v1/advising/$_studentId/active-wishlist-sessions',
+        await _client.authenticatedRequest(
+          'POST',
+          '${ApiConfig.connectApiBase}${ApiConfig.wishlistSessionPath(_portfolioId!, _publicKey!)}',
+          body: '',
         );
-
-        if (sessionRes.statusCode == 200) {
-          final sessions = jsonDecode(sessionRes.body);
-          if (sessions is List && sessions.isNotEmpty) {
-            final session = sessions[0];
-            sessionId = session['id']?.toString() ?? _portfolioId;
-          }
-        }
-
-        if (sessionId != null) {
-          await _client.authenticatedRequest(
-            'POST',
-            '${ApiConfig.connectApiBase}/adv/v1/advising/$sessionId/wishlist-session?publicKey=$_publicKey',
-            body: '',
-          );
-        }
       } on ApiException catch (e) {
         if (e.statusCode == 412) {
           _isPhaseCompleted = true;
@@ -148,11 +169,6 @@ class _WishlistPageState extends State<WishlistPage> {
       }
 
       await _refreshWishlistData();
-      try {
-        await SeatStatusService().preloadData();
-        _rebuildSeatAvailability();
-        if (mounted) setState(() {});
-      } catch (_) {}
     } catch (e) {
       if (!mounted) return;
       setState(() {
@@ -166,72 +182,23 @@ class _WishlistPageState extends State<WishlistPage> {
     if (_portfolioId == null) return;
 
     try {
-      bool loadedFromCache = false;
-      try {
-        final wishlistRes = await _client.authenticatedGet(
-          '${ApiConfig.connectApiBase}/adv/v1/wishlists/$_portfolioId',
-          additionalHeaders: _buildHeaders(),
-        );
+      final wishlistRes = await _client.authenticatedGet(
+        '${ApiConfig.connectApiBase}${ApiConfig.wishlistCoursesPath(_portfolioId!)}',
+        additionalHeaders: _buildHeaders(),
+        bypassCache: true,
+      );
+      final offeredRes = await _client.authenticatedGet(
+        '${ApiConfig.connectApiBase}${ApiConfig.wishlistOfferedCoursesPath(_portfolioId!)}',
+        additionalHeaders: _buildHeaders(),
+        bypassCache: true,
+      );
 
-        if (wishlistRes.statusCode == 200) {
-          final data = jsonDecode(wishlistRes.body);
-          if (data is List) {
-            _wishlistCourses = data;
-          } else if (data is Map && data['courses'] is List) {
-            _wishlistCourses = data['courses'];
-          }
-          await AppStorage.instance.setString(
-            'cached_wishlist_courses_$_portfolioId',
-            jsonEncode(_wishlistCourses),
-          );
-        } else {
-          loadedFromCache = true;
-        }
-      } catch (e) {
-        loadedFromCache = true;
-      }
-
-      if (loadedFromCache) {
-        final cachedJson = await AppStorage.instance.getString(
-          'cached_wishlist_courses_$_portfolioId',
-        );
-        if (cachedJson != null && cachedJson.isNotEmpty) {
-          _wishlistCourses = jsonDecode(cachedJson);
-          _isPhaseCompleted = true;
-        } else {
-          throw Exception(
-            'Wishlist has not been scheduled or has been expired. Please try after scheduled.',
-          );
-        }
-      }
-
-      try {
-        final offeredRes = await _client.authenticatedGet(
-          '${ApiConfig.connectApiBase}/adv/v1/wishlists/$_portfolioId/offered-courses',
-          additionalHeaders: _buildHeaders(),
-        );
-
-        if (offeredRes.statusCode == 200) {
-          final data = jsonDecode(offeredRes.body);
-          if (data is List) {
-            _offeredCourses = data;
-          } else if (data is Map && data['courses'] is List) {
-            _offeredCourses = data['courses'];
-          }
-          _rebuildSeatAvailability();
-          _filterCourses(_searchController.text);
-        } else {
-          _isPhaseCompleted = true;
-          _offeredCourses = [];
-          _filteredOfferedCourses = [];
-          _seatAvailabilityByCourseId = const <int, bool>{};
-        }
-      } catch (e) {
-        _isPhaseCompleted = true;
-        _offeredCourses = [];
-        _filteredOfferedCourses = [];
-        _seatAvailabilityByCourseId = const <int, bool>{};
-      }
+      _wishlistCourses = parseWishlistCourseList(wishlistRes.body);
+      _offeredCourses = mergeWishlistCourseOptions(
+        _wishlistCourses,
+        parseWishlistCourseList(offeredRes.body),
+      );
+      _filterCourses(_searchController.text);
 
       if (!mounted) return;
       setState(() {
@@ -260,18 +227,14 @@ class _WishlistPageState extends State<WishlistPage> {
     if (!mounted) return;
     setState(() {
       _filteredOfferedCourses = _offeredCourses.where((c) {
-        final code = (c['courseCode'] ?? c['code'] ?? '')
-            .toString()
-            .toLowerCase();
-        final name = (c['courseName'] ?? c['name'] ?? '')
-            .toString()
-            .toLowerCase();
+        final code = c['courseCode'].toString().toLowerCase();
+        final name = c['name'].toString().toLowerCase();
         return code.contains(lower) || name.contains(lower);
       }).toList();
     });
   }
 
-  Future<void> _addCourse(dynamic course) async {
+  Future<void> _addCourse(Map<String, dynamic> course) async {
     if (_portfolioId == null) return;
     if (!mounted) return;
     setState(() {
@@ -279,18 +242,19 @@ class _WishlistPageState extends State<WishlistPage> {
     });
 
     try {
-      final int courseId = course['courseId'] as int;
-      final int credits = course['courseCredit'] as int;
+      final int courseId = (course['courseId'] as num).toInt();
+      final int credits = (course['courseCredit'] as num).toInt();
 
       final res = await _client.authenticatedRequest(
         'POST',
-        '${ApiConfig.connectApiBase}/adv/v1/wishlists',
+        '${ApiConfig.connectApiBase}${ApiConfig.wishlistMutationPath}',
         body: jsonEncode({
           'courseId': courseId,
           'courseCredit': credits,
           'studentPortfolioId': int.parse(_portfolioId!),
         }),
         additionalHeaders: _buildHeaders(),
+        acceptedStatusCodes: const <int>{200, 201},
       );
 
       if (res.statusCode == 200 || res.statusCode == 201) {
@@ -307,32 +271,8 @@ class _WishlistPageState extends State<WishlistPage> {
     }
   }
 
-  void _rebuildSeatAvailability() {
-    final cached = SeatStatusService().cachedDetails;
-    if (cached == null || cached.isEmpty) {
-      _seatAvailabilityByCourseId = const <int, bool>{};
-      return;
-    }
-    final foundSection = <int, bool>{};
-    final hasSeats = <int, bool>{};
-    for (final detail in cached.values) {
-      foundSection[detail.courseId] = true;
-      if (detail.capacity > detail.consumedSeat) {
-        hasSeats[detail.courseId] = true;
-      }
-    }
-    _seatAvailabilityByCourseId = {
-      for (final courseId in foundSection.keys)
-        courseId: hasSeats[courseId] ?? false,
-    };
-  }
-
-  bool _hasSeatsForCourse(int courseId) {
-    return _seatAvailabilityByCourseId[courseId] ?? true;
-  }
-
-  Future<void> _confirmDropCourse(dynamic course) async {
-    final code = course['courseCode'] ?? course['code'] ?? '';
+  Future<void> _confirmDropCourse(Map<String, dynamic> course) async {
+    final code = course['courseCode'];
     await showBracuConfirmationWithActionDialog(
       context,
       icon: Icons.remove_circle_outline_rounded,
@@ -345,7 +285,7 @@ class _WishlistPageState extends State<WishlistPage> {
     );
   }
 
-  Future<void> _dropCourse(dynamic course) async {
+  Future<void> _dropCourse(Map<String, dynamic> course) async {
     if (_portfolioId == null || _publicKey == null) return;
     if (!mounted) return;
     setState(() {
@@ -353,15 +293,16 @@ class _WishlistPageState extends State<WishlistPage> {
     });
 
     try {
-      final int courseId = course['courseId'] as int;
+      final int courseId = (course['courseId'] as num).toInt();
       final res = await _client.authenticatedRequest(
         'DELETE',
-        '${ApiConfig.connectApiBase}/adv/v1/wishlists',
+        '${ApiConfig.connectApiBase}${ApiConfig.wishlistMutationPath}',
         body: jsonEncode({
           'courseId': courseId,
           'studentPortfolioId': int.parse(_portfolioId!),
         }),
         additionalHeaders: _buildHeaders(),
+        acceptedStatusCodes: const <int>{200, 204},
       );
 
       if (res.statusCode == 200 || res.statusCode == 204) {
@@ -385,26 +326,22 @@ class _WishlistPageState extends State<WishlistPage> {
       _isLoading = true;
     });
 
-    final List<Future<dynamic>> requests = [];
-    for (final course in _batchQueue) {
-      final int courseId = course['courseId'] as int;
-      final int credits = course['courseCredit'] as int;
-      requests.add(
-        _client.authenticatedRequest(
+    try {
+      for (final course in List<Map<String, dynamic>>.from(_batchQueue)) {
+        final int courseId = (course['courseId'] as num).toInt();
+        final int credits = (course['courseCredit'] as num).toInt();
+        await _client.authenticatedRequest(
           'POST',
-          '${ApiConfig.connectApiBase}/adv/v1/wishlists',
+          '${ApiConfig.connectApiBase}${ApiConfig.wishlistMutationPath}',
           body: jsonEncode({
             'courseId': courseId,
             'courseCredit': credits,
             'studentPortfolioId': int.parse(_portfolioId!),
           }),
           additionalHeaders: _buildHeaders(),
-        ),
-      );
-    }
-
-    try {
-      await Future.wait(requests);
+          acceptedStatusCodes: const <int>{200, 201},
+        );
+      }
       _batchQueue.clear();
       await _refreshWishlistData();
     } catch (e) {
@@ -565,9 +502,9 @@ class _WishlistPageState extends State<WishlistPage> {
       itemCount: _wishlistCourses.length,
       itemBuilder: (context, index) {
         final course = _wishlistCourses[index];
-        final code = course['courseCode'] ?? course['code'] ?? '';
-        final name = course['courseName'] ?? course['name'] ?? '';
-        final credits = course['courseCredit'] ?? course['credits'] ?? 3;
+        final code = course['courseCode'];
+        final name = course['name'];
+        final credits = course['courseCredit'];
 
         return Padding(
           padding: const EdgeInsets.only(bottom: 12),
@@ -641,13 +578,18 @@ class _WishlistPageState extends State<WishlistPage> {
                   itemCount: _filteredOfferedCourses.length,
                   itemBuilder: (context, index) {
                     final course = _filteredOfferedCourses[index];
-                    final code = course['courseCode'] ?? course['code'] ?? '';
-                    final name = course['courseName'] ?? course['name'] ?? '';
-                    final credits =
-                        course['courseCredit'] ?? course['credits'] ?? 3;
-                    final isQueued = _batchQueue.contains(course);
-                    final int courseId = course['courseId'] as int;
-                    final hasSeats = _hasSeatsForCourse(courseId);
+                    final code = course['courseCode'];
+                    final name = course['name'];
+                    final credits = course['courseCredit'];
+                    final isWishlisted = wishlistContainsCourse(
+                      _wishlistCourses,
+                      course,
+                    );
+                    final isQueued = wishlistContainsCourse(
+                      _batchQueue,
+                      course,
+                    );
+                    final isSelected = isWishlisted || isQueued;
 
                     return Padding(
                       padding: const EdgeInsets.only(bottom: 12),
@@ -670,28 +612,6 @@ class _WishlistPageState extends State<WishlistPage> {
                                           ),
                                         ),
                                       ),
-                                      if (!hasSeats)
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 6,
-                                            vertical: 2,
-                                          ),
-                                          decoration: BoxDecoration(
-                                            color: BracuPalette.danger
-                                                .withValues(alpha: 0.12),
-                                            borderRadius: BorderRadius.circular(
-                                              6,
-                                            ),
-                                          ),
-                                          child: const Text(
-                                            'No Seats',
-                                            style: TextStyle(
-                                              color: BracuPalette.danger,
-                                              fontSize: 10,
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                          ),
-                                        ),
                                     ],
                                   ),
                                   const Gap(4),
@@ -707,21 +627,25 @@ class _WishlistPageState extends State<WishlistPage> {
                             ),
                             IconButton(
                               icon: Icon(
-                                isQueued
+                                isSelected
                                     ? Icons.check_box_rounded
                                     : Icons.add_box_outlined,
-                                color: _isPhaseCompleted || !hasSeats
+                                color: _isPhaseCompleted
                                     ? Colors.grey.withValues(alpha: 0.5)
-                                    : (isQueued
+                                    : (isSelected
                                           ? BracuPalette.accent
                                           : BracuPalette.primary),
                               ),
-                              onPressed: _isPhaseCompleted || !hasSeats
+                              onPressed: _isPhaseCompleted || isWishlisted
                                   ? null
                                   : () {
                                       setState(() {
                                         if (isQueued) {
-                                          _batchQueue.remove(course);
+                                          _batchQueue.removeWhere(
+                                            (item) =>
+                                                wishlistCourseId(item) ==
+                                                wishlistCourseId(course),
+                                          );
                                         } else {
                                           _batchQueue.add(course);
                                         }
@@ -731,11 +655,11 @@ class _WishlistPageState extends State<WishlistPage> {
                             IconButton(
                               icon: Icon(
                                 Icons.flash_on_rounded,
-                                color: _isPhaseCompleted || !hasSeats
+                                color: _isPhaseCompleted
                                     ? Colors.grey.withValues(alpha: 0.5)
                                     : BracuPalette.favorite,
                               ),
-                              onPressed: _isPhaseCompleted || !hasSeats
+                              onPressed: _isPhaseCompleted || isWishlisted
                                   ? null
                                   : () => _addCourse(course),
                             ),

@@ -193,6 +193,7 @@ class ScheduleService {
       cacheKey: cacheKey,
       logLabel: 'Lab Sections $phaseQueryValue',
       forceRefresh: forceRefresh,
+      allowCachedFallback: false,
     );
   }
 
@@ -226,6 +227,7 @@ class ScheduleService {
     required String cacheKey,
     required String logLabel,
     required bool forceRefresh,
+    bool allowCachedFallback = true,
   }) async {
     try {
       final response = await ApiClient().authenticatedGet(
@@ -238,17 +240,19 @@ class ScheduleService {
       return sections;
     } catch (error) {
       final errorLabel = _safeScheduleError(error);
-      final cached = await RepositoryCache.instance.readString(cacheKey);
-      if (cached != null && cached.isNotEmpty) {
-        try {
-          final sections = _decodeStudentSections(cached);
-          unawaited(
-            AppLog.write(
-              '$logLabel: Using ${sections.length} cached sections after $errorLabel',
-            ),
-          );
-          return sections;
-        } catch (_) {}
+      if (allowCachedFallback) {
+        final cached = await RepositoryCache.instance.readString(cacheKey);
+        if (cached != null && cached.isNotEmpty) {
+          try {
+            final sections = _decodeStudentSections(cached);
+            unawaited(
+              AppLog.write(
+                '$logLabel: Using ${sections.length} cached sections after $errorLabel',
+              ),
+            );
+            return sections;
+          } catch (_) {}
+        }
       }
       unawaited(AppLog.write('$logLabel Error: $errorLabel'));
       rethrow;

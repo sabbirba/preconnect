@@ -22,6 +22,35 @@ void main() {
   });
 
   group('AdvisingSectionRecord', () {
+    test('selects browser transport only for extension Connect API calls', () {
+      const connectUrl =
+          'https://connect.bracu.ac.bd/api/adv/v1/student-courses/phase-two';
+      expect(
+        usesBrowserConnectSession(
+          url: connectUrl,
+          isWeb: true,
+          runtimeAvailable: true,
+        ),
+        true,
+      );
+      expect(
+        usesBrowserConnectSession(
+          url: connectUrl,
+          isWeb: false,
+          runtimeAvailable: false,
+        ),
+        false,
+      );
+      expect(
+        usesBrowserConnectSession(
+          url: ApiConfig.seatStatusDataUrl,
+          isWeb: true,
+          runtimeAvailable: true,
+        ),
+        false,
+      );
+    });
+
     test('shared seat filters apply availability, mode, day, and time', () {
       final theory = SeatStatusClassSchedule(
         day: 'MONDAY',
@@ -69,7 +98,11 @@ void main() {
             'Failed to fetch https://connect.bracu.ac.bd/api/adv/v1/advising/70801/advising-session?publicKey=secret',
           ),
         ),
-        'Browser could not reach the BRACU Connect API',
+        'Could not reach the BRACU Connect API',
+      );
+      expect(
+        advisingErrorMessage(Exception('ClientException: Connection refused')),
+        'Could not reach the BRACU Connect API',
       );
     });
 
@@ -412,7 +445,7 @@ void main() {
       expect(engine.targetSections, hasLength(1));
     });
 
-    test('cookie extraction builds header format', () async {
+    test('request headers do not mix native and browser sessions', () async {
       SharedPreferences.setMockInitialValues(<String, Object>{
         'preconnect.cookies.connect': jsonEncode([
           {'name': 'JSESSIONID', 'value': 'test_session_123'},
@@ -425,10 +458,15 @@ void main() {
       await AppStorage.initialize();
 
       final service = AdvisingHelperService();
-      final cookieHeader = await service.buildCookieHeader();
-      expect(cookieHeader, contains('JSESSIONID=test_session_123'));
-      expect(cookieHeader, contains('XSRF-TOKEN=xsrf_token_456'));
-      expect(cookieHeader, isNot(contains('SSO_SESSION')));
+      final headers = await service.buildRequestHeaders(
+        phase: AdvisingPhase.phaseTwo,
+        publicKey: 'request-key',
+      );
+      expect(headers['X-Advising-Session'], 'request-key');
+      expect(headers['X-REALM'], 'bracu');
+      expect(headers, isNot(contains('Cookie')));
+      expect(headers, isNot(contains('User-Agent')));
+      expect(headers, isNot(contains('Referer')));
     });
   });
 

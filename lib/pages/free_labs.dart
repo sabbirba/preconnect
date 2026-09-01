@@ -442,7 +442,11 @@ class _FreeLabsPageState extends State<FreeLabsPage> {
 
   int? _highlightIndex(List<_FreeRoomSlot> slots) {
     if (slots.isEmpty) return null;
-    final nowMinutes = _minutesOfDay(TimeOfDay.now());
+    final nowMinutes = _isViewingFutureDate()
+        ? -1
+        : _minutesOfDay(TimeOfDay.now());
+    int? nextIndex;
+    int? nextStart;
     for (var i = 0; i < slots.length; i++) {
       final slot = slots[i];
       final start = _minutesFromString(slot.startTime);
@@ -453,8 +457,14 @@ class _FreeLabsPageState extends State<FreeLabsPage> {
           nowMinutes < end) {
         return i;
       }
+      if (start != null &&
+          start > nowMinutes &&
+          (nextStart == null || start < nextStart)) {
+        nextStart = start;
+        nextIndex = i;
+      }
     }
-    return null;
+    return nextIndex;
   }
 
   List<_FreeRoomSlot> _buildFreeRoomSlots(
