@@ -1,21 +1,9 @@
 import 'dart:convert';
-import 'dart:io';
-import 'package:cupertino_http/cupertino_http.dart';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:preconnect/tools/http/http_base.dart';
 
-http.Client _createPlatformHttpClient() {
-  try {
-    if (Platform.isIOS || Platform.isMacOS) {
-      final config = URLSessionConfiguration.defaultSessionConfiguration();
-      return CupertinoClient.fromSessionConfiguration(config);
-    }
-  } catch (_) {}
-  return http.Client();
-}
-
-final http.Client _sharedPlatformClient = _createPlatformHttpClient();
+final http.Client _sharedPlatformClient = http.Client();
 final http.Client _sharedDelegatingClient = DelegatingHttpClient(
   _sharedPlatformClient,
 );

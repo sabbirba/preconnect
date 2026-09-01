@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:gap/gap.dart';
 import 'package:preconnect/model/friend_schedule.dart';
 import 'package:preconnect/pages/friend_sections/friend_header.dart';
@@ -294,30 +295,15 @@ class _CompareSchedulesPageState extends State<CompareSchedulesPage> {
         continue;
       }
 
-      if (weekday != now.weekday) {
-        continue;
-      }
-      final start = DateTime(
-        now.year,
-        now.month,
-        now.day,
-        startMinutes ~/ 60,
-        startMinutes % 60,
+      final occurrence = nextWeeklyOccurrence(
+        weekday: weekday,
+        startMinutes: startMinutes,
+        endMinutes: endMinutes,
+        now: now,
       );
-      final end = DateTime(
-        now.year,
-        now.month,
-        now.day,
-        endMinutes ~/ 60,
-        endMinutes % 60,
-      );
-      if (!now.isBefore(end)) {
-        continue;
-      }
-
-      final effectiveStart = now.isBefore(start) ? start : now;
-      if (nextStart == null || effectiveStart.isBefore(nextStart)) {
-        nextStart = effectiveStart;
+      if (occurrence != null &&
+          (nextStart == null || occurrence.isBefore(nextStart))) {
+        nextStart = occurrence;
         nextKey = entry.key;
       }
     }
@@ -465,14 +451,10 @@ class _CompareSchedulesPageState extends State<CompareSchedulesPage> {
     }
 
     final ordered = <String, List<_DayCompareEntry>>{};
-    const dayOrder = [
-      'Saturday',
-      'Sunday',
-      'Monday',
-      'Tuesday',
-      'Wednesday',
-      'Thursday',
-      'Friday',
+    final now = DateTime.now();
+    final dayOrder = <String>[
+      for (var offset = 0; offset < 7; offset++)
+        DateFormat('EEEE').format(now.add(Duration(days: offset))),
       'General',
     ];
     for (final day in dayOrder) {
@@ -500,12 +482,8 @@ class _CompareSchedulesPageState extends State<CompareSchedulesPage> {
     if (!weekdayNames.contains(day)) return '';
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
-    var saturday = today;
-    while (saturday.weekday != DateTime.saturday) {
-      saturday = saturday.subtract(const Duration(days: 1));
-    }
     for (var dayOffset = 0; dayOffset < 7; dayOffset++) {
-      final date = saturday.add(Duration(days: dayOffset));
+      final date = today.add(Duration(days: dayOffset));
       final dayName = weekdayNames[date.weekday - 1];
       if (dayName == day) {
         return formatLongDate(date);

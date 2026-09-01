@@ -20,7 +20,12 @@ import 'package:preconnect/tools/app_storage.dart';
 enum _ReplacementQueueAction { higher, lower, remove }
 
 class AdvisingHelperPage extends StatefulWidget {
-  const AdvisingHelperPage({super.key});
+  const AdvisingHelperPage({
+    super.key,
+    this.initialPhase = AdvisingPhase.phaseOne,
+  });
+
+  final AdvisingPhase initialPhase;
 
   @override
   State<AdvisingHelperPage> createState() => _AdvisingHelperPageState();
@@ -37,7 +42,7 @@ class _AdvisingHelperPageState extends State<AdvisingHelperPage> {
   String? _enrolledError;
   AdvisingSectionRecord? _replacementSource;
 
-  AdvisingPhase _phase = AdvisingPhase.phaseOne;
+  late AdvisingPhase _phase;
   List<AdvisingSectionRecord> _enrolled = const [];
   Map<int, SeatStatusDetailsResponse> _seatDetails = const {};
   final TextEditingController _searchController = TextEditingController();
@@ -57,6 +62,7 @@ class _AdvisingHelperPageState extends State<AdvisingHelperPage> {
   @override
   void initState() {
     super.initState();
+    _phase = widget.initialPhase;
     _engine.addListener(_onEngineChange);
     _searchController.addListener(() {
       if (mounted) setState(() => _searchQuery = _searchController.text.trim());

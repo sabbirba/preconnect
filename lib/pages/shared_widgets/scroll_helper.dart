@@ -2,6 +2,40 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+DateTime? nextWeeklyOccurrence({
+  required int weekday,
+  required int startMinutes,
+  required int endMinutes,
+  required DateTime now,
+}) {
+  if (weekday < DateTime.monday ||
+      weekday > DateTime.sunday ||
+      startMinutes < 0 ||
+      startMinutes >= 24 * 60 ||
+      endMinutes <= startMinutes ||
+      endMinutes > 24 * 60) {
+    return null;
+  }
+  final nowMinutes = now.hour * 60 + now.minute;
+  var daysUntil = (weekday - now.weekday) % DateTime.daysPerWeek;
+  if (daysUntil == 0 && nowMinutes >= endMinutes) {
+    daysUntil = DateTime.daysPerWeek;
+  }
+  if (daysUntil == 0 && nowMinutes > startMinutes) return now;
+  final date = DateTime(
+    now.year,
+    now.month,
+    now.day,
+  ).add(Duration(days: daysUntil));
+  return DateTime(
+    date.year,
+    date.month,
+    date.day,
+    startMinutes ~/ 60,
+    startMinutes % 60,
+  );
+}
+
 class HighlightScrollCoordinator {
   HighlightScrollCoordinator({
     required this.scrollController,
@@ -19,7 +53,7 @@ class HighlightScrollCoordinator {
   bool _isRunning = false;
 
   void resetForTarget(String? targetToken) {
-    if (targetToken != null && targetToken != _lastTargetToken) {
+    if (targetToken != _lastTargetToken) {
       _lastTargetToken = targetToken;
       _didScroll = false;
     }
@@ -37,6 +71,7 @@ class HighlightScrollCoordinator {
 
   void resetScrollState() {
     _didScroll = false;
+    _lastTargetToken = null;
   }
 
   Future<void> scrollToTarget({

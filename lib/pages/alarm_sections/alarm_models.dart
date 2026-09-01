@@ -43,7 +43,19 @@ class _ExamAlarmEntry {
   final String? endTime;
   final DateTime dateTime;
 
-  bool get isPassed => !ExamVisibility.isUpcomingOrOngoingDateTime(dateTime);
+  DateTime? get endDateTime {
+    final parsed = BracuTime.parseHourMinute(endTime);
+    if (parsed == null) return null;
+    return DateTime(
+      dateTime.year,
+      dateTime.month,
+      dateTime.day,
+      parsed.$1,
+      parsed.$2,
+    );
+  }
+
+  bool get isPassed => (endDateTime ?? dateTime).isBefore(DateTime.now());
 
   Map<String, dynamic> toJson() {
     return <String, dynamic>{

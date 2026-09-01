@@ -8,6 +8,42 @@ import 'package:preconnect/model/calendar_info.dart';
 import 'package:preconnect/pages/shared_widgets/scroll_helper.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
+import 'package:preconnect/tools/time_utils.dart';
+
+CalendarEntry? currentOrUpcomingCalendarEntry(
+  Iterable<CalendarEntry> items,
+  DateTime now,
+) {
+  CalendarEntry? target;
+  DateTime? targetTime;
+  for (final item in items) {
+    if (item.isCancelled) continue;
+    final date = BracuTime.parseDate(item.primaryDate);
+    if (date == null) continue;
+    final day = DateTime(date.year, date.month, date.day);
+    final today = DateTime(now.year, now.month, now.day);
+    if (day.isBefore(today)) continue;
+
+    DateTime effectiveTime;
+    final start = BracuTime.parseDateTime(item.primaryDate, item.startTime);
+    final end = BracuTime.parseDateTime(item.primaryDate, item.endTime);
+    if (day == today) {
+      if (end != null && end.isBefore(now)) continue;
+      if (start == null) {
+        effectiveTime = now;
+      } else {
+        effectiveTime = start.isAfter(now) ? start : now;
+      }
+    } else {
+      effectiveTime = start ?? day;
+    }
+    if (targetTime == null || effectiveTime.isBefore(targetTime)) {
+      target = item;
+      targetTime = effectiveTime;
+    }
+  }
+  return target;
+}
 
 class CalendarPage extends StatefulWidget {
   const CalendarPage({super.key});
@@ -121,82 +157,79 @@ class _CalendarPageState extends State<CalendarPage> with RefreshBusState {
           }
 
           final grouped = _groupByDate(items);
-          final today = DateTime.now();
-          final todayKey = DateTime(today.year, today.month, today.day);
           final sortedDates = grouped.keys.toList()..sort();
-          DateTime? targetDate;
-          if (grouped.containsKey(todayKey)) {
-            targetDate = todayKey;
-          } else {
-            for (final date in sortedDates) {
-              if (!date.isBefore(todayKey)) {
-                targetDate = date;
-                break;
-              }
-            }
-            targetDate ??= sortedDates.isNotEmpty ? sortedDates.last : null;
-          }
-          final highlightToken = targetDate == null
+          final targetItem = currentOrUpcomingCalendarEntry(
+            items,
+            DateTime.now(),
+          );
+          final targetDateValue = targetItem == null
               ? null
-              : 'focus_${targetDate.year}_${targetDate.month}_${targetDate.day}';
+              : BracuTime.parseDate(targetItem.primaryDate);
+          final targetDate = targetDateValue == null
+              ? null
+              : DateTime(
+                  targetDateValue.year,
+                  targetDateValue.month,
+                  targetDateValue.day,
+                );
+          final highlightToken = targetItem == null || targetDate == null
+              ? null
+              : 'focus_${targetDate.year}_${targetDate.month}_${targetDate.day}_${targetItem.id}';
           final targetIndex = targetDate == null
               ? null
               : sortedDates.indexOf(targetDate);
           _highlightScroll.clearHighlightKey();
-          final children = <Widget>[];
-          for (final entry in grouped.entries) {
-            final isTargetSection =
-                targetDate != null && entry.key == targetDate;
-            children.add(
-              Padding(
-                padding: const EdgeInsets.only(bottom: 18),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: BracuSectionTitle(title: _dayLabel(entry.key)),
-                        ),
-                        Text(
-                          formatLongDate(entry.key),
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                            color: BracuPalette.textPrimary(context),
+          final sections = sortedDates
+              .map((date) {
+                final dateItems = grouped[date]!;
+                final isTargetSection = targetDate == date;
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 18),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: BracuSectionTitle(title: _dayLabel(date)),
                           ),
-                        ),
-                      ],
-                    ),
-                    const Gap(12),
-                    ...entry.value.asMap().entries.map((itemEntry) {
-                      final isTargetCard =
-                          isTargetSection && itemEntry.key == 0;
-                      _highlightScroll.markHighlighted(isTargetCard);
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 10),
-                        child: _CalendarCard(
-                          key: isTargetCard
-                              ? _highlightScroll.highlightKey
-                              : null,
-                          item: itemEntry.value,
-                          isHighlighted: false,
-                        ),
-                      );
-                    }),
-                  ],
-                ),
-              ),
-            );
-          }
-          final content = BracuRefreshScroll(
+                          Text(
+                            formatLongDate(date),
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                              color: BracuPalette.textPrimary(context),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const Gap(12),
+                      ...dateItems.asMap().entries.map((itemEntry) {
+                        final isTargetCard =
+                            isTargetSection &&
+                            identical(itemEntry.value, targetItem);
+                        _highlightScroll.markHighlighted(isTargetCard);
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 10),
+                          child: _CalendarCard(
+                            key: isTargetCard
+                                ? _highlightScroll.highlightKey
+                                : null,
+                            item: itemEntry.value,
+                            isHighlighted: isTargetCard,
+                          ),
+                        );
+                      }),
+                    ],
+                  ),
+                );
+              })
+              .toList(growable: false);
+          final content = BracuRefreshList(
             onRefresh: _refresh,
             controller: _scrollController,
             padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: children,
-            ),
+            children: sections,
           );
           if (highlightToken != null) {
             unawaited(
@@ -226,6 +259,14 @@ class _CalendarPageState extends State<CalendarPage> with RefreshBusState {
       if (parsed == null) continue;
       final key = DateTime(parsed.year, parsed.month, parsed.day);
       grouped.putIfAbsent(key, () => <CalendarEntry>[]).add(item);
+    }
+    for (final entries in grouped.values) {
+      entries.sort((a, b) {
+        final aStart = BracuTime.toMinutes(a.startTime) ?? -1;
+        final bStart = BracuTime.toMinutes(b.startTime) ?? -1;
+        if (aStart != bStart) return aStart.compareTo(bStart);
+        return a.label.compareTo(b.label);
+      });
     }
     return grouped;
   }
@@ -260,7 +301,7 @@ class _CalendarCard extends StatelessWidget {
         : item.sessionLabel;
 
     return BracuCard(
-      isHighlighted: false,
+      isHighlighted: isHighlighted,
       highlightColor: BracuPalette.primary,
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
