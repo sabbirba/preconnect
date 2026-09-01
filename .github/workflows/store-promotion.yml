@@ -226,27 +226,19 @@ jobs:
         shell: bash
         run: |
           mkdir -p deliverables
-          RUN_ID=$(gh run list --workflow release.yml --status success --limit 1 --json databaseId --jq '.[0].databaseId' || true)
-          if [ -n "$RUN_ID" ]; then
-            gh run download "$RUN_ID" --name web_extension-artifacts --dir deliverables || true
-          fi
-          if ! find deliverables -type f -name "PreConnect-firefox-extension-release-*.zip" | grep -q .; then
-            gh release download --dir deliverables --pattern "PreConnect-firefox-extension-release-*.zip" --clobber || true
-          fi
+          gh release download --dir deliverables --pattern "PreConnect-firefox-extension-release-*.zip" --clobber
           ls -la deliverables/
 
       - name: Resolve Firefox Extension
         id: resolve_firefox
         shell: bash
         run: |
-          XPI=$(find deliverables -type f -name "PreConnect-firefox-extension-release-*.zip" | head -n1 || true)
-          if [ -f "$XPI" ]; then
-            echo "firefox_ready=true" >> "$GITHUB_OUTPUT"
-            echo "firefox_path=$XPI" >> "$GITHUB_OUTPUT"
-          else
-            echo "firefox_ready=false" >> "$GITHUB_OUTPUT"
-            echo "No Firefox extension found in the latest release."
+          XPI=$(find deliverables -type f -name "PreConnect-firefox-extension-release-*.zip" | sort -V | tail -n1)
+          if [ -z "$XPI" ]; then
+            echo "No Firefox extension found in the latest release." >&2
+            exit 1
           fi
+          echo "firefox_path=$XPI" >> "$GITHUB_OUTPUT"
 
       - name: Check AMO Credentials
         id: amo_auth
@@ -263,7 +255,7 @@ jobs:
           fi
 
       - name: Publish Firefox Extension
-        if: steps.resolve_firefox.outputs.firefox_ready == 'true' && steps.amo_auth.outputs.enabled == 'true'
+        if: steps.amo_auth.outputs.enabled == 'true'
         env:
           AMO_JWT_ISSUER: ${{ secrets.AMO_JWT_ISSUER }}
           AMO_JWT_SECRET: ${{ secrets.AMO_JWT_SECRET }}
@@ -300,23 +292,16 @@ jobs:
         shell: bash
         run: |
           mkdir -p deliverables
-          RUN_ID=$(gh run list --workflow release.yml --status success --limit 1 --json databaseId --jq '.[0].databaseId' || true)
-          if [ -n "$RUN_ID" ]; then
-            gh run download "$RUN_ID" --name ios-artifacts --dir deliverables || true
-            gh run download "$RUN_ID" --name macos-artifacts --dir deliverables || true
-          fi
-          if ! find deliverables -type f \( -name "*.ipa" -o -name "*.pkg" \) | grep -q .; then
-            gh release download --dir deliverables --pattern "PreConnect-ios-release-*.ipa" --clobber || true
-            gh release download --dir deliverables --pattern "PreConnect-macos-release-*.pkg" --clobber || true
-          fi
+          gh release download --dir deliverables --pattern "PreConnect-ios-release-*.ipa" --clobber || true
+          gh release download --dir deliverables --pattern "PreConnect-macos-release-*.pkg" --clobber || true
           ls -la deliverables/
 
       - name: Resolve Apple Deliverables
         id: resolve_apple
         shell: bash
         run: |
-          IPA=$(find deliverables -type f -name "*.ipa" | head -n1 || true)
-          PKG=$(find deliverables -type f -name "*.pkg" | head -n1 || true)
+          IPA=$(find deliverables -type f -name "*.ipa" | sort -V | tail -n1 || true)
+          PKG=$(find deliverables -type f -name "*.pkg" | sort -V | tail -n1 || true)
           if [ -f "$IPA" ]; then
             echo "ios_ready=true" >> "$GITHUB_OUTPUT"
             echo "ios_path=$IPA" >> "$GITHUB_OUTPUT"
