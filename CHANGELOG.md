@@ -69,7 +69,7 @@ Universal Compatibility: Expanded hardware feature definitions and optimized res
 - Added help instructions and an automated Connect/Disconnect button to Captive Wi-Fi
 - Swapped the SSID display to a read-only input field matching the rest of the text fields
 - Replaced the webview portal page header with a transparent overlay for back and refresh controls
-- Setup real-time updates for push notifications and added Library and Course Leaks(Course Materials)
+- Setup real-time updates for push notifications and added Library and BRACU Leaks
 
 ## [1.6.7] — 2026-06-17
 

@@ -23,6 +23,11 @@ void main() {
     expect(ApiConfig.holidayStatusUrl, endsWith('/holiday'));
     expect(ApiConfig.ramadanStatusUrl, endsWith('/ramadan'));
     expect(ApiConfig.coursePrerequisitesUrl, endsWith('/course-prerequisites'));
+    expect(ApiConfig.bracuLeaksUrl, endsWith('/braculeaks'));
+    expect(
+      ApiConfig.bracuLeaksCollectionUrl('BRACU.CSE'),
+      endsWith('/braculeaks/BRACU.CSE'),
+    );
   });
 
   test('HTTP cache accepts only valid entity tags', () {

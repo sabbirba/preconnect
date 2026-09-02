@@ -55,6 +55,10 @@ class ApiConfig {
   static const String ramadanStatusUrl = '$realtimeApiBase/ramadan';
   static const String coursePrerequisitesUrl =
       '$realtimeApiBase/course-prerequisites';
+  static const String bracuLeaksUrl = '$realtimeApiBase/braculeaks';
+
+  static String bracuLeaksCollectionUrl(String code) =>
+      '$bracuLeaksUrl/${Uri.encodeComponent(code)}';
 
   static String get connectApiBase {
     if (_kIsWeb && !isChromeRuntimeAvailable()) {

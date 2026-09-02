@@ -30,6 +30,7 @@ import 'package:preconnect/pages/settings.dart';
 import 'package:preconnect/pages/wifi_printer.dart';
 import 'package:preconnect/libsync/libsync_page.dart';
 import 'package:preconnect/pages/dspace_browser.dart';
+import 'package:preconnect/pages/bracu_leaks.dart';
 import 'package:preconnect/pages/wishlist.dart';
 import 'package:preconnect/pages/advising_helper.dart';
 import 'package:preconnect/tools/runtime_stub.dart'
@@ -115,6 +116,7 @@ class _HomePageState extends State<HomePage> {
     HomeTab.personalSchedules: const CustomSchedulesPage(),
     HomeTab.libSync: const LibSyncPage(),
     HomeTab.dspace: const DSpaceBrowserPage(),
+    HomeTab.bracuLeaks: const BracuLeaksPage(),
     HomeTab.wishlist: const WishlistPage(),
   };
   late final List<HomeTab> _tabOrder = HomeTab.values;

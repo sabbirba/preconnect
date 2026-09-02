@@ -19,6 +19,7 @@ enum HomeTab {
   personalSchedules,
   libSync,
   dspace,
+  bracuLeaks,
   wishlist,
 }
 

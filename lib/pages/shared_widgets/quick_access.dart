@@ -121,6 +121,13 @@ List<QuickAccessItem> defaultQuickAccessItems({
     onTap: () => onTap(HomeTab.dspace),
   ),
   QuickAccessItem(
+    icon: Icons.folder_copy_outlined,
+    title: 'Course',
+    subtitle: 'Leaks',
+    color: const Color(0xFF7C56FF),
+    onTap: () => onTap(HomeTab.bracuLeaks),
+  ),
+  QuickAccessItem(
     icon: Icons.calendar_today_outlined,
     title: 'Events',
     subtitle: 'Academic',
