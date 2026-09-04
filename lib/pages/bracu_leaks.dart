@@ -166,7 +166,7 @@ class _BracuLeaksPageState extends State<BracuLeaksPage> {
       },
       child: BracuPageScaffold(
         title: 'Leaks',
-        subtitle: 'Course',
+        subtitle: selected?.code ?? 'Course',
         icon: Icons.folder_copy_outlined,
         showBack: true,
         actions: [
