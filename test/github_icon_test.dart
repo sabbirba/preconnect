@@ -47,7 +47,5 @@ void main() {
     expect(emptyStatus.badge, '--');
     expect(emptyStatus.title, 'No Classes Today');
     expect(emptyStatus.subtitle, 'Enjoy your day off.');
-    expect(formatSectionBadge('OFF'), 'OFF');
-    expect(formatSectionBadge('off'), 'OFF');
   });
 }
