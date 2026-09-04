@@ -24,6 +24,7 @@ class _BracuLeaksPageState extends State<BracuLeaksPage> {
   BracuLeaksDetail? _detail;
   Object? _error;
   bool _loading = true;
+  final Set<String> _expandedCategories = <String>{};
 
   @override
   void initState() {
@@ -54,6 +55,7 @@ class _BracuLeaksPageState extends State<BracuLeaksPage> {
       _detail = null;
       _error = null;
       _loading = false;
+      _expandedCategories.clear();
     });
     return true;
   }
@@ -91,6 +93,7 @@ class _BracuLeaksPageState extends State<BracuLeaksPage> {
       _loading = true;
       _error = null;
       _searchController.clear();
+      _expandedCategories.clear();
     });
     try {
       final detail = await _service.loadDetail(
@@ -257,44 +260,98 @@ class _BracuLeaksPageState extends State<BracuLeaksPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: categories
-                    .map(
-                      (category) => Padding(
-                        padding: const EdgeInsets.only(bottom: 20),
+                    .map((category) {
+                      final isExpanded =
+                          _searchController.text.trim().isNotEmpty ||
+                          _expandedCategories.contains(category.name);
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
-                            Text(
-                              category.name,
-                              style: TextStyle(
-                                color: BracuPalette.textPrimary(context),
-                                fontSize: 14,
-                                fontWeight: FontWeight.w800,
-                              ),
-                            ),
-                            const Gap(12),
-                            ...category.files.map(
-                              (file) => Padding(
-                                padding: const EdgeInsets.only(bottom: 12),
-                                child: BracuActionCard(
-                                  title: file.name,
-                                  leadingIcon: _fileIcon(file.path),
-                                  trailing: Icon(
-                                    Icons.open_in_new_rounded,
-                                    size: 19,
-                                    color: BracuPalette.textSecondary(context),
-                                  ),
-                                  onTap: () => launchUrl(
-                                    Uri.parse(file.url),
-                                    mode: LaunchMode.externalApplication,
-                                    webOnlyWindowName: '_blank',
-                                  ),
+                            GestureDetector(
+                              behavior: HitTestBehavior.opaque,
+                              onTap: () {
+                                setState(() {
+                                  if (!_expandedCategories.add(category.name)) {
+                                    _expandedCategories.remove(category.name);
+                                  }
+                                });
+                              },
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 8,
+                                ),
+                                child: Row(
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                        category.name,
+                                        style: TextStyle(
+                                          color: BracuPalette.textPrimary(
+                                            context,
+                                          ),
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w800,
+                                        ),
+                                      ),
+                                    ),
+                                    AnimatedRotation(
+                                      turns: isExpanded ? 0.5 : 0,
+                                      duration: const Duration(
+                                        milliseconds: 200,
+                                      ),
+                                      child: Icon(
+                                        Icons.expand_more_rounded,
+                                        color: BracuPalette.textSecondary(
+                                          context,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
                             ),
+                            AnimatedSize(
+                              duration: const Duration(milliseconds: 200),
+                              alignment: Alignment.topCenter,
+                              child: isExpanded
+                                  ? Column(
+                                      children: [
+                                        const Gap(4),
+                                        ...category.files.map(
+                                          (file) => Padding(
+                                            padding: const EdgeInsets.only(
+                                              bottom: 12,
+                                            ),
+                                            child: BracuActionCard(
+                                              title: file.name,
+                                              leadingIcon: _fileIcon(file.path),
+                                              trailing: Icon(
+                                                Icons.open_in_new_rounded,
+                                                size: 19,
+                                                color:
+                                                    BracuPalette.textSecondary(
+                                                      context,
+                                                    ),
+                                              ),
+                                              onTap: () => launchUrl(
+                                                Uri.parse(file.url),
+                                                mode: LaunchMode
+                                                    .externalApplication,
+                                                webOnlyWindowName: '_blank',
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    )
+                                  : const SizedBox.shrink(),
+                            ),
                           ],
                         ),
-                      ),
-                    )
+                      );
+                    })
                     .toList(growable: false),
               ),
             ),
