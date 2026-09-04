@@ -16,7 +16,7 @@ dependencies:
   shared_preferences: ^2.5.5
   webview_flutter: ^4.14.1
   intl: ^0.20.3
-  flutter_zxing: ^2.3.0
+  flutter_zxing: ^3.0.1
   image_picker: ^1.2.3
   archive: ^4.2.0
   barcode_widget: ^2.0.4

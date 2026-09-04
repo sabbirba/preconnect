@@ -3,6 +3,10 @@ include: package:flutter_lints/flutter.yaml
 analyzer:
   exclude:
     - build/**
+    - android/**
+    - ios/**
+    - web/**
+    - macos/**
   errors:
     invalid_use_of_protected_member: warning
     implementation_imports: ignore
