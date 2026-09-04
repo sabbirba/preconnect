@@ -162,7 +162,7 @@ class _BracuLeaksPageState extends State<BracuLeaksPage> {
       },
       child: BracuPageScaffold(
         title: 'Leaks',
-        subtitle: 'BRACU',
+        subtitle: 'Course',
         icon: Icons.folder_copy_outlined,
         showBack: true,
         actions: [
@@ -276,7 +276,6 @@ class _BracuLeaksPageState extends State<BracuLeaksPage> {
                                 padding: const EdgeInsets.only(bottom: 12),
                                 child: BracuActionCard(
                                   title: file.name,
-                                  subtitle: file.path,
                                   leadingIcon: _fileIcon(file.path),
                                   trailing: Icon(
                                     Icons.open_in_new_rounded,
