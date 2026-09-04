@@ -6,6 +6,7 @@ import 'package:preconnect/api/bracu_leaks.dart';
 import 'package:preconnect/model/bracu_leaks.dart';
 import 'package:preconnect/pages/home_tab.dart';
 import 'package:preconnect/pages/ui_kit.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class BracuLeaksPage extends StatefulWidget {
   const BracuLeaksPage({super.key});
@@ -282,11 +283,10 @@ class _BracuLeaksPageState extends State<BracuLeaksPage> {
                                     size: 19,
                                     color: BracuPalette.textSecondary(context),
                                   ),
-                                  onTap: () => openExternalUrl(
-                                    context,
-                                    file.url,
-                                    failureMessage:
-                                        'Unable to open ${file.name}.',
+                                  onTap: () => launchUrl(
+                                    Uri.parse(file.url),
+                                    mode: LaunchMode.externalApplication,
+                                    webOnlyWindowName: '_blank',
                                   ),
                                 ),
                               ),
