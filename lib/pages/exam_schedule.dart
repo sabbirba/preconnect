@@ -18,6 +18,7 @@ import 'package:preconnect/tools/snapshot_store.dart';
 import 'package:preconnect/tools/preload_cache.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
 import 'package:preconnect/pages/shared_widgets/online_guard.dart';
+import 'package:preconnect/tools/holiday.dart';
 import 'package:preconnect/tools/time_utils.dart';
 
 class ExamSchedule extends StatefulWidget {
@@ -55,6 +56,7 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
   bool? _resolvedForShowDone;
   bool? _resolvedForIsPastSemester;
   _ResolvedExamLists? _resolvedListsCache;
+  HolidayStatus _holidayStatus = HolidayStatus.empty;
 
   @override
   void initState() {
@@ -65,6 +67,7 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
         ? Future<_ExamScheduleData>.value(initialSyncData)
         : _initializeExamSchedule();
     unawaited(_loadCurrentSessionSemesterId());
+    unawaited(_loadHolidayStatus());
     unawaited(_warmAndBind());
     unawaited(_updateSemesterName());
     ExamSchedule.jumpSignal.addListener(_onJumpRequested);
@@ -168,6 +171,16 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
     });
   }
 
+  Future<void> _loadHolidayStatus({bool forceRefresh = false}) async {
+    final status = await HolidayTiming.getTodayStatus(
+      forceRefresh: forceRefresh,
+    );
+    if (!mounted) return;
+    setState(() {
+      _holidayStatus = status;
+    });
+  }
+
   Future<_ExamScheduleData> _fetchExamData({bool forceRefresh = false}) async {
     final targetSemesterSessionId =
         _selectedSemesterSessionId ??
@@ -227,7 +240,10 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
           ? _loadSemesterExamSchedule(targetSemesterId, forceRefresh: true)
           : preloadData(forceRefresh: true);
     });
-    await _future;
+    await Future.wait<void>([
+      _future.then<void>((_) {}),
+      _loadHolidayStatus(forceRefresh: true),
+    ]);
     if (notify) {
       RefreshBus.instance.notify(reason: 'exam_schedule');
     }
@@ -371,8 +387,8 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
             isPastSemester: isPastSemester,
           );
           final resolvedBySectionId = resolvedLists.resolvedBySectionId;
-          final midExams = resolvedLists.midExams;
-          final finalExams = resolvedLists.finalExams;
+          var midExams = resolvedLists.midExams;
+          var finalExams = resolvedLists.finalExams;
           ExamSectionResolved resolved(Section section) =>
               resolvedBySectionId[section.sectionId]!;
           String? midDate(Section section) => resolved(section).midDate;
@@ -387,8 +403,14 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
               resolved(section).finalRoomNumber;
           final showPast = _showDoneExams;
           final now = DateTime.now();
+          final holidayStatus = isCurrentSemester
+              ? _holidayStatus
+              : HolidayStatus.empty;
+          final isTodayHoliday = holidayStatus.isTodayHoliday;
 
-          if (midExams.isEmpty && finalExams.isEmpty) {
+          if (midExams.isEmpty &&
+              finalExams.isEmpty &&
+              (showPast || !isTodayHoliday)) {
             final hasAnyExamData = sections.any(
               (s) =>
                   midDate(s) != null ||
@@ -408,10 +430,31 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
 
           final shouldHighlightCurrentSemester = !showPast;
           final today = DateTime(now.year, now.month, now.day);
+          bool isToday(String? value) {
+            final date = BracuTime.parseDate(value);
+            return date != null &&
+                date.year == today.year &&
+                date.month == today.month &&
+                date.day == today.day;
+          }
+
+          if (!showPast && isTodayHoliday) {
+            midExams = midExams
+                .where((section) => !isToday(midDate(section)))
+                .toList(growable: false);
+            finalExams = finalExams
+                .where((section) => !isToday(finalDate(section)))
+                .toList(growable: false);
+          }
+
           DateTime? nextExamTime;
           String? nextExamKey;
           if (shouldHighlightCurrentSemester) {
             for (final s in sections) {
+              if (isTodayHoliday &&
+                  (isToday(midDate(s)) || isToday(finalDate(s)))) {
+                continue;
+              }
               final midTime = BracuTime.parseDateTime(midDate(s), midStart(s));
               if (midTime != null &&
                   ExamVisibility.isUpcomingOrOngoingSchedule(
@@ -447,23 +490,16 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
           final highlightedKey = nextExamKey;
 
           final children = <Widget>[];
-          final hasExamToday = sections.any((s) {
-            final mDate = BracuTime.parseDate(midDate(s));
-            final fDate = BracuTime.parseDate(finalDate(s));
-            final hasMidToday =
-                mDate != null &&
-                mDate.year == today.year &&
-                mDate.month == today.month &&
-                mDate.day == today.day;
-            final hasFinalToday =
-                fDate != null &&
-                fDate.year == today.year &&
-                fDate.month == today.month &&
-                fDate.day == today.day;
-            return hasMidToday || hasFinalToday;
-          });
+          final hasExamToday = sections.any(
+            (section) =>
+                isToday(midDate(section)) || isToday(finalDate(section)),
+          );
+          final todayScheduleStatus = BracuTodayScheduleStatus.resolve(
+            holidayStatus: holidayStatus,
+            fallbackTitle: 'No Exam Today',
+          );
 
-          if (!showPast && !hasExamToday) {
+          if (!showPast && (isTodayHoliday || !hasExamToday)) {
             final todayWeekday = DateFormat('EEEE').format(now).toUpperCase();
             final todayDateLabel = formatLongDate(now);
             children.add(
@@ -491,38 +527,11 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
                       ],
                     ),
                     const Gap(12),
-                    BracuCard(
-                      child: Row(
-                        children: [
-                          const SectionBadge(
-                            label: '--',
-                            color: BracuPalette.primary,
-                          ),
-                          const Gap(12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text(
-                                  'No Exam Today',
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                                const Gap(4),
-                                Text(
-                                  'Enjoy your day off.',
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    color: BracuPalette.textSecondary(context),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
+                    BracuScheduleTile(
+                      badge: todayScheduleStatus.badge,
+                      title: todayScheduleStatus.title,
+                      subtitle: todayScheduleStatus.subtitle,
+                      color: BracuPalette.primary,
                     ),
                   ],
                 ),

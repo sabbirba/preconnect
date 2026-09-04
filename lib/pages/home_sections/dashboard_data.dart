@@ -683,26 +683,20 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
     }
 
     if (isTodayHoliday || visibleEntries.isEmpty) {
+      final todayScheduleStatus = BracuTodayScheduleStatus.resolve(
+        holidayStatus: holidayStatus,
+        overrideSubtitle: isExamWeekActive
+            ? derived.examWeekStatus.subtitle
+            : null,
+      );
       await TodayWidget.sync(
         title: title,
         date: date,
         items: [
           TodayItem(
-            badge: isExamWeekActive
-                ? '--'
-                : isTodayHoliday
-                ? 'OFF'
-                : '--',
-            title: isExamWeekActive
-                ? 'No Classes Today'
-                : isTodayHoliday
-                ? 'National holiday'
-                : 'No Classes Today',
-            subtitle: isExamWeekActive
-                ? derived.examWeekStatus.subtitle
-                : isTodayHoliday
-                ? holidayStatus.displayNames
-                : 'Enjoy your day off.',
+            badge: todayScheduleStatus.badge,
+            title: todayScheduleStatus.title,
+            subtitle: todayScheduleStatus.subtitle,
           ),
         ],
       );

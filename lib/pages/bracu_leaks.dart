@@ -308,8 +308,44 @@ IconData _fileIcon(String path) {
     'pdf' => Icons.picture_as_pdf_outlined,
     'ppt' || 'pptx' => Icons.slideshow_outlined,
     'xls' || 'xlsx' || 'csv' => Icons.table_chart_outlined,
-    'doc' || 'docx' || 'md' || 'txt' => Icons.description_outlined,
-    'zip' || '7z' || 'rar' => Icons.archive_outlined,
+    'doc' || 'docx' || 'gdoc' => Icons.description_outlined,
+    'md' || 'txt' || 'typ' => Icons.article_outlined,
+    'java' ||
+    'py' ||
+    'dart' ||
+    'js' ||
+    'ts' ||
+    'c' ||
+    'cpp' ||
+    'h' ||
+    'html' ||
+    'css' ||
+    'gradle' => Icons.code_rounded,
+    'ipynb' => Icons.developer_board_outlined,
+    'json' ||
+    'xml' ||
+    'yaml' ||
+    'yml' ||
+    'sql' ||
+    'db' => Icons.data_object_outlined,
+    'png' ||
+    'jpg' ||
+    'jpeg' ||
+    'gif' ||
+    'webp' ||
+    'svg' => Icons.image_outlined,
+    'mp3' || 'wav' || 'aac' || 'm4a' || 'flac' => Icons.audio_file_outlined,
+    'mp4' || 'mov' || 'avi' || 'mkv' || 'webm' => Icons.video_file_outlined,
+    'ttf' ||
+    'ttc' ||
+    'otf' ||
+    'woff' ||
+    'woff2' => Icons.font_download_outlined,
+    'excalidraw' => Icons.draw_outlined,
+    'zip' || '7z' || 'rar' || 'tar' || 'gz' || 'bz2' => Icons.archive_outlined,
+    'apk' => Icons.android_rounded,
+    'gitignore' || 'gitkeep' || 'ini' => Icons.settings_outlined,
+    'epub' || 'mobi' => Icons.menu_book_outlined,
     _ => Icons.insert_drive_file_outlined,
   };
 }

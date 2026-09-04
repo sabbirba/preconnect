@@ -17,6 +17,7 @@ import 'package:preconnect/tools/preload_cache.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
 import 'package:preconnect/pages/shared_widgets/online_guard.dart';
 import 'package:preconnect/tools/ramadan.dart';
+import 'package:preconnect/tools/holiday.dart';
 import 'package:preconnect/tools/time_utils.dart';
 
 class ClassSchedulePage extends StatefulWidget {
@@ -62,6 +63,7 @@ class _ClassScheduleState extends State<ClassSchedulePage>
       HighlightScrollCoordinator(scrollController: _scrollController);
   int _visibleWeekCount = _initialVisibleWeekCount;
   bool _showDoneSections = false;
+  HolidayStatus _holidayStatus = HolidayStatus.empty;
 
   @override
   void initState() {
@@ -72,6 +74,7 @@ class _ClassScheduleState extends State<ClassSchedulePage>
         ? Future<_ScheduleData>.value(initialSyncData)
         : preloadData();
     unawaited(_warmAndBind());
+    unawaited(_loadHolidayStatus());
     unawaited(_updateSemesterName());
     ClassSchedulePage.jumpSignal.addListener(_onJumpRequested);
     cache.addListener(_onCacheUpdated);
@@ -201,6 +204,16 @@ class _ClassScheduleState extends State<ClassSchedulePage>
       _showDoneSections = !_showDoneSections;
       _highlightScroll.resetScrollState();
       _visibleWeekCount = _initialVisibleWeekCount;
+    });
+  }
+
+  Future<void> _loadHolidayStatus({bool forceRefresh = false}) async {
+    final status = await HolidayTiming.getTodayStatus(
+      forceRefresh: forceRefresh,
+    );
+    if (!mounted) return;
+    setState(() {
+      _holidayStatus = status;
     });
   }
 
@@ -339,7 +352,10 @@ class _ClassScheduleState extends State<ClassSchedulePage>
           ? _loadSemesterSchedule(targetSemesterId, forceRefresh: true)
           : preloadData(forceRefresh: true);
     });
-    await _future;
+    await Future.wait<void>([
+      _future.then<void>((_) {}),
+      _loadHolidayStatus(forceRefresh: true),
+    ]);
     if (notify) {
       RefreshBus.instance.notify(reason: 'class_schedule');
     }
@@ -568,7 +584,7 @@ class _ClassScheduleState extends State<ClassSchedulePage>
             studentSections,
             overrides,
           );
-          final renderedSections = _buildRenderedSections(
+          var renderedSections = _buildRenderedSections(
             visibleGrouped,
             shouldHighlightCurrentSemester: shouldHighlightCurrentSemester,
             maxFinalExamDate: maxFinalExamDate,
@@ -587,8 +603,27 @@ class _ClassScheduleState extends State<ClassSchedulePage>
           final now = DateTime.now();
           final todayWeekday = _weekdayNames[now.weekday - 1];
           final hasClassesToday = visibleGrouped.containsKey(todayWeekday);
+          final holidayStatus = isCurrentSemester
+              ? _holidayStatus
+              : HolidayStatus.empty;
+          final isTodayHoliday = holidayStatus.isTodayHoliday;
+          final todayScheduleStatus = BracuTodayScheduleStatus.resolve(
+            holidayStatus: holidayStatus,
+          );
 
-          if (!_showDoneSections && !hasClassesToday) {
+          if (!_showDoneSections && isTodayHoliday) {
+            renderedSections = renderedSections
+                .where((sectionInfo) {
+                  final date = sectionInfo.date;
+                  return date == null ||
+                      date.year != now.year ||
+                      date.month != now.month ||
+                      date.day != now.day;
+                })
+                .toList(growable: false);
+          }
+
+          if (!_showDoneSections && (isTodayHoliday || !hasClassesToday)) {
             final todayDateLabel = formatLongDate(now);
             children.add(
               Column(
@@ -614,38 +649,11 @@ class _ClassScheduleState extends State<ClassSchedulePage>
                   const Gap(12),
                   Padding(
                     padding: const EdgeInsets.only(bottom: 10),
-                    child: BracuCard(
-                      child: Row(
-                        children: [
-                          const SectionBadge(
-                            label: '--',
-                            color: BracuPalette.primary,
-                          ),
-                          const Gap(12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text(
-                                  'No Class Today',
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                                const Gap(4),
-                                Text(
-                                  'Enjoy your day off.',
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    color: BracuPalette.textSecondary(context),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
+                    child: BracuScheduleTile(
+                      title: todayScheduleStatus.title,
+                      subtitle: todayScheduleStatus.subtitle,
+                      badge: todayScheduleStatus.badge,
+                      color: BracuPalette.primary,
                     ),
                   ),
                   const Gap(6),

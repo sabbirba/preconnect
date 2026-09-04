@@ -907,6 +907,51 @@ class SectionBadge extends StatelessWidget {
   }
 }
 
+class BracuTodayScheduleStatus {
+  const BracuTodayScheduleStatus({
+    required this.badge,
+    required this.title,
+    required this.subtitle,
+  });
+
+  const BracuTodayScheduleStatus.noClasses()
+    : badge = '--',
+      title = 'No Classes Today',
+      subtitle = 'Enjoy your day off.';
+
+  factory BracuTodayScheduleStatus.resolve({
+    required HolidayStatus holidayStatus,
+    String? overrideTitle,
+    String? overrideSubtitle,
+    String fallbackTitle = 'No Classes Today',
+    String fallbackSubtitle = 'Enjoy your day off.',
+  }) {
+    if (overrideTitle != null || overrideSubtitle != null) {
+      return BracuTodayScheduleStatus(
+        badge: '--',
+        title: overrideTitle ?? 'No Classes Today',
+        subtitle: overrideSubtitle ?? fallbackSubtitle,
+      );
+    }
+    if (holidayStatus.isTodayHoliday) {
+      return BracuTodayScheduleStatus(
+        badge: 'OFF',
+        title: 'National holiday',
+        subtitle: holidayStatus.displayNames,
+      );
+    }
+    return BracuTodayScheduleStatus(
+      badge: '--',
+      title: fallbackTitle,
+      subtitle: fallbackSubtitle,
+    );
+  }
+
+  final String badge;
+  final String title;
+  final String subtitle;
+}
+
 class BracuScheduleTile extends StatelessWidget {
   const BracuScheduleTile({
     super.key,

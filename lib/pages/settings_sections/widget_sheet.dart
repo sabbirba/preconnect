@@ -202,6 +202,7 @@ class _WidgetSetupSheetState extends State<WidgetSetupSheet> {
         ? _widgetData!.date
         : DateFormat('d MMMM, yyyy').format(now);
     final items = _widgetData?.items ?? const <TodayItem>[];
+    const emptyStatus = BracuTodayScheduleStatus.noClasses();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -239,10 +240,10 @@ class _WidgetSetupSheetState extends State<WidgetSetupSheet> {
             child: Center(child: BracuSpinner(size: 22, strokeWidth: 2.4)),
           )
         else if (items.isEmpty)
-          const BracuScheduleTile(
-            badge: '--',
-            title: 'No Classes Today',
-            subtitle: 'Enjoy your day off.',
+          BracuScheduleTile(
+            badge: emptyStatus.badge,
+            title: emptyStatus.title,
+            subtitle: emptyStatus.subtitle,
             color: BracuPalette.primary,
           )
         else

@@ -129,6 +129,13 @@ extension _HomeDashboardView on _HomeDashboardState {
                           final todayEntries = derived.todayEntries;
                           final examWeekStatus = derived.examWeekStatus;
                           final isExamWeekActive = examWeekStatus.isActive;
+                          final todayScheduleStatus =
+                              BracuTodayScheduleStatus.resolve(
+                                holidayStatus: holidayStatus,
+                                overrideSubtitle: isExamWeekActive
+                                    ? examWeekStatus.subtitle
+                                    : null,
+                              );
                           final nextCountdown = derived.nextCountdown;
                           final todayExams = derived.todayExams;
                           final visibleEntries = isTodayHoliday
@@ -280,21 +287,10 @@ extension _HomeDashboardView on _HomeDashboardState {
                                               : HomeTab.studentSchedule,
                                         ),
                                         child: _ScheduleTile(
-                                          title: isExamWeekActive
-                                              ? 'No Classes Today'
-                                              : isTodayHoliday
-                                              ? 'National holiday'
-                                              : 'No Classes Today',
-                                          subtitle: isExamWeekActive
-                                              ? examWeekStatus.subtitle
-                                              : isTodayHoliday
-                                              ? holidayStatus.displayNames
-                                              : 'Enjoy your day off.',
-                                          badge: isExamWeekActive
-                                              ? '--'
-                                              : isTodayHoliday
-                                              ? 'OFF'
-                                              : '--',
+                                          title: todayScheduleStatus.title,
+                                          subtitle:
+                                              todayScheduleStatus.subtitle,
+                                          badge: todayScheduleStatus.badge,
                                           color: _HomeDashboardState._primary,
                                         ),
                                       ),
