@@ -64,7 +64,6 @@ class _FreeLabsPageState extends State<FreeLabsPage> {
     super.initState();
     _searchController = TextEditingController();
     _searchController.addListener(_onSearchQueryChanged);
-    _loadCachedSearch();
     _future = _loadSlots();
     _bindSlotsFuture(_future);
     HomeTabRegistry.activeTab.addListener(_onActiveTabChanged);
@@ -91,19 +90,6 @@ class _FreeLabsPageState extends State<FreeLabsPage> {
   void _onSearchQueryChanged() {
     final query = _searchController.text;
     if (query != _searchQuery) {
-      setState(() {
-        _searchQuery = query;
-      });
-      final cache = AppPreferencesStore();
-      unawaited(cache.setString('freelabs_search_query', query));
-    }
-  }
-
-  Future<void> _loadCachedSearch() async {
-    final cache = AppPreferencesStore();
-    final query = await cache.getString('freelabs_search_query');
-    if (query != null && query.isNotEmpty && mounted) {
-      _searchController.text = query;
       setState(() {
         _searchQuery = query;
       });
