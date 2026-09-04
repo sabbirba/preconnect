@@ -877,6 +877,7 @@ class SectionBadge extends StatelessWidget {
     this.fontWeight = FontWeight.w700,
     this.backgroundAlpha = 0.12,
     this.borderRadius = 12,
+    this.formatLabel = true,
   });
 
   final String label;
@@ -886,10 +887,11 @@ class SectionBadge extends StatelessWidget {
   final FontWeight fontWeight;
   final double backgroundAlpha;
   final double borderRadius;
+  final bool formatLabel;
 
   @override
   Widget build(BuildContext context) {
-    final displayLabel = formatSectionBadge(label);
+    final displayLabel = formatLabel ? formatSectionBadge(label) : label;
     return Container(
       width: size,
       height: size,
@@ -988,7 +990,7 @@ class BracuScheduleTile extends StatelessWidget {
           return Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              SectionBadge(label: badge, color: color),
+              SectionBadge(label: badge, color: color, formatLabel: false),
               const Gap(12),
               Expanded(
                 child: Column(

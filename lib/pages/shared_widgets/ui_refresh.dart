@@ -4,7 +4,6 @@ String formatSectionBadge(String? sectionName) {
   if (sectionName == null) return '?';
   final trimmed = sectionName.trim();
   if (trimmed.isEmpty) return '?';
-  if (trimmed.toUpperCase() == 'OFF') return 'OFF';
   final match = RegExp(r'\d+').firstMatch(trimmed);
   if (match == null) {
     if (trimmed.length > 2) {
