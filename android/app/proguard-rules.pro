@@ -15,6 +15,7 @@
 -dontwarn io.flutter.**
 -dontwarn com.google.android.gms.**
 -dontwarn com.google.android.play.**
+-keep class com.google.android.play.core.review.** { *; }
 
 # ── R8 Aggressive: Strip all Android Log calls from release ──────────────────
 -assumenosideeffects class android.util.Log {

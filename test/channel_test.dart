@@ -5,6 +5,7 @@ import 'package:preconnect/tools/calendar_event.dart';
 import 'package:preconnect/tools/file_open.dart';
 import 'package:preconnect/tools/network_assist.dart';
 import 'package:preconnect/tools/platform_channels.dart';
+import 'package:preconnect/tools/store_actions.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -129,5 +130,19 @@ void main() {
     final match = RegExp(r'mercureAuthorization=([^;]+)').firstMatch(cookie);
     expect(match, isNotNull);
     expect(match?.group(1), 'eyJhbGciOiJIUzI1NiJ9.samplePayload.sampleSig');
+  });
+
+  test('StoreActions invokes store channel methods', () async {
+    const channel = MethodChannel(PlatformChannels.store);
+    final calls = <String>[];
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(channel, (call) async {
+          calls.add(call.method);
+          return true;
+        });
+
+    expect(await StoreActions.isReviewAvailable(), isTrue);
+    expect(await StoreActions.requestReview(), isTrue);
+    expect(calls, ['isReviewAvailable', 'requestReview']);
   });
 }

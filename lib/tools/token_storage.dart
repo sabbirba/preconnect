@@ -21,10 +21,8 @@ import 'package:preconnect/tools/preconnect_constants.dart';
 import 'package:preconnect/tools/platform_stub.dart'
     if (dart.library.js_interop) 'package:preconnect/tools/storage_web.dart';
 import 'package:preconnect/tools/http/http_headers.dart';
-import 'package:http/http.dart' as http;
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:preconnect/tools/store_actions.dart';
-import 'package:preconnect/tools/storage_keys.dart';
 
 class TokenPersistenceException implements Exception {
   TokenPersistenceException(this.message);
@@ -537,26 +535,13 @@ class HomeCardVisibility {
 class InAppReviewPrompt {
   InAppReviewPrompt._();
 
-  static const Duration _minimumAppUse = Duration(days: 3);
+  static bool _hasPromptedThisSession = false;
 
   static Future<void> requestAfterThreeDays() async {
     if (kIsWeb) return;
     if (!(Platform.isAndroid || Platform.isIOS)) return;
-
-    final storage = AppStorage.instance;
-    final now = DateTime.now();
-    final firstUseTimestamp = await storage.getInt(StorageKeys.firstAppUseAt);
-    if (firstUseTimestamp == null) {
-      await storage.setInt(
-        StorageKeys.firstAppUseAt,
-        now.millisecondsSinceEpoch,
-      );
-      return;
-    }
-
-    final firstUse = DateTime.fromMillisecondsSinceEpoch(firstUseTimestamp);
-    if (now.difference(firstUse) < _minimumAppUse) return;
-    if (!await TokenStorage.instance.hasAccessToken()) return;
+    if (_hasPromptedThisSession) return;
+    _hasPromptedThisSession = true;
 
     await _requestAvailableReview();
   }
@@ -572,8 +557,6 @@ class InAppReviewPrompt {
   }
 
   static Future<void> rate() async {
-    if (!await TokenStorage.instance.hasAccessToken()) return;
-    if (await _requestAvailableReview()) return;
     await _openStoreListing();
   }
 
@@ -599,27 +582,7 @@ class InAppReviewPrompt {
       if (isApple) {
         var appStoreId = (iosAppStoreId ?? '').trim();
         if (appStoreId.isEmpty) {
-          try {
-            final packageInfo = await PackageInfo.fromPlatform();
-            final response = await http
-                .get(
-                  Uri.parse(
-                    'https://itunes.apple.com/lookup?bundleId=${packageInfo.packageName}',
-                  ),
-                )
-                .timeout(const Duration(seconds: 3));
-            if (response.statusCode == 200) {
-              final data = jsonDecode(response.body);
-              if (data is Map &&
-                  data['results'] is List &&
-                  (data['results'] as List).isNotEmpty) {
-                final result = (data['results'] as List).first;
-                if (result is Map && result['trackId'] != null) {
-                  appStoreId = '${result['trackId']}';
-                }
-              }
-            }
-          } catch (_) {}
+          appStoreId = '6791423431';
         }
 
         if (appStoreId.isNotEmpty) {
