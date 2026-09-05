@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'package:flutter/foundation.dart';
 import 'package:preconnect/model/advising_phase.dart';
 import 'package:preconnect/tools/runtime_stub.dart'
     if (dart.library.js_interop) 'package:preconnect/tools/runtime_web.dart';
@@ -7,6 +6,9 @@ import 'package:preconnect/tools/origin_stub.dart'
     if (dart.library.js_interop) 'package:preconnect/tools/origin_web.dart';
 
 const bool _kIsWeb = identical(0, 0.0);
+const bool _kDebugMode =
+    !bool.fromEnvironment('dart.vm.product') &&
+    !bool.fromEnvironment('dart.vm.profile');
 
 class ApiConfig {
   ApiConfig._();
@@ -39,7 +41,7 @@ class ApiConfig {
 
   static const String realtimeApiBase = String.fromEnvironment(
     'REALTIME_API_BASE',
-    defaultValue: kDebugMode
+    defaultValue: _kDebugMode
         ? 'http://localhost:3000'
         : 'https://api.preconnect.app',
   );
