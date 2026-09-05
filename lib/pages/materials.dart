@@ -248,7 +248,7 @@ class _MaterialsPageState extends State<MaterialsPage> {
       title = selectedSrc;
       subtitle = 'Materials';
     } else {
-      title = 'Course';
+      title = 'Sources';
       subtitle = 'Materials';
     }
     return BracuBackScope(
