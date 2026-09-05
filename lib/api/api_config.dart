@@ -216,6 +216,14 @@ class ApiConfig {
     return '$connectApiBase${wishlistPath(studentId)}';
   }
 
+  static String get authUrl =>
+      '$authEndpoint'
+      '?client_id=$clientId'
+      '&redirect_uri=${Uri.encodeQueryComponent(redirectUri)}'
+      '&response_type=code'
+      '&response_mode=query'
+      '&scope=openid offline_access';
+
   static String authUrlWithPkce(String codeChallenge) {
     final encodedChallenge = Uri.encodeQueryComponent(codeChallenge);
     return '$authEndpoint'
