@@ -49,10 +49,10 @@ class ApiConfig {
       '$realtimeApiBase/data/academic-dates.json';
   static const String campusMapUrl = '$realtimeApiBase/data/map.json';
   static const String transportUrl = '$realtimeApiBase/data/transport.json';
-  static const String holidayStatusUrl = '$realtimeApiBase/holiday';
-  static const String ramadanStatusUrl = '$realtimeApiBase/ramadan';
+  static const String holidayStatusUrl = '$realtimeApiBase/holiday.json';
+  static const String ramadanStatusUrl = '$realtimeApiBase/ramadan.json';
   static const String coursePrerequisitesUrl =
-      '$realtimeApiBase/course-prerequisites';
+      '$realtimeApiBase/course-prerequisites.json';
   static const String materialsUrl = '$realtimeApiBase/materials';
 
   static String materialsSourceUrl(String source) =>

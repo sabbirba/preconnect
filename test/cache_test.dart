@@ -21,9 +21,12 @@ void main() {
   });
 
   test('dynamic public data uses the live API routes', () {
-    expect(ApiConfig.holidayStatusUrl, endsWith('/holiday'));
-    expect(ApiConfig.ramadanStatusUrl, endsWith('/ramadan'));
-    expect(ApiConfig.coursePrerequisitesUrl, endsWith('/course-prerequisites'));
+    expect(ApiConfig.holidayStatusUrl, endsWith('/holiday.json'));
+    expect(ApiConfig.ramadanStatusUrl, endsWith('/ramadan.json'));
+    expect(
+      ApiConfig.coursePrerequisitesUrl,
+      endsWith('/course-prerequisites.json'),
+    );
     expect(ApiConfig.busDataUrl, endsWith('/data/bus.json'));
     expect(ApiConfig.materialsUrl, endsWith('/materials'));
     expect(
