@@ -37,8 +37,6 @@ class ApiConfig {
   static String get authEndpoint => '$ssoBase/auth';
 
   static const String realtimeApiBase = 'https://api.preconnect.app';
-  static const String seatStatusProxyBase = realtimeApiBase;
-  static const String publicJsonBase = realtimeApiBase;
   static const String seatStatusDataUrl = '$realtimeApiBase/connect.json';
   static const String busDataUrl = '$realtimeApiBase/data/bus.json';
   static const String freeLabsDataUrl = '$realtimeApiBase/data/freelabs.json';

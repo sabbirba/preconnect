@@ -156,7 +156,7 @@ class ScraperDataService {
 
     final url = path.startsWith('http')
         ? path
-        : '${ApiConfig.publicJsonBase}${path.startsWith('/') ? path : '/$path'}';
+        : '${ApiConfig.realtimeApiBase}${path.startsWith('/') ? path : '/$path'}';
     try {
       final response = await _client.publicGet(
         url,
