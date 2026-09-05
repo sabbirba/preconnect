@@ -99,9 +99,6 @@ class ApiConfig {
   static String advisingPath(String studentId) =>
       '/adv/v1/advising/$studentId/active-advising-sessions';
 
-  static String advisingSectionsStudentPath(String portfolioId) =>
-      '/adv/v1/advising/sections/student/$portfolioId';
-
   static String advisingStudentCoursesPath(AdvisingPhase phase) =>
       '/adv/v1/student-courses/${phase.pathSegment}';
 
@@ -218,14 +215,6 @@ class ApiConfig {
   static String wishlistUrl(String studentId) {
     return '$connectApiBase${wishlistPath(studentId)}';
   }
-
-  static String get authUrl =>
-      '$authEndpoint'
-      '?client_id=$clientId'
-      '&redirect_uri=${Uri.encodeQueryComponent(redirectUri)}'
-      '&response_type=code'
-      '&response_mode=query'
-      '&scope=openid offline_access';
 
   static String authUrlWithPkce(String codeChallenge) {
     final encodedChallenge = Uri.encodeQueryComponent(codeChallenge);

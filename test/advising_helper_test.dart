@@ -115,10 +115,6 @@ void main() {
 
     test('uses the current advising endpoint contracts', () {
       expect(
-        ApiConfig.advisingSectionsStudentPath('70801'),
-        '/adv/v1/advising/sections/student/70801',
-      );
-      expect(
         ApiConfig.advisingStudentCoursesPath(AdvisingPhase.phaseTwo),
         '/adv/v1/student-courses/phase-two',
       );
