@@ -2,26 +2,28 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
-import 'package:preconnect/api/bracu_leaks.dart';
-import 'package:preconnect/model/bracu_leaks.dart';
+import 'package:preconnect/api/materials.dart';
+import 'package:preconnect/model/materials.dart';
 import 'package:preconnect/pages/home_tab.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-class BracuLeaksPage extends StatefulWidget {
-  const BracuLeaksPage({super.key});
+class MaterialsPage extends StatefulWidget {
+  const MaterialsPage({super.key});
 
   @override
-  State<BracuLeaksPage> createState() => _BracuLeaksPageState();
+  State<MaterialsPage> createState() => _MaterialsPageState();
 }
 
-class _BracuLeaksPageState extends State<BracuLeaksPage> {
-  final BracuLeaksService _service = BracuLeaksService();
+class _MaterialsPageState extends State<MaterialsPage> {
+  final MaterialsService _service = MaterialsService();
   final TextEditingController _searchController = TextEditingController();
 
-  BracuLeaksCollection? _selectedCollection;
-  List<BracuLeaksCollection>? _collections;
-  BracuLeaksDetail? _detail;
+  String? _selectedSource;
+  MaterialCollection? _selectedCollection;
+  MaterialSources? _sources;
+  List<MaterialCollection>? _collections;
+  MaterialDetail? _detail;
   Object? _error;
   bool _loading = true;
   final Set<String> _expandedCategories = <String>{};
@@ -29,14 +31,14 @@ class _BracuLeaksPageState extends State<BracuLeaksPage> {
   @override
   void initState() {
     super.initState();
-    HomeTabRegistry.registerBackHandler(HomeTab.bracuLeaks, _handleBack);
+    HomeTabRegistry.registerBackHandler(HomeTab.materials, _handleBack);
     _searchController.addListener(_onSearchChanged);
-    unawaited(_loadCollections());
+    unawaited(_loadSources());
   }
 
   @override
   void dispose() {
-    HomeTabRegistry.unregisterBackHandler(HomeTab.bracuLeaks, _handleBack);
+    HomeTabRegistry.unregisterBackHandler(HomeTab.materials, _handleBack);
     _searchController
       ..removeListener(_onSearchChanged)
       ..dispose();
@@ -48,34 +50,80 @@ class _BracuLeaksPageState extends State<BracuLeaksPage> {
   }
 
   bool _handleBack() {
-    if (_selectedCollection == null) return false;
-    _searchController.clear();
-    setState(() {
-      _selectedCollection = null;
-      _detail = null;
-      _error = null;
-      _loading = false;
-      _expandedCategories.clear();
-    });
-    return true;
+    if (_selectedCollection != null) {
+      _searchController.clear();
+      setState(() {
+        _selectedCollection = null;
+        _detail = null;
+        _error = null;
+        _loading = false;
+        _expandedCategories.clear();
+      });
+      return true;
+    }
+    if (_selectedSource != null) {
+      _searchController.clear();
+      setState(() {
+        _selectedSource = null;
+        _collections = null;
+        _error = null;
+        _loading = false;
+      });
+      return true;
+    }
+    return false;
   }
 
-  Future<void> _loadCollections({bool forceRefresh = false}) async {
-    setState(() {
-      _loading = true;
-      _error = null;
-    });
+  Future<void> _loadSources({bool forceRefresh = false}) async {
+    if (_sources == null) {
+      setState(() {
+        _loading = true;
+        _error = null;
+      });
+    }
     try {
-      final collections = await _service.loadCollections(
-        forceRefresh: forceRefresh,
-      );
+      final sources = await _service.loadSources(forceRefresh: forceRefresh);
       if (!mounted) return;
       setState(() {
-        _collections = collections;
+        _sources = sources;
         _loading = false;
+        _error = null;
       });
     } catch (error) {
       if (!mounted) return;
+      setState(() {
+        _error = error;
+        _loading = false;
+      });
+    }
+  }
+
+  Future<void> _selectSource(String source, {bool forceRefresh = false}) async {
+    if (!forceRefresh || _collections == null) {
+      setState(() {
+        _selectedSource = source;
+        _selectedCollection = null;
+        _collections = null;
+        _detail = null;
+        _loading = true;
+        _error = null;
+        _searchController.clear();
+        _expandedCategories.clear();
+      });
+    }
+    try {
+      final collections = await _service.loadCollections(
+        source,
+        forceRefresh: forceRefresh,
+      );
+      if (!mounted || _selectedSource != source) return;
+      setState(() {
+        _collections = collections;
+        _loading = false;
+        _error = null;
+      });
+    } catch (error) {
+      if (!mounted || _selectedSource != source) return;
       setState(() {
         _error = error;
         _loading = false;
@@ -84,26 +132,30 @@ class _BracuLeaksPageState extends State<BracuLeaksPage> {
   }
 
   Future<void> _selectCollection(
-    BracuLeaksCollection collection, {
+    MaterialCollection collection, {
     bool forceRefresh = false,
   }) async {
-    setState(() {
-      _selectedCollection = collection;
-      _detail = null;
-      _loading = true;
-      _error = null;
-      _searchController.clear();
-      _expandedCategories.clear();
-    });
+    if (!forceRefresh || _detail == null) {
+      setState(() {
+        _selectedCollection = collection;
+        _detail = null;
+        _loading = true;
+        _error = null;
+        _searchController.clear();
+        _expandedCategories.clear();
+      });
+    }
     try {
       final detail = await _service.loadDetail(
         collection.code,
+        source: _selectedSource ?? '',
         forceRefresh: forceRefresh,
       );
       if (!mounted || _selectedCollection?.code != collection.code) return;
       setState(() {
         _detail = detail;
         _loading = false;
+        _error = null;
       });
     } catch (error) {
       if (!mounted || _selectedCollection?.code != collection.code) return;
@@ -114,29 +166,55 @@ class _BracuLeaksPageState extends State<BracuLeaksPage> {
     }
   }
 
-  Future<void> _refresh() {
-    final selected = _selectedCollection;
-    return selected == null
-        ? _loadCollections(forceRefresh: true)
-        : _selectCollection(selected, forceRefresh: true);
+  Future<void> _refresh() async {
+    final collection = _selectedCollection;
+    if (collection != null) {
+      await _selectCollection(collection, forceRefresh: true);
+      return;
+    }
+    final source = _selectedSource;
+    if (source != null) {
+      await _selectSource(source, forceRefresh: true);
+      return;
+    }
+    await _loadSources(forceRefresh: true);
   }
 
-  List<BracuLeaksCollection> get _filteredCollections {
+  String _sourceUrl(String source) {
+    final trimmed = source.trim();
+    if (trimmed.isEmpty) return '';
+    if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+      return trimmed;
+    }
+    return 'https://github.com/$trimmed';
+  }
+
+  List<String> get _filteredSources {
     final query = _searchController.text.trim().toLowerCase();
-    final collections = _collections ?? const <BracuLeaksCollection>[];
+    final sources = _sources?.all ?? const <String>[];
+    if (query.isEmpty) return sources;
+    return sources
+        .where((s) => s.toLowerCase().contains(query))
+        .toList(growable: false);
+  }
+
+  List<MaterialCollection> get _filteredCollections {
+    final query = _searchController.text.trim().toLowerCase();
+    final collections = _collections ?? const <MaterialCollection>[];
     if (query.isEmpty) return collections;
     return collections
         .where(
           (item) =>
               item.code.toLowerCase().contains(query) ||
-              item.title.toLowerCase().contains(query),
+              item.title.toLowerCase().contains(query) ||
+              item.sources.any((s) => s.toLowerCase().contains(query)),
         )
         .toList(growable: false);
   }
 
-  List<BracuLeaksCategory> get _filteredCategories {
+  List<MaterialCategory> get _filteredCategories {
     final query = _searchController.text.trim().toLowerCase();
-    final categories = _detail?.categories ?? const <BracuLeaksCategory>[];
+    final categories = _detail?.categories ?? const <MaterialCategory>[];
     if (query.isEmpty) return categories;
     return categories
         .map((category) {
@@ -147,10 +225,11 @@ class _BracuLeaksPageState extends State<BracuLeaksPage> {
                     .where(
                       (file) =>
                           file.name.toLowerCase().contains(query) ||
-                          file.path.toLowerCase().contains(query),
+                          file.path.toLowerCase().contains(query) ||
+                          file.source.toLowerCase().contains(query),
                     )
                     .toList(growable: false);
-          return BracuLeaksCategory(name: category.name, files: files);
+          return MaterialCategory(name: category.name, files: files);
         })
         .where((category) => category.files.isNotEmpty)
         .toList(growable: false);
@@ -158,33 +237,52 @@ class _BracuLeaksPageState extends State<BracuLeaksPage> {
 
   @override
   Widget build(BuildContext context) {
-    final selected = _selectedCollection;
+    final selectedCol = _selectedCollection;
+    final selectedSrc = _selectedSource;
+    final String title;
+    final String subtitle;
+    if (selectedCol != null) {
+      title = selectedCol.code;
+      subtitle = selectedSrc ?? 'Materials';
+    } else if (selectedSrc != null) {
+      title = selectedSrc;
+      subtitle = 'Materials';
+    } else {
+      title = 'Course';
+      subtitle = 'Materials';
+    }
     return BracuBackScope(
       canGoBack: true,
       onBack: () {
         if (!_handleBack()) HomeTabRegistry.setActive(HomeTab.dashboard);
       },
       child: BracuPageScaffold(
-        title: 'Leaks',
-        subtitle: selected?.code ?? 'Course',
+        title: title,
+        subtitle: subtitle,
         icon: Icons.folder_copy_outlined,
         showBack: true,
         actions: [
-          if (selected == null)
+          if (selectedSrc != null)
             IconButton(
               tooltip: 'Source',
-              onPressed: () => openExternalUrl(
-                context,
-                'https://github.com/braculeaks',
-                failureMessage: 'Unable to open source.',
-              ),
+              onPressed: () {
+                final sourceLink = _sourceUrl(
+                  selectedCol?.sources.firstOrNull ?? selectedSrc,
+                );
+                if (sourceLink.isNotEmpty) {
+                  openExternalUrl(
+                    context,
+                    sourceLink,
+                    failureMessage: 'Unable to open source.',
+                  );
+                }
+              },
               icon: const PreConnectGitHubIcon(
                 size: 22,
                 color: BracuPalette.primary,
               ),
-            )
-          else
-            BracuRefreshButton(onPressed: _refresh, isLoading: _loading),
+            ),
+          BracuRefreshButton(onPressed: _refresh, isLoading: _loading),
         ],
         body: Padding(
           padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
@@ -221,11 +319,40 @@ class _BracuLeaksPageState extends State<BracuLeaksPage> {
         ),
       );
     }
+    if (_selectedSource == null) {
+      final sources = _filteredSources;
+      return Expanded(
+        child: sources.isEmpty
+            ? const BracuEmptyState(message: 'No sources found.')
+            : BracuRefreshScroll(
+                onRefresh: _refresh,
+                padding: const EdgeInsets.only(bottom: 24),
+                child: Column(
+                  children: sources
+                      .map(
+                        (source) => Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: BracuActionCard(
+                            title: source,
+                            leadingIcon: Icons.source_outlined,
+                            trailing: Icon(
+                              Icons.chevron_right_rounded,
+                              color: BracuPalette.textSecondary(context),
+                            ),
+                            onTap: () => _selectSource(source),
+                          ),
+                        ),
+                      )
+                      .toList(growable: false),
+                ),
+              ),
+      );
+    }
     if (_selectedCollection == null) {
       final collections = _filteredCollections;
       return Expanded(
         child: collections.isEmpty
-            ? const BracuEmptyState(message: 'No collection found.')
+            ? const BracuEmptyState(message: 'No materials found.')
             : BracuRefreshScroll(
                 onRefresh: _refresh,
                 padding: const EdgeInsets.only(bottom: 24),
@@ -237,6 +364,7 @@ class _BracuLeaksPageState extends State<BracuLeaksPage> {
                           child: BracuActionCard(
                             title: collection.code,
                             subtitle: collection.title,
+                            leadingIcon: Icons.folder_outlined,
                             trailing: Icon(
                               Icons.chevron_right_rounded,
                               color: BracuPalette.textSecondary(context),

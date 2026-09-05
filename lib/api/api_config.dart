@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:preconnect/model/advising_phase.dart';
 import 'package:preconnect/tools/runtime_stub.dart'
     if (dart.library.js_interop) 'package:preconnect/tools/runtime_web.dart';
@@ -36,7 +37,12 @@ class ApiConfig {
 
   static String get authEndpoint => '$ssoBase/auth';
 
-  static const String realtimeApiBase = 'https://api.preconnect.app';
+  static const String realtimeApiBase = String.fromEnvironment(
+    'REALTIME_API_BASE',
+    defaultValue: kDebugMode
+        ? 'http://localhost:3000'
+        : 'https://api.preconnect.app',
+  );
   static const String seatStatusProxyBase = realtimeApiBase;
   static const String publicJsonBase = realtimeApiBase;
   static const String seatStatusDataUrl = '$realtimeApiBase/connect.json';
@@ -55,10 +61,13 @@ class ApiConfig {
   static const String ramadanStatusUrl = '$realtimeApiBase/ramadan';
   static const String coursePrerequisitesUrl =
       '$realtimeApiBase/course-prerequisites';
-  static const String bracuLeaksUrl = '$realtimeApiBase/braculeaks';
+  static const String materialsUrl = '$realtimeApiBase/materials';
 
-  static String bracuLeaksCollectionUrl(String code) =>
-      '$bracuLeaksUrl/${Uri.encodeComponent(code)}';
+  static String materialsSourceUrl(String source) =>
+      '$materialsUrl/${Uri.encodeComponent(source)}';
+
+  static String materialsDetailUrl(String source, String code) =>
+      '$materialsUrl/${Uri.encodeComponent(source)}/${Uri.encodeComponent(code)}';
 
   static String get connectApiBase {
     if (_kIsWeb && !isChromeRuntimeAvailable()) {

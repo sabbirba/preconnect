@@ -4,6 +4,7 @@ import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/tools/app_storage.dart';
 import 'package:preconnect/tools/holiday.dart';
 import 'package:preconnect/tools/http/http_headers.dart';
+import 'package:preconnect/model/materials.dart';
 import 'package:preconnect/tools/ramadan.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -23,10 +24,14 @@ void main() {
     expect(ApiConfig.holidayStatusUrl, endsWith('/holiday'));
     expect(ApiConfig.ramadanStatusUrl, endsWith('/ramadan'));
     expect(ApiConfig.coursePrerequisitesUrl, endsWith('/course-prerequisites'));
-    expect(ApiConfig.bracuLeaksUrl, endsWith('/braculeaks'));
+    expect(ApiConfig.materialsUrl, endsWith('/materials'));
     expect(
-      ApiConfig.bracuLeaksCollectionUrl('BRACU.CSE'),
-      endsWith('/braculeaks/BRACU.CSE'),
+      ApiConfig.materialsSourceUrl('braculeaks'),
+      endsWith('/materials/braculeaks'),
+    );
+    expect(
+      ApiConfig.materialsDetailUrl('braculeaks', 'CSE110'),
+      endsWith('/materials/braculeaks/CSE110'),
     );
   });
 
@@ -68,5 +73,49 @@ void main() {
     expect(await AppStorage.instance.getString(key), value);
     await AppStorage.instance.remove(key);
     expect(await AppStorage.instance.getString(key), isNull);
+  });
+
+  test('Material models parse and roundtrip json', () {
+    final sources = MaterialSources.fromJson(<String, dynamic>{
+      'organizations': <dynamic>['braculeaks'],
+      'repositories': <dynamic>['user/repo'],
+    });
+    expect(sources.organizations, <String>['braculeaks']);
+    expect(sources.repositories, <String>['user/repo']);
+    expect(sources.all, <String>['braculeaks', 'user/repo']);
+
+    final collection = MaterialCollection.fromJson(<String, dynamic>{
+      'code': 'CSE110',
+      'title': 'Programming Language I',
+      'sources': <dynamic>['braculeaks'],
+    });
+    expect(collection.code, 'CSE110');
+    expect(collection.title, 'Programming Language I');
+    expect(collection.sources, <String>['braculeaks']);
+
+    final detail = MaterialDetail.fromJson(<String, dynamic>{
+      'code': 'CSE110',
+      'title': 'Programming Language I',
+      'sources': <dynamic>['braculeaks'],
+      'categories': <dynamic>[
+        <String, dynamic>{
+          'name': '1.slides',
+          'files': <dynamic>[
+            <String, dynamic>{
+              'name': 'Lecture 01',
+              'path': '1.slides/lec1.pdf',
+              'url':
+                  'https://api.preconnect.app/materials/raw/braculeaks/cse110/main/lec1.pdf',
+              'source': 'braculeaks/cse110',
+            },
+          ],
+        },
+      ],
+    });
+    expect(detail.code, 'CSE110');
+    expect(detail.categories.length, 1);
+    expect(detail.categories.first.name, '1.slides');
+    expect(detail.categories.first.files.first.name, 'Lecture 01');
+    expect(detail.categories.first.files.first.source, 'braculeaks/cse110');
   });
 }
