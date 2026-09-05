@@ -26,6 +26,7 @@ class _MaterialsPageState extends State<MaterialsPage> {
   MaterialDetail? _detail;
   Object? _error;
   bool _loading = true;
+  bool _isRefreshing = false;
   final Set<String> _expandedCategories = <String>{};
 
   @override
@@ -57,6 +58,7 @@ class _MaterialsPageState extends State<MaterialsPage> {
         _detail = null;
         _error = null;
         _loading = false;
+        _isRefreshing = false;
         _expandedCategories.clear();
       });
       return true;
@@ -68,6 +70,7 @@ class _MaterialsPageState extends State<MaterialsPage> {
         _collections = null;
         _error = null;
         _loading = false;
+        _isRefreshing = false;
       });
       return true;
     }
@@ -167,17 +170,29 @@ class _MaterialsPageState extends State<MaterialsPage> {
   }
 
   Future<void> _refresh() async {
-    final collection = _selectedCollection;
-    if (collection != null) {
-      await _selectCollection(collection, forceRefresh: true);
-      return;
+    if (_isRefreshing) return;
+    setState(() {
+      _isRefreshing = true;
+    });
+    try {
+      final collection = _selectedCollection;
+      if (collection != null) {
+        await _selectCollection(collection, forceRefresh: true);
+        return;
+      }
+      final source = _selectedSource;
+      if (source != null) {
+        await _selectSource(source, forceRefresh: true);
+        return;
+      }
+      await _loadSources(forceRefresh: true);
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isRefreshing = false;
+        });
+      }
     }
-    final source = _selectedSource;
-    if (source != null) {
-      await _selectSource(source, forceRefresh: true);
-      return;
-    }
-    await _loadSources(forceRefresh: true);
   }
 
   String _sourceUrl(String source) {
@@ -283,7 +298,10 @@ class _MaterialsPageState extends State<MaterialsPage> {
               ),
             )
           else
-            BracuRefreshButton(onPressed: _refresh, isLoading: _loading),
+            BracuRefreshButton(
+              onPressed: _refresh,
+              isLoading: _loading || _isRefreshing,
+            ),
         ],
         body: Padding(
           padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
@@ -324,28 +342,30 @@ class _MaterialsPageState extends State<MaterialsPage> {
       final sources = _filteredSources;
       return Expanded(
         child: sources.isEmpty
-            ? const BracuEmptyState(message: 'No sources found.')
-            : BracuRefreshScroll(
+            ? buildRefreshEmptyState(
+                onRefresh: _refresh,
+                message: 'No sources found.',
+                topSpacing: 40,
+              )
+            : BracuRefreshList(
                 onRefresh: _refresh,
                 padding: const EdgeInsets.only(bottom: 24),
-                child: Column(
-                  children: sources
-                      .map(
-                        (source) => Padding(
-                          padding: const EdgeInsets.only(bottom: 12),
-                          child: BracuActionCard(
-                            title: source,
-                            leadingIcon: Icons.source_outlined,
-                            trailing: Icon(
-                              Icons.chevron_right_rounded,
-                              color: BracuPalette.textSecondary(context),
-                            ),
-                            onTap: () => _selectSource(source),
+                children: sources
+                    .map(
+                      (source) => Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: BracuActionCard(
+                          title: source,
+                          leadingIcon: Icons.source_outlined,
+                          trailing: Icon(
+                            Icons.chevron_right_rounded,
+                            color: BracuPalette.textSecondary(context),
                           ),
+                          onTap: () => _selectSource(source),
                         ),
-                      )
-                      .toList(growable: false),
-                ),
+                      ),
+                    )
+                    .toList(growable: false),
               ),
       );
     }
@@ -353,136 +373,134 @@ class _MaterialsPageState extends State<MaterialsPage> {
       final collections = _filteredCollections;
       return Expanded(
         child: collections.isEmpty
-            ? const BracuEmptyState(message: 'No materials found.')
-            : BracuRefreshScroll(
+            ? buildRefreshEmptyState(
+                onRefresh: _refresh,
+                message: 'No materials found.',
+                topSpacing: 40,
+              )
+            : BracuRefreshList(
                 onRefresh: _refresh,
                 padding: const EdgeInsets.only(bottom: 24),
-                child: Column(
-                  children: collections
-                      .map(
-                        (collection) => Padding(
-                          padding: const EdgeInsets.only(bottom: 12),
-                          child: BracuActionCard(
-                            title: collection.code,
-                            subtitle: collection.title,
-                            leadingIcon: Icons.folder_outlined,
-                            trailing: Icon(
-                              Icons.chevron_right_rounded,
-                              color: BracuPalette.textSecondary(context),
-                            ),
-                            onTap: () => _selectCollection(collection),
+                children: collections
+                    .map(
+                      (collection) => Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: BracuActionCard(
+                          title: collection.code,
+                          subtitle: collection.title,
+                          leadingIcon: Icons.folder_outlined,
+                          trailing: Icon(
+                            Icons.chevron_right_rounded,
+                            color: BracuPalette.textSecondary(context),
                           ),
+                          onTap: () => _selectCollection(collection),
                         ),
-                      )
-                      .toList(growable: false),
-                ),
+                      ),
+                    )
+                    .toList(growable: false),
               ),
       );
     }
     final categories = _filteredCategories;
     return Expanded(
       child: categories.isEmpty
-          ? const BracuEmptyState(message: 'No file found.')
-          : BracuRefreshScroll(
+          ? buildRefreshEmptyState(
+              onRefresh: _refresh,
+              message: 'No file found.',
+              topSpacing: 40,
+            )
+          : BracuRefreshList(
               onRefresh: _refresh,
               padding: const EdgeInsets.only(bottom: 24),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: categories
-                    .map((category) {
-                      final isExpanded =
-                          _searchController.text.trim().isNotEmpty ||
-                          _expandedCategories.contains(category.name);
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 12),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            GestureDetector(
-                              behavior: HitTestBehavior.opaque,
-                              onTap: () {
-                                setState(() {
-                                  if (!_expandedCategories.add(category.name)) {
-                                    _expandedCategories.remove(category.name);
-                                  }
-                                });
-                              },
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 8,
-                                ),
-                                child: Row(
-                                  children: [
-                                    Expanded(
-                                      child: Text(
-                                        category.name,
-                                        style: TextStyle(
-                                          color: BracuPalette.textPrimary(
-                                            context,
-                                          ),
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.w800,
-                                        ),
-                                      ),
-                                    ),
-                                    AnimatedRotation(
-                                      turns: isExpanded ? 0.5 : 0,
-                                      duration: const Duration(
-                                        milliseconds: 200,
-                                      ),
-                                      child: Icon(
-                                        Icons.expand_more_rounded,
-                                        color: BracuPalette.textSecondary(
+              children: categories
+                  .map((category) {
+                    final isExpanded =
+                        _searchController.text.trim().isNotEmpty ||
+                        _expandedCategories.contains(category.name);
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          GestureDetector(
+                            behavior: HitTestBehavior.opaque,
+                            onTap: () {
+                              setState(() {
+                                if (!_expandedCategories.add(category.name)) {
+                                  _expandedCategories.remove(category.name);
+                                }
+                              });
+                            },
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 8),
+                              child: Row(
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      category.name,
+                                      style: TextStyle(
+                                        color: BracuPalette.textPrimary(
                                           context,
                                         ),
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w800,
                                       ),
                                     ),
-                                  ],
-                                ),
+                                  ),
+                                  AnimatedRotation(
+                                    turns: isExpanded ? 0.5 : 0,
+                                    duration: const Duration(milliseconds: 200),
+                                    child: Icon(
+                                      Icons.expand_more_rounded,
+                                      color: BracuPalette.textSecondary(
+                                        context,
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
-                            AnimatedSize(
-                              duration: const Duration(milliseconds: 200),
-                              alignment: Alignment.topCenter,
-                              child: isExpanded
-                                  ? Column(
-                                      children: [
-                                        const Gap(4),
-                                        ...category.files.map(
-                                          (file) => Padding(
-                                            padding: const EdgeInsets.only(
-                                              bottom: 12,
+                          ),
+                          AnimatedSize(
+                            duration: const Duration(milliseconds: 200),
+                            alignment: Alignment.topCenter,
+                            child: isExpanded
+                                ? Column(
+                                    children: [
+                                      const Gap(4),
+                                      ...category.files.map(
+                                        (file) => Padding(
+                                          padding: const EdgeInsets.only(
+                                            bottom: 12,
+                                          ),
+                                          child: BracuActionCard(
+                                            title: file.name,
+                                            leadingIcon: _fileIcon(file.path),
+                                            trailing: Icon(
+                                              Icons.open_in_new_rounded,
+                                              size: 19,
+                                              color: BracuPalette.textSecondary(
+                                                context,
+                                              ),
                                             ),
-                                            child: BracuActionCard(
-                                              title: file.name,
-                                              leadingIcon: _fileIcon(file.path),
-                                              trailing: Icon(
-                                                Icons.open_in_new_rounded,
-                                                size: 19,
-                                                color:
-                                                    BracuPalette.textSecondary(
-                                                      context,
-                                                    ),
-                                              ),
-                                              onTap: () => launchUrl(
-                                                Uri.parse(file.url),
-                                                mode: LaunchMode
-                                                    .externalApplication,
-                                                webOnlyWindowName: '_blank',
-                                              ),
+                                            onTap: () => launchUrl(
+                                              Uri.parse(file.url),
+                                              mode: LaunchMode
+                                                  .externalApplication,
+                                              webOnlyWindowName: '_blank',
                                             ),
                                           ),
                                         ),
-                                      ],
-                                    )
-                                  : const SizedBox.shrink(),
-                            ),
-                          ],
-                        ),
-                      );
-                    })
-                    .toList(growable: false),
-              ),
+                                      ),
+                                    ],
+                                  )
+                                : const SizedBox.shrink(),
+                          ),
+                        ],
+                      ),
+                    );
+                  })
+                  .toList(growable: false),
             ),
     );
   }

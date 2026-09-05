@@ -21,7 +21,9 @@ class MaterialsService {
   final RepositoryCache _cache;
 
   Future<MaterialSources> loadSources({bool forceRefresh = false}) async {
-    if (!forceRefresh && _sourcesCache != null) {
+    if (forceRefresh) {
+      _sourcesCache = null;
+    } else if (_sourcesCache != null) {
       return _sourcesCache!;
     }
     try {
@@ -31,7 +33,9 @@ class MaterialsService {
       final response = await _client.publicGet(
         url,
         acceptedStatusCodes: const <int>{200},
-        cacheDuration: const Duration(minutes: 10),
+        cacheDuration: forceRefresh
+            ? Duration.zero
+            : const Duration(minutes: 10),
       );
       final sources = _parseSources(response.body);
       _sourcesCache = sources;
@@ -51,9 +55,13 @@ class MaterialsService {
     bool forceRefresh = false,
   }) async {
     final key = source.trim();
-    final cached = _sourceCollectionsCache[key];
-    if (!forceRefresh && cached != null) {
-      return cached;
+    if (forceRefresh) {
+      _sourceCollectionsCache.remove(key);
+    } else {
+      final cached = _sourceCollectionsCache[key];
+      if (cached != null) {
+        return cached;
+      }
     }
     final cacheKey = 'materials_collections_${key.toLowerCase()}_v1';
     try {
@@ -64,7 +72,9 @@ class MaterialsService {
       final response = await _client.publicGet(
         url,
         acceptedStatusCodes: const <int>{200},
-        cacheDuration: const Duration(minutes: 10),
+        cacheDuration: forceRefresh
+            ? Duration.zero
+            : const Duration(minutes: 10),
       );
       final collections = _parseCollections(response.body);
       _sourceCollectionsCache[key] = collections;
@@ -89,9 +99,13 @@ class MaterialsService {
     final cacheKey =
         'materials_detail_${normalizedSource.toLowerCase()}_${normalizedCode.toLowerCase()}_v1';
     final detailKey = '$normalizedSource/$normalizedCode';
-    final cachedDetail = _detailCache[detailKey];
-    if (!forceRefresh && cachedDetail != null) {
-      return cachedDetail;
+    if (forceRefresh) {
+      _detailCache.remove(detailKey);
+    } else {
+      final cachedDetail = _detailCache[detailKey];
+      if (cachedDetail != null) {
+        return cachedDetail;
+      }
     }
     try {
       final baseUrl = ApiConfig.materialsDetailUrl(
@@ -104,7 +118,9 @@ class MaterialsService {
       final response = await _client.publicGet(
         url,
         acceptedStatusCodes: const <int>{200},
-        cacheDuration: const Duration(minutes: 10),
+        cacheDuration: forceRefresh
+            ? Duration.zero
+            : const Duration(minutes: 10),
       );
       final detail = _parseDetail(response.body);
       _detailCache[detailKey] = detail;
