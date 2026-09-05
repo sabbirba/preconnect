@@ -24,7 +24,7 @@ void main() {
     expect(ApiConfig.holidayStatusUrl, endsWith('/holiday'));
     expect(ApiConfig.ramadanStatusUrl, endsWith('/ramadan'));
     expect(ApiConfig.coursePrerequisitesUrl, endsWith('/course-prerequisites'));
-    expect(ApiConfig.busDataUrl, endsWith('/bus'));
+    expect(ApiConfig.busDataUrl, endsWith('/data/bus.json'));
     expect(ApiConfig.materialsUrl, endsWith('/materials'));
     expect(
       ApiConfig.materialsSourceUrl('braculeaks'),
