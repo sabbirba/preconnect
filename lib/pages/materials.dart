@@ -296,12 +296,11 @@ class _MaterialsPageState extends State<MaterialsPage> {
                 size: 22,
                 color: BracuPalette.primary,
               ),
-            )
-          else
-            BracuRefreshButton(
-              onPressed: _refresh,
-              isLoading: _loading || _isRefreshing,
             ),
+          BracuRefreshButton(
+            onPressed: _refresh,
+            isLoading: _loading || _isRefreshing,
+          ),
         ],
         body: Padding(
           padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
