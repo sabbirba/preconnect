@@ -27,7 +27,7 @@ void main() {
       ApiConfig.coursePrerequisitesUrl,
       endsWith('/course-prerequisites.json'),
     );
-    expect(ApiConfig.busDataUrl, endsWith('/data/bus.json'));
+    expect(ApiConfig.busDataUrl, endsWith('/bus.json'));
     expect(ApiConfig.materialsUrl, endsWith('/materials'));
     expect(
       ApiConfig.materialsSourceUrl('braculeaks'),

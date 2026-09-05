@@ -330,7 +330,7 @@ class _DSpaceBrowserPageState extends State<DSpaceBrowserPage> {
       try {
         final catQuery = category.category.trim().toLowerCase();
         final fallbackResponse = await _client.publicGet(
-          '${ApiConfig.realtimeApiBase}/data/dspace/search?category=$catQuery&limit=200',
+          '${ApiConfig.realtimeApiBase}/dspace/search?category=$catQuery&limit=200',
           acceptedStatusCodes: const <int>{200},
           cacheDuration: const Duration(hours: 12),
         );

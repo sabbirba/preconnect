@@ -38,17 +38,16 @@ class ApiConfig {
 
   static const String realtimeApiBase = 'https://api.preconnect.app';
   static const String seatStatusDataUrl = '$realtimeApiBase/connect.json';
-  static const String busDataUrl = '$realtimeApiBase/data/bus.json';
-  static const String freeLabsDataUrl = '$realtimeApiBase/data/freelabs.json';
-  static const String dspaceDataUrl = '$realtimeApiBase/data/dspace.json';
-  static const String examMapIndexUrl = '$realtimeApiBase/data/exammap.json';
+  static const String busDataUrl = '$realtimeApiBase/bus.json';
+  static const String freeLabsDataUrl = '$realtimeApiBase/freelabs.json';
+  static const String dspaceDataUrl = '$realtimeApiBase/dspace.json';
+  static const String examMapIndexUrl = '$realtimeApiBase/exammap.json';
   static const String announcementFeedUrl =
-      '$realtimeApiBase/data/announcements.json';
-  static const String newsFeedUrl = '$realtimeApiBase/data/news.json';
-  static const String academicDatesUrl =
-      '$realtimeApiBase/data/academic-dates.json';
-  static const String campusMapUrl = '$realtimeApiBase/data/map.json';
-  static const String transportUrl = '$realtimeApiBase/data/transport.json';
+      '$realtimeApiBase/announcements.json';
+  static const String newsFeedUrl = '$realtimeApiBase/news.json';
+  static const String academicDatesUrl = '$realtimeApiBase/academic-dates.json';
+  static const String campusMapUrl = '$realtimeApiBase/map.json';
+  static const String transportUrl = '$realtimeApiBase/transport.json';
   static const String holidayStatusUrl = '$realtimeApiBase/holiday.json';
   static const String ramadanStatusUrl = '$realtimeApiBase/ramadan.json';
   static const String coursePrerequisitesUrl =
@@ -81,9 +80,6 @@ class ApiConfig {
   static const String connectMercureLoginPath = '/ns/mercure/login';
   static const String connectMercureLogoutPath = '/ns/mercure/logout';
   static const String websiteBase = 'https://preconnect.app';
-  static const String websiteMueenAvatarUrl =
-      'https://preconnect.app/Mueen-Ahmmed.jpeg';
-  static const String filesBase = 'https://api.preconnect.app';
 
   static const String clientId = 'slm';
   static String get redirectUri => _kIsWeb
