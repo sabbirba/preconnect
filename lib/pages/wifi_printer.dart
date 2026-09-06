@@ -1078,6 +1078,19 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
           _PrintHistoryCard(history: _history),
           const Gap(12),
           _buildEmailPrinting(context),
+          const Gap(16),
+          Center(
+            child: Text(
+              "Making students' campus life better & easier.",
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: BracuPalette.textPrimary(context),
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+          const Gap(8),
         ],
       ),
     );
@@ -1155,11 +1168,11 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
             TextSpan(
               children: [
                 const TextSpan(text: 'Printer '),
-                TextSpan(text: 'Not found', style: emphasis),
+                TextSpan(text: 'not found', style: emphasis),
                 const TextSpan(text: ' or '),
                 TextSpan(text: 'off campus?', style: emphasis),
                 const TextSpan(
-                  text: ' Send from your @g.bracu.ac.bd account to ',
+                  text: ' Send documents from your @g.bracu.ac.bd account to ',
                 ),
                 emailLink(
                   'campus.printer@g.bracu.ac.bd',
@@ -1168,21 +1181,17 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
                 ),
                 const TextSpan(
                   text:
-                      '.\n\nAttach PDF, DOCX, PPTX, or XLSX files (25 MB total). Add ',
+                      '.\n\nAttach PDF, DOCX, PPTX, or XLSX files (up to 25 MB total). Add ',
                 ),
                 emailLink('#duplex', '#duplex'),
                 const TextSpan(
                   text:
-                      ' to the subject for double-sided printing.\n\n'
+                      ' to the subject line for double-sided printing.\n\n'
                       'Wait 3–5 minutes, then tap your ID card at a campus printer, '
                       'select your jobs, and print. Jobs expire after ',
                 ),
                 TextSpan(text: '4 hours', style: emphasis),
-                const TextSpan(text: '.\n\n'),
-                TextSpan(
-                  text: "Making students' campus life better & easier.",
-                  style: emphasis,
-                ),
+                const TextSpan(text: '.'),
               ],
             ),
             style: TextStyle(
@@ -1237,7 +1246,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
               context,
               stepNumber: '4',
               title: 'Send Print Job',
-              body: 'Tap the Print button. Files will be sent sequentially ',
+              body: 'Tap the Print button. Files will be sent sequentially.',
             ),
             const Gap(12),
             _buildStepItem(
