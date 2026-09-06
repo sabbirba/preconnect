@@ -1178,7 +1178,11 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
                       'select your jobs, and print. Jobs expire after ',
                 ),
                 TextSpan(text: '4 hours', style: emphasis),
-                const TextSpan(text: '.'),
+                const TextSpan(text: '.\n\n'),
+                TextSpan(
+                  text: "Making students' campus life better & easier.",
+                  style: emphasis,
+                ),
               ],
             ),
             style: TextStyle(
