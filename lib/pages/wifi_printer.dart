@@ -1069,12 +1069,12 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
               ],
             ],
           ),
+          const Gap(12),
+          _buildEmailPrinting(context),
           if (_history.isNotEmpty) ...[
             const Gap(12),
             _PrintHistoryCard(history: _history),
           ],
-          const Gap(12),
-          _buildEmailPrinting(context),
           const Gap(16),
           Center(
             child: Text(
