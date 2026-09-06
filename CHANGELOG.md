@@ -5,6 +5,11 @@ Entries are written for students, not developers — plain language, no commit h
 
 ## [Unreleased]
 
+## [2.0.9] — 2026-09-06
+
+- Campus Printer & Email Printing: Introduced Print by Email support to submit documents and duplex print jobs from any device or off-campus.
+- UI & Layout Polish: Refined layout spacing, link styling, and campus printing guide instructions.
+
 ## [2.0.8] — 2026-08-31
 
 - Exam Schedule Accuracy: Polished exam schedule resolution to strictly match verified exam rooms, dates, and time slots without classroom fallbacks.

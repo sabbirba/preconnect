@@ -906,23 +906,18 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
         onRefresh: _refreshPrinterInfo,
         padding: const EdgeInsets.fromLTRB(20, 0, 20, 28),
         children: [
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 2),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (_studentName.trim().isNotEmpty ||
-                    _studentId.trim().isNotEmpty) ...[
-                  CardSection(
-                    profile: _profile,
-                    photoUrl: _photoUrl,
-                    studentIdController: _studentIdController,
-                  ),
-                ],
-              ],
+          if (_studentName.trim().isNotEmpty ||
+              _studentId.trim().isNotEmpty) ...[
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 2),
+              child: CardSection(
+                profile: _profile,
+                photoUrl: _photoUrl,
+                studentIdController: _studentIdController,
+              ),
             ),
-          ),
-          const Gap(8),
+            const Gap(8),
+          ],
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -1074,8 +1069,10 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
               ],
             ],
           ),
-          const Gap(12),
-          _PrintHistoryCard(history: _history),
+          if (_history.isNotEmpty) ...[
+            const Gap(12),
+            _PrintHistoryCard(history: _history),
+          ],
           const Gap(12),
           _buildEmailPrinting(context),
           const Gap(16),
@@ -1090,7 +1087,6 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
               ),
             ),
           ),
-          const Gap(8),
         ],
       ),
     );
@@ -1150,16 +1146,6 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
                   context,
                   'campus.printer@g.bracu.ac.bd',
                   subject: 'Print documents',
-                ),
-              ),
-              IconButton(
-                tooltip: 'User Guide',
-                icon: const Icon(Icons.help_outline_rounded),
-                color: BracuPalette.primary,
-                onPressed: () => openExternalUrl(
-                  context,
-                  'https://bracu.atlassian.net/wiki/external/MThmZWEzMGY5ZTVjNDNhZWIxOTk1YjI1NDM0YzQ5NWM',
-                  failureMessage: 'Unable to open the printing guide.',
                 ),
               ),
             ],

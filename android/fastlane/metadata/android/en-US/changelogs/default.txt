@@ -1,6 +1,4 @@
-- Advising Helper: Integrated real-time course advising with live seat filters, direct course add/drop, and one-tap section replacement support.
-- Campus Printer: Enhanced printer discovery with responsive asynchronous polling and extended timeout handling for rock-solid print job submission.
-- Exam Schedule Accuracy: Polished exam schedule resolution to strictly match verified exam rooms, dates, and time slots without classroom fallbacks.
-- DSpace Digital Library: Integrated native back navigation to make browsing digital library archives smoother and more intuitive.
+- Campus Printer & Email Printing: Added Print by Email support to submit documents and duplex print jobs from any device or off-campus.
+- Advising Helper: Real-time course advising with live seat filters, direct course add/drop, and one-tap section replacement support.
 - Student-WiFi: Streamlined Wi-Fi connection handling with a quieter, distraction-free connection experience.
-- Visuals & Widgets: Refreshed iOS and iPad widgets with improved contrast and updated high-resolution application icons across all platforms.
+- UI & Layout Polish: Refined layout spacing, link styling, and campus printing guide instructions.
