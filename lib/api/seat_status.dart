@@ -36,14 +36,63 @@ class SeatStatusService {
     return _cachedDetails;
   }
 
-  static Future<void> preload() async {
-    await SeatStatusService().preloadData();
+  Future<List<String>> fetchArchiveSemesters() async {
+    final response = await _client.publicGet(
+      '${ApiConfig.realtimeApiBase}/archive',
+      acceptedStatusCodes: const <int>{200},
+      cacheDuration: Duration.zero,
+    );
+    return parseArchiveSemesters(response.body);
   }
 
-  Future<Map<int, SeatStatusDetailsResponse>> fetchAllSectionsDetailsFromApi({
-    bool forceRefresh = false,
-  }) async {
-    return preloadData(forceRefresh: forceRefresh);
+  static List<String> parseArchiveSemesters(String body) {
+    final decoded = jsonDecode(body);
+    if (decoded is! List) {
+      throw const FormatException('Invalid archive semester list');
+    }
+    final semesters = decoded
+        .map((entry) {
+          final value = entry is Map ? entry['key'] : null;
+          if (value is! String ||
+              !RegExp(r'^(spring|summer|fall)-[0-9]{2}$').hasMatch(value)) {
+            throw const FormatException('Invalid archive semester');
+          }
+          return value;
+        })
+        .toSet()
+        .toList();
+    const order = {'spring': 0, 'summer': 1, 'fall': 2};
+    semesters.sort((a, b) {
+      final year = b.split('-').last.compareTo(a.split('-').last);
+      return year != 0
+          ? year
+          : order[b.split('-').first]!.compareTo(order[a.split('-').first]!);
+    });
+    return semesters;
+  }
+
+  static String archiveSemesterLabel(String semester) {
+    final parts = semester.split('-');
+    final season = parts.first;
+    return '${season[0].toUpperCase()}${season.substring(1)} 20${parts.last}';
+  }
+
+  Future<Map<int, SeatStatusDetailsResponse>> fetchArchiveSections(
+    String semester,
+  ) async {
+    final response = await _client.publicGet(
+      '${ApiConfig.realtimeApiBase}/archive/${Uri.encodeComponent(semester)}',
+      acceptedStatusCodes: const <int>{200},
+      cacheDuration: Duration.zero,
+    );
+    if (jsonDecode(response.body) is! List) {
+      throw const FormatException('Invalid archived sections');
+    }
+    return compute(_parseJsonStringInIsolate, response.body);
+  }
+
+  static Future<void> preload() async {
+    await SeatStatusService().preloadData();
   }
 
   Future<Map<int, SeatStatusDetailsResponse>> fetchRealtimeSections() {

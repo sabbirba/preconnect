@@ -149,10 +149,38 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
     final itemCount = hasVisibleCards ? _visibleCards.length + 1 : 1;
 
     return BracuPageScaffold(
-      title: 'Seat',
-      subtitle: 'Status',
+      title: 'Seat Status',
+      subtitle: _selectedArchive.isEmpty
+          ? 'Current'
+          : SeatStatusService.archiveSemesterLabel(_selectedArchive),
       icon: Icons.insights_outlined,
       actions: [
+        BracuSelectDropdownChip<String>(
+          title: 'Select Semester',
+          label: _selectedArchive.isEmpty
+              ? 'Current'
+              : SeatStatusService.archiveSemesterLabel(_selectedArchive),
+          selected: _selectedArchive.isNotEmpty,
+          selectedValue: _selectedArchive,
+          compact: true,
+          showBorder: false,
+          options: [
+            const BracuSelectOption<String>(
+              value: '',
+              label: 'Current',
+              icon: Icons.calendar_month_rounded,
+            ),
+            for (final semester in _archiveSemesters)
+              BracuSelectOption<String>(
+                value: semester,
+                label: SeatStatusService.archiveSemesterLabel(semester),
+                icon: Icons.calendar_month_rounded,
+              ),
+          ],
+          onSelected: (value) {
+            if (mounted) _selectArchive(value);
+          },
+        ),
         BracuNotificationsIconButton(
           onTap: () async {
             await Navigator.of(context).push(
@@ -171,7 +199,12 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
             const Center(child: BracuLoading())
           else
             BracuRefreshListBuilder(
-              onRefresh: _refreshDetailsFromApi,
+              onRefresh: () async {
+                await Future.wait([
+                  _loadArchiveSemesters(),
+                  _refreshDetailsFromApi(),
+                ]);
+              },
               itemCount: itemCount,
               itemBuilder: (context, index) {
                 if (index == 0) {
@@ -185,7 +218,9 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
                   padding: const EdgeInsets.only(bottom: 12),
                   child: _SeatStatusCard(
                     item: item,
-                    onPinTap: () => _togglePin(item.sectionId),
+                    onPinTap: _selectedArchive.isEmpty
+                        ? () => _togglePin(item.sectionId)
+                        : null,
                     pinned: _isPinnedSection(item.sectionId),
                     onTap: () => _showFacultyScheduleSheet(
                       item.facultyInitial,
@@ -206,6 +241,14 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
+          if (_loadError != null) ...[
+            Text(_loadError!),
+            TextButton(
+              onPressed: _refreshDetailsFromApi,
+              child: const Text('Retry'),
+            ),
+          ] else if (_cards.isEmpty && !_isInitialLoading)
+            const Text('No sections available for this semester.'),
           _buildSearchField(context),
           const Gap(12),
           _buildFilterActions(context),
@@ -301,7 +344,7 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
         ..clear()
         ..addAll(nextVisible);
     });
-    _updatePollingStrategy();
+    _refreshIfActive();
   }
 
   List<_SeatStatusCardData> _filterCards(
@@ -364,7 +407,7 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
         _isInitialLoading = isInitialLoading;
       }
     });
-    _updatePollingStrategy();
+    _refreshIfActive();
   }
 
   void _sortCardsByCourseAndSection(List<_SeatStatusCardData> cards) {
@@ -444,68 +487,54 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
     return int.tryParse(number) ?? 9999;
   }
 
-  void _updatePollingStrategy() {
-    final shouldPoll =
+  void _refreshIfActive() {
+    final shouldRefresh =
         mounted &&
+        _selectedArchive.isEmpty &&
         HomeTabRegistry.activeTab.value == HomeTab.seatStatus &&
         WidgetsBinding.instance.lifecycleState != AppLifecycleState.paused &&
         WidgetsBinding.instance.lifecycleState != AppLifecycleState.detached;
-    if (shouldPoll) {
-      _startPolling();
-    } else {
-      _stopPolling();
+    if (shouldRefresh) {
+      unawaited(_refreshDetailsFromApi());
     }
   }
 
-  Future<void> _refreshDetailsFromApi({bool forceRefresh = true}) async {
-    if (_pollInFlight || _isDetailsRefreshing) return;
-    _pollInFlight = true;
-    if (mounted && _cards.isEmpty) {
-      _updateSeatStatusState(() {
-        _isDetailsRefreshing = true;
-      });
-    } else {
-      _isDetailsRefreshing = true;
-    }
+  Future<void> _refreshDetailsFromApi() async {
+    if (_isDetailsRefreshing) return;
+    final generation = _requestGeneration;
+    final archive = _selectedArchive;
+    _isDetailsRefreshing = true;
     try {
-      final details = await _service.fetchAllSectionsDetailsFromApi(
-        forceRefresh: forceRefresh,
-      );
-      if (details.isNotEmpty) {
-        await _applyDetailsUpdate(details);
-        unawaited(_syncWatchlistPins(details));
-      }
+      final details = archive.isEmpty
+          ? await _service.fetchRealtimeSections()
+          : await _service.fetchArchiveSections(archive);
+      if (!mounted || generation != _requestGeneration) return;
+      _loadError = null;
+      _applyDetailsUpdate(details);
+      if (archive.isEmpty) unawaited(_syncWatchlistPins(details));
     } catch (_) {
-      if (_isInitialLoading && mounted) {
+      if (!mounted || generation != _requestGeneration) return;
+      _loadError =
+          'Could not load seat status. Check your connection and retry.';
+    } finally {
+      if (mounted && generation == _requestGeneration) {
         _updateSeatStatusState(() {
+          _isDetailsRefreshing = false;
           _isInitialLoading = false;
         });
       }
-    } finally {
-      _pollInFlight = false;
-      if (mounted && _cards.isEmpty) {
-        _updateSeatStatusState(() {
-          _isDetailsRefreshing = false;
-        });
-      } else {
-        _isDetailsRefreshing = false;
-      }
     }
   }
 
-  void _startPolling() {
-    unawaited(_refreshDetailsFromApi(forceRefresh: true));
-  }
-
-  void _stopPolling() {}
-
   bool _isPinnedSection(int sectionId) {
-    return _pinnedSections.contains(sectionId.toString());
+    return _selectedArchive.isEmpty &&
+        _pinnedSections.contains(sectionId.toString());
   }
 
   Future<void> _syncWatchlistPins(
     Map<int, SeatStatusDetailsResponse> details,
   ) async {
+    final generation = _requestGeneration;
     try {
       final idToken = await TokenStorage.instance.read(
         key: PreConnectStorageKeys.idToken,
@@ -553,6 +582,7 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
         }
       }
 
+      if (!mounted || generation != _requestGeneration) return;
       bool changed = false;
       for (final secId in backendSectionIds) {
         if (!_pinnedSections.contains(secId)) {
@@ -578,7 +608,7 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
           _SeatStatusPageState._pinScope,
           _pinnedSections,
         );
-        if (mounted) {
+        if (mounted && generation == _requestGeneration) {
           _updateSeatStatusState(() {});
           final refreshed = List<_SeatStatusCardData>.from(_cards);
           _sortCardsByCourseAndSection(refreshed);
@@ -631,7 +661,7 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
       facultyInitial: facultyInitial,
       staffName: staffName,
       items: items,
-      isRamadan: _isRamadan,
+      isRamadan: _selectedArchive.isEmpty && _isRamadan,
     );
   }
 }

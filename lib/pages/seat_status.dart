@@ -77,7 +77,10 @@ class _SeatStatusPageState extends State<SeatStatusPage>
   final TextEditingController _searchController = TextEditingController();
   Timer? _searchDebounce;
 
-  bool _pollInFlight = false;
+  List<String> _archiveSemesters = [];
+  String _selectedArchive = '';
+  int _requestGeneration = 0;
+  String? _loadError;
   bool _isInitialLoading = true;
   String _searchQuery = '';
   bool _isDetailsRefreshing = false;
@@ -107,11 +110,39 @@ class _SeatStatusPageState extends State<SeatStatusPage>
         _updateSearchQuery(next);
       });
     });
+    unawaited(_loadArchiveSemesters());
     unawaited(_loadPins());
-    unawaited(_reloadAll());
+    unawaited(_refreshDetailsFromApi());
     WidgetsBinding.instance.addObserver(this);
     HomeTabRegistry.activeTab.addListener(_onActiveTabChanged);
-    _updatePollingStrategy();
+  }
+
+  Future<void> _loadArchiveSemesters() async {
+    try {
+      final semesters = await _service.fetchArchiveSemesters();
+      if (!mounted) return;
+      setState(() => _archiveSemesters = semesters);
+    } catch (_) {
+      if (!mounted) return;
+      showAppSnackBar(
+        context,
+        'Could not load archived semesters. Pull to refresh to retry.',
+      );
+    }
+  }
+
+  void _selectArchive(String semester) {
+    if (_selectedArchive == semester) return;
+    setState(() {
+      _selectedArchive = semester;
+      _requestGeneration++;
+      _isDetailsRefreshing = false;
+      _isInitialLoading = true;
+      _loadError = null;
+      _cards.clear();
+      _visibleCards.clear();
+    });
+    unawaited(_refreshDetailsFromApi());
   }
 
   void _seedCachedCards() {
@@ -138,7 +169,6 @@ class _SeatStatusPageState extends State<SeatStatusPage>
 
   @override
   void dispose() {
-    _stopPolling();
     WidgetsBinding.instance.removeObserver(this);
     HomeTabRegistry.activeTab.removeListener(_onActiveTabChanged);
     _searchDebounce?.cancel();
@@ -149,12 +179,12 @@ class _SeatStatusPageState extends State<SeatStatusPage>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    _updatePollingStrategy();
+    _refreshIfActive();
   }
 
   void _onActiveTabChanged() {
     if (!mounted) return;
-    _updatePollingStrategy();
+    _refreshIfActive();
   }
 
   void _updateSeatStatusState(VoidCallback update) {
@@ -310,24 +340,6 @@ class _SeatStatusPageState extends State<SeatStatusPage>
     }());
   }
 
-  Future<void> _reloadAll() async {
-    final hasCachedCards = _cards.isNotEmpty;
-    final hasCachedDetails = _service.cachedDetails != null;
-    if (mounted && !hasCachedCards && !hasCachedDetails) {
-      setState(() {
-        _isInitialLoading = true;
-      });
-    }
-
-    await _refreshDetailsFromApi(forceRefresh: true);
-    if (!mounted) return;
-    if (_isInitialLoading) {
-      setState(() {
-        _isInitialLoading = false;
-      });
-    }
-  }
-
   List<_SeatStatusCardData> _buildCardsFromDetailsMap(
     Map<int, SeatStatusDetailsResponse> detailsMap,
   ) {
@@ -341,10 +353,8 @@ class _SeatStatusPageState extends State<SeatStatusPage>
     return cards;
   }
 
-  Future<void> _applyDetailsUpdate(
-    Map<int, SeatStatusDetailsResponse> detailsMap,
-  ) async {
-    if (!mounted || detailsMap.isEmpty) return;
+  void _applyDetailsUpdate(Map<int, SeatStatusDetailsResponse> detailsMap) {
+    if (!mounted) return;
     final updated = _buildCardsFromDetailsMap(detailsMap);
     if (_areCardListsDifferent(_cards, updated)) {
       _applyCardsSnapshot(updated, isInitialLoading: false);
