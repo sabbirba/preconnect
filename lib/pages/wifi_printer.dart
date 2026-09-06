@@ -1076,6 +1076,118 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
           ),
           const Gap(12),
           _PrintHistoryCard(history: _history),
+          const Gap(12),
+          _buildEmailPrinting(context),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmailPrinting(BuildContext context) {
+    final emphasis = TextStyle(
+      color: BracuPalette.textPrimary(context),
+      fontWeight: FontWeight.w700,
+    );
+    WidgetSpan emailLink(String label, String subject, {bool bold = false}) {
+      return WidgetSpan(
+        alignment: PlaceholderAlignment.baseline,
+        baseline: TextBaseline.alphabetic,
+        child: Semantics(
+          link: true,
+          child: InkWell(
+            onTap: () => openMailComposer(
+              context,
+              'campus.printer@g.bracu.ac.bd',
+              subject: subject,
+            ),
+            child: Text(
+              label,
+              style: TextStyle(
+                color: BracuPalette.primary,
+                fontSize: 12,
+                height: 1.4,
+                fontWeight: bold ? FontWeight.w700 : FontWeight.w500,
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    return BracuCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'Print By Email',
+                  style: emphasis.copyWith(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+              IconButton(
+                tooltip: 'Compose Email',
+                icon: const Icon(Icons.mail_outline_rounded),
+                color: BracuPalette.primary,
+                onPressed: () => openMailComposer(
+                  context,
+                  'campus.printer@g.bracu.ac.bd',
+                  subject: 'Print documents',
+                ),
+              ),
+              IconButton(
+                tooltip: 'User Guide',
+                icon: const Icon(Icons.help_outline_rounded),
+                color: BracuPalette.primary,
+                onPressed: () => openExternalUrl(
+                  context,
+                  'https://bracu.atlassian.net/wiki/external/MThmZWEzMGY5ZTVjNDNhZWIxOTk1YjI1NDM0YzQ5NWM',
+                  failureMessage: 'Unable to open the printing guide.',
+                ),
+              ),
+            ],
+          ),
+          Text.rich(
+            TextSpan(
+              children: [
+                const TextSpan(text: 'Printer '),
+                TextSpan(text: 'Not found', style: emphasis),
+                const TextSpan(text: ' or '),
+                TextSpan(text: 'off campus?', style: emphasis),
+                const TextSpan(
+                  text: ' Send from your @g.bracu.ac.bd account to ',
+                ),
+                emailLink(
+                  'campus.printer@g.bracu.ac.bd',
+                  'Print documents',
+                  bold: true,
+                ),
+                const TextSpan(
+                  text:
+                      '.\n\nAttach PDF, DOCX, PPTX, or XLSX files (25 MB total). Add ',
+                ),
+                emailLink('#duplex', '#duplex'),
+                const TextSpan(
+                  text:
+                      ' to the subject for double-sided printing.\n\n'
+                      'Wait 3–5 minutes, then tap your ID card at a campus printer, '
+                      'select your jobs, and print. Jobs expire after ',
+                ),
+                TextSpan(text: '4 hours', style: emphasis),
+                const TextSpan(text: '.'),
+              ],
+            ),
+            style: TextStyle(
+              color: BracuPalette.textSecondary(context),
+              fontSize: 12,
+              height: 1.4,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
         ],
       ),
     );

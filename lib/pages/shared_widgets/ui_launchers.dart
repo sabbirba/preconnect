@@ -198,17 +198,24 @@ Future<bool> openMailComposer(
   BuildContext context,
   String email, {
   String failureMessage = 'Unable to open email compose',
+  String? subject,
 }) async {
   final cleaned = email.trim();
   if (cleaned.isEmpty) {
     if (context.mounted) showAppSnackBar(context, failureMessage);
     return false;
   }
-  final mailtoUri = Uri(scheme: 'mailto', path: cleaned);
-  final openedMail = await launchUrl(
-    mailtoUri,
-    mode: LaunchMode.platformDefault,
+  final mailtoUri = Uri(
+    scheme: 'mailto',
+    path: cleaned,
+    query: subject == null ? null : 'subject=${Uri.encodeComponent(subject)}',
   );
+  var openedMail = false;
+  try {
+    openedMail = await launchUrl(mailtoUri, mode: LaunchMode.platformDefault);
+  } catch (_) {
+    openedMail = false;
+  }
   if (!openedMail && context.mounted) {
     showAppSnackBar(context, failureMessage);
   }
