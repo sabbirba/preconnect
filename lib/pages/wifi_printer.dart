@@ -1158,7 +1158,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
                 const TextSpan(text: ' or '),
                 TextSpan(text: 'off campus?', style: emphasis),
                 const TextSpan(
-                  text: ' Send documents from your @g.bracu.ac.bd account to ',
+                  text: ' Email from your @g.bracu.ac.bd account to ',
                 ),
                 emailLink(
                   'campus.printer@g.bracu.ac.bd',
