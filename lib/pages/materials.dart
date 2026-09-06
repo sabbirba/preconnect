@@ -312,6 +312,24 @@ class _MaterialsPageState extends State<MaterialsPage> {
               ),
               const Gap(12),
               _buildBody(),
+              if (selectedSrc == null)
+                SafeArea(
+                  top: false,
+                  minimum: const EdgeInsets.symmetric(vertical: 12),
+                  child: BracuActionBannerCard(
+                    iconWidget: const PreConnectDiscordIcon(
+                      size: 24,
+                      color: BracuPalette.primary,
+                    ),
+                    title: 'Share Course Materials',
+                    subtitle: 'Help fellow students by submitting yours.',
+                    onTap: () => openExternalUrl(
+                      context,
+                      kPreConnectDiscordUrl,
+                      failureMessage: 'Unable to open Discord.',
+                    ),
+                  ),
+                ),
             ],
           ),
         ),
