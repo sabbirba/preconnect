@@ -211,6 +211,7 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
         _latestData = data;
         _future = Future<_HomeData>.value(data);
       });
+      unawaited(_saveHomeDashboardSnapshot(data));
       if (!forceRefresh) {
         unawaited(_backgroundRefresh());
       }
