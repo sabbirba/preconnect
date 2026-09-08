@@ -13,6 +13,7 @@ import 'package:preconnect/model/section_info.dart' as section;
 import 'package:preconnect/pages/shared_widgets/entry_card.dart';
 import 'package:preconnect/pages/shared_widgets/scroll_helper.dart';
 import 'package:preconnect/pages/ui_kit.dart';
+import 'package:preconnect/tools/app_storage.dart';
 import 'package:preconnect/tools/ramadan.dart';
 import 'package:preconnect/tools/time_utils.dart';
 
@@ -64,8 +65,15 @@ class _FreeLabsPageState extends State<FreeLabsPage> {
     super.initState();
     _searchController = TextEditingController();
     _searchController.addListener(_onSearchQueryChanged);
-    _future = _loadSlots();
+    final cachedSlots = _loadSlotsSync();
+    _latestSlots = cachedSlots;
+    _future = cachedSlots == null
+        ? _loadSlots()
+        : Future<List<_FreeRoomSlot>>.value(cachedSlots);
     _bindSlotsFuture(_future);
+    if (cachedSlots != null) {
+      unawaited(_refresh());
+    }
     HomeTabRegistry.activeTab.addListener(_onActiveTabChanged);
 
     RamadanTiming.isRamadan().then((value) {
@@ -166,6 +174,14 @@ class _FreeLabsPageState extends State<FreeLabsPage> {
     final details = await _loadFreeLabsDetails(forceRefresh: forceRefresh);
     final allSlots = _buildFreeRoomSlots(details, _activeDayName);
     return allSlots;
+  }
+
+  List<_FreeRoomSlot>? _loadSlotsSync() {
+    final raw = AppStorage.instance.getStringSync(_freeLabsCacheKey);
+    if (raw == null || raw.trim().isEmpty) return null;
+    final details = _decodeFreeLabsDetails(raw);
+    if (details.isEmpty) return null;
+    return _applySelectedFilter(_buildFreeRoomSlots(details, _activeDayName));
   }
 
   Future<void> _refresh() async {

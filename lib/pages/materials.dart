@@ -34,7 +34,9 @@ class _MaterialsPageState extends State<MaterialsPage> {
     super.initState();
     HomeTabRegistry.registerBackHandler(HomeTab.materials, _handleBack);
     _searchController.addListener(_onSearchChanged);
-    unawaited(_loadSources());
+    _sources = _service.getCachedSourcesSync();
+    _loading = _sources == null;
+    unawaited(_loadSources(forceRefresh: _sources != null));
   }
 
   @override
@@ -95,24 +97,31 @@ class _MaterialsPageState extends State<MaterialsPage> {
     } catch (error) {
       if (!mounted) return;
       setState(() {
-        _error = error;
+        if (_sources == null) _error = error;
         _loading = false;
       });
     }
   }
 
   Future<void> _selectSource(String source, {bool forceRefresh = false}) async {
+    final cached = forceRefresh
+        ? null
+        : _service.getCachedCollectionsSync(source);
     if (!forceRefresh || _collections == null) {
       setState(() {
         _selectedSource = source;
         _selectedCollection = null;
-        _collections = null;
+        _collections = cached;
         _detail = null;
-        _loading = true;
+        _loading = cached == null;
         _error = null;
         _searchController.clear();
         _expandedCategories.clear();
       });
+    }
+    if (cached != null) {
+      unawaited(_selectSource(source, forceRefresh: true));
+      return;
     }
     try {
       final collections = await _service.loadCollections(
@@ -128,7 +137,7 @@ class _MaterialsPageState extends State<MaterialsPage> {
     } catch (error) {
       if (!mounted || _selectedSource != source) return;
       setState(() {
-        _error = error;
+        if (_collections == null) _error = error;
         _loading = false;
       });
     }
@@ -138,15 +147,25 @@ class _MaterialsPageState extends State<MaterialsPage> {
     MaterialCollection collection, {
     bool forceRefresh = false,
   }) async {
+    final cached = forceRefresh
+        ? null
+        : _service.getCachedDetailSync(
+            collection.code,
+            source: _selectedSource ?? '',
+          );
     if (!forceRefresh || _detail == null) {
       setState(() {
         _selectedCollection = collection;
-        _detail = null;
-        _loading = true;
+        _detail = cached;
+        _loading = cached == null;
         _error = null;
         _searchController.clear();
         _expandedCategories.clear();
       });
+    }
+    if (cached != null) {
+      unawaited(_selectCollection(collection, forceRefresh: true));
+      return;
     }
     try {
       final detail = await _service.loadDetail(
@@ -163,7 +182,7 @@ class _MaterialsPageState extends State<MaterialsPage> {
     } catch (error) {
       if (!mounted || _selectedCollection?.code != collection.code) return;
       setState(() {
-        _error = error;
+        if (_detail == null) _error = error;
         _loading = false;
       });
     }

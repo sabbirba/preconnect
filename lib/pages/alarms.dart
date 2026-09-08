@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/foundation.dart'
     show TargetPlatform, defaultTargetPlatform, kIsWeb;
 import 'package:flutter/material.dart';
@@ -61,10 +62,13 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
   @override
   void initState() {
     super.initState();
-    _latestData = cache.value;
-    _futureData = cache.value == null
+    _latestData = cache.value ?? _loadAlarmDataSync();
+    if (_latestData != null) {
+      cache.value = _latestData;
+    }
+    _futureData = _latestData == null
         ? _fetchSchedule()
-        : Future<_AlarmData>.value(cache.value!);
+        : Future<_AlarmData>.value(_latestData!);
     cache.addListener(_onCacheUpdated);
     bindRefreshBus(_onRefreshSignal);
     unawaited(_warmAndBind());
@@ -118,49 +122,23 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
     return preloadData(forceRefresh: forceRefresh);
   }
 
+  static _AlarmData? _loadAlarmDataSync() {
+    try {
+      final raw = AppStorage.instance.getStringSync(StorageKeys.alarmsSnapshot);
+      if (raw == null || raw.trim().isEmpty) return null;
+      final decoded = jsonDecode(raw);
+      if (decoded is! Map) return null;
+      return _decodeAlarmDataSnapshot(decoded.cast<String, dynamic>());
+    } catch (_) {
+      return null;
+    }
+  }
+
   static Future<_AlarmData> _loadAlarmData({bool forceRefresh = false}) async {
     if (!forceRefresh) {
       final cached = await JsonSnapshotStore.read<_AlarmData>(
         key: StorageKeys.alarmsSnapshot,
-        decode: (decoded) {
-          final sectionsRaw = decoded['sections'];
-          final examsRaw = decoded['examEntries'];
-          final isRamadan = decoded['isRamadan'] == true;
-          final customRaw = decoded['customSchedules'];
-          final advisingRaw = decoded['advisingInfo'];
-          final advisingInfo = advisingRaw is Map
-              ? advisingRaw.map((k, v) => MapEntry('$k', v?.toString()))
-              : null;
-          if (sectionsRaw is! List || examsRaw is! List) return null;
-          final sections = sectionsRaw
-              .whereType<Map>()
-              .map((entry) => Section.fromJson(entry.cast<String, dynamic>()))
-              .toList(growable: false);
-          final examEntries = examsRaw
-              .whereType<Map>()
-              .map(
-                (entry) =>
-                    _ExamAlarmEntry.fromJson(entry.cast<String, dynamic>()),
-              )
-              .toList(growable: false);
-          final customSchedules = customRaw is List
-              ? customRaw
-                    .whereType<Map>()
-                    .map(
-                      (entry) => CustomSchedule.fromJson(
-                        entry.cast<String, dynamic>(),
-                      ),
-                    )
-                    .toList(growable: false)
-              : const <CustomSchedule>[];
-          return _AlarmData(
-            sections: sections,
-            examEntries: examEntries,
-            isRamadan: isRamadan,
-            customSchedules: customSchedules,
-            advisingInfo: advisingInfo,
-          );
-        },
+        decode: _decodeAlarmDataSnapshot,
       );
       if (cached != null) {
         return cached;
@@ -213,6 +191,42 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
     return JsonSnapshotStore.write(
       key: StorageKeys.alarmsSnapshot,
       value: _alarmSnapshotPayload(data),
+    );
+  }
+
+  static _AlarmData? _decodeAlarmDataSnapshot(Map<String, dynamic> decoded) {
+    final sectionsRaw = decoded['sections'];
+    final examsRaw = decoded['examEntries'];
+    final isRamadan = decoded['isRamadan'] == true;
+    final customRaw = decoded['customSchedules'];
+    final advisingRaw = decoded['advisingInfo'];
+    final advisingInfo = advisingRaw is Map
+        ? advisingRaw.map((k, v) => MapEntry('$k', v?.toString()))
+        : null;
+    if (sectionsRaw is! List || examsRaw is! List) return null;
+    final sections = sectionsRaw
+        .whereType<Map>()
+        .map((entry) => Section.fromJson(entry.cast<String, dynamic>()))
+        .toList(growable: false);
+    final examEntries = examsRaw
+        .whereType<Map>()
+        .map((entry) => _ExamAlarmEntry.fromJson(entry.cast<String, dynamic>()))
+        .toList(growable: false);
+    final customSchedules = customRaw is List
+        ? customRaw
+              .whereType<Map>()
+              .map(
+                (entry) =>
+                    CustomSchedule.fromJson(entry.cast<String, dynamic>()),
+              )
+              .toList(growable: false)
+        : const <CustomSchedule>[];
+    return _AlarmData(
+      sections: sections,
+      examEntries: examEntries,
+      isRamadan: isRamadan,
+      customSchedules: customSchedules,
+      advisingInfo: advisingInfo,
     );
   }
 

@@ -205,6 +205,18 @@ class ProgressService {
     );
   }
 
+  ProgressInfo? getProgressSync() {
+    final raw = AppStorage.instance.getStringSync(_cacheKey);
+    if (raw == null || raw.trim().isEmpty) return null;
+    try {
+      final decoded = jsonDecode(raw);
+      if (decoded is! Map) return null;
+      return ProgressInfo.fromPayload(decoded.cast<String, dynamic>());
+    } catch (_) {
+      return null;
+    }
+  }
+
   Future<ProgressSummary?> getProgressSummary({bool fromFetch = false}) async {
     return RepositoryCache.instance.readJsonMapWithFallback<ProgressSummary>(
       key: _summaryCacheKey,

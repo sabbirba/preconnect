@@ -4,6 +4,7 @@ import 'package:preconnect/api/api_client.dart';
 import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/api/repository_cache.dart';
 import 'package:preconnect/model/materials.dart';
+import 'package:preconnect/tools/app_storage.dart';
 
 class MaterialsService {
   MaterialsService({ApiClient? client, RepositoryCache? cache})
@@ -19,6 +20,54 @@ class MaterialsService {
 
   final ApiClient _client;
   final RepositoryCache _cache;
+
+  MaterialSources? getCachedSourcesSync() {
+    if (_sourcesCache != null) return _sourcesCache;
+    final cached = AppStorage.instance.getStringSync(_sourcesCacheKey);
+    if (cached == null || cached.isEmpty) return null;
+    try {
+      final sources = _parseSources(cached);
+      _sourcesCache = sources;
+      return sources;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  List<MaterialCollection>? getCachedCollectionsSync(String source) {
+    final key = source.trim();
+    final cached = _sourceCollectionsCache[key];
+    if (cached != null) return cached;
+    final cacheKey = 'materials_collections_${key.toLowerCase()}_v1';
+    final cachedString = AppStorage.instance.getStringSync(cacheKey);
+    if (cachedString == null || cachedString.isEmpty) return null;
+    try {
+      final collections = _parseCollections(cachedString);
+      _sourceCollectionsCache[key] = collections;
+      return collections;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  MaterialDetail? getCachedDetailSync(String code, {required String source}) {
+    final normalizedCode = code.trim();
+    final normalizedSource = source.trim();
+    final detailKey = '$normalizedSource/$normalizedCode';
+    final cachedDetail = _detailCache[detailKey];
+    if (cachedDetail != null) return cachedDetail;
+    final cacheKey =
+        'materials_detail_${normalizedSource.toLowerCase()}_${normalizedCode.toLowerCase()}_v1';
+    final cached = AppStorage.instance.getStringSync(cacheKey);
+    if (cached == null || cached.isEmpty) return null;
+    try {
+      final detail = _parseDetail(cached);
+      _detailCache[detailKey] = detail;
+      return detail;
+    } catch (_) {
+      return null;
+    }
+  }
 
   Future<MaterialSources> loadSources({bool forceRefresh = false}) async {
     if (forceRefresh) {

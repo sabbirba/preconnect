@@ -63,7 +63,10 @@ class _DegreeProgressPageState extends State<DegreeProgressPage>
     super.initState();
     final forceRefresh = isRefreshingFrom('auth');
     if (!forceRefresh) {
-      _latestInfo = cache.value;
+      _latestInfo = cache.value ?? ProgressService().getProgressSync();
+      if (_latestInfo != null) {
+        cache.value = _latestInfo;
+      }
     }
     final syncCgpa = (AppStorage.instance.getStringSync(StorageKeys.cgpa) ?? '')
         .trim();
@@ -76,7 +79,7 @@ class _DegreeProgressPageState extends State<DegreeProgressPage>
       _fullProgramName = syncProg;
     }
     cache.addListener(_onCacheUpdated);
-    _future = forceRefresh || cache.value == null
+    _future = forceRefresh || _latestInfo == null
         ? preloadData(forceRefresh: forceRefresh).then((info) {
             _latestInfo = info;
             if (info != null) {
@@ -84,7 +87,7 @@ class _DegreeProgressPageState extends State<DegreeProgressPage>
             }
             return info;
           })
-        : Future<ProgressInfo?>.value(cache.value);
+        : Future<ProgressInfo?>.value(_latestInfo);
     unawaited(_warmAndBind());
     unawaited(_loadCgpa());
     unawaited(_loadSummary());
