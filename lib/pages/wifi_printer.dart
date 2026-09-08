@@ -1642,7 +1642,7 @@ class _LprPrintClient {
     final safeFileName = fileName.trim();
     final printableJobName = _basePrintName(safeFileName);
     final isPostScript = _looksLikePostScript(safeFileName, bytes);
-    final dataCommand = isPostScript ? 'o' : 'f';
+    final dataCommand = isPostScript ? 'o' : 'l';
     final copies = preferences.copies.clamp(1, 999);
     final duplexMode = preferences.duplexMode.trim().toUpperCase();
 
