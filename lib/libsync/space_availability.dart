@@ -225,7 +225,7 @@ class _SpaceAvailabilityPageState extends State<SpaceAvailabilityPage> {
       context,
       initialDate: _selectedDate,
       firstDate: today,
-      lastDate: today.add(const Duration(days: 29)),
+      lastDate: today.add(const Duration(days: 10)),
     );
     if (picked != null && picked != _selectedDate) {
       setState(() {
