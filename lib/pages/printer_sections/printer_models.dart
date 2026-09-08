@@ -34,6 +34,8 @@ class _CampusPrinterBootstrap {
     required this.studentName,
     required this.studentShortCode,
     required this.currentSemester,
+    required this.duplexMode,
+    required this.collateMode,
     required this.pagesPerSheet,
     required this.fittingMode,
     required this.staple,
@@ -51,6 +53,8 @@ class _CampusPrinterBootstrap {
   final String studentName;
   final String studentShortCode;
   final String currentSemester;
+  final String duplexMode;
+  final String collateMode;
   final String pagesPerSheet;
   final String fittingMode;
   final String staple;

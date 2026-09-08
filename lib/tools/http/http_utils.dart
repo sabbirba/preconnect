@@ -73,6 +73,7 @@ class HttpUtils {
     final useDuplex = duplex != 'OFF';
     return [
       '\x1B%-12345X@PJL\r\n',
+      '@PJL RESET\r\n',
       '@PJL JOB NAME = "${_escapePjlValue(jobName)}"\r\n',
       '@PJL SET COPIES = $copies\r\n',
       '@PJL SET QTY = $copies\r\n',
@@ -85,41 +86,63 @@ class HttpUtils {
       '@PJL SET MANUALFEED = OFF\r\n',
       '@PJL SET PERSONALITY = AUTO\r\n',
       '@PJL SET DUPLEX = ${useDuplex ? 'ON' : 'OFF'}\r\n',
-      if (useDuplex) '@PJL SET BINDING = LONGEDGE\r\n',
+      if (useDuplex)
+        '@PJL SET BINDING = ${pagesPerSheet == '2-in-1' ? 'SHORTEDGE' : 'LONGEDGE'}\r\n',
       if (pagesPerSheet == '2-in-1') ...[
         '@PJL SET MULTIPAGE = 2\r\n',
         '@PJL SET NUP = 2\r\n',
       ] else if (pagesPerSheet == '4-in-1') ...[
         '@PJL SET MULTIPAGE = 4\r\n',
         '@PJL SET NUP = 4\r\n',
+      ] else ...[
+        '@PJL SET MULTIPAGE = OFF\r\n',
+        '@PJL SET NUP = OFF\r\n',
       ],
       if (fittingMode == 'Fit on Paper') ...[
         '@PJL SET FITTOPAGESIZE = ON\r\n',
+        '@PJL SET FITOPRINTABLE = OFF\r\n',
+        '@PJL SET EDGETOEDGE = OFF\r\n',
         '@PJL SET ZOOM = FIT\r\n',
       ] else if (fittingMode == 'Fit on Printable Area') ...[
         '@PJL SET FITOPRINTABLE = ON\r\n',
-        '@PJL SET ZOOM = FIT\r\n',
         '@PJL SET FITTOPAGESIZE = ON\r\n',
+        '@PJL SET EDGETOEDGE = OFF\r\n',
+        '@PJL SET ZOOM = FIT\r\n',
       ] else if (fittingMode == 'Edge-to-Edge') ...[
         '@PJL SET EDGETOEDGE = ON\r\n',
+        '@PJL SET FITTOPAGESIZE = OFF\r\n',
+        '@PJL SET FITOPRINTABLE = OFF\r\n',
+        '@PJL SET ZOOM = OFF\r\n',
       ],
       if (staple == 'Left Corner') ...[
         '@PJL SET STAPLE = LEFTCORNER\r\n',
       ] else if (staple == 'Right Corner') ...[
         '@PJL SET STAPLE = RIGHTCORNER\r\n',
+      ] else ...[
+        '@PJL SET STAPLE = OFF\r\n',
       ],
       if (punch == '2 Holes') ...[
         '@PJL SET PUNCH = 2HOLE\r\n',
       ] else if (punch == '3 Holes') ...[
         '@PJL SET PUNCH = 3HOLE\r\n',
+      ] else ...[
+        '@PJL SET PUNCH = OFF\r\n',
       ],
-      if (jobOffset == 'On') '@PJL SET JOBOFFSET = ON\r\n',
-      if (slipSheet == 'On') '@PJL SET SLIPSHEET = ON\r\n',
+      if (jobOffset == 'On')
+        '@PJL SET JOBOFFSET = ON\r\n'
+      else
+        '@PJL SET JOBOFFSET = OFF\r\n',
+      if (slipSheet == 'On')
+        '@PJL SET SLIPSHEET = ON\r\n'
+      else
+        '@PJL SET SLIPSHEET = OFF\r\n',
       if (booklet == 'On') ...[
         '@PJL SET MULTIPAGE = BOOKLET\r\n',
         '@PJL SET FOLD = SADDLE\r\n',
         '@PJL SET STAPLE = SADDLESTITCH\r\n',
         '@PJL SET OUTBIN = BOOKLET\r\n',
+      ] else ...[
+        '@PJL SET FOLD = OFF\r\n',
       ],
       '@PJL ENTER LANGUAGE = $language\r\n',
     ].join();

@@ -40,11 +40,15 @@ class CampusPrinterPage extends StatefulWidget {
 
   static const String historyKey = 'printer_history';
   static const String copiesKey = 'campus_printer_copies';
+  static const String duplexKey = 'campus_printer_duplex';
+  static const String collateKey = 'campus_printer_collate';
   static const String lastHostKey = 'campus_printer_last_host';
   static const String cachedBlankPagePdfKey = 'cached_blank_page_pdf';
 
   static Future<void> clearStoredState() async {
     await AppStorage.instance.remove(copiesKey);
+    await AppStorage.instance.remove(duplexKey);
+    await AppStorage.instance.remove(collateKey);
     await AppStorage.instance.remove(historyKey);
     await AppStorage.instance.remove(lastHostKey);
     await AppStorage.instance.remove(StorageKeys.studentId);
@@ -52,6 +56,13 @@ class CampusPrinterPage extends StatefulWidget {
     await AppStorage.instance.remove(StorageKeys.shortCode);
     await AppStorage.instance.remove(StorageKeys.currentSemester);
     await AppStorage.instance.remove(cachedBlankPagePdfKey);
+    await AppStorage.instance.remove('campus_printer_nup');
+    await AppStorage.instance.remove('campus_printer_fit');
+    await AppStorage.instance.remove('campus_printer_staple');
+    await AppStorage.instance.remove('campus_printer_punch');
+    await AppStorage.instance.remove('campus_printer_joboffset');
+    await AppStorage.instance.remove('campus_printer_slipsheet');
+    await AppStorage.instance.remove('campus_printer_booklet');
     invalidateCache();
   }
 
@@ -175,6 +186,12 @@ startxref
     final copiesValue = copiesRaw == null
         ? 1
         : (copiesRaw < 1 ? 1 : (copiesRaw > 999 ? 999 : copiesRaw));
+    final duplexMode =
+        await AppStorage.instance.getString(CampusPrinterPage.duplexKey) ??
+        'OFF';
+    final collateMode =
+        await AppStorage.instance.getString(CampusPrinterPage.collateKey) ??
+        'OFF';
     final pagesPerSheet =
         await AppStorage.instance.getString('campus_printer_nup') ?? '1-in-1';
     final fittingMode =
@@ -200,6 +217,8 @@ startxref
       studentName: fullName,
       studentShortCode: shortCode,
       currentSemester: currentSemester,
+      duplexMode: duplexMode,
+      collateMode: collateMode,
       pagesPerSheet: pagesPerSheet,
       fittingMode: fittingMode,
       staple: staple,
@@ -364,6 +383,8 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
       _studentId = bootstrap.studentId;
       _studentIdController.text = bootstrap.studentId;
       _studentName = bootstrap.studentName;
+      _duplexMode = bootstrap.duplexMode;
+      _collateMode = bootstrap.collateMode;
       _pagesPerSheet = bootstrap.pagesPerSheet;
       _fittingMode = bootstrap.fittingMode;
       _staple = bootstrap.staple;
@@ -387,6 +408,8 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
       _studentId = bootstrap.studentId;
       _studentIdController.text = bootstrap.studentId;
       _studentName = bootstrap.studentName;
+      _duplexMode = bootstrap.duplexMode;
+      _collateMode = bootstrap.collateMode;
       _pagesPerSheet = bootstrap.pagesPerSheet;
       _fittingMode = bootstrap.fittingMode;
       _staple = bootstrap.staple;
@@ -400,7 +423,16 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
   }
 
   Future<void> _savePrinterPreferences() async {
+    CampusPrinterPage.invalidateCache();
     await AppStorage.instance.setInt(_copiesKey, _copies);
+    await AppStorage.instance.setString(
+      CampusPrinterPage.duplexKey,
+      _duplexMode,
+    );
+    await AppStorage.instance.setString(
+      CampusPrinterPage.collateKey,
+      _collateMode,
+    );
     await AppStorage.instance.setString('campus_printer_nup', _pagesPerSheet);
     await AppStorage.instance.setString('campus_printer_fit', _fittingMode);
     await AppStorage.instance.setString('campus_printer_staple', _staple);
@@ -976,9 +1008,11 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
                 onCopiesStep: _adjustCopies,
                 onDuplexChanged: (mode) {
                   setState(() => _duplexMode = mode);
+                  unawaited(_savePrinterPreferences());
                 },
                 onCollateChanged: (mode) {
                   setState(() => _collateMode = mode);
+                  unawaited(_savePrinterPreferences());
                 },
               ),
               const Gap(8),
@@ -1609,7 +1643,7 @@ class _LprPrintClient {
     final printableJobName = _basePrintName(safeFileName);
     final isPostScript = _looksLikePostScript(safeFileName, bytes);
     final dataCommand = isPostScript ? 'o' : 'f';
-    final copies = preferences.copies.clamp(0, 999);
+    final copies = preferences.copies.clamp(1, 999);
     final duplexMode = preferences.duplexMode.trim().toUpperCase();
 
     try {
@@ -1687,7 +1721,9 @@ class _LprPrintClient {
     final builder = BytesBuilder(copy: false);
     builder.add(_ascii(prefix));
     builder.add(bytes);
-    builder.add(_ascii('\r\n\x1B%-12345X@PJL EOJ\r\n\x1B%-12345X'));
+    builder.add(
+      _ascii('\r\n\x1B%-12345X@PJL\r\n@PJL RESET\r\n@PJL EOJ\r\n\x1B%-12345X'),
+    );
     return builder.takeBytes();
   }
 

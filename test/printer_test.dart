@@ -36,12 +36,58 @@ void main() {
       booklet: 'OFF',
     );
 
+    expect(prefix, contains('\x1B%-12345X@PJL\r\n@PJL RESET\r\n'));
     expect(prefix, contains('@PJL JOB NAME = "Test Job"\r\n'));
     expect(prefix, contains('@PJL SET COPIES = 1\r\n'));
     expect(prefix, contains('@PJL SET QTY = 1\r\n'));
     expect(prefix, contains('@PJL SET PAPER = A4\r\n'));
     expect(prefix, contains('@PJL SET PAPERSPEC = A4\r\n'));
     expect(prefix, contains('@PJL SET MEDIASIZE = A4\r\n'));
+    expect(prefix, contains('@PJL SET MULTIPAGE = OFF\r\n'));
+    expect(prefix, contains('@PJL SET NUP = OFF\r\n'));
+    expect(prefix, contains('@PJL SET STAPLE = OFF\r\n'));
+    expect(prefix, contains('@PJL SET PUNCH = OFF\r\n'));
+    expect(prefix, contains('@PJL SET JOBOFFSET = OFF\r\n'));
+    expect(prefix, contains('@PJL SET SLIPSHEET = OFF\r\n'));
+    expect(prefix, contains('@PJL SET FOLD = OFF\r\n'));
+
+    final twoInOneDuplexPrefix = HttpUtils.pjlPrefix(
+      jobName: 'Test Job',
+      copies: 1,
+      duplexMode: 'LEFT',
+      collateMode: 'OFF',
+      isPostScript: false,
+      pagesPerSheet: '2-in-1',
+      fittingMode: 'Default',
+      staple: 'OFF',
+      punch: 'OFF',
+      jobOffset: 'OFF',
+      slipSheet: 'OFF',
+      booklet: 'OFF',
+    );
+    expect(twoInOneDuplexPrefix, contains('@PJL SET DUPLEX = ON\r\n'));
+    expect(twoInOneDuplexPrefix, contains('@PJL SET BINDING = SHORTEDGE\r\n'));
+    expect(twoInOneDuplexPrefix, contains('@PJL SET MULTIPAGE = 2\r\n'));
+    expect(twoInOneDuplexPrefix, contains('@PJL SET NUP = 2\r\n'));
+
+    final fourInOneDuplexPrefix = HttpUtils.pjlPrefix(
+      jobName: 'Test Job',
+      copies: 1,
+      duplexMode: 'LEFT',
+      collateMode: 'OFF',
+      isPostScript: false,
+      pagesPerSheet: '4-in-1',
+      fittingMode: 'Default',
+      staple: 'OFF',
+      punch: 'OFF',
+      jobOffset: 'OFF',
+      slipSheet: 'OFF',
+      booklet: 'OFF',
+    );
+    expect(fourInOneDuplexPrefix, contains('@PJL SET DUPLEX = ON\r\n'));
+    expect(fourInOneDuplexPrefix, contains('@PJL SET BINDING = LONGEDGE\r\n'));
+    expect(fourInOneDuplexPrefix, contains('@PJL SET MULTIPAGE = 4\r\n'));
+    expect(fourInOneDuplexPrefix, contains('@PJL SET NUP = 4\r\n'));
 
     final fitOnPaperPrefix = HttpUtils.pjlPrefix(
       jobName: 'Test Job',
