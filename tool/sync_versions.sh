@@ -17,28 +17,6 @@ read_version() {
   printf '%s\n%s\n' "${version_name}" "${version_code}"
 }
 
-read_latest_changelog() {
-  local changelog_file="${ROOT_DIR}/CHANGELOG.md"
-  if [[ -f "${changelog_file}" ]]; then
-    local notes
-    notes="$(perl -0777 -ne 'if (/##\s*\[[0-9]+(?:\.[0-9]+)*\][^\n]*\n+([\s\S]*?)(?=\n+##\s*\[|\z)/) { my $t = $1; $t =~ s/^\s+|\s+$//g; my @lines = grep { /\S/ } split(/\n/, $t); my $res = join("\n", map { s/^\s+|\s+$//gr } @lines); print $res if $res; }' "${changelog_file}")"
-    if [[ -n "${notes}" ]]; then
-      printf '%s\n' "${notes}"
-      return 0
-    fi
-  fi
-  printf 'We update PreConnect regularly to make your academic experience smoother and faster. This release includes performance improvements, bug fixes, and general stability enhancements.\n'
-}
-
-sync_store_metadata() {
-  local notes
-  notes="$(read_latest_changelog)"
-
-  mkdir -p "${ROOT_DIR}/ios/fastlane/metadata/en-US"
-
-  printf '%s\n' "${notes}" >"${ROOT_DIR}/ios/fastlane/metadata/en-US/release_notes.txt"
-}
-
 sync_local_properties() {
   local version_name="${1}"
   local version_code="${2}"
@@ -75,7 +53,6 @@ bump_release_version() {
   perl -i -pe "s/^version:\\s*.*/version: ${new_version}/" "${ROOT_DIR}/pubspec.yaml"
   perl -0pi -e "s/\"version\":\\s*\"[^\"]+\"/\"version\": \"${version_name}\"/" "${ROOT_DIR}/web/manifest.json"
 
-  sync_store_metadata
   sync_local_properties "${version_name}" "${new_version_code}"
 
   printf '%s\n%s\n' "${version_name}" "${new_version_code}"
@@ -93,7 +70,6 @@ apply_version() {
   perl -i -pe "s/^version:\\s*.*/version: ${new_version}/" "${ROOT_DIR}/pubspec.yaml"
   perl -0pi -e "s/\"version\":\\s*\"[^\"]+\"/\"version\": \"${version_name}\"/" "${ROOT_DIR}/web/manifest.json"
 
-  sync_store_metadata
   sync_local_properties "${version_name}" "${version_code}"
 }
 
@@ -107,11 +83,8 @@ case "${1:-}" in
   apply)
     apply_version "${2:-}" "${3:-}"
     ;;
-  sync-metadata)
-    sync_store_metadata
-    ;;
   *)
-    echo "Usage: $0 {read|bump-release|apply|sync-metadata}" >&2
+    echo "Usage: $0 {read|bump-release|apply}" >&2
     exit 1
     ;;
 esac

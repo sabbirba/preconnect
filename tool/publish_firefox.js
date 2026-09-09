@@ -113,19 +113,14 @@ async function main() {
   console.log("Creating new version...");
   let releaseNotes =
     "We update PreConnect regularly to make your academic experience smoother and faster. This release includes performance improvements, bug fixes, and general stability enhancements.";
-  const notesPath = path.join(
-    __dirname,
-    "..",
-    "ios",
-    "fastlane",
-    "metadata",
-    "en-US",
-    "release_notes.txt",
-  );
-  if (fs.existsSync(notesPath)) {
-    const rawNotes = fs.readFileSync(notesPath, "utf8").trim();
-    if (rawNotes.length > 0) {
-      releaseNotes = rawNotes;
+  const changelogPath = path.join(__dirname, "..", "CHANGELOG.md");
+  if (fs.existsSync(changelogPath)) {
+    const content = fs.readFileSync(changelogPath, "utf8");
+    const match = content.match(
+      /##\s*\[[0-9]+(?:\.[0-9]+)*\][^\n]*\n+([\s\S]*?)(?=\n+##\s*\[|\z)/,
+    );
+    if (match && match[1] && match[1].trim().length > 0) {
+      releaseNotes = match[1].trim();
     }
   }
 

@@ -1,2 +1,0 @@
-- Campus Printer & Email Printing: Introduced Print by Email support to submit documents and duplex print jobs from any device or off-campus.
-- UI & Layout Polish: Refined layout spacing, link styling, and campus printing guide instructions.

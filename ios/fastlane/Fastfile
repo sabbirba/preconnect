@@ -85,16 +85,16 @@ platform :ios do
     end
 
     release_notes = nil
-    notes_path = File.join(__dir__, "metadata", "en-US", "release_notes.txt")
-    if File.exist?(notes_path)
-      release_notes = File.read(notes_path).strip
+    changelog_path = File.expand_path("../../CHANGELOG.md", __dir__)
+    if File.exist?(changelog_path)
+      content = File.read(changelog_path)
+      match = content.match(/##\s*\[[0-9]+(?:\.[0-9]+)*\][^\n]*\n+([\s\S]*?)(?=\n+##\s*\[|\z)/)
+      release_notes = match[1].strip if match && match[1]
     end
     if release_notes.nil? || release_notes.empty?
-      changelog_path = File.expand_path("../../CHANGELOG.md", __dir__)
-      if File.exist?(changelog_path)
-        content = File.read(changelog_path)
-        match = content.match(/##\s*\[[0-9]+(?:\.[0-9]+)*\][^\n]*\n+([\s\S]*?)(?=\n+##\s*\[|\z)/)
-        release_notes = match[1].strip if match && match[1]
+      notes_path = File.join(__dir__, "metadata", "en-US", "release_notes.txt")
+      if File.exist?(notes_path)
+        release_notes = File.read(notes_path).strip
       end
     end
 
