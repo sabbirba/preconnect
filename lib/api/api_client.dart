@@ -9,8 +9,6 @@ import 'package:preconnect/tools/app_storage.dart';
 import 'package:preconnect/tools/http/http_utils.dart';
 import 'package:preconnect/tools/http/http_headers.dart';
 import 'package:preconnect/tools/preconnect_constants.dart';
-import 'package:preconnect/tools/runtime_stub.dart'
-    if (dart.library.js_interop) 'package:preconnect/tools/runtime_web.dart';
 import 'package:preconnect/tools/token_refresh.dart';
 import 'package:preconnect/tools/token_storage.dart';
 
@@ -166,13 +164,8 @@ class ApiClient {
     Duration cacheDuration = _defaultGetCacheTtl,
     bool bypassCache = false,
   }) async {
-    final usesBrowserSession = usesBrowserConnectSession(
-      url: url,
-      isWeb: kIsWeb,
-      runtimeAvailable: isChromeRuntimeAvailable(),
-    );
     final token = await getAccessToken();
-    if ((token == null || token.isEmpty) && !usesBrowserSession) {
+    if (token == null || token.isEmpty) {
       unawaited(AuthService().logout(force: true));
       throw const UnauthenticatedException();
     }
@@ -193,9 +186,6 @@ class ApiClient {
     }
 
     if (response.statusCode == 401) {
-      if (usesBrowserSession) {
-        throw ApiException(response.statusCode, response.body);
-      }
       await _refreshTokensWithRetry();
 
       final newToken = await getAccessToken();
@@ -252,13 +242,8 @@ class ApiClient {
         cacheDuration: cacheDuration,
       );
     }
-    final usesBrowserSession = usesBrowserConnectSession(
-      url: url,
-      isWeb: kIsWeb,
-      runtimeAvailable: isChromeRuntimeAvailable(),
-    );
     final token = await getAccessToken();
-    if ((token == null || token.isEmpty) && !usesBrowserSession) {
+    if (token == null || token.isEmpty) {
       throw const UnauthenticatedException();
     }
     final headers = await _authHeaders(
@@ -283,9 +268,6 @@ class ApiClient {
     }
 
     if (response.statusCode == 401) {
-      if (usesBrowserSession) {
-        throw ApiException(response.statusCode, response.body);
-      }
       unawaited(
         AppLog.write(
           'Auth Session (401): $normalizedMethod $url - Retrying with token refresh',

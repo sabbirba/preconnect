@@ -2,7 +2,6 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:http/browser_client.dart';
 import 'package:preconnect/tools/http/http_base.dart';
-import 'package:preconnect/tools/http/http_bridge.dart';
 
 http.Client createHttpClient() {
   return DelegatingHttpClient(_BrowserHttpClient());
@@ -10,7 +9,7 @@ http.Client createHttpClient() {
 
 class _BrowserHttpClient extends http.BaseClient {
   final BrowserClient _defaultClient = BrowserClient();
-  final ConnectExtensionClient _bracuClient = ConnectExtensionClient();
+  final BrowserClient _bracuClient = BrowserClient()..withCredentials = true;
 
   @override
   Future<http.StreamedResponse> send(http.BaseRequest request) {

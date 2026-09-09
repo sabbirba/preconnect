@@ -183,7 +183,9 @@ find "${COMMON_DIR}/canvaskit" -maxdepth 1 -type f \
   ! -name 'canvaskit.js' \
   ! -name 'canvaskit.wasm' \
   -delete
-rm -rf "${COMMON_DIR}/canvaskit/experimental_webparagraph"
+rm -rf \
+  "${COMMON_DIR}/canvaskit/experimental_webparagraph" \
+  "${COMMON_DIR}/canvaskit/webparagraph"
 
 for required_file in \
   canvaskit/canvaskit.js \

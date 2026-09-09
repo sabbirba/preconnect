@@ -32,9 +32,6 @@ import 'package:preconnect/libsync/libsync_page.dart';
 import 'package:preconnect/pages/dspace_browser.dart';
 import 'package:preconnect/pages/materials.dart';
 import 'package:preconnect/pages/wishlist.dart';
-import 'package:preconnect/pages/advising_helper.dart';
-import 'package:preconnect/tools/runtime_stub.dart'
-    if (dart.library.js_interop) 'package:preconnect/tools/runtime_web.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:preconnect/pages/home_tab.dart';
 import 'package:preconnect/pages/home_sections/exam_countdown.dart';

@@ -64,32 +64,29 @@
     "open_side_panel": {
       "suggested_key": {
         "default": "Ctrl+Shift+P",
-        "mac": "Command+Shift+P"
+        "mac": "MacCtrl+Shift+P"
       },
       "description": "Open PreConnect"
     },
     "open_custom_schedule": {
       "suggested_key": {
         "default": "Ctrl+Shift+1",
-        "mac": "Command+Shift+1"
+        "mac": "MacCtrl+Shift+1"
       },
       "description": "Open Custom Schedule"
     },
     "open_friends_schedule": {
       "suggested_key": {
         "default": "Ctrl+Shift+2",
-        "mac": "Command+Shift+2"
+        "mac": "MacCtrl+Shift+2"
       },
       "description": "Open Friend's Schedule"
     },
-    "open_share_schedule": {
-      "suggested_key": {
-        "default": "Ctrl+Shift+3",
-        "mac": "Command+Shift+3"
-      },
-      "description": "Open Share Schedule"
-    },
     "open_advising_helper": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+0",
+        "mac": "MacCtrl+Shift+0"
+      },
       "description": "Open Advising Helper"
     }
   },
