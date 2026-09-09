@@ -40,22 +40,8 @@ class ExamMapService {
     final parsedKey = 'exammap_parsed_${semesterSessionId}_v1';
     if (!forceRefresh) {
       final cachedParsed = AppStorage.instance.getStringSync(parsedKey);
-      if (cachedParsed != null && cachedParsed.isNotEmpty) {
-        try {
-          final decodedJson = jsonDecode(cachedParsed);
-          if (decodedJson is Map) {
-            final decoded = <String, ExamScheduleOverride>{};
-            for (final entry in decodedJson.entries) {
-              if (entry.value is Map) {
-                decoded[entry.key.toString()] = ExamScheduleOverride.fromJson(
-                  (entry.value as Map).cast<String, dynamic>(),
-                );
-              }
-            }
-            if (decoded.isNotEmpty) return decoded;
-          }
-        } catch (_) {}
-      }
+      final decoded = ExamScheduleOverride.decodeOverrides(cachedParsed);
+      if (decoded.isNotEmpty) return decoded;
     }
 
     if (!forceRefresh &&
@@ -160,6 +146,22 @@ class ExamMapService {
     return merged;
   }
 
+  bool _isPayloadValid(dynamic data, String cacheKey) {
+    if (data == null) return false;
+    if (data is Map && data.containsKey('error')) return false;
+    if (cacheKey == _indexCacheKey) {
+      return data is List && data.isNotEmpty;
+    }
+    if (data is Map) {
+      final rows =
+          data['exams'] ?? data['rows'] ?? data['data'] ?? data['items'];
+      if (rows is List) return rows.isNotEmpty;
+      if (rows is Map) return rows.isNotEmpty;
+    }
+    if (data is List) return data.isNotEmpty;
+    return false;
+  }
+
   Future<dynamic> _fetchJsonWithCache({
     required String url,
     required String cacheKey,
@@ -169,18 +171,14 @@ class ExamMapService {
     final cached = await _repo.readJsonMap(cacheKey);
     final cachedData = cached?['data'];
 
-    if (!forceRefresh && cachedData != null) {
-      if (!(cachedData is List &&
-          cachedData.isEmpty &&
-          cacheKey == _indexCacheKey)) {
-        final ts = cached?['ts'];
-        if (ts is int) {
-          final age = DateTime.now().difference(
-            DateTime.fromMillisecondsSinceEpoch(ts),
-          );
-          if (age <= ttl) {
-            return cachedData;
-          }
+    if (!forceRefresh && _isPayloadValid(cachedData, cacheKey)) {
+      final ts = cached?['ts'];
+      if (ts is int) {
+        final age = DateTime.now().difference(
+          DateTime.fromMillisecondsSinceEpoch(ts),
+        );
+        if (age <= ttl) {
+          return cachedData;
         }
       }
     }
@@ -193,13 +191,16 @@ class ExamMapService {
             : const Duration(seconds: 30),
       );
       final decoded = jsonDecode(response.body);
-      await _repo.writeJson(cacheKey, <String, dynamic>{
-        'ts': DateTime.now().millisecondsSinceEpoch,
-        'data': decoded,
-      });
-      return decoded;
+      if (_isPayloadValid(decoded, cacheKey)) {
+        await _repo.writeJson(cacheKey, <String, dynamic>{
+          'ts': DateTime.now().millisecondsSinceEpoch,
+          'data': decoded,
+        });
+        return decoded;
+      }
+      return _isPayloadValid(cachedData, cacheKey) ? cachedData : null;
     } catch (_) {
-      return cachedData;
+      return _isPayloadValid(cachedData, cacheKey) ? cachedData : null;
     }
   }
 
@@ -590,6 +591,27 @@ class ExamScheduleOverride {
       'finalPdfUrl': finalPdfUrl,
     };
   }
+
+  static Map<String, ExamScheduleOverride> decodeOverrides(String? raw) {
+    if (raw == null || raw.isEmpty) {
+      return const <String, ExamScheduleOverride>{};
+    }
+    try {
+      final decoded = jsonDecode(raw);
+      if (decoded is Map) {
+        final map = <String, ExamScheduleOverride>{};
+        for (final entry in decoded.entries) {
+          if (entry.value is Map) {
+            map[entry.key.toString()] = ExamScheduleOverride.fromJson(
+              (entry.value as Map).cast<String, dynamic>(),
+            );
+          }
+        }
+        return map;
+      }
+    } catch (_) {}
+    return const <String, ExamScheduleOverride>{};
+  }
 }
 
 class ExamSectionResolved {
@@ -643,27 +665,10 @@ class ExamScheduleService {
   Map<String, ExamScheduleOverride> getOverridesForSemesterSync(
     int semesterSessionId,
   ) {
-    try {
-      final raw = AppStorage.instance.getStringSync(
-        'exammap_parsed_${semesterSessionId}_v1',
-      );
-      if (raw == null || raw.isEmpty) {
-        return const <String, ExamScheduleOverride>{};
-      }
-      final decoded = jsonDecode(raw);
-      if (decoded is Map) {
-        final map = <String, ExamScheduleOverride>{};
-        for (final entry in decoded.entries) {
-          if (entry.value is Map) {
-            map[entry.key.toString()] = ExamScheduleOverride.fromJson(
-              (entry.value as Map).cast<String, dynamic>(),
-            );
-          }
-        }
-        return map;
-      }
-    } catch (_) {}
-    return const <String, ExamScheduleOverride>{};
+    final raw = AppStorage.instance.getStringSync(
+      'exammap_parsed_${semesterSessionId}_v1',
+    );
+    return ExamScheduleOverride.decodeOverrides(raw);
   }
 
   int? resolveSemesterSessionId(List<Section> sections) {
