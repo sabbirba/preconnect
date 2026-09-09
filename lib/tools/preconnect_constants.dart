@@ -63,15 +63,17 @@ class PreConnectPushConfig {
   static const String syncPushTokenMessageType = 'preconnect.syncPushToken';
   static const String seatStatusPinScope = 'seat_status';
   static const List<String> defaultTopics = <String>[
+    'all',
     'announcements',
     'news',
     'wifi',
-    'seat_status',
-    'bus',
-    'routine',
     'notice',
     'printer',
     'general',
+    'exam',
+    'holiday',
+    'materials',
+    'prerequisites',
   ];
 
   static const String registerDevicePath = '/push/device/register';

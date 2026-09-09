@@ -10,12 +10,18 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:preconnect/api/api_client.dart';
 import 'package:preconnect/api/api_config.dart';
+import 'package:preconnect/api/exam_map.dart';
+import 'package:preconnect/api/materials.dart';
 import 'package:preconnect/api/profile.dart';
+import 'package:preconnect/api/repository_cache.dart';
+import 'package:preconnect/api/schedule.dart';
 import 'package:preconnect/features/notifications/data/device_registry.dart';
+import 'package:preconnect/model/section_info.dart';
 import 'package:preconnect/tools/http/http_utils.dart';
 import 'package:preconnect/tools/app_storage.dart';
 import 'package:preconnect/tools/preconnect_constants.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
+import 'package:preconnect/tools/storage_keys.dart';
 import 'package:preconnect/tools/token_storage.dart';
 import 'package:preconnect/tools/push_stub.dart'
     if (dart.library.js_interop) 'package:preconnect/tools/push_web.dart';
@@ -142,11 +148,68 @@ class FCMService {
     );
     await AppStorage.initialize();
     await ensureLocalNotificationsInitialized();
+    await _handleBackgroundDataSync(message.data);
     _handleIncomingMessage(message);
+  }
+
+  static Future<void> _handleBackgroundDataSync(
+    Map<String, dynamic> data,
+  ) async {
+    final type = (data['type'] ?? data['sync_type'] ?? data['event'] ?? '')
+        .toString()
+        .trim()
+        .toLowerCase();
+    if (type.isEmpty) return;
+
+    try {
+      if (type.contains('exam')) {
+        final sections =
+            ScheduleService().getStudentSectionsSync() ?? <Section>[];
+        final sessionId =
+            ExamScheduleService().resolveSemesterSessionId(sections) ??
+            AppStorage.instance.getIntSync(
+              StorageKeys.currentSessionSemesterId,
+            );
+        if (sessionId != null && sessionId > 0) {
+          await ExamMapService().getOverridesForSemester(
+            semesterSessionId: sessionId,
+            forceRefresh: true,
+          );
+        }
+        RefreshBus.instance.notify(reason: 'exam_schedule');
+      } else if (type.contains('material')) {
+        await MaterialsService().loadSources(forceRefresh: true);
+        RefreshBus.instance.notify(reason: 'materials');
+      } else if (type.contains('notice') ||
+          type.contains('announcement') ||
+          type.contains('news')) {
+        RefreshBus.instance.notify(reason: 'notices');
+      } else if (type.contains('bus')) {
+        RefreshBus.instance.notify(reason: 'bus');
+      } else if (type.contains('holiday')) {
+        RefreshBus.instance.notify(reason: 'holiday');
+      } else if (type.contains('seat')) {
+        RefreshBus.instance.notify(reason: 'seat_status');
+      } else if (type.contains('prerequisite')) {
+        RefreshBus.instance.notify(reason: 'prerequisites');
+      } else if (type.contains('wifi')) {
+        RefreshBus.instance.notify(reason: 'wifi');
+      } else if (type.contains('printer')) {
+        RefreshBus.instance.notify(reason: 'printer');
+      } else if (type.contains('general')) {
+        RefreshBus.instance.notify(reason: 'general');
+      } else if (type.contains('all') || type == 'sync') {
+        await RepositoryCache.instance.remove(StorageKeys.examMapIndex);
+        RefreshBus.instance.notify(reason: 'global_sync');
+      }
+    } catch (error) {
+      unawaited(AppLog.write('Background sync error ($type): $error'));
+    }
   }
 
   static void _handleIncomingMessage(RemoteMessage message) {
     RefreshBus.instance.notify(reason: 'push_notification');
+    unawaited(_handleBackgroundDataSync(message.data));
     final title =
         message.notification?.title ?? message.data['title']?.toString();
     final body = message.notification?.body ?? message.data['body']?.toString();
