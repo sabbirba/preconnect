@@ -779,7 +779,7 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
           ExamVisibility.isUpcomingOrOngoingDateTime(fin, now: now)) {
         exams.add(
           _CountdownCardData(
-            title: fin.difference(now).inDays <= 3
+            title: fin.difference(now).inDays <= 7
                 ? '${s.courseCode} Final'
                 : 'Final Exam',
             targetDateTime: fin,
