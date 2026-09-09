@@ -35,10 +35,8 @@ sync_store_metadata() {
   notes="$(read_latest_changelog)"
 
   mkdir -p "${ROOT_DIR}/ios/fastlane/metadata/en-US"
-  mkdir -p "${ROOT_DIR}/android/fastlane/metadata/android/en-US/changelogs"
 
   printf '%s\n' "${notes}" >"${ROOT_DIR}/ios/fastlane/metadata/en-US/release_notes.txt"
-  printf '%s\n' "${notes}" >"${ROOT_DIR}/android/fastlane/metadata/android/en-US/changelogs/default.txt"
 }
 
 sync_local_properties() {

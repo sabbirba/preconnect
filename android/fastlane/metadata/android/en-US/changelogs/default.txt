@@ -1,4 +1,0 @@
-- Campus Printer & Email Printing: Added Print by Email support to submit documents and duplex print jobs from any device or off-campus.
-- Advising Helper: Real-time course advising with live seat filters, direct course add/drop, and one-tap section replacement support.
-- Student-WiFi: Streamlined Wi-Fi connection handling with a quieter, distraction-free connection experience.
-- UI & Layout Polish: Refined layout spacing, link styling, and campus printing guide instructions.

@@ -248,13 +248,16 @@ with open(manifest_path, 'w') as f:
     json.dump(d, f, indent=2)
 "
 
+find "${OUT_DIR}" -name '.DS_Store' -delete
+find "${FIREFOX_DIR}" -name '.DS_Store' -delete
+
 mkdir -p "$(dirname "${ZIP_OUT}")"
 rm -f "${ZIP_OUT}"
-(cd "${OUT_DIR}" && zip -9 -qr "${ZIP_OUT}" .)
+(cd "${OUT_DIR}" && zip -9 -qr "${ZIP_OUT}" . -x "*.DS_Store" -x "__MACOSX*")
 
 mkdir -p "$(dirname "${FIREFOX_ZIP}")"
 rm -f "${FIREFOX_ZIP}"
-(cd "${FIREFOX_DIR}" && zip -9 -qr "${FIREFOX_ZIP}" .)
+(cd "${FIREFOX_DIR}" && zip -9 -qr "${FIREFOX_ZIP}" . -x "*.DS_Store" -x "__MACOSX*")
 
 echo "Build complete!"
 echo "Chrome extension: ${OUT_DIR} (Archive: ${ZIP_OUT})"
