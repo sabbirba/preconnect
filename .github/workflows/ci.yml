@@ -59,8 +59,8 @@ jobs:
       - name: Audit License Compliance
         run: ./tool/check_licenses.sh
 
-      - name: Verify Version & Store Metadata Sync
-        run: ./tool/sync_versions.sh sync-metadata
+      - name: Verify Version Sync
+        run: ./tool/sync_versions.sh read
 
       - name: Verify Formatting
         run: dart format --output=none --set-exit-if-changed lib web test
