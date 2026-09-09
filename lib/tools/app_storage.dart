@@ -17,6 +17,7 @@ class AppStorage {
   static final AppStorage instance = AppStorage._();
   static SharedPreferences? _prefs;
   static final Map<String, String> _webCache = {};
+  static final Map<String, String> _memCache = {};
   static Directory? _cacheDir;
 
   static Future<void> initialize() async {
@@ -142,16 +143,21 @@ class AppStorage {
 
   Future<String?> getString(String key) async {
     if (kIsWeb) return _webCache[key];
+    if (_memCache.containsKey(key)) return _memCache[key];
     final prefs = await _getInstance();
     final raw = prefs.getString(key);
     if (raw == null) return null;
     if (raw.startsWith(_kFileCacheMarker)) {
-      return _readFromFile(key);
+      final val = await _readFromFile(key);
+      if (val != null) _memCache[key] = val;
+      return val;
     }
+    _memCache[key] = raw;
     return raw;
   }
 
   Future<void> setString(String key, String value) async {
+    _memCache[key] = value;
     if (kIsWeb) {
       _webCache[key] = value;
       await webExtensionStorageSet(key, value);
@@ -206,6 +212,7 @@ class AppStorage {
 
   Future<bool> containsKey(String key) async {
     if (kIsWeb) return _webCache.containsKey(key);
+    if (_memCache.containsKey(key)) return true;
     try {
       final prefs = await _getInstance();
       return prefs.containsKey(key);
@@ -215,6 +222,7 @@ class AppStorage {
   }
 
   Future<void> remove(String key) async {
+    _memCache.remove(key);
     if (kIsWeb) {
       _webCache.remove(key);
       await webExtensionStorageSet(key, null);
@@ -228,6 +236,7 @@ class AppStorage {
   }
 
   Future<void> clear() async {
+    _memCache.clear();
     if (kIsWeb) {
       final keys = _webCache.keys.toList();
       _webCache.clear();
@@ -253,11 +262,15 @@ class AppStorage {
 
   String? getStringSync(String key) {
     if (kIsWeb) return _webCache[key];
+    if (_memCache.containsKey(key)) return _memCache[key];
     final raw = _prefs?.getString(key);
     if (raw == null) return null;
     if (raw.startsWith(_kFileCacheMarker)) {
-      return _readFromFileSync(key);
+      final val = _readFromFileSync(key);
+      if (val != null) _memCache[key] = val;
+      return val;
     }
+    _memCache[key] = raw;
     return raw;
   }
 
