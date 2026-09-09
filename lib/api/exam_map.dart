@@ -6,6 +6,7 @@ import 'package:preconnect/api/repository_cache.dart';
 import 'package:preconnect/api/schedule.dart';
 import 'package:preconnect/model/section_info.dart';
 import 'package:preconnect/tools/app_storage.dart';
+import 'package:preconnect/tools/refresh_bus.dart';
 import 'package:preconnect/tools/storage_keys.dart';
 
 class ExamMapService {
@@ -16,9 +17,9 @@ class ExamMapService {
   final ApiClient _client = ApiClient();
   final RepositoryCache _repo = RepositoryCache.instance;
 
-  static const Duration _indexCacheTtl = Duration(days: 30);
-  static const Duration _examJsonCacheTtl = Duration(days: 3650);
-  static const String _indexCacheKey = 'exammap_index_v1';
+  static const Duration _indexCacheTtl = Duration(minutes: 5);
+  static const Duration _examJsonCacheTtl = Duration(minutes: 15);
+  static const String _indexCacheKey = StorageKeys.examMapIndex;
 
   static String sectionKey({
     required String courseCode,
@@ -37,11 +38,21 @@ class ExamMapService {
     required int semesterSessionId,
     bool forceRefresh = false,
   }) async {
-    final parsedKey = 'exammap_parsed_${semesterSessionId}_v1';
-    if (!forceRefresh) {
-      final cachedParsed = AppStorage.instance.getStringSync(parsedKey);
-      final decoded = ExamScheduleOverride.decodeOverrides(cachedParsed);
-      if (decoded.isNotEmpty) return decoded;
+    final parsedKey = StorageKeys.examMapParsed(semesterSessionId);
+    final cachedParsed = AppStorage.instance.getStringSync(parsedKey);
+    final decoded = ExamScheduleOverride.decodeOverrides(cachedParsed);
+
+    if (!forceRefresh && decoded.isNotEmpty) {
+      if (!_inFlightSemesterFetches.containsKey(semesterSessionId)) {
+        unawaited(
+          _revalidateSemesterInBackground(
+            semesterSessionId: semesterSessionId,
+            parsedKey: parsedKey,
+            currentOverrides: decoded,
+          ),
+        );
+      }
+      return decoded;
     }
 
     if (!forceRefresh &&
@@ -61,6 +72,53 @@ class ExamMapService {
     } finally {
       _inFlightSemesterFetches.remove(semesterSessionId);
     }
+  }
+
+  Future<void> _revalidateSemesterInBackground({
+    required int semesterSessionId,
+    required String parsedKey,
+    required Map<String, ExamScheduleOverride> currentOverrides,
+  }) async {
+    final future = _fetchAndMergeOverridesForSemester(
+      semesterSessionId: semesterSessionId,
+      forceRefresh: true,
+      parsedKey: parsedKey,
+    );
+    _inFlightSemesterFetches[semesterSessionId] = future;
+    try {
+      final updated = await future;
+      if (updated.isNotEmpty &&
+          !_areOverridesEqual(currentOverrides, updated)) {
+        RefreshBus.instance.notify(reason: 'exam_schedule');
+      }
+    } catch (_) {
+    } finally {
+      _inFlightSemesterFetches.remove(semesterSessionId);
+    }
+  }
+
+  bool _areOverridesEqual(
+    Map<String, ExamScheduleOverride> a,
+    Map<String, ExamScheduleOverride> b,
+  ) {
+    if (a.length != b.length) return false;
+    for (final entry in a.entries) {
+      final other = b[entry.key];
+      if (other == null) return false;
+      if (entry.value.midDate != other.midDate ||
+          entry.value.midStartTime != other.midStartTime ||
+          entry.value.midEndTime != other.midEndTime ||
+          entry.value.midRoomNumber != other.midRoomNumber ||
+          entry.value.midPdfUrl != other.midPdfUrl ||
+          entry.value.finalDate != other.finalDate ||
+          entry.value.finalStartTime != other.finalStartTime ||
+          entry.value.finalEndTime != other.finalEndTime ||
+          entry.value.finalRoomNumber != other.finalRoomNumber ||
+          entry.value.finalPdfUrl != other.finalPdfUrl) {
+        return false;
+      }
+    }
+    return true;
   }
 
   Future<Map<String, ExamScheduleOverride>> _fetchAndMergeOverridesForSemester({
@@ -113,7 +171,7 @@ class ExamMapService {
     if (midUrl != null && midUrl.isNotEmpty) {
       final midJson = await _fetchJsonWithCache(
         url: midUrl,
-        cacheKey: 'exammap_mid_${semesterSessionId}_v1',
+        cacheKey: StorageKeys.examMapMid(semesterSessionId),
         ttl: _examJsonCacheTtl,
         forceRefresh: forceRefresh,
       );
@@ -123,7 +181,7 @@ class ExamMapService {
     if (finalUrl != null && finalUrl.isNotEmpty) {
       final finalJson = await _fetchJsonWithCache(
         url: finalUrl,
-        cacheKey: 'exammap_final_${semesterSessionId}_v1',
+        cacheKey: StorageKeys.examMapFinal(semesterSessionId),
         ttl: _examJsonCacheTtl,
         forceRefresh: forceRefresh,
       );
@@ -666,7 +724,7 @@ class ExamScheduleService {
     int semesterSessionId,
   ) {
     final raw = AppStorage.instance.getStringSync(
-      'exammap_parsed_${semesterSessionId}_v1',
+      StorageKeys.examMapParsed(semesterSessionId),
     );
     return ExamScheduleOverride.decodeOverrides(raw);
   }
