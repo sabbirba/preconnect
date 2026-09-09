@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:preconnect/features/notifications/data/device_registry.dart';
+import 'package:preconnect/tools/preconnect_constants.dart';
 
 void main() {
   test(
@@ -37,4 +38,20 @@ void main() {
       expect(jsonDecode(requests[1].body), {'token': 'device-token'});
     },
   );
+
+  test('PreConnectPushConfig defaultTopics contains exact required topics', () {
+    expect(PreConnectPushConfig.defaultTopics, <String>[
+      'all',
+      'announcements',
+      'news',
+      'wifi',
+      'notice',
+      'printer',
+      'general',
+      'exam',
+      'holiday',
+      'materials',
+      'prerequisites',
+    ]);
+  });
 }
