@@ -7,6 +7,9 @@ class AvailabilityException implements Exception {
       'Unable to load library availability right now. Please try again shortly.';
 
   final String message;
+
+  @override
+  String toString() => message;
 }
 
 String availabilityMessage(Object? value) {
@@ -40,11 +43,16 @@ List<dynamic> parseAvailabilityResponse(int statusCode, String body) {
   if (decoded is List && decoded.isNotEmpty) {
     final first = decoded.first;
     if (first is Map && !first.containsKey('room')) {
-      throw AvailabilityException(
-        availabilityMessage(
-          first['message'] ?? first['detail'] ?? first['error'],
-        ),
+      final message = availabilityMessage(
+        first['message'] ?? first['detail'] ?? first['error'],
       );
+      if (statusCode == 200 &&
+          message != AvailabilityException.defaultMessage) {
+        return [
+          <String, dynamic>{'message': message},
+        ];
+      }
+      throw AvailabilityException(message);
     }
   }
   if (statusCode == 200 &&

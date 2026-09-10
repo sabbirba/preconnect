@@ -2,6 +2,14 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:preconnect/libsync/availability_response.dart';
 
 void main() {
+  test('successful informational responses remain messages for prefetch', () {
+    const message = 'You can reserve slots 7 days in advance';
+    expect(parseAvailabilityResponse(200, '[{"message":"$message"}]'), [
+      {'message': message},
+    ]);
+    expect(const AvailabilityException(message).toString(), message);
+  });
+
   test('preserves useful API messages from object and list responses', () {
     for (final body in [
       '{"message":"You can reserve slots 7 days in advance"}',

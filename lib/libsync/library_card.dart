@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
 import 'package:flutter_flip_card/flutter_flip_card.dart';
 import 'package:preconnect/pages/shared_widgets/bracu_logo.dart';
-import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/cached_image.dart';
 
 class LibraryCard extends StatelessWidget {
@@ -12,18 +11,26 @@ class LibraryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureFlipCard(
-      animationDuration: const Duration(milliseconds: 300),
-      axis: FlipAxis.vertical,
-      frontWidget: _LibraryCardFront(profile: profile),
-      backWidget: _LibraryCardBack(profile: profile),
+    return LayoutBuilder(
+      builder: (context, constraints) => GestureFlipCard(
+        animationDuration: const Duration(milliseconds: 300),
+        axis: FlipAxis.vertical,
+        frontWidget: _LibraryCardFront(
+          profile: profile,
+          photoWidth: constraints.maxWidth < 450
+              ? constraints.maxWidth * 0.20
+              : 90,
+        ),
+        backWidget: _LibraryCardBack(profile: profile),
+      ),
     );
   }
 }
 
 class _LibraryCardFront extends StatelessWidget {
-  const _LibraryCardFront({required this.profile});
+  const _LibraryCardFront({required this.profile, required this.photoWidth});
   final Map<String, dynamic> profile;
+  final double photoWidth;
 
   @override
   Widget build(BuildContext context) {
@@ -35,7 +42,6 @@ class _LibraryCardFront extends StatelessWidget {
 
     return Center(
       child: Container(
-        height: 192,
         clipBehavior: Clip.antiAlias,
         decoration: BoxDecoration(
           color: Colors.white,
@@ -80,7 +86,7 @@ class _LibraryCardFront extends StatelessWidget {
               height: 0,
               indent: 0,
             ),
-            Expanded(
+            IntrinsicHeight(
               child: Row(
                 children: [
                   Container(
@@ -113,9 +119,9 @@ class _LibraryCardFront extends StatelessWidget {
                           ),
                           Row(
                             crossAxisAlignment: CrossAxisAlignment.center,
+                            mainAxisSize: MainAxisSize.min,
                             children: [
                               Expanded(
-                                flex: 6,
                                 child: Column(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -139,25 +145,66 @@ class _LibraryCardFront extends StatelessWidget {
                                       ),
                                     ),
                                     const Gap(8),
-                                    _LibraryCardRow(
-                                      label: 'Student ID',
-                                      value: displayStudentId,
-                                      enableCopy: false,
-                                      textColor: const Color(0xFF1E293B),
-                                    ),
-                                    const Gap(5),
-                                    _LibraryCardRow(
-                                      label: 'Validity',
-                                      value: expireDate,
-                                      textColor: const Color(0xFF1E293B),
+                                    Table(
+                                      columnWidths: const {
+                                        0: FixedColumnWidth(74),
+                                        1: IntrinsicColumnWidth(),
+                                        2: FlexColumnWidth(),
+                                      },
+                                      defaultVerticalAlignment:
+                                          TableCellVerticalAlignment.top,
+                                      children: [
+                                        for (final detail in [
+                                          ('Student ID', displayStudentId),
+                                          ('Validity', expireDate),
+                                        ])
+                                          TableRow(
+                                            children: [
+                                              Padding(
+                                                padding: const EdgeInsets.only(
+                                                  bottom: 5,
+                                                ),
+                                                child: Text(
+                                                  detail.$1,
+                                                  style: const TextStyle(
+                                                    color: Color(0xFF64748B),
+                                                    fontSize: 9,
+                                                    fontWeight: FontWeight.w700,
+                                                  ),
+                                                ),
+                                              ),
+                                              const Padding(
+                                                padding: EdgeInsets.only(
+                                                  right: 8,
+                                                ),
+                                                child: Text(
+                                                  ':',
+                                                  style: TextStyle(
+                                                    color: Color(0xFF64748B),
+                                                    fontSize: 9,
+                                                    fontWeight: FontWeight.w700,
+                                                  ),
+                                                ),
+                                              ),
+                                              Text(
+                                                detail.$2,
+                                                style: const TextStyle(
+                                                  color: Color(0xFF1E293B),
+                                                  fontSize: 9,
+                                                  fontWeight: FontWeight.w800,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                      ],
                                     ),
                                   ],
                                 ),
                               ),
                               const Gap(12),
                               SizedBox(
-                                width: 90,
-                                height: 106,
+                                width: photoWidth,
+                                height: photoWidth * 106 / 90,
                                 child: Container(
                                   decoration: BoxDecoration(
                                     color: Colors.white,
@@ -168,8 +215,8 @@ class _LibraryCardFront extends StatelessWidget {
                                       ? const SizedBox.expand()
                                       : CachedImage(
                                           url: photoUrl,
-                                          width: 90,
-                                          height: 106,
+                                          width: photoWidth,
+                                          height: photoWidth * 106 / 90,
                                           fit: BoxFit.cover,
                                           alignment: Alignment.center,
                                           placeholder: const ColoredBox(
@@ -205,7 +252,6 @@ class _LibraryCardBack extends StatelessWidget {
 
     return Center(
       child: Container(
-        height: 192,
         clipBehavior: Clip.antiAlias,
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(16),
@@ -228,7 +274,7 @@ class _LibraryCardBack extends StatelessWidget {
               child: BracuLogo(width: 150, height: 130),
             ),
             Container(
-              padding: const EdgeInsets.fromLTRB(48, 12, 12, 12),
+              padding: const EdgeInsets.all(16),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -313,74 +359,6 @@ class _LibraryCardBack extends StatelessWidget {
           ],
         ),
       ),
-    );
-  }
-}
-
-class _LibraryCardRow extends StatelessWidget {
-  const _LibraryCardRow({
-    required this.label,
-    required this.value,
-    this.enableCopy = false,
-    this.textColor = const Color(0xFF0F172A),
-  });
-
-  final String label;
-  final String value;
-  final bool enableCopy;
-  final Color textColor;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        SizedBox(
-          width: 74,
-          child: Text(
-            label,
-            style: TextStyle(
-              color: textColor == Colors.white
-                  ? Colors.white.withAlpha(200)
-                  : const Color(0xFF64748B),
-              fontSize: 9,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ),
-        Text(
-          ':',
-          style: TextStyle(
-            color: textColor == Colors.white
-                ? Colors.white.withAlpha(200)
-                : const Color(0xFF64748B),
-            fontSize: 9,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-        const Gap(8),
-        Expanded(
-          child: enableCopy
-              ? GestureDetector(
-                  onTap: () => copyToClipboard(context, value),
-                  child: Text(
-                    value,
-                    style: TextStyle(
-                      color: textColor,
-                      fontSize: 9,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                )
-              : Text(
-                  value,
-                  style: TextStyle(
-                    color: textColor,
-                    fontSize: 9,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-        ),
-      ],
     );
   }
 }
