@@ -66,16 +66,16 @@ class StudentOverviewCard extends StatelessWidget {
                 if (showSupportButton) ...[
                   const Gap(8),
                   _SupportButton(onTap: onOpenSupport),
-                  const Gap(8),
-                  _IconButton(
-                    icon: Icons.launch_rounded,
-                    onTap: () => openExternalUrl(
-                      context,
-                      kPreConnectWebsiteUrl,
-                      failureMessage: 'Unable to open preconnect.app.',
-                    ),
-                  ),
                 ],
+                const Gap(8),
+                _IconButton(
+                  icon: Icons.launch_rounded,
+                  onTap: () => openExternalUrl(
+                    context,
+                    kPreConnectWebsiteUrl,
+                    failureMessage: 'Unable to open preconnect.app.',
+                  ),
+                ),
                 const Gap(8),
                 _IconButton(
                   icon: Icons.settings_outlined,
