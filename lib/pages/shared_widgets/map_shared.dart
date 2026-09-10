@@ -333,26 +333,6 @@ class CampusMapData {
         ? primaryPhoneFromList
         : normalizeCampusPhoneValue('${contactMap?['telephone'] ?? ''}');
 
-    final existingOfficeEmails = offices.expand((o) => o.emails).toSet();
-    final emergencyEmails = emergencies
-        .map((e) => e.email)
-        .where((e) => e.isNotEmpty)
-        .toSet();
-    final unassignedEmails = allEmails
-        .where(
-          (e) =>
-              !existingOfficeEmails.contains(e) && !emergencyEmails.contains(e),
-        )
-        .toList(growable: false);
-    if (unassignedEmails.isNotEmpty) {
-      offices.add(
-        CampusOfficeContact(
-          office: 'Other Inquiries',
-          emails: unassignedEmails,
-        ),
-      );
-    }
-
     return CampusMapData(
       campusName: '${json['campus_name'] ?? ''}'.trim(),
       address: '${json['address'] ?? ''}'.trim(),

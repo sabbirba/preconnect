@@ -94,14 +94,9 @@ void main() {
       expect(data.emergencyContacts.first.email, 'doctor@bracu.ac.bd');
       expect(data.emergencyContacts.first.hours, '24/7');
 
-      expect(data.offices.length, 2);
+      expect(data.offices.length, 1);
       expect(data.offices.first.office, 'IT Systems');
       expect(data.offices.first.emails, ['support@bracu.ac.bd']);
-      expect(data.offices.last.office, 'Other Inquiries');
-      expect(data.offices.last.emails, [
-        'info@bracu.ac.bd',
-        'unassigned@bracu.ac.bd',
-      ]);
     });
 
     test('normalizes campus phone value correctly', () {
