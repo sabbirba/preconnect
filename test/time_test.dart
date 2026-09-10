@@ -5,6 +5,56 @@ import 'package:preconnect/pages/shared_widgets/scroll_helper.dart';
 import 'package:preconnect/tools/time_utils.dart';
 
 void main() {
+  test('upcoming and current slots highlight until the end', () {
+    for (final minute in [29, 30, 45, 59]) {
+      expect(
+        BracuTime.isUpcomingOrCurrentSlot(
+          '09:30',
+          '10:00',
+          now: DateTime(2026, 9, 10, 9, minute),
+        ),
+        isTrue,
+      );
+    }
+    expect(
+      BracuTime.isUpcomingOrCurrentSlot(
+        '09:30',
+        '10:00',
+        now: DateTime(2026, 9, 10, 10),
+      ),
+      isFalse,
+    );
+  });
+
+  test('slot highlights support AM/PM and reject missing or invalid times', () {
+    final now = DateTime(2026, 9, 10, 13);
+    expect(
+      BracuTime.isUpcomingOrCurrentSlot('12:30 PM', '1:30 PM', now: now),
+      isTrue,
+    );
+    expect(BracuTime.isUpcomingOrCurrentSlot(null, '14:00', now: now), isFalse);
+    expect(
+      BracuTime.isUpcomingOrCurrentSlot('invalid', '14:00', now: now),
+      isFalse,
+    );
+    expect(
+      BracuTime.isUpcomingOrCurrentSlot('14:00', '12:00', now: now),
+      isFalse,
+    );
+    expect(
+      BracuTime.isUpcomingOrCurrentSlot('14:00', '14:00', now: now),
+      isFalse,
+    );
+    expect(
+      BracuTime.isUpcomingOrCurrentSlot('09:00', '10:00', now: now),
+      isFalse,
+    );
+    expect(
+      BracuTime.isUpcomingOrCurrentSlot('14:00', '15:00', now: now),
+      isTrue,
+    );
+  });
+
   CalendarEntry event({
     required String id,
     required String date,

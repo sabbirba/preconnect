@@ -38,6 +38,8 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
   static const _primary = Color(0xFF1E6BE3);
   static const _accent = Color(0xFF22B573);
 
+  int _scheduleMinute = DateTime.now().minute;
+  Timer? _scheduleTimer;
   late Future<_HomeData> _future;
   _HomeData? _latestData;
   bool _isRefreshing = false;
@@ -107,11 +109,18 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
       unawaited(_consumePostConnectionEvent());
     }
 
+    _scheduleTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      final now = DateTime.now();
+      if (mounted && now.minute != _scheduleMinute) {
+        setState(() => _scheduleMinute = now.minute);
+      }
+    });
     bindRefreshBus(_onRefreshSignal);
   }
 
   @override
   void dispose() {
+    _scheduleTimer?.cancel();
     unbindRefreshBus(_onRefreshSignal);
     _networkStatusSubscription?.cancel().catchError((_) {});
 

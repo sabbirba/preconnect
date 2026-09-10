@@ -147,6 +147,19 @@ class BracuTime {
     return hm.$1 * 60 + hm.$2;
   }
 
+  static bool isUpcomingOrCurrentSlot(
+    String? start,
+    String? end, {
+    DateTime? now,
+  }) {
+    final startMinutes = toMinutes(start);
+    final endMinutes = toMinutes(end);
+    if (startMinutes == null || endMinutes == null) return false;
+    final current = now ?? DateTime.now();
+    final currentMinutes = current.hour * 60 + current.minute;
+    return startMinutes < endMinutes && currentMinutes < endMinutes;
+  }
+
   static String format(String? raw) {
     if (raw == null || raw.trim().isEmpty) return '';
     final parsed = parseTime(raw);

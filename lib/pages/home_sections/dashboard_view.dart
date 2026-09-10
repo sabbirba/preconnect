@@ -243,36 +243,37 @@ extension _HomeDashboardView on _HomeDashboardState {
                                   ),
                                   const Gap(12),
                                   if (todayExams.isNotEmpty)
-                                    ...todayExams
-                                        .take(3)
-                                        .map(
-                                          (exam) => Padding(
-                                            padding: const EdgeInsets.only(
-                                              bottom: 12,
+                                    ...todayExams.map(
+                                      (exam) => Padding(
+                                        padding: const EdgeInsets.only(
+                                          bottom: 12,
+                                        ),
+                                        child: InkWell(
+                                          onTap: () => widget.onNavigate(
+                                            HomeTab.examSchedule,
+                                          ),
+                                          child: _ScheduleTile(
+                                            title:
+                                                '${exam.courseCode} ${exam.type}',
+                                            subtitle: formatTimeRange(
+                                              exam.startTime,
+                                              exam.endTime,
                                             ),
-                                            child: InkWell(
-                                              onTap: () => widget.onNavigate(
-                                                HomeTab.examSchedule,
-                                              ),
-                                              child: _ScheduleTile(
-                                                title:
-                                                    '${exam.courseCode} ${exam.type}',
-                                                subtitle: formatTimeRange(
+                                            trailing: exam.room,
+                                            trailingSub: exam.faculties,
+                                            badge: formatSectionBadge(
+                                              exam.sectionName,
+                                            ),
+                                            color: _HomeDashboardState._accent,
+                                            isHighlighted:
+                                                BracuTime.isUpcomingOrCurrentSlot(
                                                   exam.startTime,
                                                   exam.endTime,
                                                 ),
-                                                trailing: exam.room,
-                                                trailingSub: exam.faculties,
-                                                badge: formatSectionBadge(
-                                                  exam.sectionName,
-                                                ),
-                                                color:
-                                                    _HomeDashboardState._accent,
-                                                isHighlighted: false,
-                                              ),
-                                            ),
                                           ),
                                         ),
+                                      ),
+                                    ),
                                   if (todayExams.isEmpty &&
                                       (isTodayHoliday ||
                                           visibleEntries.isEmpty))
@@ -296,35 +297,36 @@ extension _HomeDashboardView on _HomeDashboardState {
                                       ),
                                     )
                                   else if (visibleEntries.isNotEmpty)
-                                    ...visibleEntries
-                                        .take(3)
-                                        .map(
-                                          (entry) => Padding(
-                                            padding: const EdgeInsets.only(
-                                              bottom: 12,
+                                    ...visibleEntries.map(
+                                      (entry) => Padding(
+                                        padding: const EdgeInsets.only(
+                                          bottom: 12,
+                                        ),
+                                        child: InkWell(
+                                          onTap: () => widget.onNavigate(
+                                            HomeTab.studentSchedule,
+                                          ),
+                                          child: _ScheduleTile(
+                                            title: entry.courseCode,
+                                            subtitle: formatTimeRange(
+                                              entry.startTime,
+                                              entry.endTime,
                                             ),
-                                            child: InkWell(
-                                              onTap: () => widget.onNavigate(
-                                                HomeTab.studentSchedule,
-                                              ),
-                                              child: _ScheduleTile(
-                                                title: entry.courseCode,
-                                                subtitle: formatTimeRange(
+                                            trailing: entry.roomNumber,
+                                            trailingSub: entry.faculties,
+                                            badge: formatSectionBadge(
+                                              entry.sectionName,
+                                            ),
+                                            color: _HomeDashboardState._primary,
+                                            isHighlighted:
+                                                BracuTime.isUpcomingOrCurrentSlot(
                                                   entry.startTime,
                                                   entry.endTime,
                                                 ),
-                                                trailing: entry.roomNumber,
-                                                trailingSub: entry.faculties,
-                                                badge: formatSectionBadge(
-                                                  entry.sectionName,
-                                                ),
-                                                color: _HomeDashboardState
-                                                    ._primary,
-                                                isHighlighted: false,
-                                              ),
-                                            ),
                                           ),
                                         ),
+                                      ),
+                                    ),
                                 ],
                                 if (cardVisibility.showRamadanCard && isRamadan)
                                   Padding(
