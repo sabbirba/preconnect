@@ -227,6 +227,14 @@ flutter test
 
 The test suite covers schedules, authentication, token persistence, logout, cache invalidation, notifications, and platform channels. Add focused tests when you change parsing, models, service behavior, or shared helpers.
 
+## CI Checks and Reports
+
+CI runs for Dart, native platform, web, asset, dependency, tooling, and workflow changes. Flutter Checks runs formatting, analysis, version validation, and the existing compliance scripts. Independent test and build jobs continue collecting results when another job fails.
+
+The VM job runs every test in `test/` with line coverage. The Chrome job runs the shared OAuth, token refresh, schedule, time, and availability suites; native storage mocks and device-specific tests remain in the VM job. These tests use synthetic fixtures and mocks, not private student data or live authenticated accounts. Build checks compile web, both packaged extensions, Android APK/AAB, unsigned iOS, and unsigned macOS. Compilation does not replace device integration testing.
+
+Download `flutter-tests-vm` or `flutter-tests-chrome` from the Actions run for JSON test events, readable logs, the Flutter version, dependency graph, and commit ID. The VM artifact also includes `coverage/lcov.info` and `coverage/html/index.html`; the run summary shows measured line coverage. Coverage includes files loaded by the suite, so it is not a whole-repository coverage percentage. Build artifacts named `flutter-build-<target>` contain logs and output sizes in KiB. Reports are retained for 14 days, including available diagnostics from failed runs. CI uses the committed dependency lockfile and example configuration without production credentials.
+
 ## Local Build Smoke Checks
 
 These are useful before changes that touch platform config, release scripts, extension files, or native code.
