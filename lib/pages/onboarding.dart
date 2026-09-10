@@ -360,7 +360,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
                           iconColor: BracuPalette.accent,
                           title: 'Open PreConnect Website',
                           subtitle:
-                              'Visit our official website for more things.',
+                              'Visit our website for more services',
                           onTap: () =>
                               _openLink(context, ApiConfig.websiteBase),
                         ),
