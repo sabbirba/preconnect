@@ -383,7 +383,7 @@ class _FriendSchedulePageState extends State<FriendSchedulePage>
       title: 'Edit Nickname',
       initialChildSize: 0.40,
       builder: (sheetContext, textPrimary, textSecondary) {
-        final dragController = bracuBottomSheetScrollController(sheetContext);
+        final dragController = bottomSheetScrollController(sheetContext);
         return ListView(
           controller: dragController,
           physics: const ClampingScrollPhysics(),
@@ -393,7 +393,7 @@ class _FriendSchedulePageState extends State<FriendSchedulePage>
               controller: controller,
               autofocus: true,
               style: TextStyle(color: textPrimary, fontFamily: 'Outfit'),
-              decoration: bracuInputDecoration(
+              decoration: appInputDecoration(
                 context,
                 hintText: item.friend.name.isEmpty
                     ? 'Enter nickname'

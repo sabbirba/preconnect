@@ -319,7 +319,7 @@ Future<void> showCampusMapBottomSheet(
               ? (values[1] as String?)
               : null;
           if (mapData == null) {
-            final sheetScroll = bracuBottomSheetScrollController(context);
+            final sheetScroll = bottomSheetScrollController(context);
             return ListView(
               controller: sheetScroll,
               physics: const ClampingScrollPhysics(),
@@ -335,7 +335,7 @@ Future<void> showCampusMapBottomSheet(
               ],
             );
           }
-          final sheetScroll = bracuBottomSheetScrollController(context);
+          final sheetScroll = bottomSheetScrollController(context);
 
           Widget sectionTitle(String value) => Padding(
             padding: const EdgeInsets.only(top: 16, bottom: 8),
@@ -379,7 +379,7 @@ Future<void> showCampusMapBottomSheet(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     if (!kIsWeb && mapData.mapImageUrl.isNotEmpty) ...[
-                      BracuImageCarousel(
+                      ImageCarousel(
                         imageUrls: <String>[mapData.mapImageUrl],
                         borderRadius: 10,
                         aspectRatio: 16 / 10,
@@ -478,7 +478,7 @@ Future<void> showCampusMapBottomSheet(
               ),
               if (mapData.images.isNotEmpty) ...[
                 sectionTitle('Campus Gallery'),
-                BracuImageCarousel(imageUrls: mapData.images, borderRadius: 12),
+                ImageCarousel(imageUrls: mapData.images, borderRadius: 12),
               ],
               if (mapData.highlights.isNotEmpty) ...[
                 sectionTitle('Highlights'),

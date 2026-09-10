@@ -4,7 +4,7 @@ import 'package:http/testing.dart';
 import 'package:preconnect/tools/token_refresh.dart';
 
 void main() {
-  group('refreshBracuSessionTokens', () {
+  group('refreshSessionTokens', () {
     test('persists a complete successful refresh', () async {
       String? persistedAccess;
       String? persistedRefresh;
@@ -21,7 +21,7 @@ void main() {
         );
       });
 
-      final status = await refreshBracuSessionTokens(
+      final status = await refreshSessionTokens(
         refreshToken: 'old-refresh',
         client: client,
         persistTokens: (access, refresh, id) async {
@@ -41,7 +41,7 @@ void main() {
 
     test('clears tokens when the server rejects the refresh token', () async {
       var clearCount = 0;
-      final status = await refreshBracuSessionTokens(
+      final status = await refreshSessionTokens(
         refreshToken: 'expired',
         client: MockClient((_) async => http.Response('invalid', 401)),
         persistTokens: (_, _, _) async {},
@@ -54,13 +54,13 @@ void main() {
 
     test('keeps tokens for retryable server and network failures', () async {
       var clearCount = 0;
-      final serverFailure = await refreshBracuSessionTokens(
+      final serverFailure = await refreshSessionTokens(
         refreshToken: 'refresh',
         client: MockClient((_) async => http.Response('unavailable', 503)),
         persistTokens: (_, _, _) async {},
         clearTokens: () async => clearCount++,
       );
-      final networkFailure = await refreshBracuSessionTokens(
+      final networkFailure = await refreshSessionTokens(
         refreshToken: 'refresh',
         client: MockClient((_) async => throw Exception('offline')),
         persistTokens: (_, _, _) async {},

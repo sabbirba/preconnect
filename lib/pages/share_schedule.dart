@@ -309,7 +309,7 @@ class _ShareSchedulePageState extends State<ShareSchedulePage>
           padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
           child: RepaintBoundary(
             key: _qrKey,
-            child: BracuQrCard(data: _base64Data!),
+            child: QrCard(data: _base64Data!),
           ),
         ),
         Padding(

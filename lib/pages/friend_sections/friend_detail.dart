@@ -322,7 +322,7 @@ class _FriendDetailPageState extends State<FriendDetailPage> {
                 if (widget.friend.courses.isNotEmpty)
                   IconButton(
                     tooltip: 'Compare schedules',
-                    style: bracuCompactIconButtonStyle(
+                    style: appCompactIconButtonStyle(
                       foregroundColor: BracuPalette.primary,
                       borderColor: BracuPalette.primary.withValues(alpha: 0.6),
                       borderRadius: 12,
@@ -577,7 +577,7 @@ class _FriendDetailPageState extends State<FriendDetailPage> {
                   children: [
                     Expanded(
                       child: Text(
-                        BracuExamCard.formatExamDate(resolved.midDate),
+                        ExamCard.formatExamDate(resolved.midDate),
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w600,
@@ -597,7 +597,7 @@ class _FriendDetailPageState extends State<FriendDetailPage> {
                   ],
                 ),
                 const Gap(6),
-                BracuExamCard(
+                ExamCard(
                   courseCode: course.courseCode,
                   sectionName: course.sectionName,
                   startTime: resolved.midStartTime,
@@ -626,7 +626,7 @@ class _FriendDetailPageState extends State<FriendDetailPage> {
                   children: [
                     Expanded(
                       child: Text(
-                        BracuExamCard.formatExamDate(resolved.finalDate),
+                        ExamCard.formatExamDate(resolved.finalDate),
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w600,
@@ -646,7 +646,7 @@ class _FriendDetailPageState extends State<FriendDetailPage> {
                   ],
                 ),
                 const Gap(6),
-                BracuExamCard(
+                ExamCard(
                   courseCode: course.courseCode,
                   sectionName: course.sectionName,
                   startTime: resolved.finalStartTime,

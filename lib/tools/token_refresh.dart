@@ -9,7 +9,7 @@ import 'package:preconnect/tools/extension_config.dart';
 
 enum TokenRefreshStatus { refreshed, invalidSession, retryableFailure }
 
-Future<TokenRefreshStatus> refreshBracuSessionTokens({
+Future<TokenRefreshStatus> refreshSessionTokens({
   required String refreshToken,
   required Future<void> Function(
     String accessToken,

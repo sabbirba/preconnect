@@ -572,7 +572,7 @@ class _LibSyncPageState extends State<LibSyncPage>
                     );
                   }(),
                   const Gap(16),
-                  BracuActionBannerCard(
+                  ActionBannerCard(
                     icon: Icons.calendar_month_outlined,
                     title: 'Space Book',
                     subtitle: 'Book available spaces and slots',

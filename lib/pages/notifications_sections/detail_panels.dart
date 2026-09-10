@@ -30,7 +30,7 @@ class ScraperNotificationDetailPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final dragController = bracuBottomSheetScrollController(context);
+    final dragController = bottomSheetScrollController(context);
     return ListView(
       controller: dragController,
       physics: const ClampingScrollPhysics(),
@@ -46,7 +46,7 @@ class ScraperNotificationDetailPanel extends StatelessWidget {
         ),
         if (_imageUrls.isNotEmpty) ...[
           const Gap(12),
-          BracuImageCarousel(imageUrls: _imageUrls, borderRadius: 14),
+          ImageCarousel(imageUrls: _imageUrls, borderRadius: 14),
         ],
         const Gap(16),
         Text(
@@ -143,7 +143,7 @@ class _ConnectNotificationDetailPanelState
 
   @override
   Widget build(BuildContext context) {
-    final dragController = bracuBottomSheetScrollController(context);
+    final dragController = bottomSheetScrollController(context);
     return FutureBuilder<ConnectNotificationDetail>(
       future: _future,
       builder: (context, snapshot) {

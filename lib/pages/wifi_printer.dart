@@ -921,7 +921,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
         ),
         IconButton(
           onPressed: () => _showHelpBottomSheet(context),
-          style: bracuCompactIconButtonStyle(
+          style: appCompactIconButtonStyle(
             foregroundColor: BracuPalette.primary,
             borderColor: Colors.transparent,
             padding: EdgeInsets.zero,
@@ -1232,7 +1232,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
       title: 'Printer Instructions',
       initialChildSize: 0.75,
       builder: (sheetContext, textPrimary, textSecondary) {
-        final dragController = bracuBottomSheetScrollController(sheetContext);
+        final dragController = bottomSheetScrollController(sheetContext);
         return ListView(
           controller: dragController,
           physics: const ClampingScrollPhysics(),

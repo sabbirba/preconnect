@@ -381,8 +381,8 @@ class LibSyncApiClient extends http.BaseClient {
 
   String _generateRandomIP() {
     final random = Random();
-    final bracuSubnets = ['103.67.66', '103.67.67'];
-    final baseSubnet = bracuSubnets[random.nextInt(bracuSubnets.length)];
+    final campusSubnets = ['103.67.66', '103.67.67'];
+    final baseSubnet = campusSubnets[random.nextInt(campusSubnets.length)];
     final lastOctet = random.nextInt(254) + 1;
     return '$baseSubnet.$lastOctet';
   }

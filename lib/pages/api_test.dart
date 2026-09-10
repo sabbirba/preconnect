@@ -305,7 +305,7 @@ class _ApiTestPageState extends State<ApiTestPage> {
               fontSize: 14,
             ),
             dropdownColor: const Color(0xFF1E1E1E),
-            decoration: bracuInputDecoration(context),
+            decoration: appInputDecoration(context),
             items: _methods
                 .map((m) => DropdownMenuItem<String>(value: m, child: Text(m)))
                 .toList(),
@@ -323,7 +323,7 @@ class _ApiTestPageState extends State<ApiTestPage> {
               color: BracuPalette.textPrimary(context),
               fontSize: 14,
             ),
-            decoration: bracuInputDecoration(
+            decoration: appInputDecoration(
               context,
               hintText: '${ApiConfig.connectApiBase}/adp/v1/staffs/7487',
             ),

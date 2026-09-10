@@ -347,7 +347,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
                           color: const Color(0xFF0EA5A4),
                         ),
                         const Gap(12),
-                        BracuActionBannerCard(
+                        ActionBannerCard(
                           iconWidget: const PreConnectGitHubIcon(size: 24),
                           title: 'Open GitHub Repository',
                           subtitle: 'Explore the source code and contribute',
@@ -355,7 +355,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
                               _openLink(context, kPreConnectRepositoryUrl),
                         ),
                         const Gap(12),
-                        BracuActionBannerCard(
+                        ActionBannerCard(
                           icon: Icons.public_rounded,
                           iconColor: BracuPalette.accent,
                           title: 'Open PreConnect Website',

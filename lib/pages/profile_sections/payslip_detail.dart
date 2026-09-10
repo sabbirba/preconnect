@@ -146,7 +146,7 @@ class _PayslipDetailSheetState extends State<PayslipDetailSheet> {
       );
     }
 
-    final scrollController = bracuBottomSheetScrollController(context);
+    final scrollController = bottomSheetScrollController(context);
     return ListView(
       controller: scrollController,
       physics: const ClampingScrollPhysics(),

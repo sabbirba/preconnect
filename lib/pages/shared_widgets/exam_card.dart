@@ -4,8 +4,8 @@ import 'package:intl/intl.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/time_utils.dart';
 
-class BracuExamCard extends StatelessWidget {
-  const BracuExamCard({
+class ExamCard extends StatelessWidget {
+  const ExamCard({
     super.key,
     required this.courseCode,
     required this.sectionName,

@@ -65,7 +65,7 @@ Future<void> showBracuFacultyScheduleSheet(
     title: displayTitle,
     subtitle: 'Faculty Schedule',
     builder: (sheetContext, textPrimary, textSecondary) {
-      final dragController = bracuBottomSheetScrollController(sheetContext);
+      final dragController = bottomSheetScrollController(sheetContext);
       if (sortedItems.isEmpty) {
         return Padding(
           padding: const EdgeInsets.symmetric(vertical: 24),

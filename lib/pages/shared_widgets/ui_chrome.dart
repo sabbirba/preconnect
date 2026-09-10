@@ -1071,7 +1071,7 @@ class ShowMoreButton extends StatelessWidget {
     return Center(
       child: OutlinedButton(
         onPressed: onPressed,
-        style: bracuOutlinedButtonStyle(
+        style: appOutlinedButtonStyle(
           context,
           padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
           borderRadius: 16,

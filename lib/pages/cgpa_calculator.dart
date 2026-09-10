@@ -126,7 +126,7 @@ class _CgpaCalculatorPageState extends State<CgpaCalculatorPage> {
       subtitle: 'Grade Calculator',
       icon: Icons.calculate_outlined,
       body: ListView(
-        padding: kBracuPageListPadding,
+        padding: kPageListPadding,
         children: [
           _buildSummaryCard(context, expectedResult),
           if (autoRetakeCurrentCourses.isNotEmpty ||
@@ -642,7 +642,7 @@ class _CgpaCalculatorPageState extends State<CgpaCalculatorPage> {
         ),
       ],
       builder: (sheetContext, textPrimary, textSecondary) {
-        final dragController = bracuBottomSheetScrollController(sheetContext);
+        final dragController = bottomSheetScrollController(sheetContext);
         return ListView(
           controller: dragController,
           physics: const ClampingScrollPhysics(),

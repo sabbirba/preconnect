@@ -240,7 +240,7 @@ class _TransportRouteCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return BracuActionBannerCard(
+    return ActionBannerCard(
       icon: Icons.directions_bus_rounded,
       title: route.displayTitle,
       onTap: onTap,

@@ -332,22 +332,10 @@ class _MaterialsPageState extends State<MaterialsPage> {
               const Gap(12),
               _buildBody(),
               if (selectedSrc == null)
-                SafeArea(
+                const SafeArea(
                   top: false,
-                  minimum: const EdgeInsets.symmetric(vertical: 12),
-                  child: BracuActionBannerCard(
-                    iconWidget: const PreConnectDiscordIcon(
-                      size: 24,
-                      color: BracuPalette.primary,
-                    ),
-                    title: 'Share Course Materials',
-                    subtitle: 'Help fellow students by submitting yours.',
-                    onTap: () => openExternalUrl(
-                      context,
-                      kPreConnectDiscordUrl,
-                      failureMessage: 'Unable to open Discord.',
-                    ),
-                  ),
+                  minimum: EdgeInsets.symmetric(vertical: 12),
+                  child: _MaterialsSubmissionCard(),
                 ),
             ],
           ),
@@ -578,4 +566,103 @@ IconData _fileIcon(String path) {
     'epub' || 'mobi' => Icons.menu_book_outlined,
     _ => Icons.insert_drive_file_outlined,
   };
+}
+
+class _MaterialsSubmissionCard extends StatelessWidget {
+  const _MaterialsSubmissionCard();
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final borderColor = BracuPalette.textSecondary(
+      context,
+    ).withValues(alpha: isDark ? 0.22 : 0.16);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: Text(
+            'Help fellow students by submitting yours.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+              color: BracuPalette.textSecondary(context),
+            ),
+          ),
+        ),
+        Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: borderColor),
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Expanded(
+                  child: ActionBannerCard(
+                    centered: true,
+                    showBorder: false,
+                    showTrailingIcon: false,
+                    iconWidget: const PreConnectDiscordIcon(
+                      size: 22,
+                      color: Color.fromRGBO(88, 101, 242, 1),
+                    ),
+                    title: 'Share',
+                    subtitle: 'Via Discord',
+                    onTap: () => openExternalUrl(
+                      context,
+                      kPreConnectDiscordUrl,
+                      failureMessage: 'Unable to open Discord.',
+                    ),
+                  ),
+                ),
+                Container(width: 1, color: borderColor),
+                Expanded(
+                  child: ActionBannerCard(
+                    centered: true,
+                    showBorder: false,
+                    showTrailingIcon: false,
+                    iconWidget: const PreConnectGitHubIcon(size: 22),
+                    title: 'Submit',
+                    subtitle: 'Via GitHub',
+                    onTap: () => openExternalUrl(
+                      context,
+                      kPreConnectMaterialsIssueUrl,
+                      failureMessage: 'Unable to open GitHub Issues.',
+                    ),
+                  ),
+                ),
+                Container(width: 1, color: borderColor),
+                Expanded(
+                  child: ActionBannerCard(
+                    centered: true,
+                    showBorder: false,
+                    showTrailingIcon: false,
+                    iconWidget: const Icon(
+                      Icons.mail_outline_rounded,
+                      size: 22,
+                      color: BracuPalette.primary,
+                    ),
+                    title: 'Send',
+                    subtitle: 'Via Email',
+                    onTap: () => openExternalUrl(
+                      context,
+                      'mailto:mail@preconnect.app?subject=Course%20Materials%20Submission',
+                      failureMessage: 'Unable to open email client.',
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
 }

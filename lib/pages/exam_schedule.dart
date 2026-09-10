@@ -558,7 +558,7 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
                         children: [
                           Expanded(
                             child: Text(
-                              BracuExamCard.formatExamDate(midDate(section)),
+                              ExamCard.formatExamDate(midDate(section)),
                               style: TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w600,
@@ -589,7 +589,7 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
                             }
                           },
                           child: RepaintBoundary(
-                            child: BracuExamCard(
+                            child: ExamCard(
                               highlightKey: isHighlighted
                                   ? _highlightScroll.highlightKey
                                   : null,
@@ -629,7 +629,7 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
                         children: [
                           Expanded(
                             child: Text(
-                              BracuExamCard.formatExamDate(finalDate(section)),
+                              ExamCard.formatExamDate(finalDate(section)),
                               style: TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w600,
@@ -660,7 +660,7 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
                             }
                           },
                           child: RepaintBoundary(
-                            child: BracuExamCard(
+                            child: ExamCard(
                               highlightKey: isHighlighted
                                   ? _highlightScroll.highlightKey
                                   : null,

@@ -73,7 +73,7 @@ extension _HomeDashboardView on _HomeDashboardState {
                               ),
                               child: _HomeDashboardLoadingShell(
                                 onOpenSupport: () =>
-                                    showBracuFundingSupportSheet(context),
+                                    showFundingSupportSheet(context),
                                 onOpenSettings: () =>
                                     widget.onNavigate(HomeTab.settings),
                                 onLogout: widget.onLogout,
@@ -174,7 +174,7 @@ extension _HomeDashboardView on _HomeDashboardState {
                                   currentSessionSemesterId:
                                       profile['currentSessionSemesterId'] ?? '',
                                   onOpenSupport: () =>
-                                      showBracuFundingSupportSheet(context),
+                                      showFundingSupportSheet(context),
                                   onOpenSettings: () =>
                                       widget.onNavigate(HomeTab.settings),
                                   onLogout: widget.onLogout,
@@ -528,7 +528,7 @@ extension _HomeDashboardView on _HomeDashboardState {
                                     child: _CampusMapLoadingSkeleton(),
                                   ),
                                 if (cardVisibility.showCampusMapContacts) ...[
-                                  BracuActionBannerCard(
+                                  ActionBannerCard(
                                     icon: Icons.location_on_rounded,
                                     title: 'Campus Map & Contacts',
                                     subtitle: 'Location and emergency contacts',

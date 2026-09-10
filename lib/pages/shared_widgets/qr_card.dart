@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:barcode_widget/barcode_widget.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 
-class BracuQrCard extends StatelessWidget {
-  const BracuQrCard({required this.data, super.key});
+class QrCard extends StatelessWidget {
+  const QrCard({required this.data, super.key});
 
   final String data;
 

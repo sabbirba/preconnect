@@ -375,7 +375,7 @@ class _DeviceDiagnosticsPageState extends State<DeviceDiagnosticsPage> {
 
       items.add(const Gap(24));
       items.add(
-        BracuActionBannerCard(
+        ActionBannerCard(
           icon: Icons.bug_report_outlined,
           title: 'Export Debug Logs',
           subtitle: 'Share diagnostic logs with developers',
@@ -412,7 +412,7 @@ class DeviceDiagnosticsButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return BracuActionBannerCard(
+    return ActionBannerCard(
       icon: Icons.developer_board_rounded,
       title: 'Device Diagnostics',
       subtitle: 'View system specs and debug logs',

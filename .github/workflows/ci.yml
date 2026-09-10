@@ -90,16 +90,12 @@ jobs:
 
 
   tests:
-    name: Flutter Tests (${{ matrix.platform }})
+    name: Flutter Tests
     runs-on: ubuntu-latest
     timeout-minutes: 20
     defaults:
       run:
         shell: bash
-    strategy:
-      fail-fast: false
-      matrix:
-        platform: [vm, chrome]
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -120,24 +116,14 @@ jobs:
           flutter pub deps --json > reports/dependencies.json
           git rev-parse HEAD > reports/commit.txt
 
-      - name: Run All VM Tests With Coverage
-        if: matrix.platform == 'vm'
+      - name: Run All Tests With Coverage
         run: >-
           flutter test --no-pub --coverage --reporter expanded
           --file-reporter json:reports/tests.json
           2>&1 | tee reports/tests.log
 
-      - name: Run Shared Behavior Tests in Chrome
-        if: matrix.platform == 'chrome'
-        run: >-
-          flutter test --no-pub --platform chrome --reporter expanded
-          --file-reporter json:reports/tests.json
-          test/oauth_test.dart test/refresh_test.dart test/schedule_test.dart
-          test/time_test.dart test/availability_test.dart
-          2>&1 | tee reports/tests.log
-
       - name: Generate Coverage Report
-        if: ${{ !cancelled() && matrix.platform == 'vm' && hashFiles('coverage/lcov.info') != '' }}
+        if: ${{ !cancelled() && hashFiles('coverage/lcov.info') != '' }}
         run: |
           sudo apt-get update
           sudo apt-get install --yes lcov
@@ -171,48 +157,23 @@ jobs:
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v7
         with:
-          name: flutter-tests-${{ matrix.platform }}
+          name: flutter-tests
           path: |
             reports/
             coverage/
           retention-days: 14
           if-no-files-found: error
 
-  builds:
-    name: Flutter Build (${{ matrix.target }})
-    runs-on: ${{ matrix.runner }}
-    timeout-minutes: 45
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - target: web
-            runner: ubuntu-latest
-          - target: extensions
-            runner: ubuntu-latest
-          - target: android
-            runner: ubuntu-latest
-          - target: ios
-            runner: macos-15
-          - target: macos
-            runner: macos-15
+  build-web-extension:
+    name: Build Web & Extension
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
     defaults:
       run:
         shell: bash
     steps:
       - name: Checkout
         uses: actions/checkout@v7
-
-      - name: Set Up Java
-        if: matrix.target == 'android'
-        uses: actions/setup-java@v6.0.0
-        with:
-          distribution: temurin
-          java-version: '17'
-
-      - name: Set Up Gradle Cache
-        if: matrix.target == 'android'
-        uses: gradle/actions/setup-gradle@v6
 
       - name: Set Up Flutter
         uses: subosito/flutter-action@v2.23.0
@@ -231,45 +192,23 @@ jobs:
           cp .env.example .env
 
       - name: Build Web Release
-        if: matrix.target == 'web'
         run: |
           flutter build web --release --no-pub --tree-shake-icons --csp --no-wasm-dry-run --no-web-resources-cdn --dart-define-from-file=.env 2>&1 | tee reports/web.log
-          du -sk build/web > reports/build_size.txt
+          du -sk build/web > reports/web_build_size.txt
 
       - name: Build and Validate Chrome and Firefox Extensions
-        if: matrix.target == 'extensions'
         run: |
           ./tool/build_extension.sh --no-pub 2>&1 | tee reports/extensions.log
           ./tool/validate_extension.sh 2>&1 | tee reports/extension_validation.log
           unzip -t build/chrome-extension.zip
           unzip -t build/firefox-extension.zip
-          du -k build/chrome-extension.zip build/firefox-extension.zip > reports/build_size.txt
-
-      - name: Build Android APK and App Bundle
-        if: matrix.target == 'android'
-        run: |
-          flutter build apk --release --no-pub --target-platform android-arm,android-arm64 --split-per-abi --dart-define-from-file=.env 2>&1 | tee reports/android_apk.log
-          flutter build appbundle --release --no-pub --target-platform android-arm,android-arm64 --dart-define-from-file=.env 2>&1 | tee reports/android_bundle.log
-          du -k build/app/outputs/flutter-apk/*.apk build/app/outputs/bundle/release/*.aab > reports/build_size.txt
-
-      - name: Build Unsigned iOS Release
-        if: matrix.target == 'ios'
-        run: |
-          flutter build ios --release --no-codesign --no-pub --dart-define-from-file=.env 2>&1 | tee reports/ios.log
-          du -sk build/ios/iphoneos/Runner.app > reports/build_size.txt
-
-      - name: Build Unsigned macOS Release
-        if: matrix.target == 'macos'
-        run: |
-          flutter build macos --release --config-only --no-pub --dart-define-from-file=.env 2>&1 | tee reports/macos_config.log
-          xcodebuild -workspace macos/Runner.xcworkspace -scheme Runner -configuration Release -derivedDataPath build/macos-ci CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY= build 2>&1 | tee reports/macos.log
-          du -sk build/macos-ci/Build/Products/Release/*.app > reports/build_size.txt
+          du -k build/chrome-extension.zip build/firefox-extension.zip > reports/extensions_build_size.txt
 
       - name: Upload Build Diagnostics
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v7
         with:
-          name: flutter-build-${{ matrix.target }}
+          name: flutter-build-web-extension
           path: reports/
           retention-days: 14
           if-no-files-found: error

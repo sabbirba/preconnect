@@ -26,7 +26,7 @@ Future<bool> ensureFreshWebExtensionSession({bool forceRefresh = false}) async {
     }
   }
 
-  final status = await refreshBracuSessionTokens(
+  final status = await refreshSessionTokens(
     refreshToken: refreshToken,
     persistTokens: (accessToken, refreshToken, idToken) async {
       await storage.write(

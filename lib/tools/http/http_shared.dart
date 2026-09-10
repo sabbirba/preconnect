@@ -9,12 +9,12 @@ http.Client createHttpClient() {
 
 class _BrowserHttpClient extends http.BaseClient {
   final BrowserClient _defaultClient = BrowserClient();
-  final BrowserClient _bracuClient = BrowserClient()..withCredentials = true;
+  final BrowserClient _authClient = BrowserClient()..withCredentials = true;
 
   @override
   Future<http.StreamedResponse> send(http.BaseRequest request) {
     if (request.url.host == 'connect.bracu.ac.bd') {
-      return _bracuClient.send(request);
+      return _authClient.send(request);
     }
     return _defaultClient.send(request);
   }
@@ -22,7 +22,7 @@ class _BrowserHttpClient extends http.BaseClient {
   @override
   void close() {
     _defaultClient.close();
-    _bracuClient.close();
+    _authClient.close();
   }
 }
 

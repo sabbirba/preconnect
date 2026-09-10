@@ -210,7 +210,7 @@ Future<T?> showBracuCustomBottomSheet<T>({
                 snap: true,
                 shouldCloseOnMinExtent: closeOnMinExtent,
                 builder: (context, scrollController) {
-                  return _BracuBottomSheetControllerScope(
+                  return _BottomSheetControllerScope(
                     controller: scrollController,
                     child: PrimaryScrollController(
                       controller: scrollController,
@@ -234,13 +234,13 @@ Future<T?> showBracuCustomBottomSheet<T>({
   );
 }
 
-ScrollController? bracuBottomSheetScrollController(BuildContext context) {
-  final scoped = _BracuBottomSheetControllerScope.maybeOf(context);
+ScrollController? bottomSheetScrollController(BuildContext context) {
+  final scoped = _BottomSheetControllerScope.maybeOf(context);
   return scoped ?? PrimaryScrollController.maybeOf(context);
 }
 
-class _BracuBottomSheetControllerScope extends InheritedWidget {
-  const _BracuBottomSheetControllerScope({
+class _BottomSheetControllerScope extends InheritedWidget {
+  const _BottomSheetControllerScope({
     required this.controller,
     required super.child,
   });
@@ -249,12 +249,12 @@ class _BracuBottomSheetControllerScope extends InheritedWidget {
 
   static ScrollController? maybeOf(BuildContext context) {
     return context
-        .dependOnInheritedWidgetOfExactType<_BracuBottomSheetControllerScope>()
+        .dependOnInheritedWidgetOfExactType<_BottomSheetControllerScope>()
         ?.controller;
   }
 
   @override
-  bool updateShouldNotify(_BracuBottomSheetControllerScope oldWidget) {
+  bool updateShouldNotify(_BottomSheetControllerScope oldWidget) {
     return oldWidget.controller != controller;
   }
 }
@@ -436,7 +436,7 @@ Future<T?> showBracuSelectSheet<T>(
     title: title,
     subtitle: subtitle,
     builder: (sheetContext, textPrimary, textSecondary) {
-      final dragController = bracuBottomSheetScrollController(sheetContext);
+      final dragController = bottomSheetScrollController(sheetContext);
       return ListView.separated(
         controller: dragController,
         physics: const ClampingScrollPhysics(),
@@ -714,7 +714,7 @@ Future<DateTime?> showBracuDatePicker(
     title: 'Select Date',
     initialChildSize: 0.60,
     builder: (sheetContext, textPrimary, textSecondary) {
-      final dragController = bracuBottomSheetScrollController(sheetContext);
+      final dragController = bottomSheetScrollController(sheetContext);
       return ListView.builder(
         controller: dragController,
         physics: const ClampingScrollPhysics(),

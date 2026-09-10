@@ -1,0 +1,46 @@
+name: Course Materials Submission
+description: Submit study materials, notes, question papers, or course repositories
+title: "[Materials] "
+labels:
+  - course-materials
+body:
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before Submitting
+      options:
+        - label: The shared links do not contain private student data, credentials, or exam solutions under active testing.
+          required: true
+        - label: Google Drive links have public view access enabled ("Anyone with the link").
+          required: true
+  - type: input
+    id: course
+    attributes:
+      label: Course Code or Department
+      description: Enter the course code (e.g., CSE110, MAT110, PHY111) or department.
+      placeholder: CSE110
+    validations:
+      required: true
+  - type: textarea
+    id: links
+    attributes:
+      label: Material Links
+      description: Provide GitHub repository URLs, GitHub organization repository URLs, or publicly accessible Google Drive URLs. Multiple links can be included.
+      placeholder: |
+        https://github.com/organization/course-materials
+        https://github.com/username/repository
+        https://drive.google.com/drive/folders/...
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: Description of Materials
+      description: Describe what types of resources are included (slides, lecture notes, lab sheets, previous exam questions, etc.).
+    validations:
+      required: false
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional Notes
+      description: Any other relevant information or contributor attribution.

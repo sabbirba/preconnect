@@ -208,12 +208,12 @@ class _ExportSessionBottomSheetState extends State<ExportSessionBottomSheet> {
         child: Center(child: BracuLoading()),
       );
     } else {
-      final dragController = bracuBottomSheetScrollController(context);
+      final dragController = bottomSheetScrollController(context);
       bodyContent = ListView(
         controller: dragController,
         physics: const ClampingScrollPhysics(),
         children: [
-          BracuQrCard(data: _base64Payload!),
+          QrCard(data: _base64Payload!),
           const Gap(16),
           Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,

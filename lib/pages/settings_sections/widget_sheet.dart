@@ -93,7 +93,7 @@ class _WidgetSetupSheetState extends State<WidgetSetupSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final dragController = bracuBottomSheetScrollController(context);
+    final dragController = bottomSheetScrollController(context);
     final textPrimary = BracuPalette.textPrimary(context);
     final textSecondary = BracuPalette.textSecondary(context);
     final isAndroid = defaultTargetPlatform == TargetPlatform.android;

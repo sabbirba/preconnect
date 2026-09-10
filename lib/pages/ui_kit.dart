@@ -105,8 +105,8 @@ void copyToClipboard(BuildContext context, String text) {
   showAppSnackBar(context, 'Copied to clipboard');
 }
 
-class BracuImageCarousel extends StatefulWidget {
-  const BracuImageCarousel({
+class ImageCarousel extends StatefulWidget {
+  const ImageCarousel({
     super.key,
     required this.imageUrls,
     this.aspectRatio = 16 / 9,
@@ -122,10 +122,10 @@ class BracuImageCarousel extends StatefulWidget {
   final int maxBytesInPrefs;
 
   @override
-  State<BracuImageCarousel> createState() => _BracuImageCarouselState();
+  State<ImageCarousel> createState() => _ImageCarouselState();
 }
 
-class _BracuImageCarouselState extends State<BracuImageCarousel> {
+class _ImageCarouselState extends State<ImageCarousel> {
   late final PageController _controller;
   int _index = 0;
 
@@ -146,7 +146,10 @@ class _BracuImageCarouselState extends State<BracuImageCarousel> {
 
   @override
   Widget build(BuildContext context) {
-    if (widget.imageUrls.isEmpty) return const SizedBox.shrink();
+    if (widget.imageUrls.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
     return ClipRRect(
       borderRadius: BorderRadius.circular(widget.borderRadius),
       child: AspectRatio(
@@ -159,7 +162,7 @@ class _BracuImageCarouselState extends State<BracuImageCarousel> {
                 url: widget.imageUrls.first,
                 fit: widget.imageFit,
                 placeholder: const SizedBox.shrink(),
-                error: const _BracuImageErrorFallback(),
+                error: const _ImageErrorFallback(),
               )
             else
               PageView.builder(
@@ -176,7 +179,7 @@ class _BracuImageCarouselState extends State<BracuImageCarousel> {
                     url: widget.imageUrls[imageIndex],
                     fit: widget.imageFit,
                     placeholder: const SizedBox.shrink(),
-                    error: const _BracuImageErrorFallback(),
+                    error: const _ImageErrorFallback(),
                   );
                 },
               ),
@@ -210,8 +213,8 @@ class _BracuImageCarouselState extends State<BracuImageCarousel> {
   }
 }
 
-class _BracuImageErrorFallback extends StatelessWidget {
-  const _BracuImageErrorFallback();
+class _ImageErrorFallback extends StatelessWidget {
+  const _ImageErrorFallback();
 
   @override
   Widget build(BuildContext context) {
@@ -347,8 +350,8 @@ Future<bool> _openPdfNativelyOrFallback(String filePath) async {
   return NativeFile.open(filePath);
 }
 
-class BracuActionBannerCard extends StatelessWidget {
-  const BracuActionBannerCard({
+class ActionBannerCard extends StatelessWidget {
+  const ActionBannerCard({
     super.key,
     this.icon,
     this.iconWidget,
@@ -359,6 +362,7 @@ class BracuActionBannerCard extends StatelessWidget {
     this.iconDecoration = false,
     this.showTrailingIcon = true,
     this.showBorder = true,
+    this.centered = false,
     this.trailing,
   });
 
@@ -371,11 +375,77 @@ class BracuActionBannerCard extends StatelessWidget {
   final bool iconDecoration;
   final bool showTrailingIcon;
   final bool showBorder;
+  final bool centered;
 
   final Widget? trailing;
 
   @override
   Widget build(BuildContext context) {
+    if (centered) {
+      return InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(18),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+          decoration: BoxDecoration(
+            color: Colors.transparent,
+            borderRadius: BorderRadius.circular(18),
+            border: showBorder
+                ? Border.all(
+                    color: BracuPalette.textSecondary(context).withValues(
+                      alpha: Theme.of(context).brightness == Brightness.dark
+                          ? 0.22
+                          : 0.16,
+                    ),
+                  )
+                : null,
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              if (iconWidget != null)
+                iconWidget!
+              else if (icon != null)
+                Icon(icon, color: iconColor, size: 22),
+              const Gap(8),
+              Flexible(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: BracuPalette.textPrimary(context),
+                      ),
+                    ),
+                    if (subtitle != null && subtitle!.isNotEmpty) ...[
+                      const Gap(2),
+                      Text(
+                        subtitle!,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w500,
+                          color: BracuPalette.textSecondary(context),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(18),
@@ -418,6 +488,8 @@ class BracuActionBannerCard extends StatelessWidget {
                 children: [
                   Text(
                     title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w600,
@@ -428,6 +500,8 @@ class BracuActionBannerCard extends StatelessWidget {
                     const Gap(2),
                     Text(
                       subtitle!,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.w500,
@@ -452,7 +526,7 @@ class BracuActionBannerCard extends StatelessWidget {
   }
 }
 
-Future<void> showBracuFundingSupportSheet(BuildContext context) async {
+Future<void> showFundingSupportSheet(BuildContext context) async {
   await openExternalUrl(
     context,
     'https://preconnect.app/funding',
@@ -460,8 +534,8 @@ Future<void> showBracuFundingSupportSheet(BuildContext context) async {
   );
 }
 
-class BracuCountdownDigital extends StatelessWidget {
-  const BracuCountdownDigital({super.key, required this.remaining});
+class CountdownDigital extends StatelessWidget {
+  const CountdownDigital({super.key, required this.remaining});
 
   final Duration remaining;
 
@@ -483,7 +557,7 @@ class BracuCountdownDigital extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         for (var i = 0; i < units.length; i++) ...[
-          _BracuCountdownCell(value: units[i].value, label: units[i].label),
+          _CountdownCell(value: units[i].value, label: units[i].label),
           if (i != units.length - 1) const Gap(8),
         ],
       ],
@@ -491,8 +565,8 @@ class BracuCountdownDigital extends StatelessWidget {
   }
 }
 
-class _BracuCountdownCell extends StatelessWidget {
-  const _BracuCountdownCell({required this.value, required this.label});
+class _CountdownCell extends StatelessWidget {
+  const _CountdownCell({required this.value, required this.label});
 
   final String value;
   final String label;
@@ -622,6 +696,13 @@ PopupMenuItem<T> compactPopupMenuItem<T>({
 const String kPreConnectDiscordUrl = 'https://discord.gg/HwrgeFrvaz';
 const String kPreConnectRepositoryUrl =
     'https://github.com/sabbirba/preconnect';
+const String kPreConnectIssuesUrl = '$kPreConnectRepositoryUrl/issues';
+const String kPreConnectMaterialsIssueUrl =
+    '$kPreConnectRepositoryUrl/issues/new?template=materials.yml';
+const String kPreConnectWebsiteUrl = 'https://preconnect.app';
+const String kPreConnectApiUrl = 'https://api.preconnect.app';
+const String kPreConnectMailUrl = 'mailto:mail@preconnect.app';
+const String kPreConnectEmail = 'mail@preconnect.app';
 
 class PreConnectDiscordIcon extends StatelessWidget {
   const PreConnectDiscordIcon({super.key, this.size = 30, this.color});
@@ -708,8 +789,8 @@ class _GitHubLogoPainter extends CustomPainter {
   }
 }
 
-class BracuCommunityLink extends StatelessWidget {
-  const BracuCommunityLink({super.key, this.compact = false});
+class CommunityLink extends StatelessWidget {
+  const CommunityLink({super.key, this.compact = false});
 
   final bool compact;
 
@@ -720,7 +801,7 @@ class BracuCommunityLink extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (compact) {
-      return _BracuSponsorActionChip(
+      return _SponsorActionChip(
         iconWidget: const PreConnectDiscordIcon(
           size: 18,
           color: BracuPalette.primary,
@@ -734,7 +815,7 @@ class BracuCommunityLink extends StatelessWidget {
       );
     }
 
-    return BracuActionBannerCard(
+    return ActionBannerCard(
       iconWidget: const PreConnectDiscordIcon(
         size: 24,
         color: Color.fromRGBO(88, 101, 242, 1),
@@ -748,6 +829,49 @@ class BracuCommunityLink extends StatelessWidget {
           failureMessage: 'Unable to open Discord.',
         );
         showAppSnackBar(context, 'Opened server link.');
+      },
+    );
+  }
+}
+
+class EmailLink extends StatelessWidget {
+  const EmailLink({super.key, this.compact = false});
+
+  final bool compact;
+
+  static const String _title = 'Email Support';
+  static const String _subtitle = 'Reach out to us via email';
+  static const String _label = 'Email';
+
+  @override
+  Widget build(BuildContext context) {
+    if (compact) {
+      return _SponsorActionChip(
+        iconWidget: const Icon(
+          Icons.mail_outline_rounded,
+          size: 18,
+          color: BracuPalette.primary,
+        ),
+        label: _label,
+        onTap: () => openExternalUrl(
+          context,
+          kPreConnectMailUrl,
+          failureMessage: 'Unable to open email client.',
+        ),
+      );
+    }
+
+    return ActionBannerCard(
+      icon: Icons.mail_outline_rounded,
+      title: _title,
+      subtitle: _subtitle,
+      onTap: () {
+        openExternalUrl(
+          context,
+          kPreConnectMailUrl,
+          failureMessage: 'Unable to open email client.',
+        );
+        showAppSnackBar(context, 'Opened email client.');
       },
     );
   }
@@ -796,16 +920,15 @@ Future<_FundingPromoContent?> _loadFundingPromoContent({
   );
 }
 
-class BracuFundingPromoDivider extends StatefulWidget {
-  const BracuFundingPromoDivider({super.key, this.showSupporters = false});
+class FundingPromoDivider extends StatefulWidget {
+  const FundingPromoDivider({super.key, this.showSupporters = false});
   final bool showSupporters;
 
   @override
-  State<BracuFundingPromoDivider> createState() =>
-      _BracuFundingPromoDividerState();
+  State<FundingPromoDivider> createState() => _FundingPromoDividerState();
 }
 
-class _BracuFundingPromoDividerState extends State<BracuFundingPromoDivider> {
+class _FundingPromoDividerState extends State<FundingPromoDivider> {
   _FundingPromoContent? _content = CdnJsonCache.peek<_FundingPromoContent>(
     _fundingPromoCacheKey,
   );
@@ -898,22 +1021,21 @@ class _BracuFundingPromoDividerState extends State<BracuFundingPromoDivider> {
             ),
           ),
         ),
-        if (widget.showSupporters) const BracuCampaignSupporters(maxCount: 5),
+        if (widget.showSupporters) const CampaignSupporters(maxCount: 5),
       ],
     );
   }
 }
 
-class BracuCampaignSupporters extends StatefulWidget {
-  const BracuCampaignSupporters({super.key, this.maxCount});
+class CampaignSupporters extends StatefulWidget {
+  const CampaignSupporters({super.key, this.maxCount});
   final int? maxCount;
 
   @override
-  State<BracuCampaignSupporters> createState() =>
-      _BracuCampaignSupportersState();
+  State<CampaignSupporters> createState() => _CampaignSupportersState();
 }
 
-class _BracuCampaignSupportersState extends State<BracuCampaignSupporters> {
+class _CampaignSupportersState extends State<CampaignSupporters> {
   FundingStatus? _status;
   bool _refreshing = false;
 
@@ -1017,7 +1139,7 @@ class _BracuCampaignSupportersState extends State<BracuCampaignSupporters> {
         ),
         const Gap(8),
         for (int i = 0; i < showCount; i++) ...[
-          _BracuSupporterTile(item: contributions[i]),
+          _SupporterTile(item: contributions[i]),
           if (i < showCount - 1)
             Divider(
               height: 12,
@@ -1032,8 +1154,8 @@ class _BracuCampaignSupportersState extends State<BracuCampaignSupporters> {
   }
 }
 
-class _BracuSupporterTile extends StatelessWidget {
-  const _BracuSupporterTile({required this.item});
+class _SupporterTile extends StatelessWidget {
+  const _SupporterTile({required this.item});
   final ContributionItem item;
 
   @override
@@ -1095,8 +1217,8 @@ class _BracuSupporterTile extends StatelessWidget {
 const String _kPreConnectWhatsAppUrl =
     'https://api.whatsapp.com/send?phone=8801865493144&text=Hi%20PreConnect%2C%20I%20want%20to%20support%20the%20app.';
 
-class BracuFundingSupportContent extends StatelessWidget {
-  const BracuFundingSupportContent({super.key});
+class FundingSupportContent extends StatelessWidget {
+  const FundingSupportContent({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -1122,7 +1244,7 @@ class BracuFundingSupportContent extends StatelessWidget {
             spacing: 8,
             runSpacing: 8,
             children: [
-              _BracuSponsorActionChip(
+              _SponsorActionChip(
                 iconWidget: const Icon(
                   Icons.volunteer_activism_rounded,
                   size: 18,
@@ -1135,7 +1257,7 @@ class BracuFundingSupportContent extends StatelessWidget {
                   failureMessage: 'Unable to open funding link.',
                 ),
               ),
-              _BracuSponsorActionChip(
+              _SponsorActionChip(
                 iconWidget: const Icon(
                   Icons.chat_rounded,
                   size: 18,
@@ -1148,7 +1270,7 @@ class BracuFundingSupportContent extends StatelessWidget {
                   failureMessage: 'Unable to open WhatsApp.',
                 ),
               ),
-              _BracuSponsorActionChip(
+              _SponsorActionChip(
                 iconWidget: const PreConnectDiscordIcon(
                   size: 18,
                   color: BracuPalette.primary,
@@ -1160,7 +1282,7 @@ class BracuFundingSupportContent extends StatelessWidget {
                   failureMessage: 'Unable to open Discord.',
                 ),
               ),
-              _BracuSponsorActionChip(
+              _SponsorActionChip(
                 iconWidget: const PreConnectGitHubIcon(
                   size: 18,
                   color: BracuPalette.primary,
@@ -1168,7 +1290,7 @@ class BracuFundingSupportContent extends StatelessWidget {
                 label: 'GitHub',
                 onTap: () => openExternalUrl(context, kPreConnectRepositoryUrl),
               ),
-              _BracuSponsorActionChip(
+              _SponsorActionChip(
                 iconWidget: const Icon(
                   Icons.fork_right_rounded,
                   size: 18,
@@ -1189,8 +1311,8 @@ class BracuFundingSupportContent extends StatelessWidget {
   }
 }
 
-class _BracuSponsorActionChip extends StatelessWidget {
-  const _BracuSponsorActionChip({
+class _SponsorActionChip extends StatelessWidget {
+  const _SponsorActionChip({
     this.iconWidget,
     required this.label,
     required this.onTap,

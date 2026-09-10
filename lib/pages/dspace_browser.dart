@@ -546,9 +546,7 @@ class _DSpaceBrowserPageState extends State<DSpaceBrowserPage> {
               );
             }
 
-            final dragController = bracuBottomSheetScrollController(
-              sheetContext,
-            );
+            final dragController = bottomSheetScrollController(sheetContext);
             return ListView(
               controller: dragController,
               physics: const ClampingScrollPhysics(),
@@ -678,7 +676,7 @@ class _DSpaceBrowserPageState extends State<DSpaceBrowserPage> {
       title: item.name,
       subtitle: combinedSubtitle,
       builder: (sheetContext, textPrimary, textSecondary) {
-        final dragController = bracuBottomSheetScrollController(sheetContext);
+        final dragController = bottomSheetScrollController(sheetContext);
 
         String displayLastModified = '';
         if (item.lastModified.isNotEmpty) {
@@ -771,7 +769,7 @@ class _DSpaceBrowserPageState extends State<DSpaceBrowserPage> {
                     : 'DOCUMENT';
                 return Padding(
                   padding: const EdgeInsets.only(bottom: 12),
-                  child: BracuActionBannerCard(
+                  child: ActionBannerCard(
                     title: file.name,
                     subtitle: '${file.sizeLabel} • $ext',
                     icon: Icons.description_rounded,
@@ -1032,7 +1030,7 @@ class _DSpaceBrowserPageState extends State<DSpaceBrowserPage> {
       title: 'DSpace Repository (BRACU IR)',
       initialChildSize: 0.65,
       builder: (sheetContext, textPrimary, textSecondary) {
-        final dragController = bracuBottomSheetScrollController(sheetContext);
+        final dragController = bottomSheetScrollController(sheetContext);
         return ListView(
           controller: dragController,
           physics: const ClampingScrollPhysics(),

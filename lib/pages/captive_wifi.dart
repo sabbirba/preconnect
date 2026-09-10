@@ -624,7 +624,7 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
         actions: [
           IconButton(
             onPressed: () => _showHelpBottomSheet(context),
-            style: bracuCompactIconButtonStyle(
+            style: appCompactIconButtonStyle(
               foregroundColor: BracuPalette.primary,
               borderColor: Colors.transparent,
               padding: EdgeInsets.zero,
@@ -656,7 +656,7 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
                               color: BracuPalette.textPrimary(context),
                               fontFamily: 'Outfit',
                             ),
-                            decoration: bracuInputDecoration(
+                            decoration: appInputDecoration(
                               context,
                               labelText: 'SSID',
                               borderRadius: 14,
@@ -669,7 +669,7 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
                               color: BracuPalette.textPrimary(context),
                               fontFamily: 'Outfit',
                             ),
-                            decoration: bracuInputDecoration(
+                            decoration: appInputDecoration(
                               context,
                               labelText: 'Student ID',
                               borderRadius: 14,
@@ -686,7 +686,7 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
                               color: BracuPalette.textPrimary(context),
                               fontFamily: 'Outfit',
                             ),
-                            decoration: bracuInputDecoration(
+                            decoration: appInputDecoration(
                               context,
                               labelText: 'Password',
                               borderRadius: 14,
@@ -1019,7 +1019,7 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
       title: 'Captive Wi-Fi Information',
       initialChildSize: 0.65,
       builder: (sheetContext, textPrimary, textSecondary) {
-        final dragController = bracuBottomSheetScrollController(sheetContext);
+        final dragController = bottomSheetScrollController(sheetContext);
         return ListView(
           controller: dragController,
           physics: const ClampingScrollPhysics(),

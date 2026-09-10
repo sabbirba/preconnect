@@ -441,9 +441,9 @@ class _DevsPageState extends State<DevsPage> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Gap(12),
-        BracuFundingPromoDivider(showSupporters: true),
+        FundingPromoDivider(showSupporters: true),
         Gap(12),
-        BracuFundingSupportContent(),
+        FundingSupportContent(),
       ],
     );
   }
@@ -478,7 +478,15 @@ class _IntroCard extends StatelessWidget {
         const Gap(12),
         const _RepoButton(),
         const Gap(12),
-        const BracuCommunityLink(),
+        const CommunityLink(),
+        const Gap(12),
+        const EmailLink(),
+        const Gap(12),
+        const BracuSectionTitle(title: 'Web & API'),
+        const Gap(8),
+        const _WebsiteButton(),
+        const Gap(12),
+        const _ApiButton(),
       ],
     );
   }
@@ -489,11 +497,47 @@ class _RepoButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return BracuActionBannerCard(
+    return ActionBannerCard(
       iconWidget: const PreConnectGitHubIcon(size: 24),
       title: 'View Repository',
       subtitle: 'Explore the source code and contribute',
       onTap: () => openExternalUrl(context, kPreConnectRepositoryUrl),
+    );
+  }
+}
+
+class _WebsiteButton extends StatelessWidget {
+  const _WebsiteButton();
+
+  @override
+  Widget build(BuildContext context) {
+    return ActionBannerCard(
+      icon: Icons.launch_rounded,
+      title: 'preconnect.app',
+      subtitle: 'Official web companion and service portal',
+      onTap: () => openExternalUrl(
+        context,
+        kPreConnectWebsiteUrl,
+        failureMessage: 'Unable to open preconnect.app.',
+      ),
+    );
+  }
+}
+
+class _ApiButton extends StatelessWidget {
+  const _ApiButton();
+
+  @override
+  Widget build(BuildContext context) {
+    return ActionBannerCard(
+      icon: Icons.api_rounded,
+      title: 'api.preconnect.app',
+      subtitle: 'Data feeds and developer endpoints',
+      onTap: () => openExternalUrl(
+        context,
+        kPreConnectApiUrl,
+        failureMessage: 'Unable to open api.preconnect.app.',
+      ),
     );
   }
 }

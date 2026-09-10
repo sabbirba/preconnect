@@ -287,7 +287,7 @@ class AuthService {
         return TokenRefreshStatus.invalidSession;
       }
 
-      final status = await refreshBracuSessionTokens(
+      final status = await refreshSessionTokens(
         refreshToken: refreshToken,
         timeout: _authRequestTimeout,
         persistTokens: (accessToken, refreshToken, idToken) async {

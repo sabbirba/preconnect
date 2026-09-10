@@ -283,7 +283,7 @@ class _BracuPermissionBottomSheetContentState
   Widget build(BuildContext context) {
     final textPrimary = BracuPalette.textPrimary(context);
     final textSecondary = BracuPalette.textSecondary(context);
-    final scrollController = bracuBottomSheetScrollController(context);
+    final scrollController = bottomSheetScrollController(context);
 
     return ListView.separated(
       controller: scrollController,

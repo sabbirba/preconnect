@@ -366,7 +366,7 @@ class _SpaceAvailabilityPageState extends State<SpaceAvailabilityPage> {
       title: 'Libsync Instructions',
       initialChildSize: 0.55,
       builder: (sheetContext, textPrimary, textSecondary) {
-        final dragController = bracuBottomSheetScrollController(sheetContext);
+        final dragController = bottomSheetScrollController(sheetContext);
         return ListView(
           controller: dragController,
           physics: const ClampingScrollPhysics(),
@@ -927,7 +927,7 @@ class _MemberIdsDialogState extends State<_MemberIdsDialog> {
   Widget build(BuildContext context) {
     final textPrimary = BracuPalette.textPrimary(context);
     final allVerified = _verified.every((v) => v);
-    final dragController = bracuBottomSheetScrollController(context);
+    final dragController = bottomSheetScrollController(context);
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -972,7 +972,7 @@ class _MemberIdsDialogState extends State<_MemberIdsDialog> {
                               fontSize: 14,
                               fontWeight: FontWeight.w600,
                             ),
-                            decoration: bracuInputDecoration(
+                            decoration: appInputDecoration(
                               context,
                               hintText: 'Student ID',
                               contentPadding: const EdgeInsets.symmetric(

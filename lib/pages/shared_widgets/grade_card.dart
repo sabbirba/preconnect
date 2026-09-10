@@ -33,7 +33,7 @@ class _GradeSheetCardState extends State<GradeSheetCard> {
 
   @override
   Widget build(BuildContext context) {
-    return BracuActionBannerCard(
+    return ActionBannerCard(
       icon: Icons.picture_as_pdf_rounded,
       title: widget.title,
       subtitle: 'Download your latest transcript',

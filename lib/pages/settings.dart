@@ -238,7 +238,7 @@ class _SettingsPageState extends State<SettingsPage>
       body: BracuRefreshList(
         onRefresh: _loadSettings,
         children: [
-          BracuActionBannerCard(
+          ActionBannerCard(
             icon: Icons.wifi_rounded,
             title: 'Wi-Fi Setup',
             subtitle: 'Connect to campus captive network',
@@ -412,7 +412,7 @@ class _SettingsPageState extends State<SettingsPage>
           ),
           if (!kIsWeb && TodayWidget.isSupported) ...[
             const Gap(_sectionGap),
-            BracuActionBannerCard(
+            ActionBannerCard(
               icon: Icons.widgets_rounded,
               title: 'Home Screen Widget',
               subtitle: 'Today\'s schedule at a glance',
@@ -422,7 +422,7 @@ class _SettingsPageState extends State<SettingsPage>
           ],
           if (!kIsWeb || isChromeRuntimeAvailable()) ...[
             const Gap(_sectionGap),
-            BracuActionBannerCard(
+            ActionBannerCard(
               icon: Icons.qr_code_rounded,
               title: 'Sync Session with Web',
               subtitle: 'Access your session on the web',

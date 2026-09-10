@@ -377,7 +377,7 @@ Future<CustomSchedulesDraft?> showCustomSchedulesEditorSheet(
           }
 
           return ListView(
-            controller: bracuBottomSheetScrollController(context),
+            controller: bottomSheetScrollController(context),
             physics: const ClampingScrollPhysics(),
             padding: const EdgeInsets.only(bottom: 4),
             children: [
@@ -398,7 +398,7 @@ Future<CustomSchedulesDraft?> showCustomSchedulesEditorSheet(
                   titleValue = value;
                   setState(() {});
                 },
-                decoration: bracuInputDecoration(
+                decoration: appInputDecoration(
                   context,
                   labelText: 'Title',
                   prefixText:
@@ -589,7 +589,7 @@ Future<CustomSchedulesDraft?> showCustomSchedulesEditorSheet(
                   color: BracuPalette.textPrimary(context),
                   fontSize: 14,
                 ),
-                decoration: bracuInputDecoration(
+                decoration: appInputDecoration(
                   context,
                   labelText: 'Write your notes...',
                   contentPadding: const EdgeInsets.symmetric(

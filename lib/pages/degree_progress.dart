@@ -400,7 +400,7 @@ class _DegreeProgressPageState extends State<DegreeProgressPage>
           return SelectionArea(
             child: BracuRefreshList(
               onRefresh: _refresh,
-              padding: kBracuPageListPadding,
+              padding: kPageListPadding,
               children: [
                 BracuCard(
                   child: Column(
@@ -466,7 +466,7 @@ class _DegreeProgressPageState extends State<DegreeProgressPage>
                   ),
                 ),
                 const Gap(12),
-                BracuActionBannerCard(
+                ActionBannerCard(
                   icon: Icons.calculate_outlined,
                   title: 'CGPA Calculator',
                   subtitle: 'Estimate your grade point average',
@@ -483,7 +483,7 @@ class _DegreeProgressPageState extends State<DegreeProgressPage>
                   },
                 ),
                 const Gap(12),
-                BracuActionBannerCard(
+                ActionBannerCard(
                   icon: Icons.tune,
                   title: 'All Courses',
                   subtitle: 'Browse your full course catalogue',

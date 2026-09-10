@@ -50,7 +50,7 @@ class ExamCountdownCard extends StatelessWidget {
                   ],
                 ),
               ),
-              BracuCountdownDigital(remaining: remaining),
+              CountdownDigital(remaining: remaining),
             ],
           ),
         );

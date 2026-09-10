@@ -16,7 +16,7 @@ String formatSectionBadge(String? sectionName) {
   return number.toString().padLeft(2, '0');
 }
 
-const EdgeInsets kBracuPageListPadding = EdgeInsets.fromLTRB(14, 8, 14, 28);
+const EdgeInsets kPageListPadding = EdgeInsets.fromLTRB(14, 8, 14, 28);
 
 ({double itemWidth, double spacing}) quickAccessGridLayout(
   double maxWidth, {
@@ -49,7 +49,7 @@ class BracuRefreshList extends StatefulWidget {
     required this.onRefresh,
     required this.children,
     this.controller,
-    this.padding = kBracuPageListPadding,
+    this.padding = kPageListPadding,
   });
 
   final RefreshCallback onRefresh;
@@ -111,7 +111,7 @@ class BracuRefreshListBuilder extends StatefulWidget {
     required this.itemCount,
     required this.itemBuilder,
     this.controller,
-    this.padding = kBracuPageListPadding,
+    this.padding = kPageListPadding,
   });
 
   final RefreshCallback onRefresh;
@@ -231,7 +231,7 @@ class BracuRefreshScroll extends StatefulWidget {
     super.key,
     required this.onRefresh,
     required this.child,
-    this.padding = kBracuPageListPadding,
+    this.padding = kPageListPadding,
     this.controller,
   });
 

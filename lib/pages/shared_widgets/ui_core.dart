@@ -16,7 +16,7 @@ class BracuSelectOption<T> {
   final bool showLeadingIcon;
 }
 
-ButtonStyle bracuOutlinedButtonStyle(
+ButtonStyle appOutlinedButtonStyle(
   BuildContext context, {
   Color? foregroundColor,
   Color? borderColor,
@@ -44,7 +44,7 @@ ButtonStyle bracuOutlinedButtonStyle(
   );
 }
 
-ButtonStyle bracuCompactOutlinedButtonStyle(
+ButtonStyle appCompactOutlinedButtonStyle(
   BuildContext context, {
   Color? foregroundColor,
   Color? borderColor,
@@ -54,7 +54,7 @@ ButtonStyle bracuCompactOutlinedButtonStyle(
   ),
   double borderRadius = 12,
 }) {
-  return bracuOutlinedButtonStyle(
+  return appOutlinedButtonStyle(
     context,
     foregroundColor: foregroundColor,
     borderColor: borderColor,
@@ -63,7 +63,7 @@ ButtonStyle bracuCompactOutlinedButtonStyle(
   );
 }
 
-ButtonStyle bracuCompactIconButtonStyle({
+ButtonStyle appCompactIconButtonStyle({
   Color? foregroundColor,
   Color? borderColor,
   EdgeInsetsGeometry padding = EdgeInsets.zero,
@@ -203,7 +203,7 @@ class BracuActionButton extends StatelessWidget {
   }
 
   ButtonStyle _outlinedStyle(BuildContext context) {
-    return bracuCompactOutlinedButtonStyle(
+    return appCompactOutlinedButtonStyle(
       context,
       foregroundColor: foregroundColor ?? BracuPalette.textPrimary(context),
       padding: padding,
@@ -377,7 +377,7 @@ class BracuRefreshButton extends StatelessWidget {
   }
 }
 
-InputDecoration bracuInputDecoration(
+InputDecoration appInputDecoration(
   BuildContext context, {
   String? labelText,
   String? hintText,
