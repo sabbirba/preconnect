@@ -100,7 +100,7 @@ class _TimeSlot {
 
 class _FreeRoomTime {
   static TimeOfDay parse(String value) {
-    final parsed = BracuTime.parseTime(value);
+    final parsed = AppTime.parseTime(value);
     if (parsed != null) {
       return TimeOfDay(hour: parsed.hour, minute: parsed.minute);
     }

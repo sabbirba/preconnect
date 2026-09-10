@@ -363,7 +363,7 @@ class _DevsPageState extends State<DevsPage> {
       future: _subtitleFuture,
       builder: (context, snapshot) {
         final subtitle = snapshot.data ?? 'App Version';
-        return BracuPageScaffold(
+        return AppPageScaffold(
           title: 'Devs & Support',
           subtitle: subtitle,
           icon: Icons.developer_mode_outlined,
@@ -383,7 +383,7 @@ class _DevsPageState extends State<DevsPage> {
               },
               icon: const Icon(
                 Icons.settings_outlined,
-                color: BracuPalette.primary,
+                color: AppPalette.primary,
               ),
             ),
           ],
@@ -414,10 +414,10 @@ class _DevsPageState extends State<DevsPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const BracuSectionTitle(title: 'People Behind It'),
+        const AppSectionTitle(title: 'People Behind It'),
         const Gap(8),
         if (_contributors.isEmpty && _contributorsLoading)
-          const BracuLoading()
+          const AppLoading()
         else
           _ContributorsGrid(contributors: _contributors),
       ],
@@ -429,7 +429,7 @@ class _DevsPageState extends State<DevsPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const BracuSectionTitle(title: 'Sponsored'),
+        const AppSectionTitle(title: 'Sponsored'),
         const Gap(12),
         _SponsoredStrip(sponsors: _sponsors),
       ],
@@ -456,14 +456,14 @@ class _IntroCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final textSecondary = BracuPalette.textSecondary(context);
+    final textSecondary = AppPalette.textSecondary(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           'Made by the BRACU Students.',
           style: TextStyle(
-            color: BracuPalette.textPrimary(context),
+            color: AppPalette.textPrimary(context),
             fontSize: 18,
             fontWeight: FontWeight.w800,
           ),
@@ -482,7 +482,7 @@ class _IntroCard extends StatelessWidget {
         const Gap(12),
         const EmailLink(),
         const Gap(12),
-        const BracuSectionTitle(title: 'Web & API'),
+        const AppSectionTitle(title: 'Web & API'),
         const Gap(8),
         const _WebsiteButton(),
         const Gap(12),
@@ -602,7 +602,7 @@ class _SponsoredStrip extends StatelessWidget {
                   ? const Icon(
                       Icons.favorite_rounded,
                       size: 22,
-                      color: BracuPalette.primary,
+                      color: AppPalette.primary,
                     )
                   : ClipRRect(
                       borderRadius: BorderRadius.circular(6),
@@ -614,7 +614,7 @@ class _SponsoredStrip extends StatelessWidget {
                         error: const Icon(
                           Icons.favorite_rounded,
                           size: 22,
-                          color: BracuPalette.primary,
+                          color: AppPalette.primary,
                         ),
                       ),
                     ),
@@ -659,7 +659,7 @@ class _SponsoredTile extends StatelessWidget {
               style: TextStyle(
                 fontSize: 15,
                 fontWeight: FontWeight.w700,
-                color: BracuPalette.textPrimary(context),
+                color: AppPalette.textPrimary(context),
               ),
             ),
             const Gap(2),
@@ -669,7 +669,7 @@ class _SponsoredTile extends StatelessWidget {
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
                 fontSize: 11.5,
-                color: BracuPalette.textSecondary(context),
+                color: AppPalette.textSecondary(context),
               ),
             ),
           ],
@@ -733,7 +733,7 @@ class _DevGridTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final textSecondary = BracuPalette.textSecondary(context);
+    final textSecondary = AppPalette.textSecondary(context);
     return LayoutBuilder(
       builder: (context, constraints) {
         final width = constraints.maxWidth;

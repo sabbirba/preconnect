@@ -8,7 +8,7 @@ import 'package:preconnect/api/api_client.dart';
 import 'package:preconnect/features/auth/application/auth_bridge.dart';
 import 'package:preconnect/features/auth/application/session_cleanup.dart';
 import 'package:preconnect/features/schedule/application/session_resolver.dart';
-import 'package:preconnect/tools/bracu_logout.dart';
+import 'package:preconnect/tools/app_logout.dart';
 import 'package:preconnect/tools/cached_image.dart';
 import 'package:preconnect/tools/preconnect_constants.dart';
 import 'package:preconnect/tools/app_paths.dart';
@@ -152,7 +152,7 @@ class AuthService {
   }) async {
     try {
       if (kIsWeb) {
-        final uri = BracuLogout.mercureLogoutUri;
+        final uri = AppLogout.mercureLogoutUri;
         await HttpUtils.client
             .delete(uri, headers: compressionHeadersForUri(uri))
             .timeout(_authRequestTimeout);
@@ -186,12 +186,12 @@ class AuthService {
   Future<void> _revokeMercureSession(String? accessToken) async {
     if (accessToken == null || accessToken.isEmpty) return;
     try {
-      final uri = BracuLogout.mercureLogoutUri;
+      final uri = AppLogout.mercureLogoutUri;
       await HttpUtils.client
           .delete(
             uri,
             headers: <String, String>{
-              ...BracuLogout.mercureLogoutHeaders(accessToken: accessToken),
+              ...AppLogout.mercureLogoutHeaders(accessToken: accessToken),
               ...compressionHeadersForUri(uri),
             },
           )
@@ -204,12 +204,12 @@ class AuthService {
   Future<void> _loginMercureSession(String? accessToken) async {
     if (accessToken == null || accessToken.isEmpty) return;
     try {
-      final uri = BracuLogout.mercureLoginUri;
+      final uri = AppLogout.mercureLoginUri;
       await HttpUtils.client
           .post(
             uri,
             headers: <String, String>{
-              ...BracuLogout.mercureLoginHeaders(accessToken: accessToken),
+              ...AppLogout.mercureLoginHeaders(accessToken: accessToken),
               ...compressionHeadersForUri(uri),
             },
             body: '{}',

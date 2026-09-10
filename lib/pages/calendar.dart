@@ -18,15 +18,15 @@ CalendarEntry? currentOrUpcomingCalendarEntry(
   DateTime? targetTime;
   for (final item in items) {
     if (item.isCancelled) continue;
-    final date = BracuTime.parseDate(item.primaryDate);
+    final date = AppTime.parseDate(item.primaryDate);
     if (date == null) continue;
     final day = DateTime(date.year, date.month, date.day);
     final today = DateTime(now.year, now.month, now.day);
     if (day.isBefore(today)) continue;
 
     DateTime effectiveTime;
-    final start = BracuTime.parseDateTime(item.primaryDate, item.startTime);
-    final end = BracuTime.parseDateTime(item.primaryDate, item.endTime);
+    final start = AppTime.parseDateTime(item.primaryDate, item.startTime);
+    final end = AppTime.parseDateTime(item.primaryDate, item.endTime);
     if (day == today) {
       if (end != null && end.isBefore(now)) continue;
       if (start == null) {
@@ -118,15 +118,12 @@ class _CalendarPageState extends State<CalendarPage> with RefreshBusState {
 
   @override
   Widget build(BuildContext context) {
-    return BracuPageScaffold(
+    return AppPageScaffold(
       title: 'Academic Events',
       subtitle: 'Events',
       icon: Icons.calendar_today_outlined,
       actions: [
-        BracuRefreshButton(
-          onPressed: () => _refresh(),
-          isLoading: _isRefreshing,
-        ),
+        AppRefreshButton(onPressed: () => _refresh(), isLoading: _isRefreshing),
       ],
       body: FutureBuilder<CalendarFeed?>(
         future: _future,
@@ -164,7 +161,7 @@ class _CalendarPageState extends State<CalendarPage> with RefreshBusState {
           );
           final targetDateValue = targetItem == null
               ? null
-              : BracuTime.parseDate(targetItem.primaryDate);
+              : AppTime.parseDate(targetItem.primaryDate);
           final targetDate = targetDateValue == null
               ? null
               : DateTime(
@@ -191,14 +188,14 @@ class _CalendarPageState extends State<CalendarPage> with RefreshBusState {
                       Row(
                         children: [
                           Expanded(
-                            child: BracuSectionTitle(title: _dayLabel(date)),
+                            child: AppSectionTitle(title: _dayLabel(date)),
                           ),
                           Text(
                             formatLongDate(date),
                             style: TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.w600,
-                              color: BracuPalette.textPrimary(context),
+                              color: AppPalette.textPrimary(context),
                             ),
                           ),
                         ],
@@ -225,7 +222,7 @@ class _CalendarPageState extends State<CalendarPage> with RefreshBusState {
                 );
               })
               .toList(growable: false);
-          final content = BracuRefreshList(
+          final content = AppRefreshList(
             onRefresh: _refresh,
             controller: _scrollController,
             padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
@@ -262,8 +259,8 @@ class _CalendarPageState extends State<CalendarPage> with RefreshBusState {
     }
     for (final entries in grouped.values) {
       entries.sort((a, b) {
-        final aStart = BracuTime.toMinutes(a.startTime) ?? -1;
-        final bStart = BracuTime.toMinutes(b.startTime) ?? -1;
+        final aStart = AppTime.toMinutes(a.startTime) ?? -1;
+        final bStart = AppTime.toMinutes(b.startTime) ?? -1;
         if (aStart != bStart) return aStart.compareTo(bStart);
         return a.label.compareTo(b.label);
       });
@@ -288,7 +285,7 @@ class _CalendarCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final textSecondary = BracuPalette.textSecondary(context);
+    final textSecondary = AppPalette.textSecondary(context);
     final badge = _badgeLabel(item);
     final badgeColor = _badgeColor(item.typeKey);
     final timeLabel = _timeLabel(item);
@@ -300,9 +297,9 @@ class _CalendarCard extends StatelessWidget {
         ? item.building
         : item.sessionLabel;
 
-    return BracuCard(
+    return AppCard(
       isHighlighted: isHighlighted,
-      highlightColor: BracuPalette.primary,
+      highlightColor: AppPalette.primary,
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -333,7 +330,7 @@ class _CalendarCard extends StatelessWidget {
                 Text(
                   timeLabel,
                   style: TextStyle(
-                    color: BracuPalette.textPrimary(context),
+                    color: AppPalette.textPrimary(context),
                     fontSize: 12,
                     fontWeight: FontWeight.w700,
                   ),
@@ -350,7 +347,7 @@ class _CalendarCard extends StatelessWidget {
                           TextSpan(
                             text: item.faculty,
                             style: TextStyle(
-                              color: BracuPalette.textPrimary(context),
+                              color: AppPalette.textPrimary(context),
                               fontWeight: FontWeight.w700,
                             ),
                           ),
@@ -382,7 +379,7 @@ class _CalendarCard extends StatelessWidget {
                     trailing,
                     textAlign: TextAlign.right,
                     style: TextStyle(
-                      color: BracuPalette.textPrimary(context),
+                      color: AppPalette.textPrimary(context),
                       fontSize: 13,
                       fontWeight: FontWeight.w700,
                     ),
@@ -447,7 +444,7 @@ class _CalendarCard extends StatelessWidget {
     final title = _displayLabel(item);
     final courseToken = _courseToken(item);
     final key = item.typeKey.toUpperCase();
-    final textSecondary = BracuPalette.textSecondary(context);
+    final textSecondary = AppPalette.textSecondary(context);
     if (key.contains('CLASS_SCHEDULE') &&
         courseToken != null &&
         !title.endsWith('L')) {
@@ -457,7 +454,7 @@ class _CalendarCard extends StatelessWidget {
             TextSpan(
               text: title,
               style: TextStyle(
-                color: BracuPalette.textPrimary(context),
+                color: AppPalette.textPrimary(context),
                 fontSize: 14,
                 fontWeight: FontWeight.w700,
               ),
@@ -477,7 +474,7 @@ class _CalendarCard extends StatelessWidget {
     return Text(
       title,
       style: TextStyle(
-        color: BracuPalette.textPrimary(context),
+        color: AppPalette.textPrimary(context),
         fontSize: 14,
         fontWeight: FontWeight.w700,
       ),
@@ -486,15 +483,15 @@ class _CalendarCard extends StatelessWidget {
 
   Color _badgeColor(String key) {
     final upper = key.toUpperCase();
-    if (upper.contains('HOLIDAY')) return BracuPalette.danger;
-    if (upper.contains('ACADEMIC')) return BracuPalette.primary;
+    if (upper.contains('HOLIDAY')) return AppPalette.danger;
+    if (upper.contains('ACADEMIC')) return AppPalette.primary;
     if (upper.contains('MID') ||
         upper.contains('FINAL') ||
         upper.contains('EXAM')) {
-      return BracuPalette.accent;
+      return AppPalette.accent;
     }
-    if (upper.contains('CLASS')) return BracuPalette.primary;
-    return BracuPalette.info;
+    if (upper.contains('CLASS')) return AppPalette.primary;
+    return AppPalette.info;
   }
 
   String _timeLabel(CalendarEntry item) {

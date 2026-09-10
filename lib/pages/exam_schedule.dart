@@ -325,13 +325,13 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
         _currentSessionSemesterId == null ||
         _selectedSemesterSessionId == _currentSessionSemesterId;
 
-    return BracuPageScaffold(
+    return AppPageScaffold(
       title: 'Schedules',
       subtitle: subtitleText,
       icon: Icons.event_note_outlined,
       actions: [
         if (isCurrentSemester)
-          BracuSelectChip(
+          AppSelectChip(
             icon: Icons.history_rounded,
             selected: _showDoneExams,
             compact: true,
@@ -431,7 +431,7 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
           final shouldHighlightCurrentSemester = !showPast;
           final today = DateTime(now.year, now.month, now.day);
           bool isToday(String? value) {
-            final date = BracuTime.parseDate(value);
+            final date = AppTime.parseDate(value);
             return date != null &&
                 date.year == today.year &&
                 date.month == today.month &&
@@ -455,7 +455,7 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
                   (isToday(midDate(s)) || isToday(finalDate(s)))) {
                 continue;
               }
-              final midTime = BracuTime.parseDateTime(midDate(s), midStart(s));
+              final midTime = AppTime.parseDateTime(midDate(s), midStart(s));
               if (midTime != null &&
                   ExamVisibility.isUpcomingOrOngoingSchedule(
                     date: midDate(s),
@@ -468,7 +468,7 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
                   nextExamKey = '${s.sectionId}-mid';
                 }
               }
-              final finalTime = BracuTime.parseDateTime(
+              final finalTime = AppTime.parseDateTime(
                 finalDate(s),
                 finalStart(s),
               );
@@ -494,7 +494,7 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
             (section) =>
                 isToday(midDate(section)) || isToday(finalDate(section)),
           );
-          final todayScheduleStatus = BracuTodayScheduleStatus.resolve(
+          final todayScheduleStatus = AppTodayScheduleStatus.resolve(
             holidayStatus: holidayStatus,
             fallbackTitle: 'No Exam Today',
           );
@@ -511,7 +511,7 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
                     Row(
                       children: [
                         Expanded(
-                          child: BracuSectionTitle(
+                          child: AppSectionTitle(
                             title:
                                 'Today is ${formatWeekdayTitle(todayWeekday)}',
                           ),
@@ -521,17 +521,17 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w600,
-                            color: BracuPalette.textPrimary(context),
+                            color: AppPalette.textPrimary(context),
                           ),
                         ),
                       ],
                     ),
                     const Gap(12),
-                    BracuScheduleTile(
+                    AppScheduleTile(
                       badge: todayScheduleStatus.badge,
                       title: todayScheduleStatus.title,
                       subtitle: todayScheduleStatus.subtitle,
-                      color: BracuPalette.primary,
+                      color: AppPalette.primary,
                     ),
                   ],
                 ),
@@ -562,7 +562,7 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
                               style: TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w600,
-                                color: BracuPalette.textPrimary(context),
+                                color: AppPalette.textPrimary(context),
                               ),
                             ),
                           ),
@@ -572,7 +572,7 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
                             style: TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.w600,
-                              color: BracuPalette.textPrimary(context),
+                              color: AppPalette.textPrimary(context),
                             ),
                           ),
                         ],
@@ -633,7 +633,7 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
                               style: TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w600,
-                                color: BracuPalette.textPrimary(context),
+                                color: AppPalette.textPrimary(context),
                               ),
                             ),
                           ),
@@ -643,7 +643,7 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
                             style: TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.w600,
-                              color: BracuPalette.textPrimary(context),
+                              color: AppPalette.textPrimary(context),
                             ),
                           ),
                         ],
@@ -696,7 +696,7 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
           );
 
           return SelectionArea(
-            child: BracuRefreshList(
+            child: AppRefreshList(
               onRefresh: _handleRefresh,
               controller: _scrollController,
               children: children,
@@ -792,8 +792,8 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
         : (showPast ? pastFinalExams : upcomingFinalExams);
 
     midExams.sort((a, b) {
-      final aTime = BracuTime.parseDateTime(midDate(a), midStart(a));
-      final bTime = BracuTime.parseDateTime(midDate(b), midStart(b));
+      final aTime = AppTime.parseDateTime(midDate(a), midStart(a));
+      final bTime = AppTime.parseDateTime(midDate(b), midStart(b));
       final cmp = ExamSorting.compareExamEntries(
         typeA: 'Midterm',
         typeB: 'Midterm',
@@ -808,8 +808,8 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
     });
 
     finalExams.sort((a, b) {
-      final aTime = BracuTime.parseDateTime(finalDate(a), finalStart(a));
-      final bTime = BracuTime.parseDateTime(finalDate(b), finalStart(b));
+      final aTime = AppTime.parseDateTime(finalDate(a), finalStart(a));
+      final bTime = AppTime.parseDateTime(finalDate(b), finalStart(b));
       final cmp = ExamSorting.compareExamEntries(
         typeA: 'Final',
         typeB: 'Final',

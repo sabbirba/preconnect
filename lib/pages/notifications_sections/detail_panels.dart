@@ -39,7 +39,7 @@ class ScraperNotificationDetailPanel extends StatelessWidget {
         Text(
           _published,
           style: TextStyle(
-            color: BracuPalette.textSecondary(context),
+            color: AppPalette.textSecondary(context),
             fontSize: 12,
             fontWeight: FontWeight.w600,
           ),
@@ -54,7 +54,7 @@ class ScraperNotificationDetailPanel extends StatelessWidget {
               ? 'No additional details were provided.'
               : _parts.body,
           style: TextStyle(
-            color: BracuPalette.textPrimary(context),
+            color: AppPalette.textPrimary(context),
             fontSize: 15,
             height: 1.5,
             fontWeight: FontWeight.w500,
@@ -65,7 +65,7 @@ class ScraperNotificationDetailPanel extends StatelessWidget {
           Text(
             'Source links:',
             style: TextStyle(
-              color: BracuPalette.textPrimary(context),
+              color: AppPalette.textPrimary(context),
               fontSize: 14,
               fontWeight: FontWeight.w700,
             ),
@@ -86,7 +86,7 @@ class ScraperNotificationDetailPanel extends StatelessWidget {
                     child: Text(
                       displayLinkLabel(link),
                       style: TextStyle(
-                        color: BracuPalette.primary,
+                        color: AppPalette.primary,
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
                       ),
@@ -101,7 +101,7 @@ class ScraperNotificationDetailPanel extends StatelessWidget {
           const Gap(16),
           SizedBox(
             width: double.infinity,
-            child: BracuActionButton(
+            child: AppActionButton(
               onPressed: () async {
                 await openExternalUrl(context, item.url!);
               },
@@ -161,7 +161,7 @@ class _ConnectNotificationDetailPanelState
                 'Unable to load notification details.',
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                  color: BracuPalette.textPrimary(context),
+                  color: AppPalette.textPrimary(context),
                   fontSize: 16,
                   fontWeight: FontWeight.w700,
                 ),
@@ -171,7 +171,7 @@ class _ConnectNotificationDetailPanelState
                 'Pull to refresh the list and try again.',
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                  color: BracuPalette.textSecondary(context),
+                  color: AppPalette.textSecondary(context),
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
                 ),
@@ -192,7 +192,7 @@ class _ConnectNotificationDetailPanelState
             Text(
               _detailMeta(detail),
               style: TextStyle(
-                color: BracuPalette.textSecondary(context),
+                color: AppPalette.textSecondary(context),
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
               ),
@@ -203,7 +203,7 @@ class _ConnectNotificationDetailPanelState
                   ? 'No additional details were provided.'
                   : parts.body,
               style: TextStyle(
-                color: BracuPalette.textPrimary(context),
+                color: AppPalette.textPrimary(context),
                 fontSize: 15,
                 height: 1.5,
                 fontWeight: FontWeight.w500,
@@ -214,7 +214,7 @@ class _ConnectNotificationDetailPanelState
               Text(
                 'Source links:',
                 style: TextStyle(
-                  color: BracuPalette.textPrimary(context),
+                  color: AppPalette.textPrimary(context),
                   fontSize: 14,
                   fontWeight: FontWeight.w700,
                 ),
@@ -235,7 +235,7 @@ class _ConnectNotificationDetailPanelState
                         child: Text(
                           displayLinkLabel(link),
                           style: TextStyle(
-                            color: BracuPalette.primary,
+                            color: AppPalette.primary,
                             fontSize: 14,
                             fontWeight: FontWeight.w600,
                           ),

@@ -19,10 +19,10 @@ class ExamVisibility {
     DateTime? now,
   }) {
     final current = now ?? DateTime.now();
-    final startTime = BracuTime.parseDateTime(date, start);
+    final startTime = AppTime.parseDateTime(date, start);
     if (startTime == null) return false;
 
-    final endTime = BracuTime.parseDateTime(date, end);
+    final endTime = AppTime.parseDateTime(date, end);
     if (endTime != null) {
       return !endTime.isBefore(current);
     }

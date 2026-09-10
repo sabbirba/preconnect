@@ -480,13 +480,13 @@ class _CustomSchedulesPageState extends State<CustomSchedulesPage>
     final currentContext = context;
     final kindLabel = personalSchedulesFormatKind(item.kind).toLowerCase();
 
-    final deleted = await showBracuConfirmationWithActionDialog(
+    final deleted = await showAppConfirmationWithActionDialog(
       currentContext,
       icon: Icons.delete_outline_rounded,
       title: 'Delete $kindLabel?',
       message: 'This will remove this $kindLabel from your schedule.',
       confirmLabel: 'Delete',
-      confirmColor: BracuPalette.danger,
+      confirmColor: AppPalette.danger,
       onConfirm: () async {
         await CustomSchedulesService().deleteItem(item.itemId);
       },
@@ -574,7 +574,7 @@ class _CustomSchedulesPageState extends State<CustomSchedulesPage>
 
   @override
   Widget build(BuildContext context) {
-    return BracuPageScaffold(
+    return AppPageScaffold(
       title: 'Personal',
       subtitle: 'Schedules',
       icon: Icons.event_note_outlined,
@@ -601,7 +601,7 @@ class _CustomSchedulesPageState extends State<CustomSchedulesPage>
           final dayGroups = _dayGroupsFor(items);
 
           if (items.isEmpty) {
-            return BracuRefreshList(
+            return AppRefreshList(
               onRefresh: () => _refresh(forceRefresh: true),
               children: [
                 const Gap(160),
@@ -613,7 +613,7 @@ class _CustomSchedulesPageState extends State<CustomSchedulesPage>
                         'No custom schedule yet.',
                         textAlign: TextAlign.center,
                         style: TextStyle(
-                          color: BracuPalette.textPrimary(context),
+                          color: AppPalette.textPrimary(context),
                           fontSize: 16,
                           fontWeight: FontWeight.w700,
                         ),
@@ -623,13 +623,13 @@ class _CustomSchedulesPageState extends State<CustomSchedulesPage>
                         'Tap plus to add your first one.',
                         textAlign: TextAlign.center,
                         style: TextStyle(
-                          color: BracuPalette.textSecondary(context),
+                          color: AppPalette.textSecondary(context),
                           fontSize: 13,
                           fontWeight: FontWeight.w500,
                         ),
                       ),
                       const Gap(12),
-                      BracuActionButton(
+                      AppActionButton(
                         onPressed: _openEditor,
                         icon: Icons.add_rounded,
                         label: 'Add Schedule',
@@ -641,7 +641,7 @@ class _CustomSchedulesPageState extends State<CustomSchedulesPage>
             );
           }
 
-          return BracuRefreshScroll(
+          return AppRefreshScroll(
             onRefresh: () => _refresh(forceRefresh: true),
             padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
             child: _MyContentWrap(
@@ -761,13 +761,13 @@ class _DayDateHeader extends StatelessWidget {
     final weekdayLabel = formatWeekdayTitle(DateFormat('EEEE').format(date));
     return Row(
       children: [
-        Expanded(child: BracuSectionTitle(title: weekdayLabel)),
+        Expanded(child: AppSectionTitle(title: weekdayLabel)),
         Text(
           formatLongDate(date),
           style: TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.w600,
-            color: BracuPalette.textPrimary(context),
+            color: AppPalette.textPrimary(context),
           ),
         ),
       ],
@@ -796,19 +796,19 @@ class _UpcomingScheduleItemCard extends StatelessWidget {
       fontWeight: FontWeight.w600,
       decoration: isComplete ? TextDecoration.lineThrough : null,
       color: isComplete
-          ? BracuPalette.textSecondary(context)
-          : BracuPalette.textPrimary(context),
+          ? AppPalette.textSecondary(context)
+          : AppPalette.textPrimary(context),
     );
     final timeColor = isComplete
-        ? BracuPalette.textSecondary(context)
-        : BracuPalette.textPrimary(context);
+        ? AppPalette.textSecondary(context)
+        : AppPalette.textPrimary(context);
 
     return InkWell(
       borderRadius: BorderRadius.circular(18),
       splashFactory: NoSplash.splashFactory,
       overlayColor: const WidgetStatePropertyAll(Colors.transparent),
       onTap: onTap,
-      child: BracuCard(
+      child: AppCard(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -819,7 +819,7 @@ class _UpcomingScheduleItemCard extends StatelessWidget {
                   alignment: Alignment.center,
                   child: SectionBadge(
                     label: sectionBadgeLabel,
-                    color: BracuPalette.primary,
+                    color: AppPalette.primary,
                   ),
                 ),
                 const Gap(12),
@@ -855,7 +855,7 @@ class _UpcomingScheduleItemCard extends StatelessWidget {
               Divider(
                 height: 1,
                 thickness: 1,
-                color: BracuPalette.textSecondary(
+                color: AppPalette.textSecondary(
                   context,
                 ).withValues(alpha: 0.14),
               ),
@@ -866,7 +866,7 @@ class _UpcomingScheduleItemCard extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 12,
                   height: 1.35,
-                  color: BracuPalette.textSecondary(context),
+                  color: AppPalette.textSecondary(context),
                 ),
               ),
             ],

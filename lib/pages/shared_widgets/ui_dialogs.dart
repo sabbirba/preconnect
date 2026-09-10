@@ -18,7 +18,7 @@ Future<T?> showAppBottomSheet<T>(
 }) {
   return showAppCustomBottomSheet<T>(
     context: context,
-    backgroundColor: BracuPalette.card(context),
+    backgroundColor: AppPalette.card(context),
     clipBehavior: Clip.antiAlias,
     initialChildSize: initialChildSize,
     draggable: draggable,
@@ -29,8 +29,8 @@ Future<T?> showAppBottomSheet<T>(
     minChildSize: 0.20,
     maxChildSize: 0.98,
     builder: (sheetContext) {
-      final textPrimary = BracuPalette.textPrimary(sheetContext);
-      final textSecondary = BracuPalette.textSecondary(sheetContext);
+      final textPrimary = AppPalette.textPrimary(sheetContext);
+      final textSecondary = AppPalette.textSecondary(sheetContext);
       return SafeArea(
         top: false,
         child: Padding(
@@ -174,7 +174,7 @@ Future<T?> showAppCustomBottomSheet<T>({
         statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
         statusBarBrightness: isDark ? Brightness.dark : Brightness.light,
         systemNavigationBarColor:
-            backgroundColor ?? BracuPalette.card(sheetContext),
+            backgroundColor ?? AppPalette.card(sheetContext),
         systemNavigationBarIconBrightness: isDark
             ? Brightness.light
             : Brightness.dark,
@@ -266,7 +266,7 @@ Future<bool> showAppConfirmationWithActionDialog(
   required String message,
   String cancelLabel = 'Cancel',
   required String confirmLabel,
-  Color confirmColor = BracuPalette.primary,
+  Color confirmColor = AppPalette.primary,
   required Future<void> Function() onConfirm,
 }) async {
   final result = await showDialog<bool>(
@@ -345,7 +345,7 @@ class _AppConfirmationActionDialogState
       child: Container(
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(20),
-          color: BracuPalette.card(context),
+          color: AppPalette.card(context),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withValues(alpha: 0.18),
@@ -368,7 +368,7 @@ class _AppConfirmationActionDialogState
                     child: Text(
                       widget.title,
                       style: TextStyle(
-                        color: BracuPalette.textPrimary(context),
+                        color: AppPalette.textPrimary(context),
                         fontSize: 16,
                         fontWeight: FontWeight.w600,
                       ),
@@ -380,7 +380,7 @@ class _AppConfirmationActionDialogState
               Text(
                 widget.message,
                 style: TextStyle(
-                  color: BracuPalette.textSecondary(context),
+                  color: AppPalette.textSecondary(context),
                   fontSize: 13,
                 ),
               ),
@@ -388,7 +388,7 @@ class _AppConfirmationActionDialogState
               Row(
                 children: [
                   Expanded(
-                    child: BracuActionButton(
+                    child: AppActionButton(
                       onPressed: _isLoading
                           ? null
                           : () => Navigator.of(context).pop(false),
@@ -399,7 +399,7 @@ class _AppConfirmationActionDialogState
                   ),
                   const Gap(12),
                   Expanded(
-                    child: BracuActionButton(
+                    child: AppActionButton(
                       onPressed: _isLoading ? null : _handleConfirm,
                       outlined: true,
                       isLoading: _isLoading,
@@ -458,12 +458,12 @@ Future<T?> showAppSelectSheet<T>(
                 ),
                 decoration: BoxDecoration(
                   color: selected
-                      ? BracuPalette.primary.withValues(alpha: 0.12)
-                      : BracuPalette.card(sheetContext).withValues(alpha: 0.72),
+                      ? AppPalette.primary.withValues(alpha: 0.12)
+                      : AppPalette.card(sheetContext).withValues(alpha: 0.72),
                   borderRadius: BorderRadius.circular(18),
                   border: Border.all(
                     color: selected
-                        ? BracuPalette.primary.withValues(alpha: 0.70)
+                        ? AppPalette.primary.withValues(alpha: 0.70)
                         : textSecondary.withValues(alpha: 0.18),
                   ),
                 ),
@@ -475,7 +475,7 @@ Future<T?> showAppSelectSheet<T>(
                         height: 36,
                         decoration: BoxDecoration(
                           color: selected
-                              ? BracuPalette.primary.withValues(alpha: 0.14)
+                              ? AppPalette.primary.withValues(alpha: 0.14)
                               : textSecondary.withValues(alpha: 0.10),
                           borderRadius: BorderRadius.circular(12),
                         ),
@@ -486,9 +486,7 @@ Future<T?> showAppSelectSheet<T>(
                                   ? Icons.check_rounded
                                   : Icons.tune_rounded),
                           size: 18,
-                          color: selected
-                              ? BracuPalette.primary
-                              : textSecondary,
+                          color: selected ? AppPalette.primary : textSecondary,
                         ),
                       ),
                       const Gap(12),
@@ -527,7 +525,7 @@ Future<T?> showAppSelectSheet<T>(
                           : Icons.chevron_right_rounded,
                       size: selected ? 20 : 18,
                       color: selected
-                          ? BracuPalette.primary
+                          ? AppPalette.primary
                           : textSecondary.withValues(alpha: 0.7),
                     ),
                   ],
@@ -566,8 +564,8 @@ Future<T?> showAppSelectDropdown<T>(
   }
 
   final target = renderBox.localToGlobal(Offset.zero, ancestor: overlay);
-  final textPrimary = BracuPalette.textPrimary(context);
-  final cardColor = BracuPalette.card(context);
+  final textPrimary = AppPalette.textPrimary(context);
+  final cardColor = AppPalette.card(context);
 
   final maxWidth = overlay.size.width - 24;
   final estimatedWidth = options.fold<double>(
@@ -663,7 +661,7 @@ Future<T?> showAppSelectDropdown<T>(
                                       Icon(
                                         Icons.check_rounded,
                                         size: 18,
-                                        color: BracuPalette.primary,
+                                        color: AppPalette.primary,
                                       ),
                                     ],
                                   ],
@@ -741,7 +739,7 @@ Future<DateTime?> showAppDatePicker(
 
           return Padding(
             padding: const EdgeInsets.symmetric(vertical: 5),
-            child: BracuActionButton(
+            child: AppActionButton(
               onPressed: () => Navigator.pop(sheetContext, date),
               outlined: !isSelected,
               label: label,
@@ -765,7 +763,7 @@ Future<TimeOfDay?> showAppTimePicker(
     title: 'Select Time',
     initialChildSize: 0.55,
     builder: (sheetContext, textPrimary, textSecondary) {
-      return _BracuTimePickerSheet(
+      return _AppTimePickerSheet(
         initialTime: initialTime,
         textPrimary: textPrimary,
         textSecondary: textSecondary,
@@ -774,8 +772,8 @@ Future<TimeOfDay?> showAppTimePicker(
   );
 }
 
-class _BracuTimePickerSheet extends StatefulWidget {
-  const _BracuTimePickerSheet({
+class _AppTimePickerSheet extends StatefulWidget {
+  const _AppTimePickerSheet({
     required this.initialTime,
     required this.textPrimary,
     required this.textSecondary,
@@ -786,10 +784,10 @@ class _BracuTimePickerSheet extends StatefulWidget {
   final Color textSecondary;
 
   @override
-  State<_BracuTimePickerSheet> createState() => _BracuTimePickerSheetState();
+  State<_AppTimePickerSheet> createState() => _AppTimePickerSheetState();
 }
 
-class _BracuTimePickerSheetState extends State<_BracuTimePickerSheet> {
+class _AppTimePickerSheetState extends State<_AppTimePickerSheet> {
   late int _selectedHour;
   late int _selectedMinute;
   late String _selectedPeriod;
@@ -826,7 +824,7 @@ class _BracuTimePickerSheetState extends State<_BracuTimePickerSheet> {
                         alignment: Alignment.center,
                         decoration: BoxDecoration(
                           color: isSelected
-                              ? BracuPalette.primary.withValues(alpha: 0.15)
+                              ? AppPalette.primary.withValues(alpha: 0.15)
                               : Colors.transparent,
                           borderRadius: BorderRadius.circular(8),
                         ),
@@ -834,7 +832,7 @@ class _BracuTimePickerSheetState extends State<_BracuTimePickerSheet> {
                           hour.toString().padLeft(2, '0'),
                           style: TextStyle(
                             color: isSelected
-                                ? BracuPalette.primary
+                                ? AppPalette.primary
                                 : widget.textPrimary,
                             fontSize: 18,
                             fontWeight: isSelected
@@ -872,7 +870,7 @@ class _BracuTimePickerSheetState extends State<_BracuTimePickerSheet> {
                         alignment: Alignment.center,
                         decoration: BoxDecoration(
                           color: isSelected
-                              ? BracuPalette.primary.withValues(alpha: 0.15)
+                              ? AppPalette.primary.withValues(alpha: 0.15)
                               : Colors.transparent,
                           borderRadius: BorderRadius.circular(8),
                         ),
@@ -880,7 +878,7 @@ class _BracuTimePickerSheetState extends State<_BracuTimePickerSheet> {
                           minute.toString().padLeft(2, '0'),
                           style: TextStyle(
                             color: isSelected
-                                ? BracuPalette.primary
+                                ? AppPalette.primary
                                 : widget.textPrimary,
                             fontSize: 18,
                             fontWeight: isSelected
@@ -912,7 +910,7 @@ class _BracuTimePickerSheetState extends State<_BracuTimePickerSheet> {
                         margin: const EdgeInsets.symmetric(vertical: 4),
                         decoration: BoxDecoration(
                           color: isSelected
-                              ? BracuPalette.primary
+                              ? AppPalette.primary
                               : Colors.transparent,
                           borderRadius: BorderRadius.circular(8),
                         ),
@@ -940,7 +938,7 @@ class _BracuTimePickerSheetState extends State<_BracuTimePickerSheet> {
         const Gap(16),
         SizedBox(
           width: double.infinity,
-          child: BracuActionButton(
+          child: AppActionButton(
             label: 'Confirm',
             onPressed: () {
               int finalHour = _selectedHour;
@@ -955,7 +953,7 @@ class _BracuTimePickerSheetState extends State<_BracuTimePickerSheet> {
               );
             },
             outlined: false,
-            backgroundColor: BracuPalette.primary,
+            backgroundColor: AppPalette.primary,
             foregroundColor: Colors.white,
             borderRadius: 12,
           ),

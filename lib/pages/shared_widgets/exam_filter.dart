@@ -14,7 +14,7 @@ class CourseSectionExamFilter {
       section: section,
       overrides: overrides,
     );
-    final finalDateTime = BracuTime.parseDateTime(
+    final finalDateTime = AppTime.parseDateTime(
       resolved.finalDate,
       resolved.finalEndTime ?? resolved.finalStartTime,
     );

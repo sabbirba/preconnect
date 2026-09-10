@@ -18,12 +18,12 @@ const List<String> seatFilterWeekdays = <String>[
 List<SeatTimetable> sortedSeatFilterTimes(Iterable<SeatTimetable> source) {
   final times = source.toSet().toList();
   times.sort((a, b) {
-    final start = (BracuTime.toMinutes(a.startTime) ?? 24 * 60).compareTo(
-      BracuTime.toMinutes(b.startTime) ?? 24 * 60,
+    final start = (AppTime.toMinutes(a.startTime) ?? 24 * 60).compareTo(
+      AppTime.toMinutes(b.startTime) ?? 24 * 60,
     );
     if (start != 0) return start;
-    return (BracuTime.toMinutes(a.endTime) ?? 24 * 60).compareTo(
-      BracuTime.toMinutes(b.endTime) ?? 24 * 60,
+    return (AppTime.toMinutes(a.endTime) ?? 24 * 60).compareTo(
+      AppTime.toMinutes(b.endTime) ?? 24 * 60,
     );
   });
   return times;
@@ -88,7 +88,7 @@ class SeatFilterBar extends StatelessWidget {
         spacing: 8,
         runSpacing: 8,
         children: [
-          BracuSelectChip(
+          AppSelectChip(
             icon: Icons.event_available_outlined,
             label: 'Available',
             selected: availableOnly,
@@ -97,7 +97,7 @@ class SeatFilterBar extends StatelessWidget {
             showArrow: false,
             onTap: () => onAvailableChanged(!availableOnly),
           ),
-          BracuSelectDropdownChip<String>(
+          AppSelectDropdownChip<String>(
             icon: Icons.explore,
             label: mode.isEmpty ? 'Labs + Theory' : mode,
             selected: mode.isNotEmpty,
@@ -106,14 +106,14 @@ class SeatFilterBar extends StatelessWidget {
             title: 'Change Mode',
             subtitle: 'Show labs, theories, or both',
             selectedValue: mode,
-            options: <BracuSelectOption<String>>[
-              const BracuSelectOption<String>(
+            options: <AppSelectOption<String>>[
+              const AppSelectOption<String>(
                 value: '',
                 label: 'Labs + Theory',
                 icon: Icons.all_inclusive_rounded,
               ),
               ...seatFilterModes.map(
-                (value) => BracuSelectOption<String>(
+                (value) => AppSelectOption<String>(
                   value: value,
                   label: value,
                   icon: value == 'Labs'
@@ -124,7 +124,7 @@ class SeatFilterBar extends StatelessWidget {
             ],
             onSelected: onModeChanged,
           ),
-          BracuSelectDropdownChip<String>(
+          AppSelectDropdownChip<String>(
             icon: Icons.calendar_today_outlined,
             label: day.isEmpty ? 'Any Day' : formatWeekdayTitle(day),
             selected: day.isNotEmpty,
@@ -133,14 +133,14 @@ class SeatFilterBar extends StatelessWidget {
             title: 'Filter by Day',
             subtitle: 'Show sections on a specific weekday',
             selectedValue: day,
-            options: <BracuSelectOption<String>>[
-              const BracuSelectOption<String>(
+            options: <AppSelectOption<String>>[
+              const AppSelectOption<String>(
                 value: '',
                 label: 'Any Day',
                 icon: Icons.all_inclusive_rounded,
               ),
               ...seatFilterWeekdays.map(
-                (value) => BracuSelectOption<String>(
+                (value) => AppSelectOption<String>(
                   value: value,
                   label: formatWeekdayTitle(value),
                   icon: Icons.calendar_today_outlined,
@@ -149,7 +149,7 @@ class SeatFilterBar extends StatelessWidget {
             ],
             onSelected: onDayChanged,
           ),
-          BracuSelectDropdownChip<SeatTimetable>(
+          AppSelectDropdownChip<SeatTimetable>(
             icon: Icons.schedule_outlined,
             label: time.isEmpty ? 'Any Time' : time.label,
             selected: time.isNotEmpty,
@@ -158,14 +158,14 @@ class SeatFilterBar extends StatelessWidget {
             title: 'Filter by Time',
             subtitle: 'Show sections at a specific time',
             selectedValue: time,
-            options: <BracuSelectOption<SeatTimetable>>[
-              const BracuSelectOption<SeatTimetable>(
+            options: <AppSelectOption<SeatTimetable>>[
+              const AppSelectOption<SeatTimetable>(
                 value: SeatTimetable(startTime: '', endTime: ''),
                 label: 'Any Time',
                 icon: Icons.all_inclusive_rounded,
               ),
               ...times.map(
-                (value) => BracuSelectOption<SeatTimetable>(
+                (value) => AppSelectOption<SeatTimetable>(
                   value: value,
                   label: value.label,
                   icon: Icons.schedule_outlined,

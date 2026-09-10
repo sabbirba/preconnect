@@ -21,7 +21,7 @@ class MetricTile extends StatelessWidget {
     return Container(
       padding: padding,
       decoration: BoxDecoration(
-        color: BracuPalette.textSecondary(context).withValues(alpha: 0.12),
+        color: AppPalette.textSecondary(context).withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(borderRadius),
       ),
       child: Column(
@@ -33,7 +33,7 @@ class MetricTile extends StatelessWidget {
               title,
               textAlign: TextAlign.center,
               style: TextStyle(
-                color: BracuPalette.textSecondary(context),
+                color: AppPalette.textSecondary(context),
                 fontSize: 10,
                 fontWeight: FontWeight.w700,
               ),
@@ -43,7 +43,7 @@ class MetricTile extends StatelessWidget {
             value,
             textAlign: TextAlign.center,
             style: TextStyle(
-              color: BracuPalette.textPrimary(context),
+              color: AppPalette.textPrimary(context),
               fontSize: 14,
               fontWeight: FontWeight.w800,
             ),

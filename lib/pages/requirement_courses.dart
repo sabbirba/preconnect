@@ -99,7 +99,7 @@ class _RequirementCoursesPageState extends State<RequirementCoursesPage> {
         return compareNaturalText(a.code, b.code);
       });
 
-    return BracuPageScaffold(
+    return AppPageScaffold(
       title: widget.headerTitle,
       subtitle: 'Requirement Courses',
       icon: Icons.menu_book_outlined,
@@ -108,8 +108,8 @@ class _RequirementCoursesPageState extends State<RequirementCoursesPage> {
         itemCount: courses.isEmpty ? 1 : courses.length,
         itemBuilder: (context, index) {
           if (courses.isEmpty) {
-            return const BracuCard(
-              child: BracuEmptyState(
+            return const AppCard(
+              child: AppEmptyState(
                 message: 'No courses found for this section.',
               ),
             );
@@ -125,10 +125,10 @@ class _RequirementCoursesPageState extends State<RequirementCoursesPage> {
           final Color? statusColor;
           if (done && gradeLabel == null) {
             statusLabel = 'Completed';
-            statusColor = BracuPalette.accent;
+            statusColor = AppPalette.accent;
           } else if (takingNow) {
             statusLabel = 'This semester';
-            statusColor = BracuPalette.primary;
+            statusColor = AppPalette.primary;
           } else {
             statusLabel = null;
             statusColor = null;

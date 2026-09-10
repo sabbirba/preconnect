@@ -204,12 +204,12 @@ class _SettingsPageState extends State<SettingsPage>
     final Divider divider = Divider(
       height: 12,
       thickness: 1,
-      color: BracuPalette.textSecondary(context).withValues(
+      color: AppPalette.textSecondary(context).withValues(
         alpha: Theme.of(context).brightness == Brightness.dark ? 0.20 : 0.12,
       ),
     );
 
-    return BracuPageScaffold(
+    return AppPageScaffold(
       title: 'Settings',
       subtitle: 'Customize',
       icon: Icons.settings_outlined,
@@ -229,13 +229,13 @@ class _SettingsPageState extends State<SettingsPage>
               visualDensity: VisualDensity.compact,
               icon: Icon(
                 isDark ? Icons.wb_sunny_outlined : Icons.dark_mode_outlined,
-                color: BracuPalette.primary,
+                color: AppPalette.primary,
               ),
             );
           },
         ),
       ],
-      body: BracuRefreshList(
+      body: AppRefreshList(
         onRefresh: _loadSettings,
         children: [
           ActionBannerCard(
@@ -249,7 +249,7 @@ class _SettingsPageState extends State<SettingsPage>
             },
           ),
           const Gap(_sectionGap),
-          BracuCard(
+          AppCard(
             child: Column(
               children: [
                 _ToggleRow(
@@ -351,7 +351,7 @@ class _SettingsPageState extends State<SettingsPage>
             ),
           ),
           const Gap(_sectionGap),
-          BracuCard(
+          AppCard(
             child: Column(
               children: [
                 _ToggleRow(
@@ -366,10 +366,10 @@ class _SettingsPageState extends State<SettingsPage>
                     width: double.infinity,
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: BracuPalette.primary.withValues(alpha: 0.08),
+                      color: AppPalette.primary.withValues(alpha: 0.08),
                       borderRadius: BorderRadius.circular(14),
                       border: Border.all(
-                        color: BracuPalette.primary.withValues(alpha: 0.22),
+                        color: AppPalette.primary.withValues(alpha: 0.22),
                       ),
                     ),
                     child: Row(
@@ -379,12 +379,12 @@ class _SettingsPageState extends State<SettingsPage>
                             _quietModeSetupMsg(),
                             style: TextStyle(
                               fontSize: 12,
-                              color: BracuPalette.textSecondary(context),
+                              color: AppPalette.textSecondary(context),
                             ),
                           ),
                         ),
                         const Gap(12),
-                        BracuActionButton(
+                        AppActionButton(
                           onPressed: _fixQuietModeSetup,
                           label: 'Fix',
                           outlined: false,
@@ -402,7 +402,7 @@ class _SettingsPageState extends State<SettingsPage>
             ),
           ),
           const Gap(_sectionGap),
-          BracuCard(
+          AppCard(
             child: _ToggleRow(
               title: 'App Lock',
               subtitle: 'System lock security for the app',
@@ -467,7 +467,7 @@ class _ToggleRow extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
-                  color: BracuPalette.textPrimary(context),
+                  color: AppPalette.textPrimary(context),
                 ),
               ),
               const Gap(2),
@@ -475,7 +475,7 @@ class _ToggleRow extends StatelessWidget {
                 subtitle,
                 style: TextStyle(
                   fontSize: 12,
-                  color: BracuPalette.textSecondary(context),
+                  color: AppPalette.textSecondary(context),
                 ),
               ),
             ],
@@ -485,7 +485,7 @@ class _ToggleRow extends StatelessWidget {
         Switch(
           value: value,
           onChanged: onChanged,
-          activeThumbColor: BracuPalette.primary,
+          activeThumbColor: AppPalette.primary,
         ),
       ],
     );

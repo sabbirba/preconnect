@@ -138,7 +138,7 @@ class CompareSchedulesPage extends StatefulWidget {
   }
 
   static int? _timeToMinutes(String time) {
-    return BracuTime.toMinutes(time);
+    return AppTime.toMinutes(time);
   }
 
   static String _normalizeDay(String raw) {
@@ -290,7 +290,7 @@ class _CompareSchedulesPageState extends State<CompareSchedulesPage> {
     for (final entry in entries) {
       final startMinutes = entry.startMinutes;
       final endMinutes = entry.endMinutes;
-      final weekday = BracuTime.weekdayFromName(entry.day);
+      final weekday = AppTime.weekdayFromName(entry.day);
       if (startMinutes == null || endMinutes == null || weekday == null) {
         continue;
       }
@@ -499,12 +499,12 @@ class _CompareSchedulesPageState extends State<CompareSchedulesPage> {
         'With ${widget.friendItem.name.trim().isEmpty ? 'Friend' : widget.friendItem.name}';
 
     if (widget.personalSchedule == null || widget.personalSchedule!.isEmpty) {
-      return BracuPageScaffold(
+      return AppPageScaffold(
         title: title,
         subtitle: subtitle,
         icon: Icons.compare_arrows_rounded,
         body: const Center(
-          child: BracuEmptyState(
+          child: AppEmptyState(
             message: 'You need to have your own schedule to compare',
           ),
         ),
@@ -537,7 +537,7 @@ class _CompareSchedulesPageState extends State<CompareSchedulesPage> {
       _buildPeopleCard(context),
       const Gap(12),
       if (entries.isEmpty)
-        const BracuCard(
+        const AppCard(
           child: Text('No overlap found in available schedule data.'),
         )
       else
@@ -548,14 +548,14 @@ class _CompareSchedulesPageState extends State<CompareSchedulesPage> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                BracuSectionTitle(title: entry.key),
+                AppSectionTitle(title: entry.key),
                 if (dateLabel.isNotEmpty)
                   Text(
                     dateLabel,
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
-                      color: BracuPalette.textPrimary(context),
+                      color: AppPalette.textPrimary(context),
                     ),
                   ),
               ],
@@ -594,7 +594,7 @@ class _CompareSchedulesPageState extends State<CompareSchedulesPage> {
       );
     }
 
-    return BracuPageScaffold(
+    return AppPageScaffold(
       title: title,
       subtitle: subtitle,
       icon: Icons.compare_arrows_rounded,
@@ -607,8 +607,8 @@ class _CompareSchedulesPageState extends State<CompareSchedulesPage> {
   }
 
   Widget _buildPeopleCard(BuildContext context) {
-    final textPrimary = BracuPalette.textPrimary(context);
-    final textSecondary = BracuPalette.textSecondary(context);
+    final textPrimary = AppPalette.textPrimary(context);
+    final textSecondary = AppPalette.textSecondary(context);
 
     final myUniqueCount = widget.personalSchedule == null
         ? 0
@@ -636,7 +636,7 @@ class _CompareSchedulesPageState extends State<CompareSchedulesPage> {
         .toSet()
         .length;
 
-    return BracuCard(
+    return AppCard(
       child: Row(
         children: [
           _buildPerson(
@@ -650,7 +650,7 @@ class _CompareSchedulesPageState extends State<CompareSchedulesPage> {
             padding: const EdgeInsets.symmetric(horizontal: 10),
             child: Icon(
               Icons.compare_arrows_rounded,
-              color: BracuPalette.primary.withValues(alpha: 0.7),
+              color: AppPalette.primary.withValues(alpha: 0.7),
               size: 24,
             ),
           ),
@@ -712,17 +712,17 @@ class _CompareSchedulesPageState extends State<CompareSchedulesPage> {
     GlobalKey? highlightKey,
   }) {
     final (badgeLabel, color) = switch (item.type) {
-      _CompareType.free => ('FR', BracuPalette.accent),
-      _CompareType.busy => ('BZ', BracuPalette.warning),
-      _CompareType.common => ('CM', BracuPalette.primary),
+      _CompareType.free => ('FR', AppPalette.accent),
+      _CompareType.busy => ('BZ', AppPalette.warning),
+      _CompareType.common => ('CM', AppPalette.primary),
     };
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
-      child: BracuCard(
+      child: AppCard(
         key: highlightKey,
         isHighlighted: isHighlighted,
-        highlightColor: BracuPalette.primary,
+        highlightColor: AppPalette.primary,
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
@@ -748,14 +748,14 @@ class _CompareSchedulesPageState extends State<CompareSchedulesPage> {
                               style: TextStyle(
                                 fontSize: 14,
                                 fontWeight: FontWeight.w600,
-                                color: BracuPalette.textPrimary(context),
+                                color: AppPalette.textPrimary(context),
                               ),
                             ),
                             TextSpan(
                               text: ' $suffix',
                               style: TextStyle(
                                 fontSize: 12,
-                                color: BracuPalette.textSecondary(context),
+                                color: AppPalette.textSecondary(context),
                                 fontWeight: FontWeight.w500,
                               ),
                             ),
@@ -768,7 +768,7 @@ class _CompareSchedulesPageState extends State<CompareSchedulesPage> {
                       style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
-                        color: BracuPalette.textPrimary(context),
+                        color: AppPalette.textPrimary(context),
                       ),
                     );
                   })(),
@@ -777,7 +777,7 @@ class _CompareSchedulesPageState extends State<CompareSchedulesPage> {
                     item.subtitle,
                     style: TextStyle(
                       fontSize: 12,
-                      color: BracuPalette.textSecondary(context),
+                      color: AppPalette.textSecondary(context),
                     ),
                   ),
                 ],
@@ -788,7 +788,7 @@ class _CompareSchedulesPageState extends State<CompareSchedulesPage> {
               onPressed: () => _togglePin(item.key),
               icon: Icon(
                 isPinned ? Icons.star_rounded : Icons.star_outline_rounded,
-                color: isPinned ? BracuPalette.favorite : color,
+                color: isPinned ? AppPalette.favorite : color,
               ),
             ),
           ],

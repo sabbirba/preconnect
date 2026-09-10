@@ -67,16 +67,16 @@ class SectionLoadView<T> extends StatelessWidget {
       builder: (context, _) {
         final hasData = controller.sections.isNotEmpty;
         if (controller.isLoading && !hasData && controller.error == null) {
-          return const Center(child: BracuLoading());
+          return const Center(child: AppLoading());
         }
         if (controller.error != null && !hasData) {
-          return BracuErrorState(
+          return AppErrorState(
             title: errorTitle,
             message: controller.error ?? '',
             onRetry: () => controller.load(forceRefresh: true),
           );
         }
-        return BracuRefreshList(
+        return AppRefreshList(
           onRefresh: () => controller.load(forceRefresh: true),
           children: [
             SectionListCard(

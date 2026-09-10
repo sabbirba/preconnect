@@ -909,32 +909,32 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
       subtitleColor = null;
     }
 
-    return BracuPageScaffold(
+    return AppPageScaffold(
       title: 'Printer',
       subtitle: printerSubtitle,
       subtitleColor: subtitleColor,
       icon: Icons.local_printshop_outlined,
       actions: [
-        BracuRefreshButton(
+        AppRefreshButton(
           onPressed: () => _refreshPrinterInfo(),
           isLoading: _discovering,
         ),
         IconButton(
           onPressed: () => _showHelpBottomSheet(context),
           style: appCompactIconButtonStyle(
-            foregroundColor: BracuPalette.primary,
+            foregroundColor: AppPalette.primary,
             borderColor: Colors.transparent,
             padding: EdgeInsets.zero,
             borderRadius: 12,
           ),
           icon: const Icon(
             Icons.help_outline_rounded,
-            color: BracuPalette.primary,
+            color: AppPalette.primary,
           ),
           tooltip: 'Help',
         ),
       ],
-      body: BracuRefreshList(
+      body: AppRefreshList(
         onRefresh: _refreshPrinterInfo,
         padding: const EdgeInsets.fromLTRB(20, 0, 20, 28),
         children: [
@@ -967,12 +967,12 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
                       child: FittedBox(
                         fit: BoxFit.scaleDown,
                         alignment: Alignment.centerRight,
-                        child: BracuActionButton(
+                        child: AppActionButton(
                           onPressed: _busy ? null : _loadBlankPage,
                           label: 'Blank Page',
                           icon: Icons.download_rounded,
                           iconGap: 0,
-                          foregroundColor: BracuPalette.textPrimary(context),
+                          foregroundColor: AppPalette.textPrimary(context),
                           padding: const EdgeInsets.symmetric(
                             horizontal: 12,
                             vertical: 10,
@@ -1071,7 +1071,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
               Row(
                 children: [
                   Expanded(
-                    child: BracuActionButton(
+                    child: AppActionButton(
                       onPressed: _busy ? null : _pickPrintFile,
                       icon: Icons.picture_as_pdf_outlined,
                       label: 'Choose',
@@ -1079,7 +1079,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
                   ),
                   const Gap(12),
                   Expanded(
-                    child: BracuActionButton(
+                    child: AppActionButton(
                       onPressed: canPrint ? _sendToPrinter : null,
                       icon: Icons.print_rounded,
                       label: 'Print',
@@ -1092,11 +1092,11 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
                 const Gap(12),
                 SizedBox(
                   width: double.infinity,
-                  child: BracuActionButton(
+                  child: AppActionButton(
                     onPressed: _busy ? null : _clearHistory,
                     outlined: true,
                     backgroundColor: Colors.transparent,
-                    foregroundColor: BracuPalette.textSecondary(context),
+                    foregroundColor: AppPalette.textSecondary(context),
                     label: 'Clear History',
                   ),
                 ),
@@ -1115,7 +1115,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
               "Making students' campus life better & easier.",
               textAlign: TextAlign.center,
               style: TextStyle(
-                color: BracuPalette.textPrimary(context),
+                color: AppPalette.textPrimary(context),
                 fontSize: 12,
                 fontWeight: FontWeight.w700,
               ),
@@ -1128,7 +1128,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
 
   Widget _buildEmailPrinting(BuildContext context) {
     final emphasis = TextStyle(
-      color: BracuPalette.textPrimary(context),
+      color: AppPalette.textPrimary(context),
       fontWeight: FontWeight.w700,
     );
     WidgetSpan emailLink(String label, String subject, {bool bold = false}) {
@@ -1146,7 +1146,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
             child: Text(
               label,
               style: TextStyle(
-                color: BracuPalette.primary,
+                color: AppPalette.primary,
                 fontSize: 12,
                 height: 1.4,
                 fontWeight: bold ? FontWeight.w700 : FontWeight.w500,
@@ -1157,7 +1157,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
       );
     }
 
-    return BracuCard(
+    return AppCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1175,7 +1175,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
               IconButton(
                 tooltip: 'Compose Email',
                 icon: const Icon(Icons.mail_outline_rounded),
-                color: BracuPalette.primary,
+                color: AppPalette.primary,
                 onPressed: () => openMailComposer(
                   context,
                   'campus.printer@g.bracu.ac.bd',
@@ -1215,7 +1215,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
               ],
             ),
             style: TextStyle(
-              color: BracuPalette.textSecondary(context),
+              color: AppPalette.textSecondary(context),
               fontSize: 12,
               height: 1.4,
               fontWeight: FontWeight.w500,
@@ -1227,7 +1227,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
   }
 
   void _showHelpBottomSheet(BuildContext context) {
-    showBracuBottomSheet<void>(
+    showAppBottomSheet<void>(
       context,
       title: 'Printer Instructions',
       initialChildSize: 0.75,
@@ -1418,8 +1418,8 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
     String? body,
     Widget? bodyWidget,
   }) {
-    final textPrimary = BracuPalette.textPrimary(context);
-    final textSecondary = BracuPalette.textSecondary(context);
+    final textPrimary = AppPalette.textPrimary(context);
+    final textSecondary = AppPalette.textSecondary(context);
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1429,14 +1429,14 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
             width: 20,
             height: 20,
             decoration: BoxDecoration(
-              color: BracuPalette.primary.withValues(alpha: 0.12),
+              color: AppPalette.primary.withValues(alpha: 0.12),
               shape: BoxShape.circle,
             ),
             alignment: Alignment.center,
             child: Text(
               stepNumber,
               style: const TextStyle(
-                color: BracuPalette.primary,
+                color: AppPalette.primary,
                 fontSize: 10,
                 fontWeight: FontWeight.w800,
               ),
@@ -1540,7 +1540,7 @@ class _PrinterFileCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final content = BracuCard(
+    final content = AppCard(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       child: Row(
         children: [
@@ -1551,7 +1551,7 @@ class _PrinterFileCard extends StatelessWidget {
                 Text(
                   subtitle,
                   style: TextStyle(
-                    color: BracuPalette.textSecondary(context),
+                    color: AppPalette.textSecondary(context),
                     fontSize: 11,
                     fontWeight: FontWeight.w600,
                   ),
@@ -1563,8 +1563,8 @@ class _PrinterFileCard extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     color: isEmpty
-                        ? BracuPalette.textSecondary(context)
-                        : BracuPalette.textPrimary(context),
+                        ? AppPalette.textSecondary(context)
+                        : AppPalette.textPrimary(context),
                     fontWeight: FontWeight.w700,
                   ),
                 ),
@@ -1579,7 +1579,7 @@ class _PrinterFileCard extends StatelessWidget {
               onPressed: onClear,
               icon: const Icon(Icons.close_rounded),
               tooltip: 'Clear file',
-              color: BracuPalette.textSecondary(context),
+              color: AppPalette.textSecondary(context),
               iconSize: 20,
               constraints: const BoxConstraints.tightFor(width: 36, height: 36),
               padding: EdgeInsets.zero,
@@ -1938,7 +1938,7 @@ class _PrinterPreferencesPanel extends StatelessWidget {
                   children: [
                     Expanded(
                       flex: 42,
-                      child: BracuActionButton(
+                      child: AppActionButton(
                         onPressed: copies <= 0 ? null : () => onCopiesStep(-1),
                         outlined: false,
                         borderRadius: 12,
@@ -1963,7 +1963,7 @@ class _PrinterPreferencesPanel extends StatelessWidget {
                         style: TextStyle(
                           fontSize: compact ? 16 : 18,
                           fontWeight: FontWeight.w700,
-                          color: BracuPalette.textPrimary(context),
+                          color: AppPalette.textPrimary(context),
                         ),
                         decoration: const InputDecoration(
                           border: InputBorder.none,
@@ -1974,7 +1974,7 @@ class _PrinterPreferencesPanel extends StatelessWidget {
                     ),
                     Expanded(
                       flex: 42,
-                      child: BracuActionButton(
+                      child: AppActionButton(
                         onPressed: copies >= 999 ? null : () => onCopiesStep(1),
                         outlined: false,
                         borderRadius: 12,
@@ -1993,17 +1993,17 @@ class _PrinterPreferencesPanel extends StatelessWidget {
               child: Row(
                 children: [
                   Expanded(
-                    child: BracuActionButton(
+                    child: AppActionButton(
                       onPressed: () {
                         onDuplexChanged(duplexEnabled ? 'OFF' : 'LEFT');
                       },
                       outlined: true,
                       backgroundColor: duplexEnabled
-                          ? BracuPalette.primary.withValues(alpha: 0.12)
+                          ? AppPalette.primary.withValues(alpha: 0.12)
                           : Colors.transparent,
                       foregroundColor: duplexEnabled
-                          ? BracuPalette.primary
-                          : BracuPalette.textPrimary(context),
+                          ? AppPalette.primary
+                          : AppPalette.textPrimary(context),
                       borderRadius: 12,
                       padding: togglePadding,
                       label: duplexEnabled ? 'Both Side' : 'One Side',
@@ -2012,17 +2012,17 @@ class _PrinterPreferencesPanel extends StatelessWidget {
                   ),
                   Gap(gap),
                   Expanded(
-                    child: BracuActionButton(
+                    child: AppActionButton(
                       onPressed: () {
                         onCollateChanged(collateEnabled ? 'OFF' : 'ON');
                       },
                       outlined: true,
                       backgroundColor: collateEnabled
-                          ? BracuPalette.primary.withValues(alpha: 0.12)
+                          ? AppPalette.primary.withValues(alpha: 0.12)
                           : Colors.transparent,
                       foregroundColor: collateEnabled
-                          ? BracuPalette.primary
-                          : BracuPalette.textPrimary(context),
+                          ? AppPalette.primary
+                          : AppPalette.textPrimary(context),
                       borderRadius: 12,
                       padding: togglePadding,
                       label: 'Collate',
@@ -2091,7 +2091,7 @@ class _PrinterLayoutPreferencesPanel extends StatelessWidget {
                 Expanded(
                   child: Padding(
                     padding: EdgeInsets.symmetric(horizontal: gap / 2),
-                    child: BracuActionButton(
+                    child: AppActionButton(
                       onPressed: () {
                         final nextVal = pagesPerSheet == '1-in-1'
                             ? '2-in-1'
@@ -2100,11 +2100,11 @@ class _PrinterLayoutPreferencesPanel extends StatelessWidget {
                       },
                       outlined: true,
                       backgroundColor: pagesPerSheet != '1-in-1'
-                          ? BracuPalette.primary.withValues(alpha: 0.12)
+                          ? AppPalette.primary.withValues(alpha: 0.12)
                           : Colors.transparent,
                       foregroundColor: pagesPerSheet != '1-in-1'
-                          ? BracuPalette.primary
-                          : BracuPalette.textPrimary(context),
+                          ? AppPalette.primary
+                          : AppPalette.textPrimary(context),
                       borderRadius: 12,
                       padding: buttonPadding,
                       label: pagesPerSheet,
@@ -2116,7 +2116,7 @@ class _PrinterLayoutPreferencesPanel extends StatelessWidget {
                 Expanded(
                   child: Padding(
                     padding: EdgeInsets.symmetric(horizontal: gap / 2),
-                    child: BracuActionButton(
+                    child: AppActionButton(
                       onPressed: () {
                         final nextVal = fittingMode == 'Fit on Paper'
                             ? 'Fit on Printable Area'
@@ -2127,11 +2127,11 @@ class _PrinterLayoutPreferencesPanel extends StatelessWidget {
                       },
                       outlined: true,
                       backgroundColor: fittingMode != 'Fit on Paper'
-                          ? BracuPalette.primary.withValues(alpha: 0.12)
+                          ? AppPalette.primary.withValues(alpha: 0.12)
                           : Colors.transparent,
                       foregroundColor: fittingMode != 'Fit on Paper'
-                          ? BracuPalette.primary
-                          : BracuPalette.textPrimary(context),
+                          ? AppPalette.primary
+                          : AppPalette.textPrimary(context),
                       borderRadius: 12,
                       padding: buttonPadding,
                       label: fittingMode == 'Fit on Paper'
@@ -2151,7 +2151,7 @@ class _PrinterLayoutPreferencesPanel extends StatelessWidget {
                 Expanded(
                   child: Padding(
                     padding: EdgeInsets.symmetric(horizontal: gap / 2),
-                    child: BracuActionButton(
+                    child: AppActionButton(
                       onPressed: () {
                         final nextVal = staple == 'Off'
                             ? 'Left Corner'
@@ -2162,11 +2162,11 @@ class _PrinterLayoutPreferencesPanel extends StatelessWidget {
                       },
                       outlined: true,
                       backgroundColor: staple != 'Off'
-                          ? BracuPalette.primary.withValues(alpha: 0.12)
+                          ? AppPalette.primary.withValues(alpha: 0.12)
                           : Colors.transparent,
                       foregroundColor: staple != 'Off'
-                          ? BracuPalette.primary
-                          : BracuPalette.textPrimary(context),
+                          ? AppPalette.primary
+                          : AppPalette.textPrimary(context),
                       borderRadius: 12,
                       padding: buttonPadding,
                       label: staple == 'Off'
@@ -2182,7 +2182,7 @@ class _PrinterLayoutPreferencesPanel extends StatelessWidget {
                 Expanded(
                   child: Padding(
                     padding: EdgeInsets.symmetric(horizontal: gap / 2),
-                    child: BracuActionButton(
+                    child: AppActionButton(
                       onPressed: () {
                         final nextVal = punch == 'Off'
                             ? '2 Holes'
@@ -2191,11 +2191,11 @@ class _PrinterLayoutPreferencesPanel extends StatelessWidget {
                       },
                       outlined: true,
                       backgroundColor: punch != 'Off'
-                          ? BracuPalette.primary.withValues(alpha: 0.12)
+                          ? AppPalette.primary.withValues(alpha: 0.12)
                           : Colors.transparent,
                       foregroundColor: punch != 'Off'
-                          ? BracuPalette.primary
-                          : BracuPalette.textPrimary(context),
+                          ? AppPalette.primary
+                          : AppPalette.textPrimary(context),
                       borderRadius: 12,
                       padding: buttonPadding,
                       label: punch == 'Off' ? 'Punch Off' : punch,
@@ -2211,17 +2211,17 @@ class _PrinterLayoutPreferencesPanel extends StatelessWidget {
                 Expanded(
                   child: Padding(
                     padding: EdgeInsets.symmetric(horizontal: gap / 2),
-                    child: BracuActionButton(
+                    child: AppActionButton(
                       onPressed: () {
                         onJobOffsetChanged(jobOffset == 'On' ? 'Off' : 'On');
                       },
                       outlined: true,
                       backgroundColor: jobOffset == 'On'
-                          ? BracuPalette.primary.withValues(alpha: 0.12)
+                          ? AppPalette.primary.withValues(alpha: 0.12)
                           : Colors.transparent,
                       foregroundColor: jobOffset == 'On'
-                          ? BracuPalette.primary
-                          : BracuPalette.textPrimary(context),
+                          ? AppPalette.primary
+                          : AppPalette.textPrimary(context),
                       borderRadius: 12,
                       padding: buttonPadding,
                       label: 'Offset',
@@ -2233,17 +2233,17 @@ class _PrinterLayoutPreferencesPanel extends StatelessWidget {
                 Expanded(
                   child: Padding(
                     padding: EdgeInsets.symmetric(horizontal: gap / 2),
-                    child: BracuActionButton(
+                    child: AppActionButton(
                       onPressed: () {
                         onSlipSheetChanged(slipSheet == 'On' ? 'Off' : 'On');
                       },
                       outlined: true,
                       backgroundColor: slipSheet == 'On'
-                          ? BracuPalette.primary.withValues(alpha: 0.12)
+                          ? AppPalette.primary.withValues(alpha: 0.12)
                           : Colors.transparent,
                       foregroundColor: slipSheet == 'On'
-                          ? BracuPalette.primary
-                          : BracuPalette.textPrimary(context),
+                          ? AppPalette.primary
+                          : AppPalette.textPrimary(context),
                       borderRadius: 12,
                       padding: buttonPadding,
                       label: 'Slip Sheet',
@@ -2255,17 +2255,17 @@ class _PrinterLayoutPreferencesPanel extends StatelessWidget {
                 Expanded(
                   child: Padding(
                     padding: EdgeInsets.symmetric(horizontal: gap / 2),
-                    child: BracuActionButton(
+                    child: AppActionButton(
                       onPressed: () {
                         onBookletChanged(booklet == 'On' ? 'Off' : 'On');
                       },
                       outlined: true,
                       backgroundColor: booklet == 'On'
-                          ? BracuPalette.primary.withValues(alpha: 0.12)
+                          ? AppPalette.primary.withValues(alpha: 0.12)
                           : Colors.transparent,
                       foregroundColor: booklet == 'On'
-                          ? BracuPalette.primary
-                          : BracuPalette.textPrimary(context),
+                          ? AppPalette.primary
+                          : AppPalette.textPrimary(context),
                       borderRadius: 12,
                       padding: buttonPadding,
                       label: 'Booklet',

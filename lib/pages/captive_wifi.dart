@@ -575,9 +575,7 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
     messenger.showSnackBar(
       SnackBar(
         content: Text(message, style: const TextStyle(color: Colors.white)),
-        backgroundColor: isDark
-            ? const Color(0xFF1E6BE3)
-            : BracuPalette.primary,
+        backgroundColor: isDark ? const Color(0xFF1E6BE3) : AppPalette.primary,
         duration: const Duration(seconds: 2),
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
@@ -617,7 +615,7 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
           unawaited(AndroidNetworkAssist.ignoreNetwork());
         }
       },
-      child: BracuPageScaffold(
+      child: AppPageScaffold(
         title: 'Captive Wi-Fi',
         subtitle: _scanning ? 'Scanning..' : 'API Based Session',
         icon: Icons.wifi_rounded,
@@ -625,14 +623,14 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
           IconButton(
             onPressed: () => _showHelpBottomSheet(context),
             style: appCompactIconButtonStyle(
-              foregroundColor: BracuPalette.primary,
+              foregroundColor: AppPalette.primary,
               borderColor: Colors.transparent,
               padding: EdgeInsets.zero,
               borderRadius: 12,
             ),
             icon: const Icon(
               Icons.help_outline_rounded,
-              color: BracuPalette.primary,
+              color: AppPalette.primary,
             ),
             tooltip: 'Help',
           ),
@@ -641,7 +639,7 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
           key: _pageMessengerKey,
           child: Scaffold(
             backgroundColor: Colors.transparent,
-            body: BracuRefreshList(
+            body: AppRefreshList(
               onRefresh: _loadStoredCredentials,
               children: [
                 Column(
@@ -653,7 +651,7 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
                             initialValue: CaptiveLoginStore.defaultCampusSsid,
                             readOnly: true,
                             style: TextStyle(
-                              color: BracuPalette.textPrimary(context),
+                              color: AppPalette.textPrimary(context),
                               fontFamily: 'Outfit',
                             ),
                             decoration: appInputDecoration(
@@ -666,7 +664,7 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
                           TextField(
                             controller: _studentIdController,
                             style: TextStyle(
-                              color: BracuPalette.textPrimary(context),
+                              color: AppPalette.textPrimary(context),
                               fontFamily: 'Outfit',
                             ),
                             decoration: appInputDecoration(
@@ -683,7 +681,7 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
                               AutofillHints.password,
                             ],
                             style: TextStyle(
-                              color: BracuPalette.textPrimary(context),
+                              color: AppPalette.textPrimary(context),
                               fontFamily: 'Outfit',
                             ),
                             decoration: appInputDecoration(
@@ -695,7 +693,7 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
                                   _obscurePassword
                                       ? Icons.visibility_off_outlined
                                       : Icons.visibility_outlined,
-                                  color: BracuPalette.textSecondary(context),
+                                  color: AppPalette.textSecondary(context),
                                 ),
                                 onPressed: () {
                                   setState(() {
@@ -712,7 +710,7 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
                     Row(
                       children: [
                         Expanded(
-                          child: BracuActionButton(
+                          child: AppActionButton(
                             onPressed: _isConnecting || _isDisconnecting
                                 ? null
                                 : () => unawaited(_savePassword()),
@@ -725,7 +723,7 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
                             _isConnecting) ...[
                           const Gap(12),
                           Expanded(
-                            child: BracuActionButton(
+                            child: AppActionButton(
                               onPressed: _isDisconnecting
                                   ? null
                                   : (_isConnecting
@@ -758,7 +756,7 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
                       const Gap(12),
                       SizedBox(
                         width: double.infinity,
-                        child: BracuActionButton(
+                        child: AppActionButton(
                           onPressed: () async {
                             final status =
                                 await AndroidNetworkAssist.getNetworkStatus();
@@ -808,7 +806,7 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
                                 style: TextStyle(
                                   fontSize: 14,
                                   fontWeight: FontWeight.w600,
-                                  color: BracuPalette.textPrimary(context),
+                                  color: AppPalette.textPrimary(context),
                                 ),
                               ),
                               const Gap(2),
@@ -816,7 +814,7 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
                                 'Automatically keep session active.',
                                 style: TextStyle(
                                   fontSize: 12,
-                                  color: BracuPalette.textSecondary(context),
+                                  color: AppPalette.textSecondary(context),
                                 ),
                               ),
                             ],
@@ -826,14 +824,12 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
                         Switch(
                           value: _autoExtendEnabled,
                           onChanged: _setAutoExtendEnabled,
-                          activeThumbColor: BracuPalette.primary,
-                          activeTrackColor: BracuPalette.primary.withValues(
+                          activeThumbColor: AppPalette.primary,
+                          activeTrackColor: AppPalette.primary.withValues(
                             alpha: 0.2,
                           ),
-                          inactiveThumbColor: BracuPalette.textSecondary(
-                            context,
-                          ),
-                          inactiveTrackColor: BracuPalette.textSecondary(
+                          inactiveThumbColor: AppPalette.textSecondary(context),
+                          inactiveTrackColor: AppPalette.textSecondary(
                             context,
                           ).withValues(alpha: 0.1),
                         ),
@@ -861,7 +857,7 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
 
   Widget _buildRawResponseCard(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final borderColor = BracuPalette.textSecondary(
+    final borderColor = AppPalette.textSecondary(
       context,
     ).withValues(alpha: isDark ? 0.35 : 0.18);
 
@@ -869,14 +865,14 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: BracuPalette.card(context),
+        color: AppPalette.card(context),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: borderColor),
       ),
       child: SelectableText(
         _rawResponseLog ?? '',
         style: TextStyle(
-          color: BracuPalette.textPrimary(context),
+          color: AppPalette.textPrimary(context),
           fontSize: 12,
           fontFamily: 'monospace',
           height: 1.4,
@@ -910,7 +906,7 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
       return const SizedBox.shrink();
     }
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final borderColor = BracuPalette.textSecondary(
+    final borderColor = AppPalette.textSecondary(
       context,
     ).withValues(alpha: isDark ? 0.35 : 0.18);
 
@@ -940,7 +936,7 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: BracuPalette.card(context),
+        color: AppPalette.card(context),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: borderColor),
         boxShadow: isDark
@@ -965,7 +961,7 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
                   child: Text(
                     rows[i].label,
                     style: TextStyle(
-                      color: BracuPalette.textSecondary(context),
+                      color: AppPalette.textSecondary(context),
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
                     ),
@@ -978,7 +974,7 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
                     rows[i].value,
                     textAlign: TextAlign.right,
                     style: TextStyle(
-                      color: BracuPalette.textPrimary(context),
+                      color: AppPalette.textPrimary(context),
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
                       fontFamily: 'monospace',
@@ -991,7 +987,7 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
               Divider(
                 height: 18,
                 thickness: 1,
-                color: BracuPalette.textSecondary(
+                color: AppPalette.textSecondary(
                   context,
                 ).withValues(alpha: isDark ? 0.22 : 0.14),
               ),
@@ -1014,7 +1010,7 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
   }
 
   void _showHelpBottomSheet(BuildContext context) {
-    showBracuBottomSheet<void>(
+    showAppBottomSheet<void>(
       context,
       title: 'Captive Wi-Fi Information',
       initialChildSize: 0.65,
@@ -1209,8 +1205,8 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
     required String param,
     required String meaning,
   }) {
-    final textPrimary = BracuPalette.textPrimary(context);
-    final textSecondary = BracuPalette.textSecondary(context);
+    final textPrimary = AppPalette.textPrimary(context);
+    final textSecondary = AppPalette.textSecondary(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1243,8 +1239,8 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
     required String title,
     required String body,
   }) {
-    final textPrimary = BracuPalette.textPrimary(context);
-    final textSecondary = BracuPalette.textSecondary(context);
+    final textPrimary = AppPalette.textPrimary(context);
+    final textSecondary = AppPalette.textSecondary(context);
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1254,14 +1250,14 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
             width: 20,
             height: 20,
             decoration: BoxDecoration(
-              color: BracuPalette.primary.withValues(alpha: 0.12),
+              color: AppPalette.primary.withValues(alpha: 0.12),
               shape: BoxShape.circle,
             ),
             alignment: Alignment.center,
             child: Text(
               stepNumber,
               style: const TextStyle(
-                color: BracuPalette.primary,
+                color: AppPalette.primary,
                 fontSize: 10,
                 fontWeight: FontWeight.w800,
               ),
@@ -1393,10 +1389,10 @@ class _CaptivePortalWebViewState extends State<CaptivePortalWebView> {
                       onPressed: () => Navigator.of(context).pop(),
                     ),
                     const Spacer(),
-                    BracuRefreshButton(
+                    AppRefreshButton(
                       onPressed: () => _controller.reload(),
                       isLoading: _loading,
-                      color: BracuPalette.textPrimary(context),
+                      color: AppPalette.textPrimary(context),
                     ),
                   ],
                 ),

@@ -18,13 +18,13 @@ class AcademicSummaryCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final borderColor = BracuPalette.textSecondary(
+    final borderColor = AppPalette.textSecondary(
       context,
     ).withValues(alpha: isDark ? 0.35 : 0.18);
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: BracuPalette.card(context),
+        color: AppPalette.card(context),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: borderColor),
         boxShadow: isDark
@@ -66,8 +66,8 @@ class _AcademicSummaryState extends State<_AcademicSummary> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final textPrimary = BracuPalette.textPrimary(context);
-    final textSecondary = BracuPalette.textSecondary(context);
+    final textPrimary = AppPalette.textPrimary(context);
+    final textSecondary = AppPalette.textSecondary(context);
     final totalNum = _parseDouble(widget.advising['totalCredit']) > 0
         ? _parseDouble(widget.advising['totalCredit'])
         : (widget.progressSummary?.totalCredit ?? 0);
@@ -217,7 +217,7 @@ class _AcademicSummaryState extends State<_AcademicSummary> {
         const Gap(8),
         SimpleProgressBar(
           value: completionRatio,
-          color: BracuPalette.primary,
+          color: AppPalette.primary,
           height: 8,
           backgroundAlpha: isDark ? 0.18 : 0.12,
         ),

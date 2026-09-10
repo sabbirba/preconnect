@@ -1,7 +1,7 @@
 import 'package:preconnect/api/api_config.dart';
 
-class BracuLogout {
-  BracuLogout._();
+class AppLogout {
+  AppLogout._();
 
   static const String redirectUri = '${ApiConfig.connectOrigin}/';
 

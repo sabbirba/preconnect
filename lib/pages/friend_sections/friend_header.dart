@@ -33,8 +33,8 @@ class FriendHeaderCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final textPrimary = BracuPalette.textPrimary(context);
-    final textSecondary = BracuPalette.textSecondary(context);
+    final textPrimary = AppPalette.textPrimary(context);
+    final textSecondary = AppPalette.textSecondary(context);
     final nameToShow = displayName?.trim().isNotEmpty == true
         ? displayName!
         : (friend.name.trim().isEmpty ? 'Friend' : friend.name);
@@ -42,7 +42,7 @@ class FriendHeaderCard extends StatelessWidget {
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(16),
-      child: BracuCard(
+      child: AppCard(
         child: Row(
           children: [
             FriendAvatar(name: friend.name, photoUrl: friend.photoUrl),
@@ -65,7 +65,7 @@ class FriendHeaderCard extends StatelessWidget {
                                     padding: EdgeInsets.only(left: 4),
                                     child: Icon(
                                       Icons.star_rounded,
-                                      color: BracuPalette.favorite,
+                                      color: AppPalette.favorite,
                                       size: 14,
                                     ),
                                   ),
@@ -99,7 +99,7 @@ class FriendHeaderCard extends StatelessWidget {
                 onPressed: onToggleFavorite,
                 icon: Icon(
                   isFavorite ? Icons.star_rounded : Icons.star_outline_rounded,
-                  color: isFavorite ? BracuPalette.favorite : null,
+                  color: isFavorite ? AppPalette.favorite : null,
                 ),
               ),
             if (showActions && onEditNickname != null)

@@ -13,7 +13,7 @@ class PersonalInfoCard extends StatelessWidget {
 
   String _formatDateOfBirth(String value) {
     if (value.isEmpty) return '';
-    final parsed = BracuTime.parseDate(value);
+    final parsed = AppTime.parseDate(value);
     if (parsed == null) return value;
     return DateFormat('d MMMM, yyyy').format(parsed);
   }
@@ -21,7 +21,7 @@ class PersonalInfoCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final borderColor = BracuPalette.textSecondary(
+    final borderColor = AppPalette.textSecondary(
       context,
     ).withValues(alpha: isDark ? 0.35 : 0.18);
     final rows = <({String label, String value})>[
@@ -77,7 +77,7 @@ class PersonalInfoCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: BracuPalette.card(context),
+        color: AppPalette.card(context),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: borderColor),
         boxShadow: isDark
@@ -102,7 +102,7 @@ class PersonalInfoCard extends StatelessWidget {
               Divider(
                 height: 18,
                 thickness: 1,
-                color: BracuPalette.textSecondary(
+                color: AppPalette.textSecondary(
                   context,
                 ).withValues(alpha: isDark ? 0.22 : 0.14),
               ),
@@ -155,7 +155,7 @@ class _ProfileInfoRow extends StatelessWidget {
           child: Text(
             label,
             style: TextStyle(
-              color: BracuPalette.textSecondary(context),
+              color: AppPalette.textSecondary(context),
               fontSize: 13,
               fontWeight: FontWeight.w600,
             ),
@@ -170,7 +170,7 @@ class _ProfileInfoRow extends StatelessWidget {
               value,
               textAlign: TextAlign.right,
               style: TextStyle(
-                color: BracuPalette.textPrimary(context),
+                color: AppPalette.textPrimary(context),
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
               ),

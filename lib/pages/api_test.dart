@@ -220,13 +220,13 @@ class _ApiTestPageState extends State<ApiTestPage> {
           style: TextStyle(
             fontSize: 12,
             fontWeight: FontWeight.w600,
-            color: BracuPalette.textSecondary(context),
+            color: AppPalette.textSecondary(context),
           ),
         ),
         const Gap(6),
-        BracuCard(
+        AppCard(
           padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
-          backgroundColor: BracuPalette.card(context).withValues(alpha: 0.35),
+          backgroundColor: AppPalette.card(context).withValues(alpha: 0.35),
           child: QuickAccessGrid(
             items: [
               QuickAccessItem(
@@ -281,11 +281,11 @@ class _ApiTestPageState extends State<ApiTestPage> {
 
   @override
   Widget build(BuildContext context) {
-    return BracuPageScaffold(
+    return AppPageScaffold(
       title: 'Connect API Test',
       subtitle: 'BRACU SSO Auth Session',
       icon: Icons.science_outlined,
-      body: BracuRefreshList(
+      body: AppRefreshList(
         onRefresh: _sendRequest,
         children: [
           _buildDeveloperTools(context),
@@ -301,7 +301,7 @@ class _ApiTestPageState extends State<ApiTestPage> {
           DropdownButtonFormField<String>(
             initialValue: _method,
             style: TextStyle(
-              color: BracuPalette.textPrimary(context),
+              color: AppPalette.textPrimary(context),
               fontSize: 14,
             ),
             dropdownColor: const Color(0xFF1E1E1E),
@@ -320,7 +320,7 @@ class _ApiTestPageState extends State<ApiTestPage> {
           TextField(
             controller: _urlController,
             style: TextStyle(
-              color: BracuPalette.textPrimary(context),
+              color: AppPalette.textPrimary(context),
               fontSize: 14,
             ),
             decoration: appInputDecoration(
@@ -331,7 +331,7 @@ class _ApiTestPageState extends State<ApiTestPage> {
           const Gap(12),
           SizedBox(
             width: double.infinity,
-            child: BracuActionButton(
+            child: AppActionButton(
               onPressed: _isLoading ? null : _sendRequest,
               icon: Icons.play_arrow_rounded,
               label: 'Send',
@@ -344,7 +344,7 @@ class _ApiTestPageState extends State<ApiTestPage> {
               _responseText,
               style: TextStyle(
                 fontSize: 12,
-                color: BracuPalette.textPrimary(context),
+                color: AppPalette.textPrimary(context),
               ),
             ),
         ],
@@ -377,7 +377,7 @@ class _TokenField extends StatelessWidget {
           style: TextStyle(
             fontSize: 12,
             fontWeight: FontWeight.w600,
-            color: BracuPalette.textSecondary(context),
+            color: AppPalette.textSecondary(context),
           ),
         ),
         const Gap(6),
@@ -387,18 +387,16 @@ class _TokenField extends StatelessWidget {
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
-              color: BracuPalette.textSecondary(
-                context,
-              ).withValues(alpha: 0.22),
+              color: AppPalette.textSecondary(context).withValues(alpha: 0.22),
             ),
-            color: BracuPalette.card(context).withValues(alpha: 0.35),
+            color: AppPalette.card(context).withValues(alpha: 0.35),
           ),
           child: SelectableText(
             displayValue,
             style: TextStyle(
               fontSize: 11,
               fontFamily: 'monospace',
-              color: BracuPalette.textPrimary(context),
+              color: AppPalette.textPrimary(context),
             ),
           ),
         ),

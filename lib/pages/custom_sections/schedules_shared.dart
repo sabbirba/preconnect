@@ -169,7 +169,7 @@ CustomSchedulesOccurrence? personalSchedulesNextOccurrenceRange({
   required DateTime now,
   required int nowMinutes,
 }) {
-  final targetWeekday = BracuTime.weekdayFromName(day);
+  final targetWeekday = AppTime.weekdayFromName(day);
   if (targetWeekday == null) return null;
 
   final adjusted = RamadanTiming.adjustRange(
@@ -178,12 +178,12 @@ CustomSchedulesOccurrence? personalSchedulesNextOccurrenceRange({
     isRamadan: isRamadan,
   );
 
-  final startParsed = BracuTime.parseHourMinute(adjusted.startTime);
+  final startParsed = AppTime.parseHourMinute(adjusted.startTime);
   if (startParsed == null) return null;
   final (startHour, startMinute) = startParsed;
   final startMinutes = startHour * 60 + startMinute;
 
-  final endParsed = BracuTime.parseHourMinute(adjusted.endTime);
+  final endParsed = AppTime.parseHourMinute(adjusted.endTime);
   final endHour = endParsed?.$1 ?? 0;
   final endMinute = endParsed?.$2 ?? 0;
 

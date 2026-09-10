@@ -50,7 +50,7 @@ class _SemesterSessionSelectorState extends State<SemesterSessionSelector> {
 
     final options = _sessions
         .map(
-          (session) => BracuSelectOption<int>(
+          (session) => AppSelectOption<int>(
             value: session.semesterSessionId,
             label: session.description,
             icon: Icons.calendar_month_rounded,
@@ -59,14 +59,14 @@ class _SemesterSessionSelectorState extends State<SemesterSessionSelector> {
         .toList();
 
     if (widget.iconOnly) {
-      return BracuSelectChip(
+      return AppSelectChip(
         icon: Icons.filter_list_rounded,
         selected: selectedId != _sessions.first.semesterSessionId,
         compact: true,
         showArrow: false,
         showBorder: false,
         onTap: () async {
-          final value = await showBracuSelectDropdown<int>(
+          final value = await showAppSelectDropdown<int>(
             context,
             title: 'Select Semester',
             options: options,
@@ -81,7 +81,7 @@ class _SemesterSessionSelectorState extends State<SemesterSessionSelector> {
       );
     }
 
-    return BracuSelectDropdownChip<int>(
+    return AppSelectDropdownChip<int>(
       title: 'Select Semester',
       label: current.description,
       options: options,

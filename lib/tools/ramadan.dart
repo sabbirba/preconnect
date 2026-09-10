@@ -204,8 +204,8 @@ class RamadanTiming {
       return (startTime: startTime, endTime: endTime, adjusted: false);
     }
 
-    final startMinutes = BracuTime.toMinutes(startTime);
-    final endMinutes = BracuTime.toMinutes(endTime);
+    final startMinutes = AppTime.toMinutes(startTime);
+    final endMinutes = AppTime.toMinutes(endTime);
     if (startMinutes == null || endMinutes == null) {
       return (startTime: startTime, endTime: endTime, adjusted: false);
     }
@@ -229,7 +229,7 @@ class RamadanTiming {
     required bool isRamadan,
   }) {
     final adjusted = adjustRange(startTime, endTime, isRamadan: isRamadan);
-    return BracuTime.toMinutes(adjusted.startTime) ?? 0;
+    return AppTime.toMinutes(adjusted.startTime) ?? 0;
   }
 
   static int effectiveEndMinutes(
@@ -238,7 +238,7 @@ class RamadanTiming {
     required bool isRamadan,
   }) {
     final adjusted = adjustRange(startTime, endTime, isRamadan: isRamadan);
-    return BracuTime.toMinutes(adjusted.endTime) ?? 0;
+    return AppTime.toMinutes(adjusted.endTime) ?? 0;
   }
 
   static String _minutesTo24h(int totalMinutes) {

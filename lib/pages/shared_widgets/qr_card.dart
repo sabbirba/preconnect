@@ -25,7 +25,7 @@ class QrCard extends StatelessWidget {
             errorBuilder: (context, error) => Center(
               child: Text(
                 'QR generation failed',
-                style: TextStyle(color: BracuPalette.textSecondary(context)),
+                style: TextStyle(color: AppPalette.textSecondary(context)),
               ),
             ),
           ),

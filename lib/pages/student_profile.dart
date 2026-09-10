@@ -385,21 +385,21 @@ class _StudentProfileState extends State<StudentProfile>
   Widget build(BuildContext context) {
     final isLoading = _profile == null;
     final shortCode = _shortCodesDisplay ?? _profile?['shortCode'];
-    return BracuPageScaffold(
+    return AppPageScaffold(
       title: 'Student Profile',
       subtitle: 'Academic & Finance',
       icon: Icons.person_outline,
       actions: [
-        BracuRefreshButton(
+        AppRefreshButton(
           onPressed: () => _refreshProfile(notify: true),
           isLoading: _isRefreshing,
         ),
       ],
-      body: BracuRefreshList(
+      body: AppRefreshList(
         onRefresh: _refreshProfile,
         children: [
           if (isLoading)
-            const BracuLoading()
+            const AppLoading()
           else
             CardSection(profile: _profile, photoUrl: _photoUrl),
           const Gap(16),
@@ -411,24 +411,24 @@ class _StudentProfileState extends State<StudentProfile>
             ),
           const Gap(16),
           if (!isLoading) ...[
-            const BracuSectionTitle(title: 'Documents'),
+            const AppSectionTitle(title: 'Documents'),
             const Gap(12),
             const GradeSheetCard(),
             const Gap(16),
-            const BracuSectionTitle(title: 'Personal Info'),
+            const AppSectionTitle(title: 'Personal Info'),
             const Gap(12),
             PersonalInfoCard(profile: _profile ?? const {}),
             const Gap(16),
-            const BracuSectionTitle(title: 'Attendance'),
+            const AppSectionTitle(title: 'Attendance'),
             const Gap(12),
             _attendances.isEmpty
-                ? const BracuEmptyState(message: 'No attendance records found')
+                ? const AppEmptyState(message: 'No attendance records found')
                 : AttendanceSummary(attendances: _attendances),
             const Gap(16),
-            const BracuSectionTitle(title: 'Payments'),
+            const AppSectionTitle(title: 'Payments'),
             const Gap(12),
             _payments.isEmpty
-                ? const BracuEmptyState(message: 'No payments found')
+                ? const AppEmptyState(message: 'No payments found')
                 : PaymentGraph(payments: _payments, shortCode: shortCode),
             if (_payments.isNotEmpty) const Gap(12),
             if (_payments.isNotEmpty) PaymentList(payments: _payments),

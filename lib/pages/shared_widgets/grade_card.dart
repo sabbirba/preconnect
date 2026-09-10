@@ -42,7 +42,7 @@ class _GradeSheetCardState extends State<GradeSheetCard> {
           ? const SizedBox(
               width: 18,
               height: 18,
-              child: BracuSpinner(size: 18, strokeWidth: 2),
+              child: AppSpinner(size: 18, strokeWidth: 2),
             )
           : null,
     );

@@ -455,7 +455,7 @@ class _DSpaceBrowserPageState extends State<DSpaceBrowserPage> {
     var localTo = _filterToYear;
     final years = _availableYears;
 
-    showBracuBottomSheet<void>(
+    showAppBottomSheet<void>(
       context,
       title: 'Filter & Sort',
       initialChildSize: 0.52,
@@ -475,12 +475,12 @@ class _DSpaceBrowserPageState extends State<DSpaceBrowserPage> {
                   ),
                   decoration: BoxDecoration(
                     color: selected
-                        ? BracuPalette.primary.withValues(alpha: 0.1)
+                        ? AppPalette.primary.withValues(alpha: 0.1)
                         : textSecondary.withValues(alpha: 0.06),
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
                       color: selected
-                          ? BracuPalette.primary.withValues(alpha: 0.4)
+                          ? AppPalette.primary.withValues(alpha: 0.4)
                           : Colors.transparent,
                       width: 1.5,
                     ),
@@ -490,16 +490,14 @@ class _DSpaceBrowserPageState extends State<DSpaceBrowserPage> {
                       Icon(
                         icon,
                         size: 18,
-                        color: selected ? BracuPalette.primary : textSecondary,
+                        color: selected ? AppPalette.primary : textSecondary,
                       ),
                       const Gap(12),
                       Expanded(
                         child: Text(
                           label,
                           style: TextStyle(
-                            color: selected
-                                ? BracuPalette.primary
-                                : textPrimary,
+                            color: selected ? AppPalette.primary : textPrimary,
                             fontSize: 14,
                             fontWeight: selected
                                 ? FontWeight.w700
@@ -511,7 +509,7 @@ class _DSpaceBrowserPageState extends State<DSpaceBrowserPage> {
                         Icon(
                           Icons.check_circle_rounded,
                           size: 18,
-                          color: BracuPalette.primary,
+                          color: AppPalette.primary,
                         ),
                     ],
                   ),
@@ -519,23 +517,23 @@ class _DSpaceBrowserPageState extends State<DSpaceBrowserPage> {
               );
             }
 
-            List<BracuSelectOption<String>> yearOptions() => [
-              const BracuSelectOption<String>(
+            List<AppSelectOption<String>> yearOptions() => [
+              const AppSelectOption<String>(
                 value: '',
                 label: 'Any Year',
                 icon: Icons.all_inclusive_rounded,
               ),
               ...years.reversed.map(
-                (y) => BracuSelectOption<String>(value: '$y', label: '$y'),
+                (y) => AppSelectOption<String>(value: '$y', label: '$y'),
               ),
             ];
 
-            BracuSelectDropdownChip<String> yearChip(
+            AppSelectDropdownChip<String> yearChip(
               String label,
               int? value,
               void Function(int?) onChange,
             ) {
-              return BracuSelectDropdownChip<String>(
+              return AppSelectDropdownChip<String>(
                 label: value != null ? '$value' : label,
                 title: label,
                 selected: value != null,
@@ -588,7 +586,7 @@ class _DSpaceBrowserPageState extends State<DSpaceBrowserPage> {
                 Row(
                   children: [
                     Expanded(
-                      child: BracuActionButton(
+                      child: AppActionButton(
                         label: 'Clear',
                         onPressed: () {
                           setLocal(() {
@@ -601,10 +599,10 @@ class _DSpaceBrowserPageState extends State<DSpaceBrowserPage> {
                     ),
                     const Gap(12),
                     Expanded(
-                      child: BracuActionButton(
+                      child: AppActionButton(
                         label: 'Apply',
                         outlined: false,
-                        backgroundColor: BracuPalette.primary,
+                        backgroundColor: AppPalette.primary,
                         foregroundColor: Colors.white,
                         onPressed: () {
                           setState(() {
@@ -671,7 +669,7 @@ class _DSpaceBrowserPageState extends State<DSpaceBrowserPage> {
         : catLabel;
     final combinedSubtitle = '$author  •  $metaText';
 
-    showBracuBottomSheet<void>(
+    showAppBottomSheet<void>(
       context,
       title: item.name,
       subtitle: combinedSubtitle,
@@ -773,7 +771,7 @@ class _DSpaceBrowserPageState extends State<DSpaceBrowserPage> {
                     title: file.name,
                     subtitle: '${file.sizeLabel} • $ext',
                     icon: Icons.description_rounded,
-                    iconColor: BracuPalette.primary,
+                    iconColor: AppPalette.primary,
                     showTrailingIcon: true,
                     onTap: () => openExternalUrl(context, file.url),
                   ),
@@ -787,10 +785,10 @@ class _DSpaceBrowserPageState extends State<DSpaceBrowserPage> {
   }
 
   Widget _buildCategoriesView(BuildContext context) {
-    final textSecondary = BracuPalette.textSecondary(context);
+    final textSecondary = AppPalette.textSecondary(context);
 
     if (_isLoadingCategories) {
-      return const Expanded(child: BracuLoading());
+      return const Expanded(child: AppLoading());
     }
 
     if (_categoriesError != null) {
@@ -811,7 +809,7 @@ class _DSpaceBrowserPageState extends State<DSpaceBrowserPage> {
                   ),
                 ),
                 const Gap(16),
-                BracuActionButton(label: 'Retry', onPressed: _loadCategories),
+                AppActionButton(label: 'Retry', onPressed: _loadCategories),
               ],
             ),
           ),
@@ -821,15 +819,15 @@ class _DSpaceBrowserPageState extends State<DSpaceBrowserPage> {
 
     return Expanded(
       child: _filteredCategories.isEmpty
-          ? const BracuEmptyState(message: 'No category found.')
-          : BracuRefreshScroll(
+          ? const AppEmptyState(message: 'No category found.')
+          : AppRefreshScroll(
               onRefresh: _loadCategories,
               padding: const EdgeInsets.only(bottom: 24),
               child: Column(
                 children: _filteredCategories.map((c) {
                   return Padding(
                     padding: const EdgeInsets.only(bottom: 12),
-                    child: BracuActionCard(
+                    child: AppActionCard(
                       title: c.category,
                       subtitle: '${c.count.toString()} documents',
                       trailing: Icon(
@@ -853,7 +851,7 @@ class _DSpaceBrowserPageState extends State<DSpaceBrowserPage> {
   Widget _buildActiveFilterBar(BuildContext context) {
     if (!_hasActiveFilters) return const SizedBox.shrink();
 
-    final textSecondary = BracuPalette.textSecondary(context);
+    final textSecondary = AppPalette.textSecondary(context);
 
     final chips = <Widget>[];
 
@@ -937,11 +935,11 @@ class _DSpaceBrowserPageState extends State<DSpaceBrowserPage> {
 
   Widget _buildItemsView(BuildContext context) {
     if (_isLoadingItems) {
-      return const Expanded(child: BracuLoading());
+      return const Expanded(child: AppLoading());
     }
 
     if (_itemsError != null) {
-      final textSecondary = BracuPalette.textSecondary(context);
+      final textSecondary = AppPalette.textSecondary(context);
       return Expanded(
         child: Center(
           child: Padding(
@@ -959,7 +957,7 @@ class _DSpaceBrowserPageState extends State<DSpaceBrowserPage> {
                   ),
                 ),
                 const Gap(16),
-                BracuActionButton(
+                AppActionButton(
                   label: 'Retry',
                   onPressed: () => _loadCategoryItems(_selectedCategory!),
                 ),
@@ -972,7 +970,7 @@ class _DSpaceBrowserPageState extends State<DSpaceBrowserPage> {
 
     if (_filteredItems.isEmpty) {
       return const Expanded(
-        child: BracuEmptyState(message: 'No document found.'),
+        child: AppEmptyState(message: 'No document found.'),
       );
     }
 
@@ -986,7 +984,7 @@ class _DSpaceBrowserPageState extends State<DSpaceBrowserPage> {
     final showBackToTop = _visibleItemCount > _pageSize;
 
     return Expanded(
-      child: BracuRefreshScroll(
+      child: AppRefreshScroll(
         controller: _itemsScrollController,
         onRefresh: () => _loadCategoryItems(_selectedCategory!),
         padding: const EdgeInsets.only(bottom: 24),
@@ -995,7 +993,7 @@ class _DSpaceBrowserPageState extends State<DSpaceBrowserPage> {
             ...visibleList.map((item) {
               return Padding(
                 padding: const EdgeInsets.only(bottom: 12),
-                child: BracuActionCard(
+                child: AppActionCard(
                   title: item.name,
                   subtitle: item.author.isNotEmpty
                       ? (item.date.trim().isNotEmpty
@@ -1025,7 +1023,7 @@ class _DSpaceBrowserPageState extends State<DSpaceBrowserPage> {
   }
 
   void _showHelpBottomSheet(BuildContext context) {
-    showBracuBottomSheet<void>(
+    showAppBottomSheet<void>(
       context,
       title: 'DSpace Repository (BRACU IR)',
       initialChildSize: 0.65,
@@ -1099,7 +1097,7 @@ class _DSpaceBrowserPageState extends State<DSpaceBrowserPage> {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(icon, color: BracuPalette.primary, size: 20),
+        Icon(icon, color: AppPalette.primary, size: 20),
         const Gap(12),
         Expanded(
           child: Column(
@@ -1108,7 +1106,7 @@ class _DSpaceBrowserPageState extends State<DSpaceBrowserPage> {
               Text(
                 title,
                 style: TextStyle(
-                  color: BracuPalette.textPrimary(context),
+                  color: AppPalette.textPrimary(context),
                   fontSize: 14,
                   fontWeight: FontWeight.w700,
                 ),
@@ -1117,7 +1115,7 @@ class _DSpaceBrowserPageState extends State<DSpaceBrowserPage> {
               Text(
                 body,
                 style: TextStyle(
-                  color: BracuPalette.textSecondary(context),
+                  color: AppPalette.textSecondary(context),
                   fontSize: 13,
                   fontWeight: FontWeight.w500,
                   height: 1.3,
@@ -1137,7 +1135,7 @@ class _DSpaceBrowserPageState extends State<DSpaceBrowserPage> {
         : _selectedCategory!.category;
     final subtitle = _selectedCategory == null ? 'Repository' : 'DSpace';
 
-    return BracuBackScope(
+    return AppBackScope(
       canGoBack: true,
       onBack: () {
         if (!_handleInternalBack()) {
@@ -1148,7 +1146,7 @@ class _DSpaceBrowserPageState extends State<DSpaceBrowserPage> {
           }
         }
       },
-      child: BracuPageScaffold(
+      child: AppPageScaffold(
         title: title,
         subtitle: subtitle,
         icon: Icons.library_books_rounded,
@@ -1160,7 +1158,7 @@ class _DSpaceBrowserPageState extends State<DSpaceBrowserPage> {
               onPressed: () => _showHelpBottomSheet(context),
               icon: const Icon(
                 Icons.help_outline_rounded,
-                color: BracuPalette.primary,
+                color: AppPalette.primary,
               ),
             )
           else ...[
@@ -1174,8 +1172,8 @@ class _DSpaceBrowserPageState extends State<DSpaceBrowserPage> {
                   icon: Icon(
                     Icons.tune_rounded,
                     color: _hasActiveFilters
-                        ? BracuPalette.primary
-                        : BracuPalette.primary.withValues(alpha: 0.6),
+                        ? AppPalette.primary
+                        : AppPalette.primary.withValues(alpha: 0.6),
                   ),
                 ),
                 if (_hasActiveFilters)
@@ -1186,14 +1184,14 @@ class _DSpaceBrowserPageState extends State<DSpaceBrowserPage> {
                       width: 7,
                       height: 7,
                       decoration: const BoxDecoration(
-                        color: BracuPalette.primary,
+                        color: AppPalette.primary,
                         shape: BoxShape.circle,
                       ),
                     ),
                   ),
               ],
             ),
-            BracuRefreshButton(
+            AppRefreshButton(
               onPressed: () => _loadCategoryItems(_selectedCategory!),
               isLoading: _isLoadingItems,
             ),
@@ -1203,7 +1201,7 @@ class _DSpaceBrowserPageState extends State<DSpaceBrowserPage> {
           padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
           child: Column(
             children: [
-              BracuSearchField(
+              AppSearchField(
                 controller: _searchController,
                 hintText: 'Search...',
               ),
@@ -1235,10 +1233,10 @@ class _RemovableFilterChip extends StatelessWidget {
       margin: const EdgeInsets.only(right: 8),
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
-        color: BracuPalette.primary.withValues(alpha: 0.1),
+        color: AppPalette.primary.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: BracuPalette.primary.withValues(alpha: 0.3),
+          color: AppPalette.primary.withValues(alpha: 0.3),
           width: 1,
         ),
       ),
@@ -1248,7 +1246,7 @@ class _RemovableFilterChip extends StatelessWidget {
           Text(
             label,
             style: const TextStyle(
-              color: BracuPalette.primary,
+              color: AppPalette.primary,
               fontSize: 12,
               fontWeight: FontWeight.w600,
             ),
@@ -1259,7 +1257,7 @@ class _RemovableFilterChip extends StatelessWidget {
             child: const Icon(
               Icons.close_rounded,
               size: 14,
-              color: BracuPalette.primary,
+              color: AppPalette.primary,
             ),
           ),
         ],

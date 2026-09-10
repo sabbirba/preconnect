@@ -253,7 +253,7 @@ Widget buildCenteredOutlinedActionButton({
   return Padding(
     padding: padding,
     child: Center(
-      child: BracuActionButton(onPressed: onPressed, label: label),
+      child: AppActionButton(onPressed: onPressed, label: label),
     ),
   );
 }
@@ -270,10 +270,7 @@ Widget buildScrollToTopButton({required ScrollController controller}) {
     padding: const EdgeInsets.only(top: 16, bottom: 8),
     child: Center(
       child: IconButton(
-        icon: const Icon(
-          Icons.arrow_upward_rounded,
-          color: BracuPalette.primary,
-        ),
+        icon: const Icon(Icons.arrow_upward_rounded, color: AppPalette.primary),
         onPressed: () {
           controller.animateTo(
             0,

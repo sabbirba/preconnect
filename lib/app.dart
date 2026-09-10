@@ -824,7 +824,7 @@ class _MyAppState extends State<MyApp>
   Widget _buildLockLayer(BuildContext context) {
     return Material(
       color: Colors.transparent,
-      child: BracuPageScaffold(
+      child: AppPageScaffold(
         title: 'App Locked',
         subtitle: 'Security',
         icon: Icons.lock_outline_rounded,
@@ -837,7 +837,7 @@ class _MyAppState extends State<MyApp>
             Container(
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: BracuPalette.card(context),
+                color: AppPalette.card(context),
                 borderRadius: BorderRadius.circular(18),
               ),
               child: Column(
@@ -845,13 +845,13 @@ class _MyAppState extends State<MyApp>
                   Icon(
                     Icons.lock_outline_rounded,
                     size: 42,
-                    color: BracuPalette.textPrimary(context),
+                    color: AppPalette.textPrimary(context),
                   ),
                   const Gap(12),
                   Text(
                     'App Locked',
                     style: TextStyle(
-                      color: BracuPalette.textPrimary(context),
+                      color: AppPalette.textPrimary(context),
                       fontSize: 18,
                       fontWeight: FontWeight.w700,
                       decoration: TextDecoration.none,
@@ -862,13 +862,13 @@ class _MyAppState extends State<MyApp>
                     'Use your system lock to continue',
                     textAlign: TextAlign.center,
                     style: TextStyle(
-                      color: BracuPalette.textSecondary(context),
+                      color: AppPalette.textSecondary(context),
                       fontSize: 12,
                       decoration: TextDecoration.none,
                     ),
                   ),
                   const Gap(12),
-                  BracuActionButton(
+                  AppActionButton(
                     onPressed: _isUnlocking
                         ? null
                         : () {
@@ -1068,8 +1068,8 @@ class _MyAppState extends State<MyApp>
                                           begin: Alignment.topCenter,
                                           end: Alignment.bottomCenter,
                                           colors: [
-                                            BracuPalette.bgTop(context),
-                                            BracuPalette.bgBottom(context),
+                                            AppPalette.bgTop(context),
+                                            AppPalette.bgBottom(context),
                                           ],
                                         ),
                                       )

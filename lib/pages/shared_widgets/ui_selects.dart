@@ -24,17 +24,17 @@ class AppSelectChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final textSecondary = BracuPalette.textSecondary(context);
-    final primaryColor = selected ? BracuPalette.primary : textSecondary;
+    final textSecondary = AppPalette.textSecondary(context);
+    final primaryColor = selected ? AppPalette.primary : textSecondary;
     final backgroundColor = Colors.transparent;
     final borderColor = selected
-        ? BracuPalette.primary.withValues(alpha: compact ? 0.45 : 0.70)
+        ? AppPalette.primary.withValues(alpha: compact ? 0.45 : 0.70)
         : textSecondary.withValues(alpha: 0.26);
     final horizontalPadding = compact ? 11.0 : 14.0;
     final verticalPadding = compact ? 8.0 : 9.0;
     final resolvedRadius = compact ? 14.0 : borderRadius;
     final labelStyle = TextStyle(
-      color: BracuPalette.textPrimary(context),
+      color: AppPalette.textPrimary(context),
       fontSize: compact ? 12 : 13,
       fontWeight: FontWeight.w700,
     );
@@ -227,7 +227,7 @@ class _AppNotificationsIconButtonState extends State<AppNotificationsIconButton>
                 child: Icon(
                   bellIcon,
                   size: widget.iconSize,
-                  color: BracuPalette.primary,
+                  color: AppPalette.primary,
                 ),
               ),
             ),
@@ -240,7 +240,7 @@ class _AppNotificationsIconButtonState extends State<AppNotificationsIconButton>
                   height: 8,
                   child: DecoratedBox(
                     decoration: BoxDecoration(
-                      color: BracuPalette.danger,
+                      color: AppPalette.danger,
                       shape: BoxShape.circle,
                     ),
                   ),

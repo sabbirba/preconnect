@@ -13,7 +13,7 @@ class ExportSessionBottomSheet extends StatefulWidget {
   const ExportSessionBottomSheet({super.key});
 
   static Future<void> show(BuildContext context) async {
-    await showBracuBottomSheet<void>(
+    await showAppBottomSheet<void>(
       context,
       title: 'Sync Session',
       initialChildSize: 0.75,
@@ -165,7 +165,7 @@ class _ExportSessionBottomSheetState extends State<ExportSessionBottomSheet> {
     if (_checkingAuth) {
       bodyContent = const SizedBox(
         height: 200,
-        child: Center(child: BracuLoading()),
+        child: Center(child: AppLoading()),
       );
     } else if (!_biometricsAvailable) {
       bodyContent = Padding(
@@ -174,7 +174,7 @@ class _ExportSessionBottomSheetState extends State<ExportSessionBottomSheet> {
           'Biometric authentication must be enabled to share your session. Please set up Face ID or fingerprint lock in device settings.',
           textAlign: TextAlign.center,
           style: TextStyle(
-            color: BracuPalette.textSecondary(context),
+            color: AppPalette.textSecondary(context),
             fontSize: 14,
             height: 1.5,
           ),
@@ -189,12 +189,12 @@ class _ExportSessionBottomSheetState extends State<ExportSessionBottomSheet> {
               'Biometric authentication is required to share your session.',
               textAlign: TextAlign.center,
               style: TextStyle(
-                color: BracuPalette.textSecondary(context),
+                color: AppPalette.textSecondary(context),
                 fontSize: 14,
               ),
             ),
             const Gap(16),
-            BracuActionButton(
+            AppActionButton(
               onPressed: _checkAndAuthenticate,
               label: 'Authenticate',
               outlined: false,
@@ -205,7 +205,7 @@ class _ExportSessionBottomSheetState extends State<ExportSessionBottomSheet> {
     } else if (_isLoading) {
       bodyContent = const SizedBox(
         height: 200,
-        child: Center(child: BracuLoading()),
+        child: Center(child: AppLoading()),
       );
     } else {
       final dragController = bottomSheetScrollController(context);
@@ -218,24 +218,24 @@ class _ExportSessionBottomSheetState extends State<ExportSessionBottomSheet> {
           Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              BracuActionButton(
+              AppActionButton(
                 onPressed: _copyToClipboard,
                 label: _copied ? 'Copied' : 'Copy Code',
                 icon: _copied ? Icons.check_circle_rounded : Icons.copy_rounded,
                 outlined: false,
                 backgroundColor: _copied
-                    ? BracuPalette.accent
-                    : BracuPalette.primary,
+                    ? AppPalette.accent
+                    : AppPalette.primary,
                 foregroundColor: Colors.white,
               ),
               const Gap(16),
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: BracuPalette.danger.withValues(alpha: 0.06),
+                  color: AppPalette.danger.withValues(alpha: 0.06),
                   borderRadius: BorderRadius.circular(14),
                   border: Border.all(
-                    color: BracuPalette.danger.withValues(alpha: 0.16),
+                    color: AppPalette.danger.withValues(alpha: 0.16),
                   ),
                 ),
                 child: Text(
@@ -243,7 +243,7 @@ class _ExportSessionBottomSheetState extends State<ExportSessionBottomSheet> {
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 12,
-                    color: BracuPalette.danger,
+                    color: AppPalette.danger,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -252,7 +252,7 @@ class _ExportSessionBottomSheetState extends State<ExportSessionBottomSheet> {
               Row(
                 children: [
                   Expanded(
-                    child: BracuActionButton(
+                    child: AppActionButton(
                       onPressed: () => Navigator.pop(context),
                       label: 'Close',
                       outlined: true,

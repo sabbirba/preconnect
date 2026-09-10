@@ -10,7 +10,7 @@ class AttendanceSummary extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return BracuCard(
+    return AppCard(
       child: Column(
         children: List.generate(attendances.length, (index) {
           final att = attendances[index];
@@ -29,7 +29,7 @@ class AttendanceSummary extends StatelessWidget {
                       child: Text(
                         '${att.courseCode} • ${att.courseName}',
                         style: TextStyle(
-                          color: BracuPalette.textPrimary(context),
+                          color: AppPalette.textPrimary(context),
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -62,13 +62,13 @@ class AttendanceSummary extends StatelessWidget {
                 const Gap(8),
                 SimpleProgressBar(
                   value: (percentage / 100).clamp(0.0, 1.0),
-                  color: BracuPalette.primary,
+                  color: AppPalette.primary,
                 ),
                 if (!isLast) const Gap(12),
                 if (!isLast)
                   Divider(
                     height: 1,
-                    color: BracuPalette.textSecondary(
+                    color: AppPalette.textSecondary(
                       context,
                     ).withValues(alpha: 0.16),
                   ),
@@ -92,14 +92,14 @@ class _InlineAttendanceStat extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 5, horizontal: 8),
       decoration: BoxDecoration(
-        color: BracuPalette.card(context),
+        color: AppPalette.card(context),
         borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: BracuPalette.primary.withValues(alpha: 0.14)),
+        border: Border.all(color: AppPalette.primary.withValues(alpha: 0.14)),
       ),
       child: RichText(
         text: TextSpan(
           style: TextStyle(
-            color: BracuPalette.textSecondary(context),
+            color: AppPalette.textSecondary(context),
             fontSize: 11,
           ),
           children: [
@@ -107,7 +107,7 @@ class _InlineAttendanceStat extends StatelessWidget {
             TextSpan(
               text: value,
               style: TextStyle(
-                color: BracuPalette.textPrimary(context),
+                color: AppPalette.textPrimary(context),
                 fontWeight: FontWeight.w700,
               ),
             ),

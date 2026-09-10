@@ -26,20 +26,6 @@ class FacultyScheduleItem {
   final String courseType;
 }
 
-Future<void> showBracuFacultyScheduleSheet(
-  BuildContext context, {
-  required String facultyInitial,
-  String? staffName,
-  required List<FacultyScheduleItem> items,
-  bool isRamadan = false,
-}) => showFacultyScheduleSheet(
-  context,
-  facultyInitial: facultyInitial,
-  staffName: staffName,
-  items: items,
-  isRamadan: isRamadan,
-);
-
 Future<void> showFacultyScheduleSheet(
   BuildContext context, {
   required String facultyInitial,
@@ -65,8 +51,8 @@ Future<void> showFacultyScheduleSheet(
     if (dayA != dayB) {
       return dayA.compareTo(dayB);
     }
-    final minA = BracuTime.toMinutes(a.startTime) ?? 0;
-    final minB = BracuTime.toMinutes(b.startTime) ?? 0;
+    final minA = AppTime.toMinutes(a.startTime) ?? 0;
+    final minB = AppTime.toMinutes(b.startTime) ?? 0;
     return minA.compareTo(minB);
   });
 

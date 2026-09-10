@@ -110,10 +110,10 @@ class _ScanSchedulePageState extends State<ScanSchedulePage> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             const Gap(8),
-            BracuCard(
+            AppCard(
               child: SizedBox(
                 width: double.infinity,
-                child: BracuActionButton(
+                child: AppActionButton(
                   onPressed: () =>
                       _ensureCameraPermission(openSettingsOnDeny: true),
                   label: 'Enable Camera',
@@ -137,7 +137,7 @@ class _ScanSchedulePageState extends State<ScanSchedulePage> {
             const Icon(
               Icons.check_circle_rounded,
               size: 72,
-              color: BracuPalette.accent,
+              color: AppPalette.accent,
             ),
             const Gap(16),
             const Text(
@@ -149,19 +149,19 @@ class _ScanSchedulePageState extends State<ScanSchedulePage> {
             Text(
               'You can scan another QR anytime.',
               textAlign: TextAlign.center,
-              style: TextStyle(color: BracuPalette.textSecondary(context)),
+              style: TextStyle(color: AppPalette.textSecondary(context)),
             ),
             const Gap(24),
-            BracuActionButton(
+            AppActionButton(
               onPressed: widget.onCompleted,
               icon: Icons.check_circle_rounded,
               label: 'Done',
               outlined: false,
-              backgroundColor: BracuPalette.accent,
+              backgroundColor: AppPalette.accent,
               foregroundColor: Colors.white,
             ),
             const Gap(12),
-            BracuActionButton(
+            AppActionButton(
               onPressed: _restartScanner,
               icon: Icons.qr_code_scanner,
               label: 'Scan Another',
@@ -207,7 +207,7 @@ class _ScanSchedulePageState extends State<ScanSchedulePage> {
                                     ),
                                   ),
                                   const Gap(12),
-                                  BracuActionButton(
+                                  AppActionButton(
                                     onPressed: () => _ensureCameraPermission(
                                       openSettingsOnDeny: true,
                                     ),
@@ -247,7 +247,7 @@ class _ScanSchedulePageState extends State<ScanSchedulePage> {
                               },
                             )
                     : Center(
-                        child: BracuActionButton(
+                        child: AppActionButton(
                           onPressed: () {
                             if (kIsWeb) {
                               setState(() => _cameraGranted = true);
@@ -262,7 +262,7 @@ class _ScanSchedulePageState extends State<ScanSchedulePage> {
               ),
             ),
             const Gap(16),
-            BracuActionButton(
+            AppActionButton(
               onPressed: _pasteCode,
               icon: Icons.paste_rounded,
               label: 'Paste Code',

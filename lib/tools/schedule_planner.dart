@@ -114,8 +114,8 @@ class QuietModeSchedulePlanner {
     final windows = <QuietModeScheduleWindow>[];
     for (final sectionItem in sections) {
       final schedule = sectionItem.sectionSchedule;
-      final startDate = BracuTime.parseDate(schedule.classStartDate);
-      final endDate = BracuTime.parseDate(schedule.classEndDate);
+      final startDate = AppTime.parseDate(schedule.classStartDate);
+      final endDate = AppTime.parseDate(schedule.classEndDate);
       if (startDate == null || endDate == null) continue;
 
       final normalizedStart = DateTime(
@@ -132,7 +132,7 @@ class QuietModeSchedulePlanner {
         day = day.add(const Duration(days: 1))
       ) {
         for (final slot in schedule.classSchedules) {
-          final weekday = BracuTime.weekdayFromName(slot.day);
+          final weekday = AppTime.weekdayFromName(slot.day);
           if (weekday == null || weekday != day.weekday) continue;
 
           final adjusted = RamadanTiming.adjustRange(
@@ -140,8 +140,8 @@ class QuietModeSchedulePlanner {
             slot.endTime,
             isRamadan: isRamadan,
           );
-          final startHm = BracuTime.parseHourMinute(adjusted.startTime);
-          final endHm = BracuTime.parseHourMinute(adjusted.endTime);
+          final startHm = AppTime.parseHourMinute(adjusted.startTime);
+          final endHm = AppTime.parseHourMinute(adjusted.endTime);
           if (startHm == null || endHm == null) continue;
 
           final startAt = DateTime(
@@ -198,8 +198,8 @@ class QuietModeSchedulePlanner {
         required String label,
         required String source,
       }) {
-        final start = BracuTime.parseDateTime(date, startTime);
-        final end = BracuTime.parseDateTime(date, endTime);
+        final start = AppTime.parseDateTime(date, startTime);
+        final end = AppTime.parseDateTime(date, endTime);
         if (start == null || end == null) return;
         if (!end.isAfter(start)) return;
         if (end.isBefore(now)) return;

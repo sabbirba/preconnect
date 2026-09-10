@@ -121,7 +121,7 @@ class _CgpaCalculatorPageState extends State<CgpaCalculatorPage> {
     final manualRetakeCourses = _selectedRetakeCourses
         .where((draft) => !autoRetakeCodes.contains(draft.codeValue))
         .toList();
-    return BracuPageScaffold(
+    return AppPageScaffold(
       title: 'Expected CGPA',
       subtitle: 'Grade Calculator',
       icon: Icons.calculate_outlined,
@@ -132,7 +132,7 @@ class _CgpaCalculatorPageState extends State<CgpaCalculatorPage> {
           if (autoRetakeCurrentCourses.isNotEmpty ||
               manualRetakeCourses.isNotEmpty) ...[
             const Gap(12),
-            const BracuSectionTitle(title: 'Retake Courses'),
+            const AppSectionTitle(title: 'Retake Courses'),
             const Gap(12),
             ...autoRetakeCurrentCourses.map((draft) {
               return Padding(
@@ -148,7 +148,7 @@ class _CgpaCalculatorPageState extends State<CgpaCalculatorPage> {
             }),
           ],
           const Gap(16),
-          const BracuSectionTitle(title: 'Current Courses'),
+          const AppSectionTitle(title: 'Current Courses'),
           const Gap(12),
           ..._currentCourses.map((draft) {
             return Padding(
@@ -157,7 +157,7 @@ class _CgpaCalculatorPageState extends State<CgpaCalculatorPage> {
             );
           }),
           const Gap(16),
-          const BracuSectionTitle(title: 'Completed Courses'),
+          const AppSectionTitle(title: 'Completed Courses'),
           const Gap(12),
           ..._completedCourses.map((draft) {
             return Padding(
@@ -194,7 +194,7 @@ class _CgpaCalculatorPageState extends State<CgpaCalculatorPage> {
   ) {
     final delta = expectedResult.cgpaDelta;
     final deltaValue = delta.abs().clamp(0.0, 1.0);
-    final deltaColor = delta >= 0 ? BracuPalette.accent : BracuPalette.warning;
+    final deltaColor = delta >= 0 ? AppPalette.accent : AppPalette.warning;
     final selectedRetakes = _selectedRetakeCourses;
     final stats = <({String title, String value})>[
       (title: 'Current', value: expectedResult.currentCgpaLabel),
@@ -211,14 +211,14 @@ class _CgpaCalculatorPageState extends State<CgpaCalculatorPage> {
       (title: 'Retakes', value: '${selectedRetakes.length}'),
       (title: 'Credits', value: formatCredit(expectedResult.selectedCredits)),
     ];
-    return BracuCard(
+    return AppCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             'Summary',
             style: TextStyle(
-              color: BracuPalette.textPrimary(context),
+              color: AppPalette.textPrimary(context),
               fontSize: 15,
               fontWeight: FontWeight.w700,
             ),
@@ -288,7 +288,7 @@ class _CgpaCalculatorPageState extends State<CgpaCalculatorPage> {
               : '${draft.codeValue} grade set to $selected',
         );
       },
-      child: BracuCard(
+      child: AppCard(
         child: _buildCourseCard(
           context,
           badgeLabel: draft.grade,
@@ -299,8 +299,8 @@ class _CgpaCalculatorPageState extends State<CgpaCalculatorPage> {
               ? 'Retake'
               : (draft.isRequired ? 'Required' : 'Elective'),
           statusColor: isRetake
-              ? BracuPalette.info
-              : (draft.isRequired ? BracuPalette.warning : BracuPalette.accent),
+              ? AppPalette.info
+              : (draft.isRequired ? AppPalette.warning : AppPalette.accent),
         ),
       ),
     );
@@ -330,7 +330,7 @@ class _CgpaCalculatorPageState extends State<CgpaCalculatorPage> {
               : '${draft.codeValue} retake set to $selected',
         );
       },
-      child: BracuCard(
+      child: AppCard(
         child: _buildCourseCard(
           context,
           badgeLabel: draft.grade,
@@ -338,7 +338,7 @@ class _CgpaCalculatorPageState extends State<CgpaCalculatorPage> {
           titleLine: draft.titleValue,
           creditLine: draft.creditValue,
           statusLabel: 'Retake',
-          statusColor: BracuPalette.info,
+          statusColor: AppPalette.info,
         ),
       ),
     );
@@ -370,7 +370,7 @@ class _CgpaCalculatorPageState extends State<CgpaCalculatorPage> {
               : '${draft.codeValue} retake set to $selected',
         );
       },
-      child: BracuCard(
+      child: AppCard(
         child: _buildCourseCard(
           context,
           badgeLabel: draft.selectedRetakeGrade ?? draft.completedGrade,
@@ -378,7 +378,7 @@ class _CgpaCalculatorPageState extends State<CgpaCalculatorPage> {
           titleLine: draft.titleValue,
           creditLine: draft.creditValue,
           statusLabel: 'Retake',
-          statusColor: BracuPalette.info,
+          statusColor: AppPalette.info,
         ),
       ),
     );
@@ -410,7 +410,7 @@ class _CgpaCalculatorPageState extends State<CgpaCalculatorPage> {
               : '${draft.codeValue} retake set to $selected',
         );
       },
-      child: BracuCard(
+      child: AppCard(
         child: _buildCourseCard(
           context,
           badgeLabel: draft.selectedRetakeGrade ?? draft.completedGrade,
@@ -421,8 +421,8 @@ class _CgpaCalculatorPageState extends State<CgpaCalculatorPage> {
           creditLine: draft.creditValue,
           statusLabel: draft.isRequired ? 'Required' : 'Elective',
           statusColor: draft.isRequired
-              ? BracuPalette.warning
-              : BracuPalette.accent,
+              ? AppPalette.warning
+              : AppPalette.accent,
           trailingNote: draft.hasRetakeSelection
               ? 'Retake: ${draft.selectedRetakeGrade}'
               : null,
@@ -456,7 +456,7 @@ class _CgpaCalculatorPageState extends State<CgpaCalculatorPage> {
       children: [
         SectionBadge(
           label: badgeLabel,
-          color: BracuPalette.primary,
+          color: AppPalette.primary,
           size: 40,
           fontSize: 13,
         ),
@@ -468,7 +468,7 @@ class _CgpaCalculatorPageState extends State<CgpaCalculatorPage> {
               Text(
                 resolvedCode,
                 style: TextStyle(
-                  color: BracuPalette.textPrimary(context),
+                  color: AppPalette.textPrimary(context),
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
                 ),
@@ -477,7 +477,7 @@ class _CgpaCalculatorPageState extends State<CgpaCalculatorPage> {
               Text(
                 resolvedTitle,
                 style: TextStyle(
-                  color: BracuPalette.textSecondary(context),
+                  color: AppPalette.textSecondary(context),
                   fontSize: 11,
                 ),
               ),
@@ -493,7 +493,7 @@ class _CgpaCalculatorPageState extends State<CgpaCalculatorPage> {
               Text(
                 '$resolvedCredit credits',
                 style: TextStyle(
-                  color: BracuPalette.textPrimary(context),
+                  color: AppPalette.textPrimary(context),
                   fontSize: 14,
                   fontWeight: FontWeight.w700,
                 ),
@@ -512,7 +512,7 @@ class _CgpaCalculatorPageState extends State<CgpaCalculatorPage> {
                 Text(
                   trailingNote.trim(),
                   style: TextStyle(
-                    color: BracuPalette.textSecondary(context),
+                    color: AppPalette.textSecondary(context),
                     fontSize: 10,
                     fontWeight: FontWeight.w700,
                   ),
@@ -626,7 +626,7 @@ class _CgpaCalculatorPageState extends State<CgpaCalculatorPage> {
     required String currentGrade,
     required String resetGrade,
   }) {
-    return showBracuBottomSheet<String>(
+    return showAppBottomSheet<String>(
       context,
       title: courseCode.isEmpty ? 'Select grade' : courseCode,
       subtitle: subtitle,
@@ -636,7 +636,7 @@ class _CgpaCalculatorPageState extends State<CgpaCalculatorPage> {
           onPressed: () => Navigator.of(context).pop(resetGrade),
           icon: Icon(
             Icons.refresh_rounded,
-            color: BracuPalette.textSecondary(context),
+            color: AppPalette.textSecondary(context),
           ),
           tooltip: 'Reset',
         ),
@@ -658,16 +658,16 @@ class _CgpaCalculatorPageState extends State<CgpaCalculatorPage> {
                   selected: selected,
                   showCheckmark: false,
                   labelStyle: TextStyle(
-                    color: selected ? BracuPalette.primary : textPrimary,
+                    color: selected ? AppPalette.primary : textPrimary,
                     fontWeight: FontWeight.w700,
                   ),
-                  backgroundColor: BracuPalette.card(
+                  backgroundColor: AppPalette.card(
                     sheetContext,
                   ).withValues(alpha: 0.92),
-                  selectedColor: BracuPalette.primary.withValues(alpha: 0.14),
+                  selectedColor: AppPalette.primary.withValues(alpha: 0.14),
                   side: BorderSide(
                     color: selected
-                        ? BracuPalette.primary
+                        ? AppPalette.primary
                         : textSecondary.withValues(alpha: 0.24),
                   ),
                   onSelected: (_) => Navigator.of(sheetContext).pop(grade),

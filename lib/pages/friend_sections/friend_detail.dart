@@ -178,7 +178,7 @@ class _FriendDetailPageState extends State<FriendDetailPage> {
       final start = _timeToMinutes(entry['startTime']?.toString());
       final end = _timeToMinutes(entry['endTime']?.toString());
       final key = entry['entryKey']?.toString();
-      final weekday = BracuTime.weekdayFromName(day);
+      final weekday = AppTime.weekdayFromName(day);
       if (key == null || weekday == null || start == null || end == null) {
         continue;
       }
@@ -214,8 +214,8 @@ class _FriendDetailPageState extends State<FriendDetailPage> {
 
   @override
   Widget build(BuildContext context) {
-    final textPrimary = BracuPalette.textPrimary(context);
-    final textSecondary = BracuPalette.textSecondary(context);
+    final textPrimary = AppPalette.textPrimary(context);
+    final textSecondary = AppPalette.textSecondary(context);
     final nameToShow = _displayName?.trim().isNotEmpty == true
         ? _displayName!
         : widget.friend.name;
@@ -233,7 +233,7 @@ class _FriendDetailPageState extends State<FriendDetailPage> {
     final headerTitle =
         '$courseCount ${courseCount == 1 ? 'Course' : 'Courses'}';
 
-    return BracuPageScaffold(
+    return AppPageScaffold(
       title: headerTitle,
       subtitle: 'Schedule',
       icon: Icons.person_rounded,
@@ -246,7 +246,7 @@ class _FriendDetailPageState extends State<FriendDetailPage> {
           },
           icon: Icon(
             _isFavorite ? Icons.star_rounded : Icons.star_outline_rounded,
-            color: _isFavorite ? BracuPalette.favorite : null,
+            color: _isFavorite ? AppPalette.favorite : null,
           ),
         ),
         IconButton(
@@ -273,7 +273,7 @@ class _FriendDetailPageState extends State<FriendDetailPage> {
         controller: _scrollController,
         padding: const EdgeInsets.all(20),
         children: [
-          BracuCard(
+          AppCard(
             child: Row(
               children: [
                 FriendAvatar(
@@ -323,8 +323,8 @@ class _FriendDetailPageState extends State<FriendDetailPage> {
                   IconButton(
                     tooltip: 'Compare schedules',
                     style: appCompactIconButtonStyle(
-                      foregroundColor: BracuPalette.primary,
-                      borderColor: BracuPalette.primary.withValues(alpha: 0.6),
+                      foregroundColor: AppPalette.primary,
+                      borderColor: AppPalette.primary.withValues(alpha: 0.6),
                       borderRadius: 12,
                     ),
                     onPressed: _openCompare,
@@ -335,7 +335,7 @@ class _FriendDetailPageState extends State<FriendDetailPage> {
           ),
           const Gap(16),
           if (widget.friend.courses.isEmpty)
-            BracuCard(
+            AppCard(
               child: Padding(
                 padding: const EdgeInsets.all(16),
                 child: Text(
@@ -444,14 +444,14 @@ class _FriendDetailPageState extends State<FriendDetailPage> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                BracuSectionTitle(title: day),
+                AppSectionTitle(title: day),
                 if (dayDateLabel.isNotEmpty)
                   Text(
                     dayDateLabel,
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
-                      color: BracuPalette.textPrimary(context),
+                      color: AppPalette.textPrimary(context),
                     ),
                   ),
               ],
@@ -475,7 +475,7 @@ class _FriendDetailPageState extends State<FriendDetailPage> {
                   consumedSeat: course.consumedSeat,
                   courseType: course.courseType,
                   highlighted: isHighlighted,
-                  highlightColor: BracuPalette.primary,
+                  highlightColor: AppPalette.primary,
                 ),
               );
             }),
@@ -502,12 +502,12 @@ class _FriendDetailPageState extends State<FriendDetailPage> {
   }
 
   int? _timeToMinutes(String? raw) {
-    return BracuTime.toMinutes(raw);
+    return AppTime.toMinutes(raw);
   }
 
   List<Widget> _buildExamSchedule(BuildContext context) {
     if (_loadingExamOverrides) {
-      return const [Gap(16), Center(child: BracuSpinner())];
+      return const [Gap(16), Center(child: AppSpinner())];
     }
     final midExams = <(Course, ExamSectionResolved)>[];
     final finalExams = <(Course, ExamSectionResolved)>[];
@@ -525,8 +525,8 @@ class _FriendDetailPageState extends State<FriendDetailPage> {
     }
 
     midExams.sort((a, b) {
-      final aTime = BracuTime.parseDateTime(a.$2.midDate, a.$2.midStartTime);
-      final bTime = BracuTime.parseDateTime(b.$2.midDate, b.$2.midStartTime);
+      final aTime = AppTime.parseDateTime(a.$2.midDate, a.$2.midStartTime);
+      final bTime = AppTime.parseDateTime(b.$2.midDate, b.$2.midStartTime);
       return ExamSorting.compareExamEntries(
         typeA: 'Midterm',
         typeB: 'Midterm',
@@ -539,14 +539,8 @@ class _FriendDetailPageState extends State<FriendDetailPage> {
       );
     });
     finalExams.sort((a, b) {
-      final aTime = BracuTime.parseDateTime(
-        a.$2.finalDate,
-        a.$2.finalStartTime,
-      );
-      final bTime = BracuTime.parseDateTime(
-        b.$2.finalDate,
-        b.$2.finalStartTime,
-      );
+      final aTime = AppTime.parseDateTime(a.$2.finalDate, a.$2.finalStartTime);
+      final bTime = AppTime.parseDateTime(b.$2.finalDate, b.$2.finalStartTime);
       return ExamSorting.compareExamEntries(
         typeA: 'Final',
         typeB: 'Final',
@@ -581,7 +575,7 @@ class _FriendDetailPageState extends State<FriendDetailPage> {
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w600,
-                          color: BracuPalette.textPrimary(context),
+                          color: AppPalette.textPrimary(context),
                         ),
                       ),
                     ),
@@ -591,7 +585,7 @@ class _FriendDetailPageState extends State<FriendDetailPage> {
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w600,
-                        color: BracuPalette.textPrimary(context),
+                        color: AppPalette.textPrimary(context),
                       ),
                     ),
                   ],
@@ -630,7 +624,7 @@ class _FriendDetailPageState extends State<FriendDetailPage> {
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w600,
-                          color: BracuPalette.textPrimary(context),
+                          color: AppPalette.textPrimary(context),
                         ),
                       ),
                     ),
@@ -640,7 +634,7 @@ class _FriendDetailPageState extends State<FriendDetailPage> {
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w600,
-                        color: BracuPalette.textPrimary(context),
+                        color: AppPalette.textPrimary(context),
                       ),
                     ),
                   ],

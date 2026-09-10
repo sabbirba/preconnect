@@ -21,7 +21,7 @@ class PayslipDetailSheet extends StatefulWidget {
     required String payslipNumber,
     PayslipItem? fallbackItem,
   }) {
-    return showBracuBottomSheet<void>(
+    return showAppBottomSheet<void>(
       context,
       title: 'Payslip Details',
       initialChildSize: 0.85,
@@ -125,12 +125,12 @@ class _PayslipDetailSheetState extends State<PayslipDetailSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final textSecondary = BracuPalette.textSecondary(context);
+    final textSecondary = AppPalette.textSecondary(context);
 
     if (_isLoading) {
       return const Padding(
         padding: EdgeInsets.symmetric(vertical: 40),
-        child: Center(child: BracuLoading()),
+        child: Center(child: AppLoading()),
       );
     }
 
@@ -167,12 +167,12 @@ class _PayslipDetailSheetState extends State<PayslipDetailSheet> {
 
   Widget _buildHeaderSection(BuildContext context) {
     final detail = _detail!;
-    final textPrimary = BracuPalette.textPrimary(context);
-    final textSecondary = BracuPalette.textSecondary(context);
+    final textPrimary = AppPalette.textPrimary(context);
+    final textSecondary = AppPalette.textSecondary(context);
     final isPaid = detail.isPaid;
-    final statusColor = isPaid ? BracuPalette.accent : const Color(0xFFFF8A34);
+    final statusColor = isPaid ? AppPalette.accent : const Color(0xFFFF8A34);
 
-    return BracuCard(
+    return AppCard(
       padding: const EdgeInsets.all(14),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -253,14 +253,14 @@ class _PayslipDetailSheetState extends State<PayslipDetailSheet> {
                   borderRadius: BorderRadius.circular(12),
                 ),
                 side: BorderSide(
-                  color: BracuPalette.primary.withValues(alpha: 0.3),
+                  color: AppPalette.primary.withValues(alpha: 0.3),
                 ),
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   if (_isDownloadingPdf)
-                    const BracuSpinner(size: 16)
+                    const AppSpinner(size: 16)
                   else
                     Icon(
                       Icons.picture_as_pdf_rounded,
@@ -287,10 +287,10 @@ class _PayslipDetailSheetState extends State<PayslipDetailSheet> {
 
   Widget _buildParticularsSection(BuildContext context) {
     final detail = _detail!;
-    final textPrimary = BracuPalette.textPrimary(context);
-    final textSecondary = BracuPalette.textSecondary(context);
+    final textPrimary = AppPalette.textPrimary(context);
+    final textSecondary = AppPalette.textSecondary(context);
 
-    return BracuCard(
+    return AppCard(
       padding: const EdgeInsets.all(14),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -373,7 +373,7 @@ class _PayslipDetailSheetState extends State<PayslipDetailSheet> {
                           fontWeight: isBold
                               ? FontWeight.w700
                               : FontWeight.w600,
-                          color: isBold ? BracuPalette.primary : textPrimary,
+                          color: isBold ? AppPalette.primary : textPrimary,
                         ),
                       ),
                   ],
@@ -388,8 +388,8 @@ class _PayslipDetailSheetState extends State<PayslipDetailSheet> {
 
   Widget _buildCoursesSection(BuildContext context) {
     final detail = _detail!;
-    final textPrimary = BracuPalette.textPrimary(context);
-    final textSecondary = BracuPalette.textSecondary(context);
+    final textPrimary = AppPalette.textPrimary(context);
+    final textSecondary = AppPalette.textSecondary(context);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -407,7 +407,7 @@ class _PayslipDetailSheetState extends State<PayslipDetailSheet> {
           final isLab = c.courseCode.endsWith('L');
           return Container(
             margin: const EdgeInsets.only(bottom: 6),
-            child: BracuCard(
+            child: AppCard(
               padding: const EdgeInsets.all(12),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.center,
@@ -422,7 +422,7 @@ class _PayslipDetailSheetState extends State<PayslipDetailSheet> {
                       size: 14,
                       color: isLab
                           ? const Color(0xFFFF8A34)
-                          : BracuPalette.accent,
+                          : AppPalette.accent,
                     ),
                   ),
                   const Gap(10),
@@ -479,8 +479,8 @@ class _PayslipDetailSheetState extends State<PayslipDetailSheet> {
   }
 
   Widget _buildBanksSection(BuildContext context) {
-    final textPrimary = BracuPalette.textPrimary(context);
-    final textSecondary = BracuPalette.textSecondary(context);
+    final textPrimary = AppPalette.textPrimary(context);
+    final textSecondary = AppPalette.textSecondary(context);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -502,7 +502,7 @@ class _PayslipDetailSheetState extends State<PayslipDetailSheet> {
         ..._banks.map((b) {
           return Container(
             margin: const EdgeInsets.only(bottom: 6),
-            child: BracuCard(
+            child: AppCard(
               padding: const EdgeInsets.all(12),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.center,
@@ -515,7 +515,7 @@ class _PayslipDetailSheetState extends State<PayslipDetailSheet> {
                     child: const Icon(
                       Icons.account_balance_rounded,
                       size: 14,
-                      color: BracuPalette.accent,
+                      color: AppPalette.accent,
                     ),
                   ),
                   const Gap(10),
@@ -544,7 +544,7 @@ class _PayslipDetailSheetState extends State<PayslipDetailSheet> {
                                 style: TextStyle(
                                   fontSize: 11.5,
                                   fontWeight: FontWeight.w600,
-                                  color: BracuPalette.primary,
+                                  color: AppPalette.primary,
                                 ),
                               ),
                               const Gap(4),
@@ -584,8 +584,8 @@ class _DetailRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final textPrimary = BracuPalette.textPrimary(context);
-    final textSecondary = BracuPalette.textSecondary(context);
+    final textPrimary = AppPalette.textPrimary(context);
+    final textSecondary = AppPalette.textSecondary(context);
 
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,

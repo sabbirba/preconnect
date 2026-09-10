@@ -7,7 +7,7 @@ class SeatTimetable {
   final String endTime;
 
   String get label =>
-      '${BracuTime.format(startTime)} - ${BracuTime.format(endTime)}';
+      '${AppTime.format(startTime)} - ${AppTime.format(endTime)}';
   bool get isNotEmpty => startTime.isNotEmpty && endTime.isNotEmpty;
   bool get isEmpty => startTime.isEmpty && endTime.isEmpty;
 

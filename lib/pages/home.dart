@@ -142,7 +142,7 @@ class _HomePageState extends State<HomePage> {
     if (!kIsWeb) {
       unawaited(QuietModeController.instance.refresh());
       WidgetsBinding.instance.addPostFrameCallback((_) async {
-        await BracuPermissionHelper.checkAndRequestOnStartup(context);
+        await AppPermissionHelper.checkAndRequestOnStartup(context);
         if (!mounted) return;
         await InAppReviewPrompt.requestAfterThreeDays();
       });
@@ -202,14 +202,14 @@ class _HomePageState extends State<HomePage> {
 
   Future<void> _confirmLogout(BuildContext context) async {
     if (!context.mounted) return;
-    final confirmed = await showBracuConfirmationWithActionDialog(
+    final confirmed = await showAppConfirmationWithActionDialog(
       context,
       icon: Icons.logout,
       title: 'Confirm Sign Out?',
       message:
           'Sign out will clear stored data. You can sign in again for fresh data.',
       confirmLabel: 'Sign Out',
-      confirmColor: BracuPalette.danger,
+      confirmColor: AppPalette.danger,
       onConfirm: () async {
         await AuthService().logout(force: true, notify: false);
       },
@@ -229,7 +229,7 @@ class _HomePageState extends State<HomePage> {
         }
       },
       child: Scaffold(
-        body: BracuBackScope(
+        body: AppBackScope(
           canGoBack: selectedTab != HomeTab.dashboard,
           onBack: _handleBack,
           child: IndexedStack(
@@ -271,8 +271,8 @@ class _TopBar extends StatelessWidget {
     if (photoUrl != null && photoUrl!.isNotEmpty) {
       CachedImage.precache(context, photoUrl!);
     }
-    final textSecondary = BracuPalette.textSecondary(context);
-    final textPrimary = BracuPalette.textPrimary(context);
+    final textSecondary = AppPalette.textSecondary(context);
+    final textPrimary = AppPalette.textPrimary(context);
     return Row(
       children: [
         Expanded(
@@ -326,7 +326,7 @@ class _TopBar extends StatelessWidget {
           ),
         ),
         if (showNotificationsIcon)
-          BracuNotificationsIconButton(
+          AppNotificationsIconButton(
             onTap: onOpenNotifications,
             iconSize: 28,
             padding: 8,
@@ -348,13 +348,13 @@ class _SectionTitle extends StatelessWidget {
       style: TextStyle(
         fontSize: 16,
         fontWeight: FontWeight.w600,
-        color: BracuPalette.textPrimary(context),
+        color: AppPalette.textPrimary(context),
       ),
     );
   }
 }
 
-typedef _ScheduleTile = BracuScheduleTile;
+typedef _ScheduleTile = AppScheduleTile;
 
 class _RamadanHeroTime extends StatelessWidget {
   const _RamadanHeroTime({
@@ -380,14 +380,14 @@ class _RamadanHeroTime extends StatelessWidget {
         Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 14, color: BracuPalette.textSecondary(context)),
+            Icon(icon, size: 14, color: AppPalette.textSecondary(context)),
             const Gap(5),
             Text(
               label,
               style: TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w700,
-                color: BracuPalette.textSecondary(context),
+                color: AppPalette.textSecondary(context),
               ),
             ),
           ],
@@ -399,7 +399,7 @@ class _RamadanHeroTime extends StatelessWidget {
           style: TextStyle(
             fontSize: 19,
             fontWeight: FontWeight.w800,
-            color: BracuPalette.textPrimary(context),
+            color: AppPalette.textPrimary(context),
             height: 1.0,
           ),
         ),
@@ -442,9 +442,9 @@ class _RamadanTopCountdown extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      '$targetLabel • ${BracuTime.format(targetTime)}',
+                      '$targetLabel • ${AppTime.format(targetTime)}',
                       style: TextStyle(
-                        color: BracuPalette.textSecondary(context),
+                        color: AppPalette.textSecondary(context),
                         fontSize: 10,
                         fontWeight: FontWeight.w600,
                       ),
@@ -457,7 +457,7 @@ class _RamadanTopCountdown extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
-                        color: BracuPalette.textPrimary(context),
+                        color: AppPalette.textPrimary(context),
                       ),
                     ),
                   ],
@@ -473,7 +473,7 @@ class _RamadanTopCountdown extends StatelessWidget {
   }
 
   Duration? _durationTo(String targetTime, DateTime now) {
-    final parsed = BracuTime.parseTime(targetTime);
+    final parsed = AppTime.parseTime(targetTime);
     if (parsed == null) return null;
     var target = DateTime(
       now.year,
@@ -511,7 +511,7 @@ class _RamadanCountdownDigital extends StatelessWidget {
             Text(
               value,
               style: TextStyle(
-                color: BracuPalette.textPrimary(context),
+                color: AppPalette.textPrimary(context),
                 fontWeight: FontWeight.w700,
                 fontSize: 14,
                 fontFeatures: const [FontFeature.tabularFigures()],
@@ -521,7 +521,7 @@ class _RamadanCountdownDigital extends StatelessWidget {
             Text(
               label,
               style: TextStyle(
-                color: BracuPalette.textSecondary(context),
+                color: AppPalette.textSecondary(context),
                 fontWeight: FontWeight.w600,
                 fontSize: 10,
               ),

@@ -163,7 +163,7 @@ Future<CustomSchedulesDraft?> showCustomSchedulesEditorSheet(
         : 'Edit ${personalSchedulesKindLabel(kind)}';
   }
 
-  final result = await showBracuBottomSheet<CustomSchedulesDraft>(
+  final result = await showAppBottomSheet<CustomSchedulesDraft>(
     context,
     title: item == null
         ? 'Add ${personalSchedulesKindLabel(kind)}'
@@ -174,7 +174,7 @@ Future<CustomSchedulesDraft?> showCustomSchedulesEditorSheet(
       return StatefulBuilder(
         builder: (context, setState) {
           Future<bool> pickDueDate() async {
-            final picked = await showBracuDatePicker(
+            final picked = await showAppDatePicker(
               context,
               initialDate: startTime,
               firstDate: DateTime.now().subtract(const Duration(days: 1)),
@@ -203,7 +203,7 @@ Future<CustomSchedulesDraft?> showCustomSchedulesEditorSheet(
           }
 
           Future<bool> pickStartTime() async {
-            final picked = await showBracuTimePicker(
+            final picked = await showAppTimePicker(
               context,
               initialTime: TimeOfDay.fromDateTime(startTime),
             );
@@ -225,7 +225,7 @@ Future<CustomSchedulesDraft?> showCustomSchedulesEditorSheet(
 
           Future<bool> pickEndTime() async {
             final initial = endTime ?? startTime.add(const Duration(hours: 1));
-            final picked = await showBracuTimePicker(
+            final picked = await showAppTimePicker(
               context,
               initialTime: TimeOfDay.fromDateTime(initial),
             );
@@ -249,7 +249,7 @@ Future<CustomSchedulesDraft?> showCustomSchedulesEditorSheet(
 
           Future<void> pickTitleTemplate() async {
             final template =
-                await showBracuSelectSheet<CustomSchedulesTitleTemplate>(
+                await showAppSelectSheet<CustomSchedulesTitleTemplate>(
                   context,
                   title: 'Title Template',
                   options:
@@ -259,7 +259,7 @@ Future<CustomSchedulesDraft?> showCustomSchedulesEditorSheet(
                           )
                           .map(
                             (template) =>
-                                BracuSelectOption<CustomSchedulesTitleTemplate>(
+                                AppSelectOption<CustomSchedulesTitleTemplate>(
                                   value: template,
                                   label: personalSchedulesTitleTemplateLabel(
                                     template,
@@ -392,7 +392,7 @@ Future<CustomSchedulesDraft?> showCustomSchedulesEditorSheet(
                   fontSize: 16,
                   fontWeight: FontWeight.w500,
                   height: 1,
-                  color: BracuPalette.textPrimary(context),
+                  color: AppPalette.textPrimary(context),
                 ),
                 onChanged: (value) {
                   titleValue = value;
@@ -407,7 +407,7 @@ Future<CustomSchedulesDraft?> showCustomSchedulesEditorSheet(
                     fontSize: 16,
                     fontWeight: FontWeight.w700,
                     height: 1,
-                    color: BracuPalette.textSecondary(context),
+                    color: AppPalette.textSecondary(context),
                   ),
                   isDense: false,
                   contentPadding: const EdgeInsets.symmetric(
@@ -418,7 +418,7 @@ Future<CustomSchedulesDraft?> showCustomSchedulesEditorSheet(
                     minWidth: 0,
                     minHeight: 0,
                   ),
-                  suffixIcon: BracuActionButton(
+                  suffixIcon: AppActionButton(
                     onPressed: pickTitleTemplate,
                     label: 'Choose',
                     outlined: false,
@@ -433,7 +433,7 @@ Future<CustomSchedulesDraft?> showCustomSchedulesEditorSheet(
               const Gap(12),
               SizedBox(
                 width: double.infinity,
-                child: BracuActionButton(
+                child: AppActionButton(
                   onPressed: pickDueDate,
                   label: DateFormat('d MMMM yyyy').format(startTime),
                   borderRadius: 14,
@@ -444,7 +444,7 @@ Future<CustomSchedulesDraft?> showCustomSchedulesEditorSheet(
               Row(
                 children: [
                   Expanded(
-                    child: BracuActionButton(
+                    child: AppActionButton(
                       onPressed: pickStartTime,
                       label: 'Start ${DateFormat('hh:mm a').format(startTime)}',
                       borderRadius: 14,
@@ -452,7 +452,7 @@ Future<CustomSchedulesDraft?> showCustomSchedulesEditorSheet(
                   ),
                   const Gap(8),
                   Expanded(
-                    child: BracuActionButton(
+                    child: AppActionButton(
                       onPressed: pickEndTime,
                       label: endTime == null
                           ? 'End'
@@ -469,10 +469,10 @@ Future<CustomSchedulesDraft?> showCustomSchedulesEditorSheet(
                   vertical: 8,
                 ),
                 decoration: BoxDecoration(
-                  color: BracuPalette.primary.withValues(alpha: 0.04),
+                  color: AppPalette.primary.withValues(alpha: 0.04),
                   borderRadius: BorderRadius.circular(14),
                   border: Border.all(
-                    color: BracuPalette.primary.withValues(alpha: 0.2),
+                    color: AppPalette.primary.withValues(alpha: 0.2),
                   ),
                 ),
                 child: Row(
@@ -488,7 +488,7 @@ Future<CustomSchedulesDraft?> showCustomSchedulesEditorSheet(
                         child: const Icon(
                           Icons.remove,
                           size: 18,
-                          color: BracuPalette.primary,
+                          color: AppPalette.primary,
                         ),
                       ),
                     ),
@@ -500,7 +500,7 @@ Future<CustomSchedulesDraft?> showCustomSchedulesEditorSheet(
                               '$reminderMinutesBefore min before',
                               style: TextStyle(
                                 fontWeight: FontWeight.w700,
-                                color: BracuPalette.textPrimary(context),
+                                color: AppPalette.textPrimary(context),
                               ),
                             ),
                             const Gap(2),
@@ -512,7 +512,7 @@ Future<CustomSchedulesDraft?> showCustomSchedulesEditorSheet(
                               ),
                               style: TextStyle(
                                 fontSize: 12,
-                                color: BracuPalette.textSecondary(context),
+                                color: AppPalette.textSecondary(context),
                               ),
                             ),
                           ],
@@ -530,7 +530,7 @@ Future<CustomSchedulesDraft?> showCustomSchedulesEditorSheet(
                         child: const Icon(
                           Icons.add,
                           size: 18,
-                          color: BracuPalette.primary,
+                          color: AppPalette.primary,
                         ),
                       ),
                     ),
@@ -540,7 +540,7 @@ Future<CustomSchedulesDraft?> showCustomSchedulesEditorSheet(
               const Gap(8),
               SizedBox(
                 width: double.infinity,
-                child: BracuActionButton(
+                child: AppActionButton(
                   onPressed: () async {
                     final reminderAt = startTime.subtract(
                       Duration(minutes: reminderMinutesBefore),
@@ -586,7 +586,7 @@ Future<CustomSchedulesDraft?> showCustomSchedulesEditorSheet(
                 maxLines: 2,
                 maxLength: 500,
                 style: TextStyle(
-                  color: BracuPalette.textPrimary(context),
+                  color: AppPalette.textPrimary(context),
                   fontSize: 14,
                 ),
                 decoration: appInputDecoration(
@@ -602,7 +602,7 @@ Future<CustomSchedulesDraft?> showCustomSchedulesEditorSheet(
               const Gap(16),
               SizedBox(
                 width: double.infinity,
-                child: BracuActionButton(
+                child: AppActionButton(
                   onPressed: save,
                   icon: Icons.save_rounded,
                   label: 'Save',
@@ -617,7 +617,7 @@ Future<CustomSchedulesDraft?> showCustomSchedulesEditorSheet(
                 const Gap(12),
                 SizedBox(
                   width: double.infinity,
-                  child: BracuActionButton(
+                  child: AppActionButton(
                     onPressed: toggleDoneStatus,
                     icon: isDone
                         ? Icons.schedule_rounded
@@ -629,7 +629,7 @@ Future<CustomSchedulesDraft?> showCustomSchedulesEditorSheet(
                 const Gap(8),
                 SizedBox(
                   width: double.infinity,
-                  child: BracuActionButton(
+                  child: AppActionButton(
                     onPressed: deleteItem,
                     icon: Icons.delete_outline_rounded,
                     label: 'Delete',

@@ -65,7 +65,7 @@ class HeaderActionButton extends StatelessWidget {
             color: Colors.transparent,
             borderRadius: BorderRadius.circular(12),
           ),
-          child: Icon(icon, size: 20, color: BracuPalette.primary),
+          child: Icon(icon, size: 20, color: AppPalette.primary),
         ),
       ),
     );
@@ -90,7 +90,7 @@ class NotificationCardItem extends StatelessWidget {
       child: InkWell(
         borderRadius: BorderRadius.circular(18),
         onTap: onTap,
-        child: BracuCard(
+        child: AppCard(
           isHighlighted: false,
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.center,
@@ -102,7 +102,7 @@ class NotificationCardItem extends StatelessWidget {
                     Text(
                       item.title.isEmpty ? 'Untitled notification' : item.title,
                       style: TextStyle(
-                        color: BracuPalette.textPrimary(context),
+                        color: AppPalette.textPrimary(context),
                         fontSize: 15,
                         fontWeight: item.seen
                             ? FontWeight.w700
@@ -117,7 +117,7 @@ class NotificationCardItem extends StatelessWidget {
                             width: 7,
                             height: 7,
                             decoration: const BoxDecoration(
-                              color: BracuPalette.primary,
+                              color: AppPalette.primary,
                               shape: BoxShape.circle,
                             ),
                           ),
@@ -129,7 +129,7 @@ class NotificationCardItem extends StatelessWidget {
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(
-                              color: BracuPalette.textSecondary(context),
+                              color: AppPalette.textSecondary(context),
                               fontSize: 12,
                               fontWeight: FontWeight.w700,
                             ),
@@ -140,7 +140,7 @@ class NotificationCardItem extends StatelessWidget {
                           Text(
                             '•',
                             style: TextStyle(
-                              color: BracuPalette.textSecondary(context),
+                              color: AppPalette.textSecondary(context),
                               fontSize: 12,
                               fontWeight: FontWeight.w700,
                             ),
@@ -152,7 +152,7 @@ class NotificationCardItem extends StatelessWidget {
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(
-                                color: BracuPalette.textSecondary(context),
+                                color: AppPalette.textSecondary(context),
                                 fontSize: 12,
                                 fontWeight: FontWeight.w600,
                               ),
@@ -207,7 +207,7 @@ class NotificationDaySection extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w700,
-                      color: BracuPalette.textPrimary(context),
+                      color: AppPalette.textPrimary(context),
                     ),
                   ),
                 ),
@@ -217,7 +217,7 @@ class NotificationDaySection extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w700,
-                      color: BracuPalette.textPrimary(context),
+                      color: AppPalette.textPrimary(context),
                     ),
                   ),
               ],

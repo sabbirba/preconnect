@@ -17,7 +17,7 @@ import 'package:chrome_extension/side_panel.dart';
 import 'package:chrome_extension/gcm.dart';
 import 'package:web/web.dart' show Headers, RequestInit, Response, console;
 import 'package:preconnect/api/api_config.dart';
-import 'package:preconnect/tools/bracu_logout.dart';
+import 'package:preconnect/tools/app_logout.dart';
 import 'package:preconnect/tools/extension_config.dart';
 import 'package:preconnect/tools/preconnect_constants.dart';
 import 'package:preconnect/tools/session_sync.dart';
@@ -206,7 +206,7 @@ Future<void> main() async {
           !domain.contains('sso.bracu.ac.bd')) {
         return;
       }
-      unawaited(_guarded(_syncBracuCookieSnapshot));
+      unawaited(_guarded(_syncCookieSnapshot));
     });
   }
 
@@ -308,7 +308,7 @@ Future<void> main() async {
   }
 
   unawaited(_guarded(_configureBrowserSurfaces));
-  unawaited(_guarded(_syncBracuCookieSnapshot));
+  unawaited(_guarded(_syncCookieSnapshot));
   unawaited(_guarded(_configureAlarms));
   unawaited(_guarded(_refreshBadgeAndNotifyIfNeeded));
   unawaited(_guarded(_bootstrapSessionSync));
@@ -375,7 +375,7 @@ void _handleRuntimeMessage(dynamic event) {
   unawaited(_guarded(action));
 }
 
-Future<void> _syncBracuCookieSnapshot() async {
+Future<void> _syncCookieSnapshot() async {
   if (!chrome.cookies.isAvailable) return;
 
   final connectCookies = await chrome.cookies.getAll(
@@ -921,7 +921,7 @@ Future<void> _startLogout() async {
   await _revokeMercureSession();
   final values = await chrome.storage.local.get(PreConnectStorageKeys.idToken);
   final idToken = '${values[PreConnectStorageKeys.idToken] ?? ''}'.trim();
-  final logoutUrl = BracuLogout.ssoLogoutUri(idToken: idToken);
+  final logoutUrl = AppLogout.ssoLogoutUri(idToken: idToken);
 
   final tab = await _safeTabsCreate(url: logoutUrl.toString(), active: true);
   final logoutTabId = tab.id;
@@ -949,9 +949,9 @@ Future<void> _loginMercureSession() async {
     final accessToken = '${values[PreConnectStorageKeys.accessToken] ?? ''}'
         .trim();
     if (accessToken.isEmpty) return;
-    final uri = BracuLogout.mercureLoginUri;
+    final uri = AppLogout.mercureLoginUri;
     final headers = _headersFromMap(
-      BracuLogout.mercureLoginHeaders(accessToken: accessToken),
+      AppLogout.mercureLoginHeaders(accessToken: accessToken),
     );
     await _fetch(
       uri.toString(),
@@ -974,9 +974,9 @@ Future<void> _revokeMercureSession() async {
     );
     final accessToken = '${values[PreConnectStorageKeys.accessToken] ?? ''}'
         .trim();
-    final uri = BracuLogout.mercureLogoutUri;
+    final uri = AppLogout.mercureLogoutUri;
     final headers = _headersFromMap(
-      BracuLogout.mercureLogoutHeaders(accessToken: accessToken),
+      AppLogout.mercureLogoutHeaders(accessToken: accessToken),
     );
     await _fetch(
       uri.toString(),
@@ -1259,7 +1259,7 @@ Future<void> _processNavigation(int tabId, String url) async {
           PreConnectStorageKeys.idToken: tokens.idToken,
         PreConnectStorageKeys.cachedHasAuthSession: 'true',
       });
-      await _syncBracuCookieSnapshot();
+      await _syncCookieSnapshot();
       await _refreshBadgeAndNotifyIfNeeded();
       unawaited(_registerGcmAndSyncToken());
       if (!chrome.sidePanel.isAvailable && !_isFirefox()) {
@@ -1282,7 +1282,7 @@ Future<bool> _handleLogoutNavigation(int tabId, String url) async {
   final pending = await _loadPendingLogout();
   if (pending == null || pending.logoutTabId != tabId) return false;
 
-  if (!BracuLogout.isConnectLogoutRedirect(url)) return false;
+  if (!AppLogout.isConnectLogoutRedirect(url)) return false;
 
   await _unregisterGcmToken();
   await _clearPendingLogout();

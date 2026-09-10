@@ -253,7 +253,7 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
         section: section,
         overrides: overrides,
       );
-      final midAt = BracuTime.parseDateTime(
+      final midAt = AppTime.parseDateTime(
         resolved.midDate,
         resolved.midStartTime,
       );
@@ -273,7 +273,7 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
           ),
         );
       }
-      final finalAt = BracuTime.parseDateTime(
+      final finalAt = AppTime.parseDateTime(
         resolved.finalDate,
         resolved.finalStartTime,
       );
@@ -358,7 +358,7 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
       showAppSnackBar(context, 'Alarm setup is not available on web.');
       return;
     }
-    final parsed = BracuTime.parseHourMinute(startTime);
+    final parsed = AppTime.parseHourMinute(startTime);
     if (parsed == null) {
       if (!context.mounted) return;
       showAppSnackBar(context, 'Unable to parse class time.');
@@ -458,9 +458,9 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
   }
 
   Set<int> _mapWeekdays(List<String> days, {int shift = 0}) {
-    final mapped = days.map(BracuTime.weekdayFromName).whereType<int>().toSet();
+    final mapped = days.map(AppTime.weekdayFromName).whereType<int>().toSet();
     if (shift == 0) return mapped;
-    return mapped.map((day) => BracuTime.shiftWeekday(day, shift)).toSet();
+    return mapped.map((day) => AppTime.shiftWeekday(day, shift)).toSet();
   }
 
   Future<void> _setExamAlarm(
@@ -739,12 +739,12 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
     final chipBg = Colors.transparent;
     final controlBg = isDark ? const Color(0xFF0B0B0B) : Colors.white;
 
-    return BracuPageScaffold(
+    return AppPageScaffold(
       title: 'Set Alarms',
       subtitle: 'Class & Exam',
       icon: Icons.alarm_outlined,
       actions: [
-        BracuSelectChip(
+        AppSelectChip(
           icon: Icons.history_rounded,
           selected: _showDoneAlarms,
           compact: true,
@@ -877,7 +877,7 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
 
                 return Padding(
                   padding: const EdgeInsets.only(bottom: 12),
-                  child: BracuCard(
+                  child: AppCard(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -885,7 +885,7 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
                           children: [
                             const SectionBadge(
                               label: 'AD',
-                              color: BracuPalette.primary,
+                              color: AppPalette.primary,
                             ),
                             const Gap(12),
                             Expanded(
@@ -902,7 +902,7 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
                                   Text(
                                     subtitle,
                                     style: TextStyle(
-                                      color: BracuPalette.textPrimary(context),
+                                      color: AppPalette.textPrimary(context),
                                       fontWeight: FontWeight.w700,
                                     ),
                                   ),
@@ -921,9 +921,7 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
                             color: controlBg,
                             borderRadius: BorderRadius.circular(14),
                             border: Border.all(
-                              color: BracuPalette.primary.withValues(
-                                alpha: 0.2,
-                              ),
+                              color: AppPalette.primary.withValues(alpha: 0.2),
                             ),
                           ),
                           child: Row(
@@ -941,7 +939,7 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
                                 child: Container(
                                   padding: const EdgeInsets.all(6),
                                   decoration: BoxDecoration(
-                                    color: BracuPalette.primary.withValues(
+                                    color: AppPalette.primary.withValues(
                                       alpha: 0.12,
                                     ),
                                     borderRadius: BorderRadius.circular(10),
@@ -949,7 +947,7 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
                                   child: const Icon(
                                     Icons.remove,
                                     size: 18,
-                                    color: BracuPalette.primary,
+                                    color: AppPalette.primary,
                                   ),
                                 ),
                               ),
@@ -959,7 +957,7 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
                                     '${_minutesBefore[alarmKey]} min before',
                                     style: TextStyle(
                                       fontWeight: FontWeight.w600,
-                                      color: BracuPalette.textPrimary(context),
+                                      color: AppPalette.textPrimary(context),
                                     ),
                                   ),
                                 ),
@@ -975,7 +973,7 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
                                 child: Container(
                                   padding: const EdgeInsets.all(6),
                                   decoration: BoxDecoration(
-                                    color: BracuPalette.primary.withValues(
+                                    color: AppPalette.primary.withValues(
                                       alpha: 0.12,
                                     ),
                                     borderRadius: BorderRadius.circular(10),
@@ -983,7 +981,7 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
                                   child: const Icon(
                                     Icons.add,
                                     size: 18,
-                                    color: BracuPalette.primary,
+                                    color: AppPalette.primary,
                                   ),
                                 ),
                               ),
@@ -999,18 +997,18 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
                               true;
                           return SizedBox(
                             width: double.infinity,
-                            child: BracuActionButton(
+                            child: AppActionButton(
                               onPressed: () async {
                                 if (isDone) {
                                   final confirmed =
-                                      await showBracuConfirmationWithActionDialog(
+                                      await showAppConfirmationWithActionDialog(
                                         context,
                                         icon: Icons.delete_outline_rounded,
                                         title: 'Remove Alarm?',
                                         message:
                                             'This will remove the set alarm for $title.',
                                         confirmLabel: 'Remove',
-                                        confirmColor: BracuPalette.danger,
+                                        confirmColor: AppPalette.danger,
                                         onConfirm: () async {
                                           await AppStorage.instance.remove(
                                             'alarm_done_$alarmKey',
@@ -1064,7 +1062,7 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
 
               return Padding(
                 padding: const EdgeInsets.only(bottom: 12),
-                child: BracuCard(
+                child: AppCard(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -1075,7 +1073,7 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
                               item,
                               courseOptions,
                             ),
-                            color: BracuPalette.primary,
+                            color: AppPalette.primary,
                           ),
                           const Gap(12),
                           Expanded(
@@ -1092,7 +1090,7 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
                                 Text(
                                   subtitle,
                                   style: TextStyle(
-                                    color: BracuPalette.textPrimary(context),
+                                    color: AppPalette.textPrimary(context),
                                     fontWeight: FontWeight.w700,
                                   ),
                                 ),
@@ -1122,7 +1120,7 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
                                 dateStr,
                                 style: TextStyle(
                                   fontSize: 12,
-                                  color: BracuPalette.textPrimary(context),
+                                  color: AppPalette.textPrimary(context),
                                   fontWeight: FontWeight.w600,
                                 ),
                               ),
@@ -1136,7 +1134,7 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
                           item.notes.trim(),
                           style: TextStyle(
                             fontSize: 12,
-                            color: BracuPalette.textSecondary(context),
+                            color: AppPalette.textSecondary(context),
                           ),
                         ),
                       ],
@@ -1150,7 +1148,7 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
                           color: controlBg,
                           borderRadius: BorderRadius.circular(14),
                           border: Border.all(
-                            color: BracuPalette.primary.withValues(alpha: 0.2),
+                            color: AppPalette.primary.withValues(alpha: 0.2),
                           ),
                         ),
                         child: Row(
@@ -1168,7 +1166,7 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
                               child: Container(
                                 padding: const EdgeInsets.all(6),
                                 decoration: BoxDecoration(
-                                  color: BracuPalette.primary.withValues(
+                                  color: AppPalette.primary.withValues(
                                     alpha: 0.12,
                                   ),
                                   borderRadius: BorderRadius.circular(10),
@@ -1176,7 +1174,7 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
                                 child: const Icon(
                                   Icons.remove,
                                   size: 18,
-                                  color: BracuPalette.primary,
+                                  color: AppPalette.primary,
                                 ),
                               ),
                             ),
@@ -1186,7 +1184,7 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
                                   '${_minutesBefore[alarmKey]} min before',
                                   style: TextStyle(
                                     fontWeight: FontWeight.w600,
-                                    color: BracuPalette.textPrimary(context),
+                                    color: AppPalette.textPrimary(context),
                                   ),
                                 ),
                               ),
@@ -1202,7 +1200,7 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
                               child: Container(
                                 padding: const EdgeInsets.all(6),
                                 decoration: BoxDecoration(
-                                  color: BracuPalette.primary.withValues(
+                                  color: AppPalette.primary.withValues(
                                     alpha: 0.12,
                                   ),
                                   borderRadius: BorderRadius.circular(10),
@@ -1210,7 +1208,7 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
                                 child: const Icon(
                                   Icons.add,
                                   size: 18,
-                                  color: BracuPalette.primary,
+                                  color: AppPalette.primary,
                                 ),
                               ),
                             ),
@@ -1226,18 +1224,18 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
                             true;
                         return SizedBox(
                           width: double.infinity,
-                          child: BracuActionButton(
+                          child: AppActionButton(
                             onPressed: () async {
                               if (isDone) {
                                 final confirmed =
-                                    await showBracuConfirmationWithActionDialog(
+                                    await showAppConfirmationWithActionDialog(
                                       context,
                                       icon: Icons.delete_outline_rounded,
                                       title: 'Remove Alarm?',
                                       message:
                                           'This will remove the set alarm for ${item.title}.',
                                       confirmLabel: 'Remove',
-                                      confirmColor: BracuPalette.danger,
+                                      confirmColor: AppPalette.danger,
                                       onConfirm: () async {
                                         await AppStorage.instance.remove(
                                           'alarm_done_$alarmKey',
@@ -1288,9 +1286,9 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    BracuCard(
+                    AppCard(
                       isHighlighted: isHighlighted,
-                      highlightColor: BracuPalette.primary,
+                      highlightColor: AppPalette.primary,
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -1299,8 +1297,8 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
                               SectionBadge(
                                 label: formatSectionBadge(exam.sectionName),
                                 color: exam.type == 'Final'
-                                    ? BracuPalette.accent
-                                    : BracuPalette.primary,
+                                    ? AppPalette.accent
+                                    : AppPalette.primary,
                               ),
                               const Gap(12),
                               Expanded(
@@ -1320,7 +1318,7 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
                                             text: ' ${exam.type}',
                                             style: TextStyle(
                                               fontWeight: FontWeight.w600,
-                                              color: BracuPalette.textSecondary(
+                                              color: AppPalette.textSecondary(
                                                 context,
                                               ),
                                             ),
@@ -1335,9 +1333,7 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
                                         exam.endTime,
                                       ),
                                       style: TextStyle(
-                                        color: BracuPalette.textPrimary(
-                                          context,
-                                        ),
+                                        color: AppPalette.textPrimary(context),
                                         fontWeight: FontWeight.w700,
                                       ),
                                     ),
@@ -1353,7 +1349,7 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
                                         ? 'TBA'
                                         : exam.roomNumber,
                                     style: TextStyle(
-                                      color: BracuPalette.textPrimary(context),
+                                      color: AppPalette.textPrimary(context),
                                       fontWeight: FontWeight.w700,
                                     ),
                                   ),
@@ -1369,7 +1365,7 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
                                               style: TextStyle(
                                                 fontSize: 12,
                                                 fontWeight: FontWeight.w700,
-                                                color: BracuPalette.textPrimary(
+                                                color: AppPalette.textPrimary(
                                                   context,
                                                 ),
                                               ),
@@ -1380,10 +1376,9 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
                                                   '${exam.faculties.trim().isEmpty ? '' : ' '}(${exam.consumedSeat})',
                                               style: TextStyle(
                                                 fontSize: 12,
-                                                color:
-                                                    BracuPalette.textSecondary(
-                                                      context,
-                                                    ),
+                                                color: AppPalette.textSecondary(
+                                                  context,
+                                                ),
                                               ),
                                             ),
                                         ],
@@ -1416,7 +1411,7 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
                                     _formatExamDateOnly(exam.dateTime),
                                     style: TextStyle(
                                       fontSize: 12,
-                                      color: BracuPalette.textPrimary(context),
+                                      color: AppPalette.textPrimary(context),
                                       fontWeight: FontWeight.w600,
                                     ),
                                   ),
@@ -1436,7 +1431,7 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
                                     ).format(exam.dateTime).toUpperCase(),
                                     style: TextStyle(
                                       fontSize: 12,
-                                      color: BracuPalette.textPrimary(context),
+                                      color: AppPalette.textPrimary(context),
                                       fontWeight: FontWeight.w600,
                                     ),
                                   ),
@@ -1454,7 +1449,7 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
                               color: controlBg,
                               borderRadius: BorderRadius.circular(14),
                               border: Border.all(
-                                color: BracuPalette.primary.withValues(
+                                color: AppPalette.primary.withValues(
                                   alpha: 0.2,
                                 ),
                               ),
@@ -1474,7 +1469,7 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
                                   child: Container(
                                     padding: const EdgeInsets.all(6),
                                     decoration: BoxDecoration(
-                                      color: BracuPalette.primary.withValues(
+                                      color: AppPalette.primary.withValues(
                                         alpha: 0.12,
                                       ),
                                       borderRadius: BorderRadius.circular(10),
@@ -1482,7 +1477,7 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
                                     child: const Icon(
                                       Icons.remove,
                                       size: 18,
-                                      color: BracuPalette.primary,
+                                      color: AppPalette.primary,
                                     ),
                                   ),
                                 ),
@@ -1492,9 +1487,7 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
                                       '${_minutesBefore[alarmKey]} min before',
                                       style: TextStyle(
                                         fontWeight: FontWeight.w600,
-                                        color: BracuPalette.textPrimary(
-                                          context,
-                                        ),
+                                        color: AppPalette.textPrimary(context),
                                       ),
                                     ),
                                   ),
@@ -1510,7 +1503,7 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
                                   child: Container(
                                     padding: const EdgeInsets.all(6),
                                     decoration: BoxDecoration(
-                                      color: BracuPalette.primary.withValues(
+                                      color: AppPalette.primary.withValues(
                                         alpha: 0.12,
                                       ),
                                       borderRadius: BorderRadius.circular(10),
@@ -1518,7 +1511,7 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
                                     child: const Icon(
                                       Icons.add,
                                       size: 18,
-                                      color: BracuPalette.primary,
+                                      color: AppPalette.primary,
                                     ),
                                   ),
                                 ),
@@ -1535,18 +1528,18 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
                                 exam.isPassed;
                             return SizedBox(
                               width: double.infinity,
-                              child: BracuActionButton(
+                              child: AppActionButton(
                                 onPressed: () async {
                                   if (isDone) {
                                     final confirmed =
-                                        await showBracuConfirmationWithActionDialog(
+                                        await showAppConfirmationWithActionDialog(
                                           context,
                                           icon: Icons.delete_outline_rounded,
                                           title: 'Remove Alarm?',
                                           message:
                                               'This will remove the set alarm for ${exam.courseCode} ${exam.type}.',
                                           confirmLabel: 'Remove',
-                                          confirmColor: BracuPalette.danger,
+                                          confirmColor: AppPalette.danger,
                                           onConfirm: () async {
                                             await AppStorage.instance.remove(
                                               'alarm_done_$alarmKey',
@@ -1594,7 +1587,7 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
 
             return Padding(
               padding: const EdgeInsets.only(bottom: 12),
-              child: BracuCard(
+              child: AppCard(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -1630,7 +1623,7 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
                               s.day.toUpperCase(),
                               style: TextStyle(
                                 fontSize: 12,
-                                color: BracuPalette.textPrimary(context),
+                                color: AppPalette.textPrimary(context),
                                 fontWeight: FontWeight.w600,
                               ),
                               maxLines: 1,
@@ -1652,7 +1645,7 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
                         color: controlBg,
                         borderRadius: BorderRadius.circular(14),
                         border: Border.all(
-                          color: BracuPalette.primary.withValues(alpha: 0.2),
+                          color: AppPalette.primary.withValues(alpha: 0.2),
                         ),
                       ),
                       child: Row(
@@ -1670,7 +1663,7 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
                             child: Container(
                               padding: const EdgeInsets.all(6),
                               decoration: BoxDecoration(
-                                color: BracuPalette.primary.withValues(
+                                color: AppPalette.primary.withValues(
                                   alpha: 0.12,
                                 ),
                                 borderRadius: BorderRadius.circular(10),
@@ -1678,7 +1671,7 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
                               child: const Icon(
                                 Icons.remove,
                                 size: 18,
-                                color: BracuPalette.primary,
+                                color: AppPalette.primary,
                               ),
                             ),
                           ),
@@ -1688,7 +1681,7 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
                                 '${_minutesBefore[courseCode]} min before',
                                 style: TextStyle(
                                   fontWeight: FontWeight.w600,
-                                  color: BracuPalette.textPrimary(context),
+                                  color: AppPalette.textPrimary(context),
                                 ),
                               ),
                             ),
@@ -1704,7 +1697,7 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
                             child: Container(
                               padding: const EdgeInsets.all(6),
                               decoration: BoxDecoration(
-                                color: BracuPalette.primary.withValues(
+                                color: AppPalette.primary.withValues(
                                   alpha: 0.12,
                                 ),
                                 borderRadius: BorderRadius.circular(10),
@@ -1712,7 +1705,7 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
                               child: const Icon(
                                 Icons.add,
                                 size: 18,
-                                color: BracuPalette.primary,
+                                color: AppPalette.primary,
                               ),
                             ),
                           ),
@@ -1728,18 +1721,18 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
                           true;
                       return SizedBox(
                         width: double.infinity,
-                        child: BracuActionButton(
+                        child: AppActionButton(
                           onPressed: () async {
                             if (isDone) {
                               final confirmed =
-                                  await showBracuConfirmationWithActionDialog(
+                                  await showAppConfirmationWithActionDialog(
                                     context,
                                     icon: Icons.delete_outline_rounded,
                                     title: 'Remove Alarm?',
                                     message:
                                         'This will remove the set alarm for $courseCode.',
                                     confirmLabel: 'Remove',
-                                    confirmColor: BracuPalette.danger,
+                                    confirmColor: AppPalette.danger,
                                     onConfirm: () async {
                                       await AppStorage.instance.remove(
                                         'alarm_done_$courseCode',
@@ -1802,7 +1795,7 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
               },
             ),
           );
-          return BracuRefreshList(
+          return AppRefreshList(
             onRefresh: _handleRefresh,
             controller: _scrollController,
             children: children,

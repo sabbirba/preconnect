@@ -259,7 +259,7 @@ class _AppRefreshScrollState extends State<AppRefreshScroll> {
   }
 
   @override
-  void didUpdateWidget(covariant BracuRefreshScroll oldWidget) {
+  void didUpdateWidget(covariant AppRefreshScroll oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.controller != widget.controller) {
       if (widget.controller == null) {

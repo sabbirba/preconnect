@@ -155,7 +155,7 @@ class _PreConnectWebViewPageState extends State<PreConnectWebViewPage> {
                   },
                 ),
                 const Spacer(),
-                BracuRefreshButton(
+                AppRefreshButton(
                   onPressed: () => _controller.reload(),
                   isLoading: _loading,
                   color: iconColor,

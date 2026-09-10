@@ -8,7 +8,7 @@ void main() {
   test('upcoming and current slots highlight until the end', () {
     for (final minute in [29, 30, 45, 59]) {
       expect(
-        BracuTime.isUpcomingOrCurrentSlot(
+        AppTime.isUpcomingOrCurrentSlot(
           '09:30',
           '10:00',
           now: DateTime(2026, 9, 10, 9, minute),
@@ -17,7 +17,7 @@ void main() {
       );
     }
     expect(
-      BracuTime.isUpcomingOrCurrentSlot(
+      AppTime.isUpcomingOrCurrentSlot(
         '09:30',
         '10:00',
         now: DateTime(2026, 9, 10, 10),
@@ -29,30 +29,27 @@ void main() {
   test('slot highlights support AM/PM and reject missing or invalid times', () {
     final now = DateTime(2026, 9, 10, 13);
     expect(
-      BracuTime.isUpcomingOrCurrentSlot('12:30 PM', '1:30 PM', now: now),
+      AppTime.isUpcomingOrCurrentSlot('12:30 PM', '1:30 PM', now: now),
       isTrue,
     );
-    expect(BracuTime.isUpcomingOrCurrentSlot(null, '14:00', now: now), isFalse);
+    expect(AppTime.isUpcomingOrCurrentSlot(null, '14:00', now: now), isFalse);
     expect(
-      BracuTime.isUpcomingOrCurrentSlot('invalid', '14:00', now: now),
+      AppTime.isUpcomingOrCurrentSlot('invalid', '14:00', now: now),
       isFalse,
     );
     expect(
-      BracuTime.isUpcomingOrCurrentSlot('14:00', '12:00', now: now),
+      AppTime.isUpcomingOrCurrentSlot('14:00', '12:00', now: now),
       isFalse,
     );
     expect(
-      BracuTime.isUpcomingOrCurrentSlot('14:00', '14:00', now: now),
+      AppTime.isUpcomingOrCurrentSlot('14:00', '14:00', now: now),
       isFalse,
     );
     expect(
-      BracuTime.isUpcomingOrCurrentSlot('09:00', '10:00', now: now),
+      AppTime.isUpcomingOrCurrentSlot('09:00', '10:00', now: now),
       isFalse,
     );
-    expect(
-      BracuTime.isUpcomingOrCurrentSlot('14:00', '15:00', now: now),
-      isTrue,
-    );
+    expect(AppTime.isUpcomingOrCurrentSlot('14:00', '15:00', now: now), isTrue);
   });
 
   CalendarEntry event({
@@ -147,30 +144,30 @@ void main() {
     );
   });
 
-  group('BracuTime', () {
+  group('AppTime', () {
     test('parses common date formats', () {
-      expect(BracuTime.parseDate('2026-02-11'), DateTime(2026, 2, 11));
-      expect(BracuTime.parseDate('11/02/2026'), DateTime(2026, 2, 11));
-      expect(BracuTime.parseDate('not a date'), isNull);
+      expect(AppTime.parseDate('2026-02-11'), DateTime(2026, 2, 11));
+      expect(AppTime.parseDate('11/02/2026'), DateTime(2026, 2, 11));
+      expect(AppTime.parseDate('not a date'), isNull);
     });
 
     test('normalizes 12-hour and 24-hour times', () {
-      expect(BracuTime.toMinutes('12:00 AM'), 0);
-      expect(BracuTime.toMinutes('1:30 PM'), 13 * 60 + 30);
-      expect(BracuTime.toMinutes('23:15'), 23 * 60 + 15);
+      expect(AppTime.toMinutes('12:00 AM'), 0);
+      expect(AppTime.toMinutes('1:30 PM'), 13 * 60 + 30);
+      expect(AppTime.toMinutes('23:15'), 23 * 60 + 15);
     });
 
     test('maps weekday names case-insensitively', () {
-      expect(BracuTime.weekdayFromName(' monday '), DateTime.monday);
-      expect(BracuTime.weekdayFromName('SUNDAY'), DateTime.sunday);
-      expect(BracuTime.weekdayFromName('holiday'), isNull);
-      expect(BracuTime.shiftWeekday(DateTime.monday, -1), DateTime.sunday);
-      expect(BracuTime.shiftWeekday(DateTime.sunday, 1), DateTime.monday);
+      expect(AppTime.weekdayFromName(' monday '), DateTime.monday);
+      expect(AppTime.weekdayFromName('SUNDAY'), DateTime.sunday);
+      expect(AppTime.weekdayFromName('holiday'), isNull);
+      expect(AppTime.shiftWeekday(DateTime.monday, -1), DateTime.sunday);
+      expect(AppTime.shiftWeekday(DateTime.sunday, 1), DateTime.monday);
     });
 
     test('formats parseable dates and preserves unknown input', () {
-      expect(BracuTime.formatDate('2026-02-11'), '11 February, 2026');
-      expect(BracuTime.formatDate('not a date'), 'not a date');
+      expect(AppTime.formatDate('2026-02-11'), '11 February, 2026');
+      expect(AppTime.formatDate('not a date'), 'not a date');
     });
   });
 }

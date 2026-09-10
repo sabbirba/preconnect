@@ -273,14 +273,14 @@ class _WishlistPageState extends State<WishlistPage> {
 
   Future<void> _confirmDropCourse(Map<String, dynamic> course) async {
     final code = course['courseCode'];
-    await showBracuConfirmationWithActionDialog(
+    await showAppConfirmationWithActionDialog(
       context,
       icon: Icons.remove_circle_outline_rounded,
       title: 'Drop Course?',
       message: 'Are you sure you want to drop $code from your wishlist?',
       confirmLabel: 'Drop',
       cancelLabel: 'Cancel',
-      confirmColor: BracuPalette.danger,
+      confirmColor: AppPalette.danger,
       onConfirm: () => _dropCourse(course),
     );
   }
@@ -355,26 +355,26 @@ class _WishlistPageState extends State<WishlistPage> {
 
   @override
   Widget build(BuildContext context) {
-    final textPrimary = BracuPalette.textPrimary(context);
-    final textSecondary = BracuPalette.textSecondary(context);
+    final textPrimary = AppPalette.textPrimary(context);
+    final textSecondary = AppPalette.textSecondary(context);
 
     if (_isLoading) {
-      return const BracuPageScaffold(
+      return const AppPageScaffold(
         title: 'Advising',
         subtitle: 'Wishlist',
         icon: Icons.star_outline_rounded,
-        body: Center(child: BracuLoading()),
+        body: Center(child: AppLoading()),
       );
     }
 
     if (_errorMessage != null) {
       final error = _errorDetails(_errorMessage!);
 
-      return BracuPageScaffold(
+      return AppPageScaffold(
         title: 'Advising',
         subtitle: 'Wishlist',
         icon: Icons.star_outline_rounded,
-        body: BracuErrorState(
+        body: AppErrorState(
           title: error.title,
           message: error.message,
           onRetry: _loadInitialData,
@@ -382,7 +382,7 @@ class _WishlistPageState extends State<WishlistPage> {
       );
     }
 
-    return BracuPageScaffold(
+    return AppPageScaffold(
       title: 'Advising',
       subtitle: 'Wishlist',
       icon: Icons.star_outline_rounded,
@@ -392,7 +392,7 @@ class _WishlistPageState extends State<WishlistPage> {
           icon: const Icon(Icons.sync_rounded),
           onPressed: _isLoading ? null : _loadInitialData,
         ),
-        BracuRefreshButton(
+        AppRefreshButton(
           onPressed: _refreshWishlistData,
           isLoading: _isLoading,
         ),
@@ -402,13 +402,13 @@ class _WishlistPageState extends State<WishlistPage> {
           if (_isPhaseCompleted)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-              child: BracuCard(
-                backgroundColor: BracuPalette.info.withValues(alpha: 0.12),
+              child: AppCard(
+                backgroundColor: AppPalette.info.withValues(alpha: 0.12),
                 child: Row(
                   children: [
                     const Icon(
                       Icons.check_circle_rounded,
-                      color: BracuPalette.info,
+                      color: AppPalette.info,
                     ),
                     const Gap(8),
                     Expanded(
@@ -428,8 +428,8 @@ class _WishlistPageState extends State<WishlistPage> {
           if (_batchQueue.isNotEmpty)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: BracuCard(
-                backgroundColor: BracuPalette.info.withValues(alpha: 0.12),
+              child: AppCard(
+                backgroundColor: AppPalette.info.withValues(alpha: 0.12),
                 child: Row(
                   children: [
                     Expanded(
@@ -441,7 +441,7 @@ class _WishlistPageState extends State<WishlistPage> {
                         ),
                       ),
                     ),
-                    BracuActionButton(
+                    AppActionButton(
                       onPressed: _executeBatchAdd,
                       label: 'Add Batch',
                       outlined: false,
@@ -462,9 +462,9 @@ class _WishlistPageState extends State<WishlistPage> {
               child: Column(
                 children: [
                   TabBar(
-                    labelColor: BracuPalette.primary,
+                    labelColor: AppPalette.primary,
                     unselectedLabelColor: textSecondary,
-                    indicatorColor: BracuPalette.primary,
+                    indicatorColor: AppPalette.primary,
                     tabs: const [
                       Tab(text: 'Current Wishlist'),
                       Tab(text: 'Offered Courses'),
@@ -489,11 +489,9 @@ class _WishlistPageState extends State<WishlistPage> {
 
   Widget _buildWishlistView(Color textPrimary, Color textSecondary) {
     if (_wishlistCourses.isEmpty) {
-      return BracuRefreshList(
+      return AppRefreshList(
         onRefresh: _refreshWishlistData,
-        children: const [
-          BracuEmptyCard(message: 'No courses in your wishlist.'),
-        ],
+        children: const [AppEmptyCard(message: 'No courses in your wishlist.')],
       );
     }
 
@@ -508,7 +506,7 @@ class _WishlistPageState extends State<WishlistPage> {
 
         return Padding(
           padding: const EdgeInsets.only(bottom: 12),
-          child: BracuCard(
+          child: AppCard(
             child: Row(
               children: [
                 Expanded(
@@ -536,7 +534,7 @@ class _WishlistPageState extends State<WishlistPage> {
                     Icons.remove_circle_outline_rounded,
                     color: _isPhaseCompleted
                         ? Colors.grey.withValues(alpha: 0.5)
-                        : BracuPalette.danger,
+                        : AppPalette.danger,
                   ),
                   onPressed: _isPhaseCompleted
                       ? null
@@ -555,7 +553,7 @@ class _WishlistPageState extends State<WishlistPage> {
       children: [
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-          child: BracuSearchField(
+          child: AppSearchField(
             controller: _searchController,
             hintText: 'Search course code or name...',
             query: _searchQuery,
@@ -563,10 +561,10 @@ class _WishlistPageState extends State<WishlistPage> {
         ),
         Expanded(
           child: _filteredOfferedCourses.isEmpty
-              ? BracuRefreshList(
+              ? AppRefreshList(
                   onRefresh: _refreshWishlistData,
                   children: [
-                    BracuEmptyCard(
+                    AppEmptyCard(
                       message: _searchQuery.trim().isEmpty
                           ? 'No offered courses are available.'
                           : 'No offered courses match your search.',
@@ -593,7 +591,7 @@ class _WishlistPageState extends State<WishlistPage> {
 
                     return Padding(
                       padding: const EdgeInsets.only(bottom: 12),
-                      child: BracuCard(
+                      child: AppCard(
                         child: Row(
                           children: [
                             Expanded(
@@ -633,8 +631,8 @@ class _WishlistPageState extends State<WishlistPage> {
                                 color: _isPhaseCompleted
                                     ? Colors.grey.withValues(alpha: 0.5)
                                     : (isSelected
-                                          ? BracuPalette.accent
-                                          : BracuPalette.primary),
+                                          ? AppPalette.accent
+                                          : AppPalette.primary),
                               ),
                               onPressed: _isPhaseCompleted || isWishlisted
                                   ? null
@@ -657,7 +655,7 @@ class _WishlistPageState extends State<WishlistPage> {
                                 Icons.flash_on_rounded,
                                 color: _isPhaseCompleted
                                     ? Colors.grey.withValues(alpha: 0.5)
-                                    : BracuPalette.favorite,
+                                    : AppPalette.favorite,
                               ),
                               onPressed: _isPhaseCompleted || isWishlisted
                                   ? null

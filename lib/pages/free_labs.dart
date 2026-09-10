@@ -240,28 +240,28 @@ class _FreeLabsPageState extends State<FreeLabsPage> {
   @override
   Widget build(BuildContext context) {
     final cachedSlots = _latestSlots;
-    return BracuPageScaffold(
+    return AppPageScaffold(
       title: _dynamicHeaderTitle(),
       subtitle: _headerDayLabel(),
       icon: Icons.computer_outlined,
       actions: [
-        BracuSelectDropdownChip<_RoomFilter>(
+        AppSelectDropdownChip<_RoomFilter>(
           label: _selectedFilter.label,
           title: 'Choose Filter',
           subtitle: 'Filter free labs by room type',
           selectedValue: _selectedFilter,
           options: const [
-            BracuSelectOption<_RoomFilter>(
+            AppSelectOption<_RoomFilter>(
               value: _RoomFilter.labs,
               label: 'Labs',
               subtitle: 'Computer and lab rooms',
             ),
-            BracuSelectOption<_RoomFilter>(
+            AppSelectOption<_RoomFilter>(
               value: _RoomFilter.classes,
               label: 'Classes',
               subtitle: 'Regular classrooms',
             ),
-            BracuSelectOption<_RoomFilter>(
+            AppSelectOption<_RoomFilter>(
               value: _RoomFilter.theater,
               label: 'Theaters',
               subtitle: 'Lecture theater rooms',
@@ -303,7 +303,7 @@ class _FreeLabsPageState extends State<FreeLabsPage> {
               children: [
                 Padding(
                   padding: const EdgeInsets.fromLTRB(20, 8, 20, 10),
-                  child: BracuSearchField(
+                  child: AppSearchField(
                     controller: _searchController,
                     hintText: 'Search rooms or programs...',
                     query: _searchQuery,
@@ -346,7 +346,7 @@ class _FreeLabsPageState extends State<FreeLabsPage> {
                   Row(
                     children: [
                       Expanded(
-                        child: BracuSectionTitle(
+                        child: AppSectionTitle(
                           title: (() {
                             final adjusted = RamadanTiming.adjustRange(
                               firstSlot.startTime,
@@ -365,7 +365,7 @@ class _FreeLabsPageState extends State<FreeLabsPage> {
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w600,
-                          color: BracuPalette.textPrimary(context),
+                          color: AppPalette.textPrimary(context),
                         ),
                       ),
                     ],
@@ -421,7 +421,7 @@ class _FreeLabsPageState extends State<FreeLabsPage> {
             children: [
               Padding(
                 padding: const EdgeInsets.fromLTRB(20, 8, 20, 10),
-                child: BracuSearchField(
+                child: AppSearchField(
                   controller: _searchController,
                   hintText: 'Search rooms or programs...',
                   query: _searchQuery,
@@ -429,7 +429,7 @@ class _FreeLabsPageState extends State<FreeLabsPage> {
                 ),
               ),
               Expanded(
-                child: BracuRefreshList(
+                child: AppRefreshList(
                   onRefresh: _refresh,
                   controller: _scrollController,
                   children: children,
@@ -788,7 +788,7 @@ class _FreeLabsPageState extends State<FreeLabsPage> {
 
   int _minutesOfDay(TimeOfDay time) => time.hour * 60 + time.minute;
 
-  int? _minutesFromString(String value) => BracuTime.toMinutes(value);
+  int? _minutesFromString(String value) => AppTime.toMinutes(value);
 
   String _headerDayLabel() {
     final display = _activeDate;
@@ -827,7 +827,7 @@ class _FreeLabsPageState extends State<FreeLabsPage> {
     final nextDay = formatWeekdayTitle(DateFormat('EEEE').format(nextDate));
     final nextDateLabel =
         '$nextDay, ${nextDate.day} ${_monthLabel(nextDate.month)}';
-    return BracuRefreshList(
+    return AppRefreshList(
       onRefresh: _refresh,
       controller: _scrollController,
       children: [
@@ -839,7 +839,7 @@ class _FreeLabsPageState extends State<FreeLabsPage> {
               'Today\'s lab hours are over.',
               textAlign: TextAlign.center,
               style: TextStyle(
-                color: BracuPalette.textPrimary(context),
+                color: AppPalette.textPrimary(context),
                 fontSize: 15,
                 fontWeight: FontWeight.w700,
               ),
@@ -849,13 +849,13 @@ class _FreeLabsPageState extends State<FreeLabsPage> {
               'Show next day labs for $nextDateLabel?',
               textAlign: TextAlign.center,
               style: TextStyle(
-                color: BracuPalette.textSecondary(context),
+                color: AppPalette.textSecondary(context),
                 fontSize: 13,
                 fontWeight: FontWeight.w500,
               ),
             ),
             const Gap(12),
-            BracuActionButton(
+            AppActionButton(
               onPressed: _showNextDayLabs,
               icon: Icons.arrow_forward_rounded,
               label: 'Show Next Day Labs',
@@ -871,7 +871,7 @@ class _FreeLabsPageState extends State<FreeLabsPage> {
     List<_FreeRoomSlot> roomSlots,
   ) async {
     final visibleRoomSlots = roomSlots;
-    await showBracuBottomSheet<void>(
+    await showAppBottomSheet<void>(
       context,
       title: _sheetRoomTitle(slot),
       subtitle: _roomHeaderSubtitle(slot),
@@ -898,7 +898,7 @@ class _FreeLabsPageState extends State<FreeLabsPage> {
                               ? slot.courses[index].code
                               : ' (${slot.courses[index].code})',
                           style: const TextStyle(
-                            color: BracuPalette.primary,
+                            color: AppPalette.primary,
                             fontWeight: FontWeight.w800,
                           ),
                         ),
@@ -955,9 +955,9 @@ class _FreeLabsPageState extends State<FreeLabsPage> {
               ...visibleRoomSlots.map(
                 (item) => Padding(
                   padding: const EdgeInsets.only(bottom: 10),
-                  child: BracuCard(
+                  child: AppCard(
                     isHighlighted: false,
-                    highlightColor: BracuPalette.primary,
+                    highlightColor: AppPalette.primary,
                     child: Row(
                       children: [
                         Expanded(
@@ -1148,9 +1148,9 @@ class _CompactRoomRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return BracuCard(
+    return AppCard(
       isHighlighted: isHighlighted,
-      highlightColor: BracuPalette.primary,
+      highlightColor: AppPalette.primary,
       child: InkWell(
         borderRadius: BorderRadius.circular(18),
         onTap: onTap,
@@ -1174,13 +1174,13 @@ class _CompactRoomRow extends StatelessWidget {
                             text: ' Free',
                             style: TextStyle(
                               fontWeight: FontWeight.w600,
-                              color: BracuPalette.textSecondary(context),
+                              color: AppPalette.textSecondary(context),
                             ),
                           ),
                       ],
                     ),
                     style: TextStyle(
-                      color: BracuPalette.textPrimary(context),
+                      color: AppPalette.textPrimary(context),
                       fontSize: 14,
                     ),
                   ),
@@ -1198,7 +1198,7 @@ class _CompactRoomRow extends StatelessWidget {
                       );
                     })(),
                     style: TextStyle(
-                      color: BracuPalette.textPrimary(context),
+                      color: AppPalette.textPrimary(context),
                       fontWeight: FontWeight.w700,
                     ),
                   ),
@@ -1219,7 +1219,7 @@ class _CompactRoomRow extends StatelessWidget {
                               ? slot.roomName
                               : slot.dominantProgramCode,
                           style: TextStyle(
-                            color: BracuPalette.textPrimary(context),
+                            color: AppPalette.textPrimary(context),
                             fontSize: 14,
                             fontWeight: FontWeight.w700,
                           ),
@@ -1235,7 +1235,7 @@ class _CompactRoomRow extends StatelessWidget {
                       textAlign: TextAlign.right,
                       style: TextStyle(
                         fontSize: 12,
-                        color: BracuPalette.textSecondary(context),
+                        color: AppPalette.textSecondary(context),
                       ),
                     ),
                   ],

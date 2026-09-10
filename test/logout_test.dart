@@ -82,7 +82,7 @@ void main() {
             builder: (context) {
               return TextButton(
                 onPressed: () async {
-                  confirmed = await showBracuConfirmationWithActionDialog(
+                  confirmed = await showAppConfirmationWithActionDialog(
                     context,
                     icon: Icons.logout,
                     title: 'Confirm Sign Out?',

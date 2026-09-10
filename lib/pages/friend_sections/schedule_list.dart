@@ -79,7 +79,7 @@ class FriendScheduleSection extends StatelessWidget {
 }
 
 (int hour, int minute)? _parse24h(String raw) {
-  return BracuTime.parseHourMinute(raw);
+  return AppTime.parseHourMinute(raw);
 }
 
 String? _pickNextClassSummary(
@@ -100,7 +100,7 @@ String? _pickNextClassSummary(
         s.endTime,
         isRamadan: isRamadan,
       );
-      final targetWeekday = BracuTime.weekdayFromName(s.day);
+      final targetWeekday = AppTime.weekdayFromName(s.day);
       if (targetWeekday == null) continue;
 
       int daysAhead = (targetWeekday - now.weekday + 7) % 7;

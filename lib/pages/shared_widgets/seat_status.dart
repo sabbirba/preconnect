@@ -148,14 +148,14 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
     final hasVisibleCards = _visibleCards.isNotEmpty;
     final itemCount = hasVisibleCards ? _visibleCards.length + 1 : 1;
 
-    return BracuPageScaffold(
+    return AppPageScaffold(
       title: 'Seat Status',
       subtitle: _selectedArchive.isEmpty
           ? 'Current'
           : SeatStatusService.archiveSemesterLabel(_selectedArchive),
       icon: Icons.insights_outlined,
       actions: [
-        BracuSelectDropdownChip<String>(
+        AppSelectDropdownChip<String>(
           title: 'Select Semester',
           label: _selectedArchive.isEmpty
               ? 'Current'
@@ -165,13 +165,13 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
           compact: true,
           showBorder: false,
           options: [
-            const BracuSelectOption<String>(
+            const AppSelectOption<String>(
               value: '',
               label: 'Current',
               icon: Icons.calendar_month_rounded,
             ),
             for (final semester in _archiveSemesters)
-              BracuSelectOption<String>(
+              AppSelectOption<String>(
                 value: semester,
                 label: SeatStatusService.archiveSemesterLabel(semester),
                 icon: Icons.calendar_month_rounded,
@@ -181,7 +181,7 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
             if (mounted) _selectArchive(value);
           },
         ),
-        BracuNotificationsIconButton(
+        AppNotificationsIconButton(
           onTap: () async {
             await Navigator.of(context).push(
               MaterialPageRoute<void>(
@@ -196,9 +196,9 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
       body: Stack(
         children: [
           if (_isInitialLoading && !hasCards)
-            const Center(child: BracuLoading())
+            const Center(child: AppLoading())
           else
-            BracuRefreshListBuilder(
+            AppRefreshListBuilder(
               onRefresh: () async {
                 await Future.wait([
                   _loadArchiveSemesters(),
@@ -258,7 +258,7 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
   }
 
   Widget _buildSearchField(BuildContext context) {
-    return BracuSearchField(
+    return AppSearchField(
       controller: _searchController,
       hintText: 'Search by anything...',
       query: _searchQuery,
@@ -656,7 +656,7 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
       }
     }
 
-    showBracuFacultyScheduleSheet(
+    showFacultyScheduleSheet(
       context,
       facultyInitial: facultyInitial,
       staffName: staffName,

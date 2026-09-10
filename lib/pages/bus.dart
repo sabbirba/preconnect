@@ -127,7 +127,7 @@ class _BusPageState extends State<BusPage> {
     final instructions = _data?.instructions ?? const <String>[];
     final schedulePdfUrl = _schedulePdfUrl;
 
-    return BracuPageScaffold(
+    return AppPageScaffold(
       title: 'Bus',
       subtitle: 'Routes',
       icon: Icons.directions_bus_filled_rounded,
@@ -140,23 +140,23 @@ class _BusPageState extends State<BusPage> {
           icon: const Icon(Icons.picture_as_pdf_outlined),
         ),
       ],
-      body: BracuRefreshList(
+      body: AppRefreshList(
         onRefresh: () => _load(forceRefresh: true),
         children: [
           if (_error != null && _data == null)
-            BracuCard(
+            AppCard(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     _error!,
                     style: TextStyle(
-                      color: BracuPalette.textPrimary(context),
+                      color: AppPalette.textPrimary(context),
                       fontWeight: FontWeight.w600,
                     ),
                   ),
                   const Gap(12),
-                  BracuActionButton(
+                  AppActionButton(
                     onPressed: () => _load(forceRefresh: true),
                     icon: Icons.sync_rounded,
                     label: 'Retry',
@@ -165,9 +165,9 @@ class _BusPageState extends State<BusPage> {
               ),
             ),
           if (_data == null && _error == null)
-            const Center(child: BracuLoading())
+            const Center(child: AppLoading())
           else if (routes.isEmpty)
-            const BracuEmptyState(message: 'No bus route data available')
+            const AppEmptyState(message: 'No bus route data available')
           else
             ...routes.asMap().entries.expand((entry) {
               final route = entry.value;
@@ -256,7 +256,7 @@ class _SectionHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final textPrimary = BracuPalette.textPrimary(context);
+    final textPrimary = AppPalette.textPrimary(context);
     return Row(
       children: [
         Container(
@@ -267,7 +267,7 @@ class _SectionHeader extends StatelessWidget {
             borderRadius: BorderRadius.circular(13),
           ),
           alignment: Alignment.center,
-          child: Icon(icon, size: 16, color: BracuPalette.primary),
+          child: Icon(icon, size: 16, color: AppPalette.primary),
         ),
         const Gap(12),
         Expanded(
@@ -311,12 +311,12 @@ class _InfoChip extends StatelessWidget {
           if (iconWidget != null)
             iconWidget!
           else if (icon != null)
-            Icon(icon, size: 12, color: BracuPalette.primary),
+            Icon(icon, size: 12, color: AppPalette.primary),
           const Gap(4),
           Text(
             text,
             style: TextStyle(
-              color: BracuPalette.primary,
+              color: AppPalette.primary,
               fontSize: 11,
               fontWeight: FontWeight.w700,
             ),

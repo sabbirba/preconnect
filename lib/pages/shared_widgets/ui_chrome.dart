@@ -105,8 +105,8 @@ class _AppPageScaffoldState extends State<AppPageScaffold> {
                             begin: Alignment.topCenter,
                             end: Alignment.bottomCenter,
                             colors: [
-                              BracuPalette.bgTop(context),
-                              BracuPalette.bgBottom(context),
+                              AppPalette.bgTop(context),
+                              AppPalette.bgBottom(context),
                             ],
                           ),
                         )
@@ -125,7 +125,7 @@ class _AppPageScaffoldState extends State<AppPageScaffold> {
                             top: -90,
                             right: -70,
                             child: DecorBlob(
-                              color: BracuPalette.decorColor(context),
+                              color: AppPalette.decorColor(context),
                               size: 240,
                             ),
                           ),
@@ -134,7 +134,7 @@ class _AppPageScaffoldState extends State<AppPageScaffold> {
                               alignment: Alignment.center,
                               child: DecorLogoEmblem(
                                 size: 280,
-                                color: BracuPalette.decorColor(context),
+                                color: AppPalette.decorColor(context),
                               ),
                             ),
                           ),
@@ -142,7 +142,7 @@ class _AppPageScaffoldState extends State<AppPageScaffold> {
                             bottom: -100,
                             left: -80,
                             child: DecorBlob(
-                              color: BracuPalette.decorColor(context),
+                              color: AppPalette.decorColor(context),
                               size: 260,
                             ),
                           ),
@@ -208,7 +208,7 @@ class _PageHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final navigator = Navigator.maybeOf(context, rootNavigator: true);
     final canPop = navigator?.canPop() ?? false;
-    final backScope = BracuBackScope.maybeOf(context);
+    final backScope = AppBackScope.maybeOf(context);
     final canScopeBack = backScope?.canGoBack ?? false;
     final hasBack = showBack && (canPop || canScopeBack);
     final row = Row(
@@ -231,7 +231,7 @@ class _PageHeader extends StatelessWidget {
               child: Icon(
                 Icons.chevron_left_rounded,
                 size: 28,
-                color: BracuPalette.textPrimary(context),
+                color: AppPalette.textPrimary(context),
               ),
             ),
           ),
@@ -244,7 +244,7 @@ class _PageHeader extends StatelessWidget {
                 subtitle,
                 style: TextStyle(
                   fontSize: 11.5,
-                  color: subtitleColor ?? BracuPalette.textSecondary(context),
+                  color: subtitleColor ?? AppPalette.textSecondary(context),
                 ),
               ),
               const Gap(2),
@@ -253,7 +253,7 @@ class _PageHeader extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 17,
                   fontWeight: FontWeight.w600,
-                  color: BracuPalette.textPrimary(context),
+                  color: AppPalette.textPrimary(context),
                 ),
               ),
             ],
@@ -305,7 +305,7 @@ class AppGlassContainer extends StatelessWidget {
         (isDark
             ? Colors.black.withValues(alpha: 0.20)
             : Colors.white.withValues(alpha: 0.25));
-    final highlight = highlightColor ?? BracuPalette.primary;
+    final highlight = highlightColor ?? AppPalette.primary;
     final effectiveBorderColor =
         borderColor ??
         (isHighlighted
@@ -403,15 +403,15 @@ class AppCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final highlight = highlightColor ?? BracuPalette.primary;
+    final highlight = highlightColor ?? AppPalette.primary;
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final baseBorderColor = BracuPalette.textSecondary(
+    final baseBorderColor = AppPalette.textSecondary(
       context,
     ).withValues(alpha: isDark ? 0.22 : 0.16);
     return Container(
       padding: padding,
       decoration: BoxDecoration(
-        color: backgroundColor ?? BracuPalette.card(context),
+        color: backgroundColor ?? AppPalette.card(context),
         borderRadius: BorderRadius.circular(18),
         border: Border.all(
           color: isHighlighted
@@ -437,7 +437,7 @@ class AppSectionTitle extends StatelessWidget {
       style: TextStyle(
         fontSize: 16,
         fontWeight: FontWeight.w600,
-        color: BracuPalette.textPrimary(context),
+        color: AppPalette.textPrimary(context),
       ),
     );
   }
@@ -547,7 +547,7 @@ class _AppMetricTile extends StatelessWidget {
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(data.icon, color: BracuPalette.primary, size: 15),
+              Icon(data.icon, color: AppPalette.primary, size: 15),
               const Gap(6),
               Flexible(
                 child: Text(
@@ -555,7 +555,7 @@ class _AppMetricTile extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    color: BracuPalette.textSecondary(context),
+                    color: AppPalette.textSecondary(context),
                     fontSize: 10,
                     fontWeight: FontWeight.w700,
                   ),
@@ -569,7 +569,7 @@ class _AppMetricTile extends StatelessWidget {
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
             style: TextStyle(
-              color: BracuPalette.textPrimary(context),
+              color: AppPalette.textPrimary(context),
               fontSize: 13,
               fontWeight: FontWeight.w800,
               height: 1.15,
@@ -602,14 +602,14 @@ class AppEmptyState extends StatelessWidget {
             Icon(
               icon,
               size: 44,
-              color: BracuPalette.textSecondary(context).withValues(alpha: 0.4),
+              color: AppPalette.textSecondary(context).withValues(alpha: 0.4),
             ),
             const Gap(16),
             Text(
               message,
               textAlign: TextAlign.center,
               style: TextStyle(
-                color: BracuPalette.textSecondary(context),
+                color: AppPalette.textSecondary(context),
                 fontSize: 13,
                 height: 1.5,
               ),
@@ -976,11 +976,11 @@ class AppScheduleTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final textSecondary = BracuPalette.textSecondary(context);
-    final textPrimary = BracuPalette.textPrimary(context);
+    final textSecondary = AppPalette.textSecondary(context);
+    final textPrimary = AppPalette.textPrimary(context);
     return AppCard(
       isHighlighted: isHighlighted,
-      highlightColor: BracuPalette.primary,
+      highlightColor: AppPalette.primary,
       child: LayoutBuilder(
         builder: (context, constraints) {
           final rightColumnWidth = (constraints.maxWidth * 0.30).clamp(
@@ -1080,7 +1080,7 @@ class ShowMoreButton extends StatelessWidget {
           'Show More',
           style: TextStyle(
             fontWeight: FontWeight.w700,
-            color: BracuPalette.textPrimary(context),
+            color: AppPalette.textPrimary(context),
           ),
         ),
       ),
@@ -1112,8 +1112,8 @@ class QuickAccessCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final textSecondary = BracuPalette.textSecondary(context);
-    final textPrimary = BracuPalette.textPrimary(context);
+    final textSecondary = AppPalette.textSecondary(context);
+    final textPrimary = AppPalette.textPrimary(context);
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(12),
@@ -1127,7 +1127,7 @@ class QuickAccessCard extends StatelessWidget {
               padding: const EdgeInsets.all(4),
               decoration: const BoxDecoration(color: Colors.transparent),
               child: isLoading
-                  ? BracuSpinner(size: 22, color: color, strokeWidth: 2.2)
+                  ? AppSpinner(size: 22, color: color, strokeWidth: 2.2)
                   : (iconWidget ?? Icon(icon, color: color, size: 22)),
             ),
 
@@ -1190,8 +1190,8 @@ class FriendActionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final textSecondary = BracuPalette.textSecondary(context);
-    final textPrimary = BracuPalette.textPrimary(context);
+    final textSecondary = AppPalette.textSecondary(context);
+    final textPrimary = AppPalette.textPrimary(context);
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(12),

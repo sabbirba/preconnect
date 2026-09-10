@@ -285,12 +285,12 @@ class _MaterialsPageState extends State<MaterialsPage> {
       title = 'Sources';
       subtitle = 'Materials';
     }
-    return BracuBackScope(
+    return AppBackScope(
       canGoBack: true,
       onBack: () {
         if (!_handleBack()) HomeTabRegistry.setActive(HomeTab.dashboard);
       },
-      child: BracuPageScaffold(
+      child: AppPageScaffold(
         title: title,
         subtitle: subtitle,
         icon: Icons.folder_copy_outlined,
@@ -313,10 +313,10 @@ class _MaterialsPageState extends State<MaterialsPage> {
               },
               icon: const PreConnectGitHubIcon(
                 size: 22,
-                color: BracuPalette.primary,
+                color: AppPalette.primary,
               ),
             ),
-          BracuRefreshButton(
+          AppRefreshButton(
             onPressed: _refresh,
             isLoading: _loading || _isRefreshing,
           ),
@@ -325,7 +325,7 @@ class _MaterialsPageState extends State<MaterialsPage> {
           padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
           child: Column(
             children: [
-              BracuSearchField(
+              AppSearchField(
                 controller: _searchController,
                 hintText: 'Search...',
               ),
@@ -345,7 +345,7 @@ class _MaterialsPageState extends State<MaterialsPage> {
 
   Widget _buildBody() {
     if (_loading) {
-      return const Expanded(child: BracuLoading());
+      return const Expanded(child: AppLoading());
     }
     if (_error != null) {
       return Expanded(
@@ -355,7 +355,7 @@ class _MaterialsPageState extends State<MaterialsPage> {
             children: [
               const Text('Unable to load files. Please try again.'),
               const Gap(16),
-              BracuActionButton(label: 'Retry', onPressed: _refresh),
+              AppActionButton(label: 'Retry', onPressed: _refresh),
             ],
           ),
         ),
@@ -366,12 +366,12 @@ class _MaterialsPageState extends State<MaterialsPage> {
       return _buildCardList(
         emptyMessage: 'No sources found.',
         items: sources,
-        builder: (source) => BracuActionCard(
+        builder: (source) => AppActionCard(
           title: source,
           leadingIcon: Icons.source_outlined,
           trailing: Icon(
             Icons.chevron_right_rounded,
-            color: BracuPalette.textSecondary(context),
+            color: AppPalette.textSecondary(context),
           ),
           onTap: () => _selectSource(source),
         ),
@@ -382,13 +382,13 @@ class _MaterialsPageState extends State<MaterialsPage> {
       return _buildCardList(
         emptyMessage: 'No materials found.',
         items: collections,
-        builder: (collection) => BracuActionCard(
+        builder: (collection) => AppActionCard(
           title: collection.code,
           subtitle: collection.title,
           leadingIcon: Icons.folder_outlined,
           trailing: Icon(
             Icons.chevron_right_rounded,
-            color: BracuPalette.textSecondary(context),
+            color: AppPalette.textSecondary(context),
           ),
           onTap: () => _selectCollection(collection),
         ),
@@ -402,7 +402,7 @@ class _MaterialsPageState extends State<MaterialsPage> {
               message: 'No file found.',
               topSpacing: 40,
             )
-          : BracuRefreshList(
+          : AppRefreshList(
               onRefresh: _refresh,
               padding: const EdgeInsets.only(bottom: 24),
               children: categories
@@ -424,7 +424,7 @@ class _MaterialsPageState extends State<MaterialsPage> {
               message: emptyMessage,
               topSpacing: 40,
             )
-          : BracuRefreshList(
+          : AppRefreshList(
               onRefresh: _refresh,
               padding: const EdgeInsets.only(bottom: 24),
               children: items
@@ -465,7 +465,7 @@ class _MaterialsPageState extends State<MaterialsPage> {
                     child: Text(
                       category.name,
                       style: TextStyle(
-                        color: BracuPalette.textPrimary(context),
+                        color: AppPalette.textPrimary(context),
                         fontSize: 14,
                         fontWeight: FontWeight.w800,
                       ),
@@ -476,7 +476,7 @@ class _MaterialsPageState extends State<MaterialsPage> {
                     duration: const Duration(milliseconds: 200),
                     child: Icon(
                       Icons.expand_more_rounded,
-                      color: BracuPalette.textSecondary(context),
+                      color: AppPalette.textSecondary(context),
                     ),
                   ),
                 ],
@@ -493,13 +493,13 @@ class _MaterialsPageState extends State<MaterialsPage> {
                       ...category.files.map(
                         (file) => Padding(
                           padding: const EdgeInsets.only(bottom: 12),
-                          child: BracuActionCard(
+                          child: AppActionCard(
                             title: file.name,
                             leadingIcon: _fileIcon(file.path),
                             trailing: Icon(
                               Icons.open_in_new_rounded,
                               size: 19,
-                              color: BracuPalette.textSecondary(context),
+                              color: AppPalette.textSecondary(context),
                             ),
                             onTap: () => launchUrl(
                               Uri.parse(file.url),
@@ -573,7 +573,7 @@ class _MaterialsSubmissionCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final borderColor = BracuPalette.textSecondary(
+    final borderColor = AppPalette.textSecondary(
       context,
     ).withValues(alpha: isDark ? 0.22 : 0.16);
 
@@ -589,7 +589,7 @@ class _MaterialsSubmissionCard extends StatelessWidget {
             style: TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.w500,
-              color: BracuPalette.textSecondary(context),
+              color: AppPalette.textSecondary(context),
             ),
           ),
         ),
@@ -646,7 +646,7 @@ class _MaterialsSubmissionCard extends StatelessWidget {
                     iconWidget: const Icon(
                       Icons.mail_outline_rounded,
                       size: 22,
-                      color: BracuPalette.primary,
+                      color: AppPalette.primary,
                     ),
                     title: 'Send',
                     subtitle: 'Via Email',

@@ -115,7 +115,7 @@ class _AllCoursesPageState extends State<AllCoursesPage> {
       return compareNaturalText(a.code, b.code);
     });
 
-    return BracuPageScaffold(
+    return AppPageScaffold(
       title: 'All Courses',
       subtitle: 'Search & Filter',
       icon: Icons.menu_book_outlined,
@@ -128,8 +128,8 @@ class _AllCoursesPageState extends State<AllCoursesPage> {
               return _buildHeader(context, query);
             }
             if (filtered.isEmpty) {
-              return const BracuCard(
-                child: BracuEmptyState(message: 'No course found.'),
+              return const AppCard(
+                child: AppEmptyState(message: 'No course found.'),
               );
             }
             final course = filtered[index - 1];
@@ -153,7 +153,7 @@ class _AllCoursesPageState extends State<AllCoursesPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        BracuSearchField(
+        AppSearchField(
           controller: _searchController,
           hintText: 'Search by course code or title',
           query: query,
@@ -172,15 +172,15 @@ class _AllCoursesPageState extends State<AllCoursesPage> {
                 showCheckmark: false,
                 labelStyle: TextStyle(
                   color: selected
-                      ? BracuPalette.primary
-                      : BracuPalette.textPrimary(context),
+                      ? AppPalette.primary
+                      : AppPalette.textPrimary(context),
                   fontSize: 11,
                   fontWeight: FontWeight.w600,
                 ),
                 side: BorderSide(
                   color: selected
-                      ? BracuPalette.primary.withValues(alpha: 0.8)
-                      : BracuPalette.textSecondary(
+                      ? AppPalette.primary.withValues(alpha: 0.8)
+                      : AppPalette.textSecondary(
                           context,
                         ).withValues(alpha: 0.24),
                 ),
@@ -208,15 +208,15 @@ class _AllCoursesPageState extends State<AllCoursesPage> {
                 showCheckmark: false,
                 labelStyle: TextStyle(
                   color: _mandatoryOnly
-                      ? BracuPalette.primary
-                      : BracuPalette.textPrimary(context),
+                      ? AppPalette.primary
+                      : AppPalette.textPrimary(context),
                   fontSize: 11,
                   fontWeight: FontWeight.w600,
                 ),
                 side: BorderSide(
                   color: _mandatoryOnly
-                      ? BracuPalette.primary.withValues(alpha: 0.8)
-                      : BracuPalette.textSecondary(
+                      ? AppPalette.primary.withValues(alpha: 0.8)
+                      : AppPalette.textSecondary(
                           context,
                         ).withValues(alpha: 0.24),
                 ),
@@ -237,15 +237,15 @@ class _AllCoursesPageState extends State<AllCoursesPage> {
                 showCheckmark: false,
                 labelStyle: TextStyle(
                   color: _optionalOnly
-                      ? BracuPalette.primary
-                      : BracuPalette.textPrimary(context),
+                      ? AppPalette.primary
+                      : AppPalette.textPrimary(context),
                   fontSize: 11,
                   fontWeight: FontWeight.w600,
                 ),
                 side: BorderSide(
                   color: _optionalOnly
-                      ? BracuPalette.primary.withValues(alpha: 0.8)
-                      : BracuPalette.textSecondary(
+                      ? AppPalette.primary.withValues(alpha: 0.8)
+                      : AppPalette.textSecondary(
                           context,
                         ).withValues(alpha: 0.24),
                 ),

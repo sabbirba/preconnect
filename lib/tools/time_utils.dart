@@ -1,7 +1,7 @@
 import 'package:intl/intl.dart';
 
-class BracuTime {
-  BracuTime._();
+class AppTime {
+  AppTime._();
 
   static final List<DateFormat> _dateFormats = <DateFormat>[
     DateFormat('yyyy-MM-dd'),

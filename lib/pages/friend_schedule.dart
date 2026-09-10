@@ -174,9 +174,9 @@ class _FriendSchedulePageState extends State<FriendSchedulePage>
     required String subtitle,
     required Widget Function(BuildContext sheetContext) builder,
   }) {
-    return showBracuCustomBottomSheet<void>(
+    return showAppCustomBottomSheet<void>(
       context: context,
-      backgroundColor: BracuPalette.card(context),
+      backgroundColor: AppPalette.card(context),
       clipBehavior: Clip.antiAlias,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
@@ -184,8 +184,8 @@ class _FriendSchedulePageState extends State<FriendSchedulePage>
       draggable: false,
       isScrollControlled: true,
       builder: (sheetContext) {
-        final textPrimary = BracuPalette.textPrimary(sheetContext);
-        final textSecondary = BracuPalette.textSecondary(sheetContext);
+        final textPrimary = AppPalette.textPrimary(sheetContext);
+        final textSecondary = AppPalette.textSecondary(sheetContext);
         return SafeArea(
           top: false,
           child: Column(
@@ -314,13 +314,13 @@ class _FriendSchedulePageState extends State<FriendSchedulePage>
     final displayName = item.friend.name.trim().isEmpty
         ? 'this friend'
         : item.friend.name;
-    final shouldDelete = await showBracuConfirmationWithActionDialog(
+    final shouldDelete = await showAppConfirmationWithActionDialog(
       context,
       icon: Icons.delete_outline_rounded,
       title: 'Remove Friend Schedule?',
       message: 'This will remove $displayName\'s schedule.',
       confirmLabel: 'Remove',
-      confirmColor: BracuPalette.danger,
+      confirmColor: AppPalette.danger,
       onConfirm: () async {
         try {
           await _store.removeByEncoded(item.encoded);
@@ -378,7 +378,7 @@ class _FriendSchedulePageState extends State<FriendSchedulePage>
       text: item.metadata?.nickname ?? '',
     );
 
-    final result = await showBracuBottomSheet<String>(
+    final result = await showAppBottomSheet<String>(
       context,
       title: 'Edit Nickname',
       initialChildSize: 0.40,
@@ -405,7 +405,7 @@ class _FriendSchedulePageState extends State<FriendSchedulePage>
             Row(
               children: [
                 Expanded(
-                  child: BracuActionButton(
+                  child: AppActionButton(
                     onPressed: () => Navigator.pop(sheetContext),
                     label: 'Cancel',
                     outlined: true,
@@ -413,7 +413,7 @@ class _FriendSchedulePageState extends State<FriendSchedulePage>
                 ),
                 const Gap(12),
                 Expanded(
-                  child: BracuActionButton(
+                  child: AppActionButton(
                     onPressed: () =>
                         Navigator.pop(sheetContext, controller.text.trim()),
                     label: 'Save',
@@ -467,11 +467,11 @@ class _FriendSchedulePageState extends State<FriendSchedulePage>
 
   @override
   Widget build(BuildContext context) {
-    final textPrimary = BracuPalette.textPrimary(context);
-    final textSecondary = BracuPalette.textSecondary(context);
+    final textPrimary = AppPalette.textPrimary(context);
+    final textSecondary = AppPalette.textSecondary(context);
     final totalFriends = decodedSchedules.length;
     final scheduleWord = totalFriends == 1 ? 'Schedule' : 'Schedules';
-    return BracuPageScaffold(
+    return AppPageScaffold(
       title: 'Friend Schedule',
       subtitle: 'Schedules',
       icon: Icons.people_outline,
@@ -482,7 +482,7 @@ class _FriendSchedulePageState extends State<FriendSchedulePage>
           tooltip: 'Export Friend Codes',
         ),
       ],
-      body: BracuRefreshList(
+      body: AppRefreshList(
         onRefresh: _handleRefresh,
         children: [
           LayoutBuilder(
@@ -503,7 +503,7 @@ class _FriendSchedulePageState extends State<FriendSchedulePage>
                       icon: Icons.qr_code_scanner,
                       title: 'Scan',
                       subtitle: 'Schedule',
-                      color: BracuPalette.info,
+                      color: AppPalette.info,
                       onTap: () async {
                         if (!mounted) return;
                         await _showScheduleToolSheet(
@@ -523,7 +523,7 @@ class _FriendSchedulePageState extends State<FriendSchedulePage>
                       icon: Icons.photo_library_rounded,
                       title: 'Gallery',
                       subtitle: 'Scan QR',
-                      color: BracuPalette.warning,
+                      color: AppPalette.warning,
                       onTap: _scanFromGallery,
                     ),
                     FriendActionCard(
@@ -531,7 +531,7 @@ class _FriendSchedulePageState extends State<FriendSchedulePage>
                       icon: Icons.qr_code_2,
                       title: 'Share',
                       subtitle: 'Schedule',
-                      color: BracuPalette.accent,
+                      color: AppPalette.accent,
                       onTap: () async {
                         final isLoggedIn = await AuthService().isLoggedIn();
                         if (!context.mounted) return;
@@ -580,7 +580,7 @@ class _FriendSchedulePageState extends State<FriendSchedulePage>
           ),
           const Gap(12),
           if (decodedSchedules.isNotEmpty) ...[
-            BracuSearchField(
+            AppSearchField(
               controller: _searchController,
               hintText: 'Search',
               query: _searchQuery,
@@ -594,13 +594,13 @@ class _FriendSchedulePageState extends State<FriendSchedulePage>
             const Gap(12),
           ],
           if (_filteredSchedules.isEmpty && decodedSchedules.isEmpty)
-            const BracuEmptyState(message: "No schedule found")
+            const AppEmptyState(message: "No schedule found")
           else if (_filteredSchedules.isEmpty && _searchQuery.isNotEmpty)
-            BracuCard(
+            AppCard(
               child: Center(
                 child: Text(
                   'No friends match "$_searchQuery"',
-                  style: TextStyle(color: BracuPalette.textSecondary(context)),
+                  style: TextStyle(color: AppPalette.textSecondary(context)),
                 ),
               ),
             )

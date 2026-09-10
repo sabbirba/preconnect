@@ -12,7 +12,7 @@ class WidgetSetupSheet extends StatefulWidget {
   const WidgetSetupSheet({super.key});
 
   static Future<void> show(BuildContext context) {
-    return showBracuBottomSheet<void>(
+    return showAppBottomSheet<void>(
       context,
       title: 'Home Screen Widget',
       initialChildSize: 0.72,
@@ -94,8 +94,8 @@ class _WidgetSetupSheetState extends State<WidgetSetupSheet> {
   @override
   Widget build(BuildContext context) {
     final dragController = bottomSheetScrollController(context);
-    final textPrimary = BracuPalette.textPrimary(context);
-    final textSecondary = BracuPalette.textSecondary(context);
+    final textPrimary = AppPalette.textPrimary(context);
+    final textSecondary = AppPalette.textSecondary(context);
     final isAndroid = defaultTargetPlatform == TargetPlatform.android;
 
     return ListView(
@@ -106,12 +106,12 @@ class _WidgetSetupSheetState extends State<WidgetSetupSheet> {
         _buildPreviewCard(context, textPrimary, textSecondary),
         const Gap(16),
         if (isAndroid && _isPinSupported) ...[
-          BracuActionButton(
+          AppActionButton(
             onPressed: _pinWidget,
             label: 'Add to Home Screen',
             icon: Icons.add_to_home_screen_rounded,
             outlined: false,
-            backgroundColor: BracuPalette.primary,
+            backgroundColor: AppPalette.primary,
             foregroundColor: Colors.white,
           ),
           const Gap(12),
@@ -119,7 +119,7 @@ class _WidgetSetupSheetState extends State<WidgetSetupSheet> {
         Row(
           children: [
             Expanded(
-              child: BracuActionButton(
+              child: AppActionButton(
                 onPressed: _isSyncing ? null : _syncWidget,
                 isLoading: _isSyncing,
                 label: 'Sync Widget Data',
@@ -202,7 +202,7 @@ class _WidgetSetupSheetState extends State<WidgetSetupSheet> {
         ? _widgetData!.date
         : DateFormat('d MMMM, yyyy').format(now);
     final items = _widgetData?.items ?? const <TodayItem>[];
-    const emptyStatus = BracuTodayScheduleStatus.noClasses();
+    const emptyStatus = AppTodayScheduleStatus.noClasses();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -237,25 +237,25 @@ class _WidgetSetupSheetState extends State<WidgetSetupSheet> {
         if (_isLoading)
           const Padding(
             padding: EdgeInsets.symmetric(vertical: 20),
-            child: Center(child: BracuSpinner(size: 22, strokeWidth: 2.4)),
+            child: Center(child: AppSpinner(size: 22, strokeWidth: 2.4)),
           )
         else if (items.isEmpty)
-          BracuScheduleTile(
+          AppScheduleTile(
             badge: emptyStatus.badge,
             title: emptyStatus.title,
             subtitle: emptyStatus.subtitle,
-            color: BracuPalette.primary,
+            color: AppPalette.primary,
           )
         else
           for (var i = 0; i < items.length; i++) ...[
             if (i > 0) const Gap(12),
-            BracuScheduleTile(
+            AppScheduleTile(
               badge: items[i].badge,
               title: items[i].title,
               subtitle: items[i].subtitle,
               trailing: items[i].trailing,
               trailingSub: items[i].trailingSub,
-              color: BracuPalette.primary,
+              color: AppPalette.primary,
             ),
           ],
       ],
@@ -268,8 +268,8 @@ class _WidgetSetupSheetState extends State<WidgetSetupSheet> {
     required String title,
     required String body,
   }) {
-    final textPrimary = BracuPalette.textPrimary(context);
-    final textSecondary = BracuPalette.textSecondary(context);
+    final textPrimary = AppPalette.textPrimary(context);
+    final textSecondary = AppPalette.textSecondary(context);
 
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -278,14 +278,14 @@ class _WidgetSetupSheetState extends State<WidgetSetupSheet> {
           width: 22,
           height: 22,
           decoration: BoxDecoration(
-            color: BracuPalette.primary.withValues(alpha: 0.12),
+            color: AppPalette.primary.withValues(alpha: 0.12),
             shape: BoxShape.circle,
           ),
           alignment: Alignment.center,
           child: Text(
             step,
             style: const TextStyle(
-              color: BracuPalette.primary,
+              color: AppPalette.primary,
               fontSize: 11,
               fontWeight: FontWeight.w800,
             ),

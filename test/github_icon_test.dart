@@ -34,10 +34,10 @@ void main() {
       nextHolidaysThisYear: <HolidayItem>[],
     );
 
-    final holidayStatus = BracuTodayScheduleStatus.resolve(
+    final holidayStatus = AppTodayScheduleStatus.resolve(
       holidayStatus: holiday,
     );
-    final emptyStatus = BracuTodayScheduleStatus.resolve(
+    final emptyStatus = AppTodayScheduleStatus.resolve(
       holidayStatus: HolidayStatus.empty,
     );
 

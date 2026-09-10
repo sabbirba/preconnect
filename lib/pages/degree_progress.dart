@@ -274,15 +274,12 @@ class _DegreeProgressPageState extends State<DegreeProgressPage>
 
   @override
   Widget build(BuildContext context) {
-    return BracuPageScaffold(
+    return AppPageScaffold(
       title: 'Degree Progress',
       subtitle: 'Curriculum Based',
       icon: Icons.trending_up_rounded,
       actions: [
-        BracuRefreshButton(
-          onPressed: () => _refresh(),
-          isLoading: _isRefreshing,
-        ),
+        AppRefreshButton(onPressed: () => _refresh(), isLoading: _isRefreshing),
       ],
       body: FutureBuilder<ProgressInfo?>(
         future: _future,
@@ -398,18 +395,18 @@ class _DegreeProgressPageState extends State<DegreeProgressPage>
               .toList();
 
           return SelectionArea(
-            child: BracuRefreshList(
+            child: AppRefreshList(
               onRefresh: _refresh,
               padding: kPageListPadding,
               children: [
-                BracuCard(
+                AppCard(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
                         _resolveProgramTitle(info),
                         style: TextStyle(
-                          color: BracuPalette.textPrimary(context),
+                          color: AppPalette.textPrimary(context),
                           fontSize: 15,
                           fontWeight: FontWeight.w700,
                         ),
@@ -448,14 +445,14 @@ class _DegreeProgressPageState extends State<DegreeProgressPage>
                           Expanded(
                             child: SimpleProgressBar(
                               value: completion,
-                              color: BracuPalette.primary,
+                              color: AppPalette.primary,
                             ),
                           ),
                           const Gap(12),
                           Text(
                             '${summaryPercent.toStringAsFixed(1)}%',
                             style: TextStyle(
-                              color: BracuPalette.textSecondary(context),
+                              color: AppPalette.textSecondary(context),
                               fontSize: 11,
                               fontWeight: FontWeight.w600,
                             ),
@@ -499,7 +496,7 @@ class _DegreeProgressPageState extends State<DegreeProgressPage>
                 const GradeSheetCard(),
                 const Gap(12),
                 if (info.headerProgress.isNotEmpty) ...[
-                  const BracuSectionTitle(title: 'Requirement Progress'),
+                  const AppSectionTitle(title: 'Requirement Progress'),
                   const Gap(12),
                   ...info.headerProgress.map((item) {
                     final requiredCredit = item.requiredCredit;
@@ -529,7 +526,7 @@ class _DegreeProgressPageState extends State<DegreeProgressPage>
                             ),
                           );
                         },
-                        child: BracuCard(
+                        child: AppCard(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
@@ -544,7 +541,7 @@ class _DegreeProgressPageState extends State<DegreeProgressPage>
                                         Text(
                                           item.title,
                                           style: TextStyle(
-                                            color: BracuPalette.textPrimary(
+                                            color: AppPalette.textPrimary(
                                               context,
                                             ),
                                             fontSize: 14,
@@ -555,7 +552,7 @@ class _DegreeProgressPageState extends State<DegreeProgressPage>
                                         Text(
                                           'Required ${formatCredit(requiredCredit)} Credits • Remaining ${formatCredit(remainingForHeader)} Credits',
                                           style: TextStyle(
-                                            color: BracuPalette.textSecondary(
+                                            color: AppPalette.textSecondary(
                                               context,
                                             ),
                                             fontSize: 10,
@@ -572,7 +569,7 @@ class _DegreeProgressPageState extends State<DegreeProgressPage>
                                       Text(
                                         '${formatCredit(earnedCredit)} credits',
                                         style: TextStyle(
-                                          color: BracuPalette.textPrimary(
+                                          color: AppPalette.textPrimary(
                                             context,
                                           ),
                                           fontSize: 14,
@@ -589,16 +586,14 @@ class _DegreeProgressPageState extends State<DegreeProgressPage>
                                   Expanded(
                                     child: SimpleProgressBar(
                                       value: item.percent,
-                                      color: BracuPalette.accent,
+                                      color: AppPalette.accent,
                                     ),
                                   ),
                                   const Gap(12),
                                   Text(
                                     '${(item.percent * 100).toStringAsFixed(1)}%',
                                     style: TextStyle(
-                                      color: BracuPalette.textSecondary(
-                                        context,
-                                      ),
+                                      color: AppPalette.textSecondary(context),
                                       fontSize: 10,
                                       fontWeight: FontWeight.w600,
                                     ),
@@ -615,14 +610,14 @@ class _DegreeProgressPageState extends State<DegreeProgressPage>
                 ],
                 if (info.majorOptions.isNotEmpty ||
                     info.minorOptions.isNotEmpty)
-                  BracuCard(
+                  AppCard(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
                           'Major / Minor Options',
                           style: TextStyle(
-                            color: BracuPalette.textPrimary(context),
+                            color: AppPalette.textPrimary(context),
                             fontSize: 14,
                             fontWeight: FontWeight.w700,
                           ),
@@ -647,14 +642,14 @@ class _DegreeProgressPageState extends State<DegreeProgressPage>
                 if (info.majorOptions.isNotEmpty ||
                     info.minorOptions.isNotEmpty)
                   const Gap(12),
-                const BracuSectionTitle(title: 'Wishlist for Next Semester'),
+                const AppSectionTitle(title: 'Wishlist for Next Semester'),
                 const Gap(12),
                 if (wishlistCourses.isEmpty)
-                  BracuCard(
+                  AppCard(
                     child: Text(
                       'No next-semester suggestions available yet.',
                       style: TextStyle(
-                        color: BracuPalette.textSecondary(context),
+                        color: AppPalette.textSecondary(context),
                       ),
                     ),
                   )
@@ -663,13 +658,13 @@ class _DegreeProgressPageState extends State<DegreeProgressPage>
                     final item = course.course;
                     return Padding(
                       padding: const EdgeInsets.only(bottom: 10),
-                      child: BracuCard(
+                      child: AppCard(
                         child: Row(
                           crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
                             const SectionBadge(
                               label: 'WL',
-                              color: BracuPalette.primary,
+                              color: AppPalette.primary,
                               size: 40,
                               fontSize: 13,
                             ),
@@ -681,7 +676,7 @@ class _DegreeProgressPageState extends State<DegreeProgressPage>
                                   Text(
                                     item.code,
                                     style: TextStyle(
-                                      color: BracuPalette.textPrimary(context),
+                                      color: AppPalette.textPrimary(context),
                                       fontSize: 13,
                                       fontWeight: FontWeight.w600,
                                     ),
@@ -690,9 +685,7 @@ class _DegreeProgressPageState extends State<DegreeProgressPage>
                                   Text(
                                     item.title.isEmpty ? item.code : item.title,
                                     style: TextStyle(
-                                      color: BracuPalette.textSecondary(
-                                        context,
-                                      ),
+                                      color: AppPalette.textSecondary(context),
                                       fontSize: 11,
                                     ),
                                   ),
@@ -708,7 +701,7 @@ class _DegreeProgressPageState extends State<DegreeProgressPage>
                                   Text(
                                     '${formatCredit(item.credit)} credits',
                                     style: TextStyle(
-                                      color: BracuPalette.textPrimary(context),
+                                      color: AppPalette.textPrimary(context),
                                       fontSize: 14,
                                       fontWeight: FontWeight.w700,
                                     ),
@@ -718,8 +711,8 @@ class _DegreeProgressPageState extends State<DegreeProgressPage>
                                     item.isMandatory ? 'Required' : 'Elective',
                                     style: TextStyle(
                                       color: item.isMandatory
-                                          ? BracuPalette.warning
-                                          : BracuPalette.accent,
+                                          ? AppPalette.warning
+                                          : AppPalette.accent,
                                       fontSize: 12,
                                       fontWeight: FontWeight.w700,
                                     ),
@@ -746,7 +739,7 @@ class _DegreeProgressPageState extends State<DegreeProgressPage>
                   const Gap(4),
                 ],
                 if (currentSectionsForDisplay.isNotEmpty) ...[
-                  const BracuSectionTitle(title: 'Current Semester Courses'),
+                  const AppSectionTitle(title: 'Current Semester Courses'),
                   const Gap(12),
                   ...currentSectionsVisible.map((current) {
                     final isRequired =
@@ -762,13 +755,13 @@ class _DegreeProgressPageState extends State<DegreeProgressPage>
                             current.courseCode.trim().toUpperCase();
                     return Padding(
                       padding: const EdgeInsets.only(bottom: 12),
-                      child: BracuCard(
+                      child: AppCard(
                         child: Row(
                           crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
                             SectionBadge(
                               label: formatSectionBadge(current.sectionName),
-                              color: BracuPalette.primary,
+                              color: AppPalette.primary,
                               size: 40,
                               fontSize: 13,
                             ),
@@ -780,7 +773,7 @@ class _DegreeProgressPageState extends State<DegreeProgressPage>
                                   Text(
                                     '${current.courseCode} • ${formatSemesterFromSessionIdInt(current.semesterSessionId)}',
                                     style: TextStyle(
-                                      color: BracuPalette.textPrimary(context),
+                                      color: AppPalette.textPrimary(context),
                                       fontSize: 13,
                                       fontWeight: FontWeight.w600,
                                     ),
@@ -790,7 +783,7 @@ class _DegreeProgressPageState extends State<DegreeProgressPage>
                                     Text(
                                       rawSubtitle,
                                       style: TextStyle(
-                                        color: BracuPalette.textSecondary(
+                                        color: AppPalette.textSecondary(
                                           context,
                                         ),
                                         fontSize: 11,
@@ -809,7 +802,7 @@ class _DegreeProgressPageState extends State<DegreeProgressPage>
                                   Text(
                                     '${current.courseCredit} credits',
                                     style: TextStyle(
-                                      color: BracuPalette.textPrimary(context),
+                                      color: AppPalette.textPrimary(context),
                                       fontSize: 14,
                                       fontWeight: FontWeight.w700,
                                     ),
@@ -819,8 +812,8 @@ class _DegreeProgressPageState extends State<DegreeProgressPage>
                                     isRequired ? 'Required' : 'Elective',
                                     style: TextStyle(
                                       color: isRequired
-                                          ? BracuPalette.warning
-                                          : BracuPalette.accent,
+                                          ? AppPalette.warning
+                                          : AppPalette.accent,
                                       fontSize: 12,
                                       fontWeight: FontWeight.w700,
                                     ),
@@ -847,14 +840,14 @@ class _DegreeProgressPageState extends State<DegreeProgressPage>
                     ),
                   const Gap(4),
                 ],
-                const BracuSectionTitle(title: 'Completed Courses'),
+                const AppSectionTitle(title: 'Completed Courses'),
                 const Gap(12),
                 if (topCourses.isEmpty)
-                  BracuCard(
+                  AppCard(
                     child: Text(
                       'No completed course found.',
                       style: TextStyle(
-                        color: BracuPalette.textSecondary(context),
+                        color: AppPalette.textSecondary(context),
                       ),
                     ),
                   )
@@ -868,13 +861,13 @@ class _DegreeProgressPageState extends State<DegreeProgressPage>
                         : '${course.code} • $semester';
                     return Padding(
                       padding: const EdgeInsets.only(bottom: 12),
-                      child: BracuCard(
+                      child: AppCard(
                         child: Row(
                           crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
                             SectionBadge(
                               label: course.grade.isEmpty ? '--' : course.grade,
-                              color: BracuPalette.primary,
+                              color: AppPalette.primary,
                               size: 40,
                               fontSize: 13,
                             ),
@@ -886,7 +879,7 @@ class _DegreeProgressPageState extends State<DegreeProgressPage>
                                   Text(
                                     titleLine,
                                     style: TextStyle(
-                                      color: BracuPalette.textPrimary(context),
+                                      color: AppPalette.textPrimary(context),
                                       fontSize: 13,
                                       fontWeight: FontWeight.w600,
                                     ),
@@ -897,9 +890,7 @@ class _DegreeProgressPageState extends State<DegreeProgressPage>
                                         ? course.code
                                         : course.title,
                                     style: TextStyle(
-                                      color: BracuPalette.textSecondary(
-                                        context,
-                                      ),
+                                      color: AppPalette.textSecondary(context),
                                       fontSize: 11,
                                     ),
                                   ),
@@ -915,7 +906,7 @@ class _DegreeProgressPageState extends State<DegreeProgressPage>
                                   Text(
                                     '${formatCredit(course.credit)} credits',
                                     style: TextStyle(
-                                      color: BracuPalette.textPrimary(context),
+                                      color: AppPalette.textPrimary(context),
                                       fontSize: 14,
                                       fontWeight: FontWeight.w700,
                                     ),
@@ -932,8 +923,8 @@ class _DegreeProgressPageState extends State<DegreeProgressPage>
                                           (mandatoryByCode[course.code
                                                   .toUpperCase()] ??
                                               false)
-                                          ? BracuPalette.warning
-                                          : BracuPalette.accent,
+                                          ? AppPalette.warning
+                                          : AppPalette.accent,
                                       fontSize: 12,
                                       fontWeight: FontWeight.w700,
                                     ),

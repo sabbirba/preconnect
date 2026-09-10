@@ -224,7 +224,7 @@ class _SpaceAvailabilityPageState extends State<SpaceAvailabilityPage> {
   Future<void> _selectDate(BuildContext context) async {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
-    final picked = await showBracuDatePicker(
+    final picked = await showAppDatePicker(
       context,
       initialDate: _selectedDate,
       firstDate: today,
@@ -263,13 +263,13 @@ class _SpaceAvailabilityPageState extends State<SpaceAvailabilityPage> {
     final end = slotData['end_time']?.toString() ?? '';
     final timeStr = "${_formatTime(start)} - ${_formatTime(end)}";
 
-    final confirm = await showBracuConfirmationWithActionDialog(
+    final confirm = await showAppConfirmationWithActionDialog(
       context,
       icon: Icons.bookmark_add_outlined,
       title: 'Confirm Booking?',
       message: 'Book $spaceNo ($spaceCat) for $timeStr?',
       confirmLabel: 'Book',
-      confirmColor: BracuPalette.primary,
+      confirmColor: AppPalette.primary,
       onConfirm: () async {
         try {
           final dateStr =
@@ -300,7 +300,7 @@ class _SpaceAvailabilityPageState extends State<SpaceAvailabilityPage> {
 
       if (_capacity == 1) {
         if (!mounted) return;
-        showBracuLoadingDialog(context);
+        showAppLoadingDialog(context);
         try {
           await LibSyncAuthService.instance.confirmReservation(
             studentIds: [selfStudentId],
@@ -327,7 +327,7 @@ class _SpaceAvailabilityPageState extends State<SpaceAvailabilityPage> {
         }
       } else {
         if (!mounted) return;
-        final ids = await showBracuBottomSheet<List<String>>(
+        final ids = await showAppBottomSheet<List<String>>(
           context,
           title: 'Enter Member IDs',
           initialChildSize: 0.65,
@@ -361,7 +361,7 @@ class _SpaceAvailabilityPageState extends State<SpaceAvailabilityPage> {
   }
 
   void _showHelpBottomSheet(BuildContext context) {
-    showBracuBottomSheet<void>(
+    showAppBottomSheet<void>(
       context,
       title: 'Libsync Instructions',
       initialChildSize: 0.55,
@@ -439,8 +439,8 @@ class _SpaceAvailabilityPageState extends State<SpaceAvailabilityPage> {
     required String title,
     required String body,
   }) {
-    final textPrimary = BracuPalette.textPrimary(context);
-    final textSecondary = BracuPalette.textSecondary(context);
+    final textPrimary = AppPalette.textPrimary(context);
+    final textSecondary = AppPalette.textSecondary(context);
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -450,14 +450,14 @@ class _SpaceAvailabilityPageState extends State<SpaceAvailabilityPage> {
             width: 20,
             height: 20,
             decoration: BoxDecoration(
-              color: BracuPalette.primary.withValues(alpha: 0.12),
+              color: AppPalette.primary.withValues(alpha: 0.12),
               shape: BoxShape.circle,
             ),
             alignment: Alignment.center,
             child: Text(
               stepNumber,
               style: const TextStyle(
-                color: BracuPalette.primary,
+                color: AppPalette.primary,
                 fontSize: 10,
                 fontWeight: FontWeight.w800,
               ),
@@ -495,14 +495,14 @@ class _SpaceAvailabilityPageState extends State<SpaceAvailabilityPage> {
 
   @override
   Widget build(BuildContext context) {
-    final textSecondary = BracuPalette.textSecondary(context);
-    final textPrimary = BracuPalette.textPrimary(context);
+    final textSecondary = AppPalette.textSecondary(context);
+    final textPrimary = AppPalette.textPrimary(context);
 
     final dateDisplay = DateFormat('dd MMMM yyyy').format(_selectedDate);
     final errorMessage = _errorMessage;
     final availabilityData = _availabilityData;
 
-    return BracuPageScaffold(
+    return AppPageScaffold(
       title: 'Space Availability',
       subtitle: 'Ayesha Abed Library',
       actions: [
@@ -511,7 +511,7 @@ class _SpaceAvailabilityPageState extends State<SpaceAvailabilityPage> {
           onPressed: () => _showHelpBottomSheet(context),
         ),
       ],
-      body: BracuRefreshList(
+      body: AppRefreshList(
         onRefresh: _fetchAvailability,
         children: [
           Row(
@@ -560,7 +560,7 @@ class _SpaceAvailabilityPageState extends State<SpaceAvailabilityPage> {
               const Gap(8),
               Expanded(
                 flex: 4,
-                child: BracuActionButton(
+                child: AppActionButton(
                   onPressed: () {
                     setState(() {
                       if (_selectedLibrary ==
@@ -590,16 +590,16 @@ class _SpaceAvailabilityPageState extends State<SpaceAvailabilityPage> {
           if (_isLoading)
             const Padding(
               padding: EdgeInsets.symmetric(vertical: 40),
-              child: Center(child: BracuLoading()),
+              child: Center(child: AppLoading()),
             )
           else if (errorMessage != null)
-            BracuEmptyState(message: errorMessage)
+            AppEmptyState(message: errorMessage)
           else if (availabilityData == null)
-            const BracuEmptyState(
+            const AppEmptyState(
               message: 'Failed to load availability data. Please try again.',
             )
           else if (availabilityData.isEmpty)
-            const BracuEmptyState(
+            const AppEmptyState(
               message: 'No available space or slot found for this date.',
             )
           else
@@ -620,7 +620,7 @@ class _SpaceAvailabilityPageState extends State<SpaceAvailabilityPage> {
 
                 return Padding(
                   padding: const EdgeInsets.only(bottom: 12),
-                  child: BracuCard(
+                  child: AppCard(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -645,7 +645,7 @@ class _SpaceAvailabilityPageState extends State<SpaceAvailabilityPage> {
                                     spaceCat,
                                     style: TextStyle(
                                       fontSize: 12,
-                                      color: BracuPalette.primary,
+                                      color: AppPalette.primary,
                                       fontWeight: FontWeight.w700,
                                     ),
                                   ),
@@ -707,12 +707,12 @@ class _SpaceAvailabilityPageState extends State<SpaceAvailabilityPage> {
                                     vertical: 6,
                                   ),
                                   decoration: BoxDecoration(
-                                    color: BracuPalette.primary.withValues(
+                                    color: AppPalette.primary.withValues(
                                       alpha: 0.08,
                                     ),
                                     borderRadius: BorderRadius.circular(6),
                                     border: Border.all(
-                                      color: BracuPalette.primary.withValues(
+                                      color: AppPalette.primary.withValues(
                                         alpha: 0.15,
                                       ),
                                       width: 1,
@@ -722,7 +722,7 @@ class _SpaceAvailabilityPageState extends State<SpaceAvailabilityPage> {
                                     "${_formatTime(start)} - ${_formatTime(end)}",
                                     style: TextStyle(
                                       fontSize: 11,
-                                      color: BracuPalette.primary,
+                                      color: AppPalette.primary,
                                       fontWeight: FontWeight.w800,
                                     ),
                                   ),
@@ -765,7 +765,7 @@ class _CounterControl extends StatelessWidget {
         SizedBox(
           width: 28,
           height: 38,
-          child: BracuActionButton(
+          child: AppActionButton(
             onPressed: onDecrement,
             outlined: false,
             borderRadius: 4,
@@ -795,7 +795,7 @@ class _CounterControl extends StatelessWidget {
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w700,
-                color: BracuPalette.textPrimary(context),
+                color: AppPalette.textPrimary(context),
               ),
               decoration: const InputDecoration(
                 border: InputBorder.none,
@@ -808,7 +808,7 @@ class _CounterControl extends StatelessWidget {
         SizedBox(
           width: 28,
           height: 38,
-          child: BracuActionButton(
+          child: AppActionButton(
             onPressed: onIncrement,
             outlined: false,
             borderRadius: 4,
@@ -830,7 +830,7 @@ class _SelectionButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return BracuActionButton(
+    return AppActionButton(
       onPressed: onTap,
       outlined: true,
       borderRadius: 4,
@@ -925,7 +925,7 @@ class _MemberIdsDialogState extends State<_MemberIdsDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final textPrimary = BracuPalette.textPrimary(context);
+    final textPrimary = AppPalette.textPrimary(context);
     final allVerified = _verified.every((v) => v);
     final dragController = bottomSheetScrollController(context);
 
@@ -994,7 +994,7 @@ class _MemberIdsDialogState extends State<_MemberIdsDialog> {
                         const Gap(8),
                         SizedBox(
                           height: 42,
-                          child: BracuActionButton(
+                          child: AppActionButton(
                             onPressed: (isLoading || isVerified)
                                 ? null
                                 : () => _verifyId(index, controller.text),
@@ -1051,7 +1051,7 @@ class _MemberIdsDialogState extends State<_MemberIdsDialog> {
         Row(
           mainAxisAlignment: MainAxisAlignment.end,
           children: [
-            BracuActionButton(
+            AppActionButton(
               onPressed: _isSubmitting
                   ? null
                   : () => Navigator.of(context).pop(),
@@ -1061,7 +1061,7 @@ class _MemberIdsDialogState extends State<_MemberIdsDialog> {
               label: 'Cancel',
             ),
             const Gap(12),
-            BracuActionButton(
+            AppActionButton(
               onPressed: (allVerified && !_isSubmitting)
                   ? () async {
                       final navigator = Navigator.of(context);

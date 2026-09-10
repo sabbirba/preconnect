@@ -16,7 +16,7 @@ class ScheduleEntryCard extends StatelessWidget {
     this.consumedSeat,
     this.courseType,
     this.highlighted = false,
-    this.highlightColor = BracuPalette.primary,
+    this.highlightColor = AppPalette.primary,
     this.wrapInCard = true,
     this.onTap,
   });
@@ -57,7 +57,7 @@ class ScheduleEntryCard extends StatelessWidget {
           children: [
             SectionBadge(
               label: formatSectionBadge(sectionName),
-              color: BracuPalette.primary,
+              color: AppPalette.primary,
             ),
             const Gap(12),
             Expanded(
@@ -77,7 +77,7 @@ class ScheduleEntryCard extends StatelessWidget {
                             text: ' $normalizedCourseType',
                             style: TextStyle(
                               fontWeight: FontWeight.w600,
-                              color: BracuPalette.textSecondary(context),
+                              color: AppPalette.textSecondary(context),
                             ),
                           ),
                       ],
@@ -87,7 +87,7 @@ class ScheduleEntryCard extends StatelessWidget {
                   Text(
                     formatTimeRange(adjusted.startTime, adjusted.endTime),
                     style: TextStyle(
-                      color: BracuPalette.textPrimary(context),
+                      color: AppPalette.textPrimary(context),
                       fontWeight: FontWeight.w700,
                     ),
                   ),
@@ -104,7 +104,7 @@ class ScheduleEntryCard extends StatelessWidget {
                     roomLabel,
                     textAlign: TextAlign.right,
                     style: TextStyle(
-                      color: BracuPalette.textPrimary(context),
+                      color: AppPalette.textPrimary(context),
                       fontSize: 14,
                       fontWeight: FontWeight.w700,
                     ),
@@ -120,7 +120,7 @@ class ScheduleEntryCard extends StatelessWidget {
                               style: TextStyle(
                                 fontSize: 12,
                                 fontWeight: FontWeight.w700,
-                                color: BracuPalette.textPrimary(context),
+                                color: AppPalette.textPrimary(context),
                               ),
                             ),
                           if (consumedLabel.isNotEmpty)
@@ -129,7 +129,7 @@ class ScheduleEntryCard extends StatelessWidget {
                                   '${facultyLabel.isEmpty ? '' : ' '}$consumedLabel',
                               style: TextStyle(
                                 fontSize: 12,
-                                color: BracuPalette.textSecondary(context),
+                                color: AppPalette.textSecondary(context),
                               ),
                             ),
                         ],
@@ -148,7 +148,7 @@ class ScheduleEntryCard extends StatelessWidget {
     if (!wrapInCard) {
       return content;
     }
-    final card = BracuCard(
+    final card = AppCard(
       isHighlighted: highlighted,
       highlightColor: highlightColor,
       child: content,

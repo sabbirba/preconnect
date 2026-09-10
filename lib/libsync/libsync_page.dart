@@ -9,7 +9,7 @@ import 'package:preconnect/api/preferences_store.dart';
 import 'package:preconnect/api/auth.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/pages/home_tab.dart';
-import 'package:preconnect/tools/time_utils.dart' show BracuTime;
+import 'package:preconnect/tools/time_utils.dart' show AppTime;
 import 'package:preconnect/pages/onboarding.dart';
 import 'package:preconnect/tools/runtime_stub.dart'
     if (dart.library.js_interop) 'package:preconnect/tools/runtime_web.dart';
@@ -368,14 +368,14 @@ class _LibSyncPageState extends State<LibSyncPage>
       builder: (context, state, child) {
         switch (state.status) {
           case LibSyncAuthStatus.loading:
-            return const BracuPageScaffold(
+            return const AppPageScaffold(
               title: 'Library Libsync',
               subtitle: 'Ayesha Abed Library',
               icon: Icons.local_library_outlined,
-              body: Center(child: BracuLoading()),
+              body: Center(child: AppLoading()),
             );
           case LibSyncAuthStatus.error:
-            return BracuPageScaffold(
+            return AppPageScaffold(
               title: 'Library Libsync',
               subtitle: 'Ayesha Abed Library',
               icon: Icons.local_library_outlined,
@@ -394,7 +394,7 @@ class _LibSyncPageState extends State<LibSyncPage>
                       Text(
                         'Authentication Error',
                         style: TextStyle(
-                          color: BracuPalette.textPrimary(context),
+                          color: AppPalette.textPrimary(context),
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
                         ),
@@ -404,11 +404,11 @@ class _LibSyncPageState extends State<LibSyncPage>
                         _getFriendlyErrorMessage(state.errorMessage),
                         textAlign: TextAlign.center,
                         style: TextStyle(
-                          color: BracuPalette.textSecondary(context),
+                          color: AppPalette.textSecondary(context),
                         ),
                       ),
                       const Gap(24),
-                      BracuActionButton(
+                      AppActionButton(
                         onPressed: () => LibSyncAuthService.instance.logout(),
                         label: 'Sign In Again',
                         outlined: false,
@@ -419,22 +419,22 @@ class _LibSyncPageState extends State<LibSyncPage>
               ),
             );
           case LibSyncAuthStatus.unauthenticated:
-            return const BracuPageScaffold(
+            return const AppPageScaffold(
               title: 'Library Libsync',
               subtitle: 'Ayesha Abed Library',
               icon: Icons.local_library_outlined,
-              body: Center(child: BracuLoading()),
+              body: Center(child: AppLoading()),
             );
           case LibSyncAuthStatus.authenticated:
             final profile = state.profile;
             if (profile == null) return const SizedBox.shrink();
 
-            return BracuPageScaffold(
+            return AppPageScaffold(
               title: 'Library Libsync',
               subtitle: 'Ayesha Abed Library',
               icon: Icons.local_library_outlined,
               actions: [
-                BracuRefreshButton(
+                AppRefreshButton(
                   onPressed: () => _loadReservationData(force: true),
                   isLoading: _loadingData,
                   color: IconTheme.of(context).color,
@@ -445,14 +445,14 @@ class _LibSyncPageState extends State<LibSyncPage>
                   onPressed: () async {
                     final logoutContext = context;
                     if (!logoutContext.mounted) return;
-                    final confirmed = await showBracuConfirmationWithActionDialog(
+                    final confirmed = await showAppConfirmationWithActionDialog(
                       context,
                       icon: Icons.logout,
                       title: 'Confirm Sign Out?',
                       message:
                           'Are you sure you want to sign out from Library Libsync?',
                       confirmLabel: 'Sign Out',
-                      confirmColor: BracuPalette.danger,
+                      confirmColor: AppPalette.danger,
                       onConfirm: () async {
                         LibSyncAuthService.instance.state.removeListener(
                           _onAuthStateChanged,
@@ -482,7 +482,7 @@ class _LibSyncPageState extends State<LibSyncPage>
                   },
                 ),
               ],
-              body: BracuRefreshList(
+              body: AppRefreshList(
                 onRefresh: () async {
                   await LibSyncAuthService.instance.initialize();
                   await _loadReservationData();
@@ -490,7 +490,7 @@ class _LibSyncPageState extends State<LibSyncPage>
                 children: [
                   LibraryCard(profile: profile),
                   const Gap(16),
-                  const BracuSectionTitle(title: 'Overview'),
+                  const AppSectionTitle(title: 'Overview'),
                   const Gap(12),
                   () {
                     final reservationByYear = _reservationByYear;
@@ -503,7 +503,7 @@ class _LibSyncPageState extends State<LibSyncPage>
                             ))) {
                       return const SizedBox.shrink();
                     }
-                    return BracuCard(
+                    return AppCard(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -517,7 +517,7 @@ class _LibSyncPageState extends State<LibSyncPage>
                             Divider(
                               height: 1,
                               thickness: 1,
-                              color: BracuPalette.textSecondary(
+                              color: AppPalette.textSecondary(
                                 context,
                               ).withValues(alpha: 0.12),
                             ),
@@ -596,7 +596,7 @@ class _LibSyncPageState extends State<LibSyncPage>
                     final checkQuota = _checkQuota;
                     final recentReservations = _recentReservations;
                     if (_loadingData && checkQuota == null) {
-                      return const BracuLoading();
+                      return const AppLoading();
                     }
                     final hasQuota =
                         checkQuota != null && checkQuota.isNotEmpty;
@@ -611,13 +611,13 @@ class _LibSyncPageState extends State<LibSyncPage>
                       children: [
                         const Gap(16),
                         if (hasQuota) ...[
-                          const BracuSectionTitle(title: 'Daily Quota'),
+                          const AppSectionTitle(title: 'Daily Quota'),
                           const Gap(12),
                           _QuotaCard(quota: checkQuota),
                           const Gap(16),
                         ],
                         if (recentReservations != null) ...[
-                          const BracuSectionTitle(title: 'Recent Reservations'),
+                          const AppSectionTitle(title: 'Recent Reservations'),
                           const Gap(12),
                           _RecentReservationsList(
                             reservations: recentReservations,
@@ -702,7 +702,7 @@ class _QuotaCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return BracuCard(
+    return AppCard(
       child: Column(
         children: List.generate(quota.length, (index) {
           final q = quota[index];
@@ -725,7 +725,7 @@ class _QuotaCard extends StatelessWidget {
                     Text(
                       title,
                       style: TextStyle(
-                        color: BracuPalette.textPrimary(context),
+                        color: AppPalette.textPrimary(context),
                         fontWeight: FontWeight.w600,
                         fontSize: 13,
                       ),
@@ -733,7 +733,7 @@ class _QuotaCard extends StatelessWidget {
                     Text(
                       '$available / $allowed available',
                       style: TextStyle(
-                        color: BracuPalette.textSecondary(context),
+                        color: AppPalette.textSecondary(context),
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
                       ),
@@ -744,14 +744,14 @@ class _QuotaCard extends StatelessWidget {
                   const Gap(6),
                   SimpleProgressBar(
                     value: percentage.clamp(0.0, 1.0),
-                    color: BracuPalette.primary,
+                    color: AppPalette.primary,
                   ),
                 ],
                 if (!isLast) const Gap(12),
                 if (!isLast)
                   Divider(
                     height: 1,
-                    color: BracuPalette.textSecondary(
+                    color: AppPalette.textSecondary(
                       context,
                     ).withValues(alpha: 0.16),
                   ),
@@ -860,7 +860,7 @@ class _BarItem extends StatelessWidget {
             Text(
               label,
               style: TextStyle(
-                color: BracuPalette.textSecondary(context),
+                color: AppPalette.textSecondary(context),
                 fontSize: 11,
                 fontWeight: FontWeight.w600,
               ),
@@ -868,7 +868,7 @@ class _BarItem extends StatelessWidget {
             Text(
               '$count',
               style: TextStyle(
-                color: BracuPalette.textPrimary(context),
+                color: AppPalette.textPrimary(context),
                 fontSize: 11,
                 fontWeight: FontWeight.w700,
               ),
@@ -902,18 +902,18 @@ class _RecentReservationsListState extends State<_RecentReservationsList> {
   @override
   Widget build(BuildContext context) {
     if (widget.reservations.isEmpty) {
-      return const BracuCard(
+      return const AppCard(
         child: Center(
           child: Padding(
             padding: EdgeInsets.symmetric(vertical: 20),
-            child: BracuEmptyState(message: 'No recent reservation found'),
+            child: AppEmptyState(message: 'No recent reservation found'),
           ),
         ),
       );
     }
 
-    final textSecondary = BracuPalette.textSecondary(context);
-    final textPrimary = BracuPalette.textPrimary(context);
+    final textSecondary = AppPalette.textSecondary(context);
+    final textPrimary = AppPalette.textPrimary(context);
 
     final showCount = _expanded ? widget.reservations.length : 3;
     final visibleReservations = widget.reservations.take(showCount).toList();
@@ -1056,12 +1056,12 @@ class _RecentReservationsListState extends State<_RecentReservationsList> {
                   Row(
                     children: [
                       Expanded(
-                        child: BracuActionButton(
+                        child: AppActionButton(
                           label: 'Cancel',
                           foregroundColor: Colors.red,
                           onPressed: () async {
                             final confirm =
-                                await showBracuConfirmationWithActionDialog(
+                                await showAppConfirmationWithActionDialog(
                                   context,
                                   icon: Icons.cancel_outlined,
                                   title: 'Cancel Booking?',
@@ -1073,7 +1073,7 @@ class _RecentReservationsListState extends State<_RecentReservationsList> {
                                 );
                             if (confirm == true) {
                               if (!context.mounted) return;
-                              showBracuLoadingDialog(context);
+                              showAppLoadingDialog(context);
                               try {
                                 if (uniqueToken.isNotEmpty) {
                                   await LibSyncAuthService.instance
@@ -1102,26 +1102,26 @@ class _RecentReservationsListState extends State<_RecentReservationsList> {
                       ),
                       const Gap(12),
                       Expanded(
-                        child: BracuActionButton(
+                        child: AppActionButton(
                           label: 'Check In',
                           outlined: false,
-                          backgroundColor: BracuPalette.primary,
+                          backgroundColor: AppPalette.primary,
                           foregroundColor: Colors.white,
                           onPressed: () async {
                             final confirm =
-                                await showBracuConfirmationWithActionDialog(
+                                await showAppConfirmationWithActionDialog(
                                   context,
                                   icon: Icons.location_on_outlined,
                                   title: 'Confirm Check In?',
                                   message:
                                       'Are you at the library and ready to check in?',
                                   confirmLabel: 'Check In',
-                                  confirmColor: BracuPalette.primary,
+                                  confirmColor: AppPalette.primary,
                                   onConfirm: () async {},
                                 );
                             if (confirm != true) return;
                             if (!context.mounted) return;
-                            showBracuLoadingDialog(context);
+                            showAppLoadingDialog(context);
                             try {
                               final intCode = int.tryParse(code);
                               if (intCode != null) {
@@ -1170,7 +1170,7 @@ class _RecentReservationsListState extends State<_RecentReservationsList> {
   }
 
   DateTime? _parseReservationDate(String? raw) {
-    return BracuTime.parseDate(raw);
+    return AppTime.parseDate(raw);
   }
 
   CheckInAvailability _getCheckInAvailability(dynamic res) {
@@ -1179,8 +1179,8 @@ class _RecentReservationsListState extends State<_RecentReservationsList> {
       if (slots is! List || slots.isEmpty) return CheckInAvailability.yes;
 
       final slot = slots.first;
-      final startTod = BracuTime.parseTime(slot['start_time']?.toString());
-      final endTod = BracuTime.parseTime(slot['end_time']?.toString());
+      final startTod = AppTime.parseTime(slot['start_time']?.toString());
+      final endTod = AppTime.parseTime(slot['end_time']?.toString());
       if (startTod == null || endTod == null) return CheckInAvailability.yes;
 
       final date = _parseReservationDate(res['reserve_start_date']?.toString());
@@ -1238,8 +1238,8 @@ class _InfoLine extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final textSecondary = BracuPalette.textSecondary(context);
-    final textPrimary = BracuPalette.textPrimary(context);
+    final textSecondary = AppPalette.textSecondary(context);
+    final textPrimary = AppPalette.textPrimary(context);
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 2),
       child: Row(

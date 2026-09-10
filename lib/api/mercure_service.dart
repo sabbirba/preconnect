@@ -5,7 +5,7 @@ import 'package:preconnect/api/api_client.dart';
 import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/features/schedule/application/session_resolver.dart';
 import 'package:preconnect/tools/app_log.dart';
-import 'package:preconnect/tools/bracu_logout.dart';
+import 'package:preconnect/tools/app_logout.dart';
 import 'package:preconnect/tools/http/http_utils.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
 
@@ -38,8 +38,8 @@ class MercureService {
       String? cookieHeader;
       try {
         final loginResponse = await _client!.post(
-          BracuLogout.mercureLoginUri,
-          headers: BracuLogout.mercureLoginHeaders(accessToken: token),
+          AppLogout.mercureLoginUri,
+          headers: AppLogout.mercureLoginHeaders(accessToken: token),
           body: '{}',
         );
         cookieHeader = loginResponse.headers['set-cookie'];

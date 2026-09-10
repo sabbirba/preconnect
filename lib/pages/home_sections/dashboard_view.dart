@@ -29,7 +29,7 @@ extension _HomeDashboardView on _HomeDashboardState {
                     top: -90,
                     right: -70,
                     child: DecorBlob(
-                      color: BracuPalette.decorColor(context),
+                      color: AppPalette.decorColor(context),
                       size: 240,
                     ),
                   ),
@@ -38,7 +38,7 @@ extension _HomeDashboardView on _HomeDashboardState {
                       alignment: Alignment.center,
                       child: DecorLogoEmblem(
                         size: 280,
-                        color: BracuPalette.decorColor(context),
+                        color: AppPalette.decorColor(context),
                       ),
                     ),
                   ),
@@ -46,7 +46,7 @@ extension _HomeDashboardView on _HomeDashboardState {
                     bottom: -100,
                     left: -80,
                     child: DecorBlob(
-                      color: BracuPalette.decorColor(context),
+                      color: AppPalette.decorColor(context),
                       size: 260,
                     ),
                   ),
@@ -63,7 +63,7 @@ extension _HomeDashboardView on _HomeDashboardState {
                                   ConnectionState.waiting &&
                               data == null;
                           if (isLoading) {
-                            return BracuRefreshScroll(
+                            return AppRefreshScroll(
                               onRefresh: _handleRefresh,
                               padding: const EdgeInsets.fromLTRB(
                                 20,
@@ -130,7 +130,7 @@ extension _HomeDashboardView on _HomeDashboardState {
                           final examWeekStatus = derived.examWeekStatus;
                           final isExamWeekActive = examWeekStatus.isActive;
                           final todayScheduleStatus =
-                              BracuTodayScheduleStatus.resolve(
+                              AppTodayScheduleStatus.resolve(
                                 holidayStatus: holidayStatus,
                                 overrideSubtitle: isExamWeekActive
                                     ? examWeekStatus.subtitle
@@ -143,7 +143,7 @@ extension _HomeDashboardView on _HomeDashboardState {
                               : (todayExams.isNotEmpty || isExamWeekActive
                                     ? <_ScheduleEntry>[]
                                     : todayEntries);
-                          return BracuRefreshScroll(
+                          return AppRefreshScroll(
                             onRefresh: _handleRefresh,
                             padding: const EdgeInsets.fromLTRB(14, 4, 14, 28),
                             child: Column(
@@ -222,7 +222,7 @@ extension _HomeDashboardView on _HomeDashboardState {
                                             style: TextStyle(
                                               fontSize: 16,
                                               fontWeight: FontWeight.w600,
-                                              color: BracuPalette.textPrimary(
+                                              color: AppPalette.textPrimary(
                                                 context,
                                               ),
                                             ),
@@ -233,7 +233,7 @@ extension _HomeDashboardView on _HomeDashboardState {
                                           style: TextStyle(
                                             fontSize: 16,
                                             fontWeight: FontWeight.w600,
-                                            color: BracuPalette.textPrimary(
+                                            color: AppPalette.textPrimary(
                                               context,
                                             ),
                                           ),
@@ -266,7 +266,7 @@ extension _HomeDashboardView on _HomeDashboardState {
                                             ),
                                             color: _HomeDashboardState._accent,
                                             isHighlighted:
-                                                BracuTime.isUpcomingOrCurrentSlot(
+                                                AppTime.isUpcomingOrCurrentSlot(
                                                   exam.startTime,
                                                   exam.endTime,
                                                 ),
@@ -319,7 +319,7 @@ extension _HomeDashboardView on _HomeDashboardState {
                                             ),
                                             color: _HomeDashboardState._primary,
                                             isHighlighted:
-                                                BracuTime.isUpcomingOrCurrentSlot(
+                                                AppTime.isUpcomingOrCurrentSlot(
                                                   entry.startTime,
                                                   entry.endTime,
                                                 ),
@@ -331,7 +331,7 @@ extension _HomeDashboardView on _HomeDashboardState {
                                 if (cardVisibility.showRamadanCard && isRamadan)
                                   Padding(
                                     padding: const EdgeInsets.only(bottom: 12),
-                                    child: BracuCard(
+                                    child: AppCard(
                                       backgroundColor: Colors.transparent,
                                       child: Column(
                                         crossAxisAlignment:
@@ -350,7 +350,7 @@ extension _HomeDashboardView on _HomeDashboardState {
                                               height: 14,
                                               thickness: 1,
                                               color:
-                                                  BracuPalette.textSecondary(
+                                                  AppPalette.textSecondary(
                                                     context,
                                                   ).withValues(
                                                     alpha:
@@ -371,7 +371,7 @@ extension _HomeDashboardView on _HomeDashboardState {
                                                   Expanded(
                                                     child: _RamadanHeroTime(
                                                       label: 'Sehri',
-                                                      value: BracuTime.format(
+                                                      value: AppTime.format(
                                                         ramadan.sehriEndsAt,
                                                       ),
                                                     ),
@@ -384,7 +384,7 @@ extension _HomeDashboardView on _HomeDashboardState {
                                                   Expanded(
                                                     child: _RamadanHeroTime(
                                                       label: 'Iftar',
-                                                      value: BracuTime.format(
+                                                      value: AppTime.format(
                                                         ramadan.iftarAt,
                                                       ),
                                                       alignRight: true,
@@ -432,7 +432,7 @@ extension _HomeDashboardView on _HomeDashboardState {
                                                       Icons.star_border_rounded,
                                                       size: 17,
                                                       color:
-                                                          BracuPalette.textPrimary(
+                                                          AppPalette.textPrimary(
                                                             context,
                                                           ),
                                                     ),
@@ -446,7 +446,7 @@ extension _HomeDashboardView on _HomeDashboardState {
                                                       fontWeight:
                                                           FontWeight.w600,
                                                       color:
-                                                          BracuPalette.textPrimary(
+                                                          AppPalette.textPrimary(
                                                             context,
                                                           ),
                                                     ),
@@ -487,7 +487,7 @@ extension _HomeDashboardView on _HomeDashboardState {
                                                       Icons.share_outlined,
                                                       size: 14,
                                                       color:
-                                                          BracuPalette.textPrimary(
+                                                          AppPalette.textPrimary(
                                                             context,
                                                           ),
                                                     ),
@@ -501,7 +501,7 @@ extension _HomeDashboardView on _HomeDashboardState {
                                                       fontWeight:
                                                           FontWeight.w600,
                                                       color:
-                                                          BracuPalette.textPrimary(
+                                                          AppPalette.textPrimary(
                                                             context,
                                                           ),
                                                     ),
@@ -709,7 +709,7 @@ class _ScheduleTileLoadingSkeleton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return BracuCard(
+    return AppCard(
       child: LayoutBuilder(
         builder: (context, constraints) {
           final maxWidth = constraints.maxWidth;

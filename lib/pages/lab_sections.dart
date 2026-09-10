@@ -76,7 +76,7 @@ class _LabSectionsPageState extends State<LabSectionsPage>
 
   @override
   Widget build(BuildContext context) {
-    return BracuPageScaffold(
+    return AppPageScaffold(
       title: 'Lab Sections',
       subtitle: 'Advising',
       icon: Icons.science_outlined,
@@ -85,8 +85,8 @@ class _LabSectionsPageState extends State<LabSectionsPage>
           TabBar(
             controller: _tabController,
             isScrollable: true,
-            labelColor: BracuPalette.primary,
-            unselectedLabelColor: BracuPalette.textSecondary(context),
+            labelColor: AppPalette.primary,
+            unselectedLabelColor: AppPalette.textSecondary(context),
             tabs: [for (final tab in _labPhaseTabs) Tab(text: tab.label)],
           ),
           const Gap(12),

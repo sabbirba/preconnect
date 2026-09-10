@@ -10,7 +10,7 @@ import 'package:preconnect/features/auth/data/oauth_exchange.dart';
 import 'package:preconnect/features/schedule/application/session_resolver.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/pages/home.dart';
-import 'package:preconnect/tools/bracu_logout.dart';
+import 'package:preconnect/tools/app_logout.dart';
 import 'package:preconnect/tools/pkce.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
 import 'package:preconnect/tools/token_storage.dart';
@@ -45,7 +45,7 @@ class LoginPage extends StatefulWidget {
     required String idToken,
   }) async {
     if (kIsWeb || idToken.trim().isEmpty || !context.mounted) return;
-    final logoutUrl = BracuLogout.ssoLogoutUri(idToken: idToken);
+    final logoutUrl = AppLogout.ssoLogoutUri(idToken: idToken);
     await Navigator.of(context, rootNavigator: true).push<void>(
       MaterialPageRoute(
         fullscreenDialog: true,
@@ -102,14 +102,14 @@ class _MobileLogoutWebViewPageState extends State<_MobileLogoutWebViewPage> {
       userAgent: _shouldUseMobileUserAgent ? kPreConnectUserAgent : null,
       enablePullToRefresh: false,
       onNavigationRequest: (request) {
-        if (BracuLogout.isConnectLogoutRedirect(request.url)) {
+        if (AppLogout.isConnectLogoutRedirect(request.url)) {
           _complete();
           return NavigationDecision.prevent;
         }
         return NavigationDecision.navigate;
       },
       onPageStarted: (url) {
-        if (BracuLogout.isConnectLogoutRedirect(url)) {
+        if (AppLogout.isConnectLogoutRedirect(url)) {
           _complete();
         }
       },

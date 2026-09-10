@@ -309,7 +309,7 @@ class _ClassScheduleState extends State<ClassSchedulePage>
     required bool isRamadan,
     required DateTime now,
   }) {
-    final targetWeekday = BracuTime.weekdayFromName(day);
+    final targetWeekday = AppTime.weekdayFromName(day);
     if (targetWeekday == null) return null;
 
     final adjusted = RamadanTiming.adjustRange(
@@ -318,12 +318,12 @@ class _ClassScheduleState extends State<ClassSchedulePage>
       isRamadan: isRamadan,
     );
 
-    final startParsed = BracuTime.parseHourMinute(adjusted.startTime);
+    final startParsed = AppTime.parseHourMinute(adjusted.startTime);
     if (startParsed == null) return null;
     final (startHour, startMinute) = startParsed;
     final startMinutes = startHour * 60 + startMinute;
 
-    final endParsed = BracuTime.parseHourMinute(adjusted.endTime);
+    final endParsed = AppTime.parseHourMinute(adjusted.endTime);
     final endHour = endParsed?.$1 ?? 0;
     final endMinute = endParsed?.$2 ?? 0;
     final endMinutes = endHour * 60 + endMinute;
@@ -374,7 +374,7 @@ class _ClassScheduleState extends State<ClassSchedulePage>
       );
       final dateStr = resolved.finalDate;
       if (dateStr != null && dateStr.isNotEmpty) {
-        final dt = BracuTime.parseDateTime(dateStr, resolved.finalStartTime);
+        final dt = AppTime.parseDateTime(dateStr, resolved.finalStartTime);
         if (dt != null) {
           if (maxDate == null || dt.isAfter(maxDate)) {
             maxDate = dt;
@@ -508,13 +508,13 @@ class _ClassScheduleState extends State<ClassSchedulePage>
         currentSessionId == null ||
         _selectedSemesterSessionId == currentSessionId;
 
-    return BracuPageScaffold(
+    return AppPageScaffold(
       title: 'Schedules',
       subtitle: subtitleText,
       icon: Icons.schedule_outlined,
       actions: [
         if (isCurrentSemester)
-          BracuSelectChip(
+          AppSelectChip(
             icon: Icons.history_rounded,
             selected: _showDoneSections,
             compact: true,
@@ -607,7 +607,7 @@ class _ClassScheduleState extends State<ClassSchedulePage>
               ? _holidayStatus
               : HolidayStatus.empty;
           final isTodayHoliday = holidayStatus.isTodayHoliday;
-          final todayScheduleStatus = BracuTodayScheduleStatus.resolve(
+          final todayScheduleStatus = AppTodayScheduleStatus.resolve(
             holidayStatus: holidayStatus,
           );
 
@@ -632,7 +632,7 @@ class _ClassScheduleState extends State<ClassSchedulePage>
                   Row(
                     children: [
                       Expanded(
-                        child: BracuSectionTitle(
+                        child: AppSectionTitle(
                           title: 'Today is ${formatWeekdayTitle(todayWeekday)}',
                         ),
                       ),
@@ -641,7 +641,7 @@ class _ClassScheduleState extends State<ClassSchedulePage>
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w600,
-                          color: BracuPalette.textPrimary(context),
+                          color: AppPalette.textPrimary(context),
                         ),
                       ),
                     ],
@@ -649,11 +649,11 @@ class _ClassScheduleState extends State<ClassSchedulePage>
                   const Gap(12),
                   Padding(
                     padding: const EdgeInsets.only(bottom: 10),
-                    child: BracuScheduleTile(
+                    child: AppScheduleTile(
                       title: todayScheduleStatus.title,
                       subtitle: todayScheduleStatus.subtitle,
                       badge: todayScheduleStatus.badge,
-                      color: BracuPalette.primary,
+                      color: AppPalette.primary,
                     ),
                   ),
                   const Gap(6),
@@ -684,9 +684,7 @@ class _ClassScheduleState extends State<ClassSchedulePage>
                   Row(
                     children: [
                       Expanded(
-                        child: BracuSectionTitle(
-                          title: formatWeekdayTitle(day),
-                        ),
+                        child: AppSectionTitle(title: formatWeekdayTitle(day)),
                       ),
                       if (dayDateLabel.isNotEmpty)
                         Text(
@@ -694,7 +692,7 @@ class _ClassScheduleState extends State<ClassSchedulePage>
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w600,
-                            color: BracuPalette.textPrimary(context),
+                            color: AppPalette.textPrimary(context),
                           ),
                         ),
                     ],
@@ -778,7 +776,7 @@ class _ClassScheduleState extends State<ClassSchedulePage>
               Padding(
                 padding: const EdgeInsets.only(top: 2, bottom: 8),
                 child: Center(
-                  child: BracuActionButton(
+                  child: AppActionButton(
                     onPressed: () {
                       setState(() {
                         _visibleWeekCount += 1;
@@ -807,7 +805,7 @@ class _ClassScheduleState extends State<ClassSchedulePage>
             );
           }
 
-          return BracuRefreshList(
+          return AppRefreshList(
             onRefresh: _handleRefresh,
             controller: _scrollController,
             children: children,

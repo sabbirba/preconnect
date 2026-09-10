@@ -207,7 +207,7 @@ class _OptionWrap extends StatelessWidget {
         Text(
           title,
           style: TextStyle(
-            color: BracuPalette.textSecondary(context),
+            color: AppPalette.textSecondary(context),
             fontSize: 12,
             fontWeight: FontWeight.w600,
           ),
@@ -220,13 +220,13 @@ class _OptionWrap extends StatelessWidget {
             return Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
               decoration: BoxDecoration(
-                color: BracuPalette.accent.withValues(alpha: 0.12),
+                color: AppPalette.accent.withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(999),
               ),
               child: Text(
                 item,
                 style: const TextStyle(
-                  color: BracuPalette.accent,
+                  color: AppPalette.accent,
                   fontSize: 11,
                   fontWeight: FontWeight.w600,
                 ),

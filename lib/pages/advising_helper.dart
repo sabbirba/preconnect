@@ -266,7 +266,7 @@ class _AdvisingHelperPageState extends State<AdvisingHelperPage> {
   }
 
   Future<void> _confirmDrop(AdvisingSectionRecord sec) async {
-    await showBracuConfirmationWithActionDialog(
+    await showAppConfirmationWithActionDialog(
       context,
       icon: Icons.remove_circle_outline_rounded,
       title: 'Drop Section?',
@@ -274,13 +274,13 @@ class _AdvisingHelperPageState extends State<AdvisingHelperPage> {
           'Are you sure you want to drop ${sec.courseCode} Section ${sec.sectionName}?',
       confirmLabel: 'Drop',
       cancelLabel: 'Cancel',
-      confirmColor: BracuPalette.danger,
+      confirmColor: AppPalette.danger,
       onConfirm: () => _drop(sec),
     );
   }
 
   Future<void> _beginReplacement(AdvisingSectionRecord sec) async {
-    await showBracuConfirmationWithActionDialog(
+    await showAppConfirmationWithActionDialog(
       context,
       icon: Icons.swap_horiz_rounded,
       title: 'Replace This Enrollment?',
@@ -291,7 +291,7 @@ class _AdvisingHelperPageState extends State<AdvisingHelperPage> {
           'does not guarantee an atomic swap, so the original seat could be lost.',
       confirmLabel: 'Choose Targets',
       cancelLabel: 'Cancel',
-      confirmColor: BracuPalette.warning,
+      confirmColor: AppPalette.warning,
       onConfirm: () async {
         if (!mounted) return;
         setState(() => _replacementSource = sec);
@@ -379,7 +379,7 @@ class _AdvisingHelperPageState extends State<AdvisingHelperPage> {
         }
       }
     }
-    showBracuFacultyScheduleSheet(
+    showFacultyScheduleSheet(
       context,
       facultyInitial: facultyInitial,
       staffName: staffName,
@@ -442,24 +442,24 @@ class _AdvisingHelperPageState extends State<AdvisingHelperPage> {
 
   @override
   Widget build(BuildContext context) {
-    final textPrimary = BracuPalette.textPrimary(context);
-    final textSecondary = BracuPalette.textSecondary(context);
+    final textPrimary = AppPalette.textPrimary(context);
+    final textSecondary = AppPalette.textSecondary(context);
 
     if (_isLoading) {
-      return const BracuPageScaffold(
+      return const AppPageScaffold(
         title: 'Advising',
         subtitle: 'Helper',
         icon: Icons.bolt_rounded,
-        body: Center(child: BracuLoading()),
+        body: Center(child: AppLoading()),
       );
     }
 
     if (_errorMessage != null) {
-      return BracuPageScaffold(
+      return AppPageScaffold(
         title: 'Advising',
         subtitle: 'Helper',
         icon: Icons.bolt_rounded,
-        body: BracuErrorState(
+        body: AppErrorState(
           title: 'Load Error',
           message: _errorMessage!,
           onRetry: _load,
@@ -469,7 +469,7 @@ class _AdvisingHelperPageState extends State<AdvisingHelperPage> {
 
     final queue = _engine.targetSections;
 
-    return BracuPageScaffold(
+    return AppPageScaffold(
       title: 'Advising',
       subtitle: 'Helper',
       icon: Icons.bolt_rounded,
@@ -482,7 +482,7 @@ class _AdvisingHelperPageState extends State<AdvisingHelperPage> {
             'https://connect.bracu.ac.bd/student/advising/${_phase.pathSegment}',
           ),
         ),
-        BracuRefreshButton(onPressed: _load, isLoading: _isLoading),
+        AppRefreshButton(onPressed: _load, isLoading: _isLoading),
       ],
       body: Column(
         children: [
@@ -513,14 +513,14 @@ class _AdvisingHelperPageState extends State<AdvisingHelperPage> {
                             unawaited(_load());
                           }
                         },
-                        selectedColor: BracuPalette.primary.withValues(
+                        selectedColor: AppPalette.primary.withValues(
                           alpha: 0.15,
                         ),
                         labelStyle: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w600,
                           color: _phase == phase
-                              ? BracuPalette.primary
+                              ? AppPalette.primary
                               : textSecondary,
                         ),
                       ),
@@ -532,7 +532,7 @@ class _AdvisingHelperPageState extends State<AdvisingHelperPage> {
                         vertical: 6,
                       ),
                       decoration: BoxDecoration(
-                        color: BracuPalette.accent.withValues(alpha: 0.12),
+                        color: AppPalette.accent.withValues(alpha: 0.12),
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: Text(
@@ -540,7 +540,7 @@ class _AdvisingHelperPageState extends State<AdvisingHelperPage> {
                         style: const TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w700,
-                          color: BracuPalette.accent,
+                          color: AppPalette.accent,
                         ),
                       ),
                     ),
@@ -552,7 +552,7 @@ class _AdvisingHelperPageState extends State<AdvisingHelperPage> {
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
               child: Center(
-                child: BracuActionButton(
+                child: AppActionButton(
                   key: const ValueKey('advising-auto-add-button'),
                   onPressed: _toggleEngine,
                   label: _engine.isRunning ? 'Stop' : 'Start',
@@ -562,13 +562,13 @@ class _AdvisingHelperPageState extends State<AdvisingHelperPage> {
           if (_replacementSource != null)
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
-              child: BracuCard(
-                backgroundColor: BracuPalette.warning.withValues(alpha: 0.12),
+              child: AppCard(
+                backgroundColor: AppPalette.warning.withValues(alpha: 0.12),
                 child: Row(
                   children: [
                     const Icon(
                       Icons.swap_horiz_rounded,
-                      color: BracuPalette.warning,
+                      color: AppPalette.warning,
                     ),
                     const Gap(10),
                     Expanded(
@@ -645,7 +645,7 @@ class _AdvisingHelperPageState extends State<AdvisingHelperPage> {
                 14,
                 10,
               ),
-              child: BracuSearchField(
+              child: AppSearchField(
                 controller: _searchController,
                 hintText: 'Search course, section or faculty...',
                 query: _searchQuery,
@@ -676,7 +676,7 @@ class _AdvisingHelperPageState extends State<AdvisingHelperPage> {
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(14, 0, 14, 28),
-                child: BracuEmptyCard(
+                child: AppEmptyCard(
                   message: _searchQuery.isEmpty
                       ? 'No realtime sections available.'
                       : 'No sections match your search.',
@@ -716,7 +716,7 @@ class _AdvisingHelperPageState extends State<AdvisingHelperPage> {
       if (embedded && _enrolledError == null) {
         return const SizedBox.shrink();
       }
-      final empty = BracuEmptyCard(
+      final empty = AppEmptyCard(
         message: _enrolledError == null
             ? 'Nothing enrolled or queued. Add sections from Sections.'
             : 'Unable to load enrolled sections.',
@@ -727,7 +727,7 @@ class _AdvisingHelperPageState extends State<AdvisingHelperPage> {
           child: empty,
         );
       }
-      return BracuRefreshList(onRefresh: _refreshEnrolled, children: [empty]);
+      return AppRefreshList(onRefresh: _refreshEnrolled, children: [empty]);
     }
 
     return ListView.builder(
@@ -780,7 +780,7 @@ class _AdvisingHelperPageState extends State<AdvisingHelperPage> {
                   tooltip: 'Replace with prioritized sections',
                   icon: const Icon(
                     Icons.swap_horiz_rounded,
-                    color: BracuPalette.warning,
+                    color: AppPalette.warning,
                     size: 26,
                   ),
                   onPressed: _engine.isRunning
@@ -791,7 +791,7 @@ class _AdvisingHelperPageState extends State<AdvisingHelperPage> {
                   tooltip: 'Drop section',
                   icon: const Icon(
                     Icons.remove_circle_outline_rounded,
-                    color: BracuPalette.danger,
+                    color: AppPalette.danger,
                     size: 26,
                   ),
                   onPressed: () => _confirmDrop(sec),
@@ -816,14 +816,11 @@ class _AdvisingHelperPageState extends State<AdvisingHelperPage> {
 
     if (queue.isEmpty && logs.isEmpty) {
       if (embedded) return const SizedBox.shrink();
-      const empty = BracuEmptyCard(
+      const empty = AppEmptyCard(
         message:
             'No sections queued. Add sections from the Sections tab to auto-add.',
       );
-      return BracuRefreshList(
-        onRefresh: _refreshSeats,
-        children: const [empty],
-      );
+      return AppRefreshList(onRefresh: _refreshSeats, children: const [empty]);
     }
 
     return ListView.builder(
@@ -875,8 +872,8 @@ class _AdvisingHelperPageState extends State<AdvisingHelperPage> {
               const Gap(6),
               SizedBox(
                 width: double.infinity,
-                child: BracuCard(
-                  backgroundColor: BracuPalette.card(context),
+                child: AppCard(
+                  backgroundColor: AppPalette.card(context),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -972,7 +969,7 @@ class _AdvisingHelperPageState extends State<AdvisingHelperPage> {
                     padding: EdgeInsets.all(8),
                     child: Icon(
                       Icons.check_circle_rounded,
-                      color: BracuPalette.accent,
+                      color: AppPalette.accent,
                       size: 26,
                     ),
                   )
@@ -981,7 +978,7 @@ class _AdvisingHelperPageState extends State<AdvisingHelperPage> {
                     tooltip: 'Remove from queue',
                     icon: const Icon(
                       Icons.remove_circle_outline_rounded,
-                      color: BracuPalette.danger,
+                      color: AppPalette.danger,
                       size: 26,
                     ),
                     onPressed: _engine.isRunning
@@ -1026,7 +1023,7 @@ class _AdvisingHelperPageState extends State<AdvisingHelperPage> {
                         child: ListTile(
                           leading: Icon(
                             Icons.remove_circle_outline_rounded,
-                            color: BracuPalette.danger,
+                            color: AppPalette.danger,
                           ),
                           title: Text('Remove'),
                         ),
@@ -1080,7 +1077,7 @@ class _AdvisingHelperPageState extends State<AdvisingHelperPage> {
               padding: EdgeInsets.all(8),
               child: Icon(
                 Icons.check_circle_rounded,
-                color: BracuPalette.accent,
+                color: AppPalette.accent,
                 size: 28,
               ),
             )
@@ -1089,7 +1086,7 @@ class _AdvisingHelperPageState extends State<AdvisingHelperPage> {
                 isQueued
                     ? Icons.check_box_rounded
                     : Icons.check_box_outline_blank_rounded,
-                color: isQueued ? BracuPalette.accent : textSecondary,
+                color: isQueued ? AppPalette.accent : textSecondary,
                 size: 28,
               ),
               onPressed: () => _toggleQueue(sectionDetails),
@@ -1153,8 +1150,8 @@ class _AdvisingSeatStatusCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final textPrimary = BracuPalette.textPrimary(context);
-    final textSecondary = BracuPalette.textSecondary(context);
+    final textPrimary = AppPalette.textPrimary(context);
+    final textSecondary = AppPalette.textSecondary(context);
     final theoryLabel = _titleCaseText(courseType);
     final courseHeader = '$courseCode - $sectionName';
     final facultyName = faculty?.staffName.trim() ?? '';
@@ -1168,9 +1165,9 @@ class _AdvisingSeatStatusCard extends StatelessWidget {
       finalExamEndTime,
     );
 
-    final card = BracuCard(
+    final card = AppCard(
       isHighlighted: isPinned,
-      highlightColor: BracuPalette.accent.withValues(alpha: 0.35),
+      highlightColor: AppPalette.accent.withValues(alpha: 0.35),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1196,7 +1193,7 @@ class _AdvisingSeatStatusCard extends StatelessWidget {
                         style: const TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w700,
-                          color: BracuPalette.warning,
+                          color: AppPalette.warning,
                         ),
                       ),
                     ],
@@ -1360,7 +1357,7 @@ class _AdvisingSeatStatusCard extends StatelessWidget {
                   child: _SeatMetric(
                     value: remaining,
                     label: 'Remaining',
-                    color: remaining <= 0 ? BracuPalette.danger : textPrimary,
+                    color: remaining <= 0 ? AppPalette.danger : textPrimary,
                   ),
                 ),
                 Expanded(
@@ -1446,7 +1443,7 @@ class _RoomBlock extends StatelessWidget {
         TextSpan(
           text: '${theoryLabel.isEmpty ? 'Room' : theoryLabel}: ',
           style: TextStyle(
-            color: BracuPalette.textSecondary(context),
+            color: AppPalette.textSecondary(context),
             fontWeight: FontWeight.w500,
           ),
         ),
@@ -1455,7 +1452,7 @@ class _RoomBlock extends StatelessWidget {
         TextSpan(
           text: theoryRoom.trim(),
           style: TextStyle(
-            color: BracuPalette.textPrimary(context),
+            color: AppPalette.textPrimary(context),
             fontWeight: FontWeight.w700,
           ),
         ),
@@ -1469,7 +1466,7 @@ class _RoomBlock extends StatelessWidget {
         TextSpan(
           text: 'Lab: ',
           style: TextStyle(
-            color: BracuPalette.textSecondary(context),
+            color: AppPalette.textSecondary(context),
             fontWeight: FontWeight.w500,
           ),
         ),
@@ -1478,7 +1475,7 @@ class _RoomBlock extends StatelessWidget {
         TextSpan(
           text: labRoom.trim(),
           style: TextStyle(
-            color: BracuPalette.textPrimary(context),
+            color: AppPalette.textPrimary(context),
             fontWeight: FontWeight.w700,
           ),
         ),
@@ -1492,7 +1489,7 @@ class _RoomBlock extends StatelessWidget {
         Text(
           'Room:',
           style: TextStyle(
-            color: BracuPalette.textSecondary(context),
+            color: AppPalette.textSecondary(context),
             fontSize: 12,
             fontWeight: FontWeight.w500,
           ),
@@ -1503,7 +1500,7 @@ class _RoomBlock extends StatelessWidget {
             style: TextStyle(
               fontSize: 14,
               height: 1.25,
-              color: BracuPalette.textPrimary(context),
+              color: AppPalette.textPrimary(context),
               fontWeight: FontWeight.w700,
             ),
             children: lines,
@@ -1528,7 +1525,7 @@ class _SeatScheduleBlock extends StatelessWidget {
         Text(
           '$title:',
           style: TextStyle(
-            color: BracuPalette.textSecondary(context),
+            color: AppPalette.textSecondary(context),
             fontSize: 12,
             fontWeight: FontWeight.w500,
           ),
@@ -1538,7 +1535,7 @@ class _SeatScheduleBlock extends StatelessWidget {
           Text(
             line,
             style: TextStyle(
-              color: BracuPalette.textPrimary(context),
+              color: AppPalette.textPrimary(context),
               fontSize: 14,
               fontWeight: FontWeight.w700,
             ),
@@ -1577,7 +1574,7 @@ class _SeatMetric extends StatelessWidget {
           label,
           textAlign: TextAlign.center,
           style: TextStyle(
-            color: BracuPalette.textSecondary(context),
+            color: AppPalette.textSecondary(context),
             fontSize: 11.5,
             fontWeight: FontWeight.w700,
           ),

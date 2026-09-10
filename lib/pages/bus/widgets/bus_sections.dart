@@ -41,7 +41,7 @@ class _FareCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final textPrimary = BracuPalette.textPrimary(context);
+    final textPrimary = AppPalette.textPrimary(context);
     return _BusSectionFrame(
       icon: Icons.payments_rounded,
       title: 'Fare',
@@ -99,8 +99,8 @@ class _ContactsCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final textPrimary = BracuPalette.textPrimary(context);
-    final textSecondary = BracuPalette.textSecondary(context);
+    final textPrimary = AppPalette.textPrimary(context);
+    final textSecondary = AppPalette.textSecondary(context);
     return _BusSectionFrame(
       icon: Icons.support_agent_rounded,
       title: 'Transport Contacts',
@@ -123,7 +123,7 @@ class _ContactsCard extends StatelessWidget {
                     child: Icon(
                       Icons.person_rounded,
                       size: 16,
-                      color: BracuPalette.primary,
+                      color: AppPalette.primary,
                     ),
                   ),
                   const Gap(8),
@@ -157,7 +157,7 @@ class _ContactsCard extends StatelessWidget {
                                 iconWidget: const Icon(
                                   Icons.email_rounded,
                                   size: 12,
-                                  color: BracuPalette.primary,
+                                  color: AppPalette.primary,
                                 ),
                                 text: entry.value.email,
                               ),
@@ -185,7 +185,7 @@ class _GeneralInstructionsCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final textSecondary = BracuPalette.textSecondary(context);
+    final textSecondary = AppPalette.textSecondary(context);
     return _BusSectionFrame(
       icon: Icons.rule_rounded,
       title: 'General Instructions',
@@ -206,7 +206,7 @@ class _GeneralInstructionsCard extends StatelessWidget {
                     child: Text(
                       '${entry.key + 1}',
                       style: TextStyle(
-                        color: BracuPalette.primary,
+                        color: AppPalette.primary,
                         fontWeight: FontWeight.w800,
                         fontSize: 12,
                       ),
@@ -243,8 +243,8 @@ class _TripGroupPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final textPrimary = BracuPalette.textPrimary(context);
-    final textSecondary = BracuPalette.textSecondary(context);
+    final textPrimary = AppPalette.textPrimary(context);
+    final textSecondary = AppPalette.textSecondary(context);
     return _BusSectionSurface(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -335,7 +335,7 @@ class _BusSectionSurface extends StatelessWidget {
       margin: margin,
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
-        color: BracuPalette.primary.withValues(alpha: 0.06),
+        color: AppPalette.primary.withValues(alpha: 0.06),
         borderRadius: BorderRadius.circular(10),
       ),
       child: child,
@@ -352,7 +352,7 @@ class _BusSectionEmptyText extends StatelessWidget {
   Widget build(BuildContext context) {
     return Text(
       message,
-      style: TextStyle(color: BracuPalette.textSecondary(context)),
+      style: TextStyle(color: AppPalette.textSecondary(context)),
     );
   }
 }

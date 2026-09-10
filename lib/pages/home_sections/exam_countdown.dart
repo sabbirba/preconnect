@@ -22,7 +22,7 @@ class ExamCountdownCard extends StatelessWidget {
         final now = DateTime.now();
         final remaining = targetDateTime.difference(now);
         final dateTimeLabel = subtitle ?? _formatSubtitle(targetDateTime, now);
-        return BracuCard(
+        return AppCard(
           backgroundColor: Colors.transparent,
           child: Row(
             children: [
@@ -33,7 +33,7 @@ class ExamCountdownCard extends StatelessWidget {
                     Text(
                       title,
                       style: TextStyle(
-                        color: BracuPalette.textPrimary(context),
+                        color: AppPalette.textPrimary(context),
                         fontWeight: FontWeight.w600,
                         fontSize: 14,
                       ),
@@ -42,7 +42,7 @@ class ExamCountdownCard extends StatelessWidget {
                     Text(
                       dateTimeLabel,
                       style: TextStyle(
-                        color: BracuPalette.textSecondary(context),
+                        color: AppPalette.textSecondary(context),
                         fontSize: 10,
                         fontWeight: FontWeight.w600,
                       ),

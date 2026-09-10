@@ -27,12 +27,12 @@ ButtonStyle appOutlinedButtonStyle(
   double borderRadius = 12,
 }) {
   return OutlinedButton.styleFrom(
-    foregroundColor: foregroundColor ?? BracuPalette.textPrimary(context),
+    foregroundColor: foregroundColor ?? AppPalette.textPrimary(context),
     backgroundColor: Colors.transparent,
     side: BorderSide(
       color:
           borderColor ??
-          BracuPalette.textSecondary(context).withValues(alpha: 0.18),
+          AppPalette.textSecondary(context).withValues(alpha: 0.18),
     ),
     splashFactory: NoSplash.splashFactory,
     overlayColor: Colors.transparent,
@@ -70,9 +70,9 @@ ButtonStyle appCompactIconButtonStyle({
   double borderRadius = 10,
 }) {
   return IconButton.styleFrom(
-    foregroundColor: foregroundColor ?? BracuPalette.primary,
+    foregroundColor: foregroundColor ?? AppPalette.primary,
     side: BorderSide(
-      color: borderColor ?? BracuPalette.primary.withValues(alpha: 0.18),
+      color: borderColor ?? AppPalette.primary.withValues(alpha: 0.18),
     ),
     shape: RoundedRectangleBorder(
       borderRadius: BorderRadius.circular(borderRadius),
@@ -121,7 +121,7 @@ class AppActionButton extends StatelessWidget {
   Widget _buildSpinner(BuildContext context) {
     final spinnerColor =
         foregroundColor ??
-        (outlined ? BracuPalette.textPrimary(context) : Colors.white);
+        (outlined ? AppPalette.textPrimary(context) : Colors.white);
     return AppSpinner(
       size: iconSize,
       color: spinnerColor,
@@ -190,7 +190,7 @@ class AppActionButton extends StatelessWidget {
 
   ButtonStyle _textButtonStyle(BuildContext context) {
     return TextButton.styleFrom(
-      foregroundColor: foregroundColor ?? BracuPalette.textPrimary(context),
+      foregroundColor: foregroundColor ?? AppPalette.textPrimary(context),
       backgroundColor: backgroundColor,
       splashFactory: NoSplash.splashFactory,
       overlayColor: Colors.transparent,
@@ -205,7 +205,7 @@ class AppActionButton extends StatelessWidget {
   ButtonStyle _outlinedStyle(BuildContext context) {
     return appCompactOutlinedButtonStyle(
       context,
-      foregroundColor: foregroundColor ?? BracuPalette.textPrimary(context),
+      foregroundColor: foregroundColor ?? AppPalette.textPrimary(context),
       padding: padding,
       borderRadius: borderRadius,
     );
@@ -239,7 +239,7 @@ class AppActionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final borderColor = BracuPalette.textSecondary(
+    final borderColor = AppPalette.textSecondary(
       context,
     ).withValues(alpha: 0.18);
     return Material(
@@ -267,7 +267,7 @@ class AppActionCard extends StatelessWidget {
                     Text(
                       title,
                       style: TextStyle(
-                        color: BracuPalette.textPrimary(context),
+                        color: AppPalette.textPrimary(context),
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
                       ),
@@ -277,7 +277,7 @@ class AppActionCard extends StatelessWidget {
                       Text(
                         subtitle!,
                         style: TextStyle(
-                          color: BracuPalette.textSecondary(context),
+                          color: AppPalette.textSecondary(context),
                           fontSize: 12,
                         ),
                       ),
@@ -366,7 +366,7 @@ class AppRefreshButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final themeColor = color ?? BracuPalette.primary;
+    final themeColor = color ?? AppPalette.primary;
     return IconButton(
       tooltip: 'Refresh',
       onPressed: isLoading ? null : onPressed,
@@ -393,10 +393,10 @@ InputDecoration appInputDecoration(
 }) {
   return InputDecoration(
     labelText: labelText,
-    labelStyle: TextStyle(color: BracuPalette.textSecondary(context)),
+    labelStyle: TextStyle(color: AppPalette.textSecondary(context)),
     hintText: hintText,
     hintStyle: TextStyle(
-      color: BracuPalette.textSecondary(context).withValues(alpha: 0.5),
+      color: AppPalette.textSecondary(context).withValues(alpha: 0.5),
       fontSize: 14,
     ),
     prefixText: prefixText,
@@ -407,12 +407,12 @@ InputDecoration appInputDecoration(
     enabledBorder: OutlineInputBorder(
       borderRadius: BorderRadius.circular(borderRadius),
       borderSide: BorderSide(
-        color: BracuPalette.textSecondary(context).withValues(alpha: 0.2),
+        color: AppPalette.textSecondary(context).withValues(alpha: 0.2),
       ),
     ),
     focusedBorder: OutlineInputBorder(
       borderRadius: BorderRadius.circular(borderRadius),
-      borderSide: const BorderSide(color: BracuPalette.primary, width: 1.5),
+      borderSide: const BorderSide(color: AppPalette.primary, width: 1.5),
     ),
     errorBorder: OutlineInputBorder(
       borderRadius: BorderRadius.circular(borderRadius),

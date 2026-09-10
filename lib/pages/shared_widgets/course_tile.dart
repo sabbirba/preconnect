@@ -37,14 +37,14 @@ class CourseTile extends StatelessWidget {
     final statusLabelValue = statusLabel;
     return Padding(
       padding: EdgeInsets.only(bottom: bottomPadding),
-      child: BracuCard(
+      child: AppCard(
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             if (gradeLabelValue != null) ...[
               SectionBadge(
                 label: gradeLabelValue,
-                color: BracuPalette.primary,
+                color: AppPalette.primary,
                 size: 40,
                 fontSize: 13,
               ),
@@ -77,10 +77,8 @@ class CourseTile extends StatelessWidget {
                                             : Icons.star_outline_rounded,
                                         size: 16,
                                         color: isPinned
-                                            ? BracuPalette.favorite
-                                            : BracuPalette.textSecondary(
-                                                context,
-                                              ),
+                                            ? AppPalette.favorite
+                                            : AppPalette.textSecondary(context),
                                       ),
                                     ),
                                   ),
@@ -89,7 +87,7 @@ class CourseTile extends StatelessWidget {
                             ],
                           ),
                           style: TextStyle(
-                            color: BracuPalette.textPrimary(context),
+                            color: AppPalette.textPrimary(context),
                             fontSize: 13,
                             fontWeight: FontWeight.w700,
                             fontFamily: codeFontFamily,
@@ -102,7 +100,7 @@ class CourseTile extends StatelessWidget {
                   Text(
                     title.isEmpty ? '--' : title,
                     style: TextStyle(
-                      color: BracuPalette.textSecondary(context),
+                      color: AppPalette.textSecondary(context),
                       fontSize: 11,
                     ),
                   ),
@@ -118,7 +116,7 @@ class CourseTile extends StatelessWidget {
                   Text(
                     '${formatCredit(credit)} credits',
                     style: TextStyle(
-                      color: BracuPalette.textPrimary(context),
+                      color: AppPalette.textPrimary(context),
                       fontSize: 14,
                       fontWeight: FontWeight.w700,
                     ),
@@ -128,8 +126,8 @@ class CourseTile extends StatelessWidget {
                     isMandatory ? 'Required' : 'Optional',
                     style: TextStyle(
                       color: isMandatory
-                          ? BracuPalette.warning
-                          : BracuPalette.accent,
+                          ? AppPalette.warning
+                          : AppPalette.accent,
                       fontSize: 12,
                       fontWeight: FontWeight.w700,
                     ),
@@ -139,7 +137,7 @@ class CourseTile extends StatelessWidget {
                     Text(
                       statusLabelValue,
                       style: TextStyle(
-                        color: statusColor ?? BracuPalette.accent,
+                        color: statusColor ?? AppPalette.accent,
                         fontSize: 11,
                         fontWeight: FontWeight.w600,
                       ),

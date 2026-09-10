@@ -504,7 +504,7 @@ Future<void> showCampusMapBottomSheet(
   required Future<CampusMapData?> campusMapFuture,
   required Future<String?> transportScheduleUrlFuture,
 }) async {
-  await showBracuBottomSheet<void>(
+  await showAppBottomSheet<void>(
     context,
     title: 'Campus Map',
     subtitle: 'Directions, highlights and key contacts',
@@ -562,7 +562,7 @@ Future<void> showCampusMapBottomSheet(
               width: double.infinity,
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: BracuPalette.card(sheetContext).withValues(alpha: 0.7),
+                color: AppPalette.card(sheetContext).withValues(alpha: 0.7),
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
                   color: textSecondary.withValues(alpha: 0.16),
@@ -580,7 +580,7 @@ Future<void> showCampusMapBottomSheet(
             return Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
               decoration: BoxDecoration(
-                color: BracuPalette.card(sheetContext).withValues(alpha: 0.6),
+                color: AppPalette.card(sheetContext).withValues(alpha: 0.6),
                 borderRadius: BorderRadius.circular(10),
                 border: Border.all(
                   color: textSecondary.withValues(alpha: 0.12),
@@ -589,7 +589,7 @@ Future<void> showCampusMapBottomSheet(
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(icon, size: 16, color: BracuPalette.primary),
+                  Icon(icon, size: 16, color: AppPalette.primary),
                   const Gap(6),
                   Text(
                     '$label: ',
@@ -669,7 +669,7 @@ Future<void> showCampusMapBottomSheet(
                     children: [
                       SizedBox(
                         width: buttonWidth,
-                        child: BracuActionButton(
+                        child: AppActionButton(
                           icon: Icons.directions_rounded,
                           label: 'Open Map',
                           onPressed: mapData.googleMapsUrl.isEmpty
@@ -682,7 +682,7 @@ Future<void> showCampusMapBottomSheet(
                       ),
                       SizedBox(
                         width: buttonWidth,
-                        child: BracuActionButton(
+                        child: AppActionButton(
                           icon: Icons.open_in_new_rounded,
                           label: 'Campus Life',
                           onPressed: mapData.sourceUrl.isEmpty
@@ -695,7 +695,7 @@ Future<void> showCampusMapBottomSheet(
                       ),
                       SizedBox(
                         width: buttonWidth,
-                        child: BracuActionButton(
+                        child: AppActionButton(
                           iconWidget: const Icon(Icons.email_rounded, size: 16),
                           label: 'Email',
                           onPressed: mapData.primaryEmail.isEmpty
@@ -708,7 +708,7 @@ Future<void> showCampusMapBottomSheet(
                       ),
                       SizedBox(
                         width: buttonWidth,
-                        child: BracuActionButton(
+                        child: AppActionButton(
                           icon: Icons.directions_bus_rounded,
                           label: 'Transport',
                           onPressed: resolvedTransportUrl.isEmpty
@@ -857,7 +857,7 @@ Future<void> showCampusMapBottomSheet(
                             vertical: 6,
                           ),
                           decoration: BoxDecoration(
-                            color: BracuPalette.card(
+                            color: AppPalette.card(
                               sheetContext,
                             ).withValues(alpha: 0.5),
                             borderRadius: BorderRadius.circular(8),
@@ -871,7 +871,7 @@ Future<void> showCampusMapBottomSheet(
                               Icon(
                                 Icons.location_on_outlined,
                                 size: 13,
-                                color: BracuPalette.primary,
+                                color: AppPalette.primary,
                               ),
                               const Gap(4),
                               Text(
@@ -909,7 +909,7 @@ Future<void> showCampusMapBottomSheet(
                                 child: Icon(
                                   Icons.circle,
                                   size: 6,
-                                  color: BracuPalette.primary,
+                                  color: AppPalette.primary,
                                 ),
                               ),
                               const Gap(8),

@@ -79,17 +79,14 @@ class _BusRouteDetailPageState extends State<BusRouteDetailPage> {
         ? route.from
         : '';
 
-    return BracuPageScaffold(
+    return AppPageScaffold(
       title: title,
       subtitle: subtitle,
       icon: Icons.directions_bus_filled_rounded,
       actions: [
-        BracuRefreshButton(
-          onPressed: _refreshRouteData,
-          isLoading: _refreshing,
-        ),
+        AppRefreshButton(onPressed: _refreshRouteData, isLoading: _refreshing),
       ],
-      body: BracuRefreshList(
+      body: AppRefreshList(
         onRefresh: _refreshRouteData,
         children: [
           if (_error != null)
@@ -101,12 +98,12 @@ class _BusRouteDetailPageState extends State<BusRouteDetailPage> {
                   Text(
                     _error!,
                     style: TextStyle(
-                      color: BracuPalette.textPrimary(context),
+                      color: AppPalette.textPrimary(context),
                       fontWeight: FontWeight.w600,
                     ),
                   ),
                   const Gap(12),
-                  BracuActionButton(
+                  AppActionButton(
                     onPressed: _refreshRouteData,
                     isLoading: _refreshing,
                     icon: Icons.sync_rounded,
@@ -273,7 +270,7 @@ class _RouteActionButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return SizedBox(
       width: double.infinity,
-      child: BracuActionButton(
+      child: AppActionButton(
         onPressed: onPressed,
         label: label,
         borderRadius: 14,
@@ -289,7 +286,7 @@ class _BusMapShimmerPlaceholder extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: BracuPalette.primary.withValues(alpha: 0.05),
+      color: AppPalette.primary.withValues(alpha: 0.05),
       padding: const EdgeInsets.all(16),
       child: Stack(
         children: [
@@ -390,7 +387,7 @@ class _LiveTrackerDetailsCard extends StatelessWidget {
                 TextSpan(
                   text: 'Speed: ',
                   style: TextStyle(
-                    color: BracuPalette.textSecondary(context),
+                    color: AppPalette.textSecondary(context),
                     fontSize: 13,
                     fontWeight: FontWeight.w700,
                     height: 1.15,
@@ -399,7 +396,7 @@ class _LiveTrackerDetailsCard extends StatelessWidget {
                 TextSpan(
                   text: speedLabel,
                   style: TextStyle(
-                    color: BracuPalette.textPrimary(context),
+                    color: AppPalette.textPrimary(context),
                     fontSize: 13,
                     fontWeight: FontWeight.w800,
                     height: 1.15,
@@ -410,7 +407,7 @@ class _LiveTrackerDetailsCard extends StatelessWidget {
                 TextSpan(
                   text: '   ',
                   style: TextStyle(
-                    color: BracuPalette.textSecondary(context),
+                    color: AppPalette.textSecondary(context),
                     fontSize: 13,
                     fontWeight: FontWeight.w700,
                     height: 1.15,
@@ -421,7 +418,7 @@ class _LiveTrackerDetailsCard extends StatelessWidget {
                 TextSpan(
                   text: 'Updated: ',
                   style: TextStyle(
-                    color: BracuPalette.textSecondary(context),
+                    color: AppPalette.textSecondary(context),
                     fontSize: 13,
                     fontWeight: FontWeight.w700,
                     height: 1.15,
@@ -430,7 +427,7 @@ class _LiveTrackerDetailsCard extends StatelessWidget {
                 TextSpan(
                   text: updatedLabel,
                   style: TextStyle(
-                    color: BracuPalette.textPrimary(context),
+                    color: AppPalette.textPrimary(context),
                     fontSize: 13,
                     fontWeight: FontWeight.w800,
                     height: 1.15,
@@ -535,9 +532,9 @@ class _NextStopHighlightCard extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return Padding(
       padding: const EdgeInsets.only(bottom: 14),
-      child: BracuCard(
+      child: AppCard(
         isHighlighted: true,
-        backgroundColor: BracuPalette.primary.withValues(
+        backgroundColor: AppPalette.primary.withValues(
           alpha: isDark ? 0.15 : 0.08,
         ),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
@@ -546,12 +543,12 @@ class _NextStopHighlightCard extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: BracuPalette.primary.withValues(alpha: 0.15),
+                color: AppPalette.primary.withValues(alpha: 0.15),
                 shape: BoxShape.circle,
               ),
               child: Icon(
                 Icons.location_on_rounded,
-                color: BracuPalette.primary,
+                color: AppPalette.primary,
                 size: 22,
               ),
             ),
@@ -563,7 +560,7 @@ class _NextStopHighlightCard extends StatelessWidget {
                   Text(
                     'Next Stop (Estimated)',
                     style: TextStyle(
-                      color: BracuPalette.textSecondary(context),
+                      color: AppPalette.textSecondary(context),
                       fontSize: 12,
                       fontWeight: FontWeight.w700,
                       letterSpacing: 0.2,
@@ -573,7 +570,7 @@ class _NextStopHighlightCard extends StatelessWidget {
                   Text(
                     stopName,
                     style: TextStyle(
-                      color: BracuPalette.textPrimary(context),
+                      color: AppPalette.textPrimary(context),
                       fontSize: 16,
                       fontWeight: FontWeight.w900,
                       height: 1.25,
@@ -596,7 +593,7 @@ class _RouteStopsCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final textSecondary = BracuPalette.textSecondary(context);
+    final textSecondary = AppPalette.textSecondary(context);
 
     int highlightedIndex = -1;
     for (int i = 0; i < route.stops.length; i++) {
@@ -658,8 +655,8 @@ class _RouteStopTimelineTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final textPrimary = BracuPalette.textPrimary(context);
-    final textSecondary = BracuPalette.textSecondary(context);
+    final textPrimary = AppPalette.textPrimary(context);
+    final textSecondary = AppPalette.textSecondary(context);
 
     return IntrinsicHeight(
       child: Row(
@@ -675,12 +672,12 @@ class _RouteStopTimelineTile extends StatelessWidget {
                   height: 14,
                   decoration: BoxDecoration(
                     color: isHighlighted
-                        ? BracuPalette.primary
+                        ? AppPalette.primary
                         : Colors.grey.shade400,
                     shape: BoxShape.circle,
                     border: Border.all(
                       color: isHighlighted
-                          ? BracuPalette.primary.withValues(alpha: 0.25)
+                          ? AppPalette.primary.withValues(alpha: 0.25)
                           : Colors.transparent,
                       width: isHighlighted ? 3.5 : 0,
                     ),
@@ -691,7 +688,7 @@ class _RouteStopTimelineTile extends StatelessWidget {
                     child: Container(
                       width: 2,
                       color: isHighlighted
-                          ? BracuPalette.primary.withValues(alpha: 0.3)
+                          ? AppPalette.primary.withValues(alpha: 0.3)
                           : Colors.grey.shade300,
                     ),
                   ),
@@ -704,12 +701,12 @@ class _RouteStopTimelineTile extends StatelessWidget {
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
                 color: isHighlighted
-                    ? BracuPalette.primary.withValues(alpha: 0.12)
-                    : BracuPalette.primary.withValues(alpha: 0.05),
+                    ? AppPalette.primary.withValues(alpha: 0.12)
+                    : AppPalette.primary.withValues(alpha: 0.05),
                 borderRadius: BorderRadius.circular(14),
                 border: isHighlighted
                     ? Border.all(
-                        color: BracuPalette.primary.withValues(alpha: 0.35),
+                        color: AppPalette.primary.withValues(alpha: 0.35),
                         width: 1.5,
                       )
                     : null,
@@ -738,7 +735,7 @@ class _RouteStopTimelineTile extends StatelessWidget {
                             vertical: 3,
                           ),
                           decoration: BoxDecoration(
-                            color: BracuPalette.primary.withValues(alpha: 0.18),
+                            color: AppPalette.primary.withValues(alpha: 0.18),
                             borderRadius: BorderRadius.circular(20),
                           ),
                           child: Row(
@@ -746,14 +743,14 @@ class _RouteStopTimelineTile extends StatelessWidget {
                             children: [
                               Icon(
                                 Icons.directions_bus_rounded,
-                                color: BracuPalette.primary,
+                                color: AppPalette.primary,
                                 size: 12,
                               ),
                               const Gap(4),
                               Text(
                                 'LIVE',
                                 style: TextStyle(
-                                  color: BracuPalette.primary,
+                                  color: AppPalette.primary,
                                   fontSize: 10,
                                   fontWeight: FontWeight.w900,
                                   letterSpacing: 0.5,

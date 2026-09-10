@@ -25,11 +25,11 @@ class PaymentGraph extends StatelessWidget {
     final paidRatio = overall == 0 ? 0.0 : paidTotal / overall;
     final dueRatio = overall == 0 ? 0.0 : dueTotal / overall;
 
-    final textSecondary = BracuPalette.textSecondary(context);
-    final textPrimary = BracuPalette.textPrimary(context);
+    final textSecondary = AppPalette.textSecondary(context);
+    final textPrimary = AppPalette.textPrimary(context);
     final code = (shortCode ?? '').trim();
 
-    return BracuCard(
+    return AppCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -59,7 +59,7 @@ class PaymentGraph extends StatelessWidget {
             label: 'Paid',
             value: paidRatio,
             amount: paidTotal,
-            color: BracuPalette.accent,
+            color: AppPalette.accent,
           ),
           const Gap(8),
           _BarRow(
@@ -100,8 +100,8 @@ class _BarRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final textSecondary = BracuPalette.textSecondary(context);
-    final textPrimary = BracuPalette.textPrimary(context);
+    final textSecondary = AppPalette.textSecondary(context);
+    final textPrimary = AppPalette.textPrimary(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [

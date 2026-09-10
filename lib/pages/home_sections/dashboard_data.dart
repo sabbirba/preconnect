@@ -694,7 +694,7 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
     }
 
     if (isTodayHoliday || visibleEntries.isEmpty) {
-      final todayScheduleStatus = BracuTodayScheduleStatus.resolve(
+      final todayScheduleStatus = AppTodayScheduleStatus.resolve(
         holidayStatus: holidayStatus,
         overrideSubtitle: isExamWeekActive
             ? derived.examWeekStatus.subtitle
@@ -764,7 +764,7 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
         section: s,
         overrides: overrides,
       );
-      final mid = BracuTime.parseDateTime(
+      final mid = AppTime.parseDateTime(
         resolved.midDate,
         resolved.midStartTime,
       );
@@ -781,7 +781,7 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
           ),
         );
       }
-      final fin = BracuTime.parseDateTime(
+      final fin = AppTime.parseDateTime(
         resolved.finalDate,
         resolved.finalStartTime,
       );
@@ -924,11 +924,11 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
         section: s,
         overrides: overrides,
       );
-      final mid = BracuTime.parseDateTime(resolved.midDate, null);
+      final mid = AppTime.parseDateTime(resolved.midDate, null);
       if (mid != null) {
         includeExamDate(mid, isMid: true);
       }
-      final fin = BracuTime.parseDateTime(resolved.finalDate, null);
+      final fin = AppTime.parseDateTime(resolved.finalDate, null);
       if (fin != null) {
         includeExamDate(fin, isMid: false);
       }
@@ -979,7 +979,7 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
         section: s,
         overrides: overrides,
       );
-      final mid = BracuTime.parseDateTime(
+      final mid = AppTime.parseDateTime(
         resolved.midDate,
         resolved.midStartTime,
       );
@@ -999,7 +999,7 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
           ),
         );
       }
-      final fin = BracuTime.parseDateTime(
+      final fin = AppTime.parseDateTime(
         resolved.finalDate,
         resolved.finalStartTime,
       );
@@ -1036,12 +1036,12 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
   }
 
   int _timeToMinutes(String time) {
-    return BracuTime.toMinutes(time) ?? 0;
+    return AppTime.toMinutes(time) ?? 0;
   }
 
   String? _nextRamadanTarget({String? sehri, String? iftar}) {
     DateTime? nextOccurrence(String? time) {
-      final parsed = BracuTime.parseTime(time);
+      final parsed = AppTime.parseTime(time);
       if (parsed == null) return null;
       final now = DateTime.now();
       var target = DateTime(

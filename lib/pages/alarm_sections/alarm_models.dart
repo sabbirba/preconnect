@@ -44,7 +44,7 @@ class _ExamAlarmEntry {
   final DateTime dateTime;
 
   DateTime? get endDateTime {
-    final parsed = BracuTime.parseHourMinute(endTime);
+    final parsed = AppTime.parseHourMinute(endTime);
     if (parsed == null) return null;
     return DateTime(
       dateTime.year,

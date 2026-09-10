@@ -37,7 +37,7 @@ class StudentOverviewCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final titleColor = BracuPalette.textPrimary(context);
+    final titleColor = AppPalette.textPrimary(context);
     final hasProfileData =
         studentId.trim().isNotEmpty ||
         shortCode.trim().isNotEmpty ||
@@ -130,7 +130,7 @@ class _OverviewLoadingCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final borderColor = BracuPalette.textSecondary(
+    final borderColor = AppPalette.textSecondary(
       context,
     ).withValues(alpha: isDark ? 0.35 : 0.18);
     return Container(
@@ -179,7 +179,7 @@ class _IconButton extends StatelessWidget {
           color: Colors.transparent,
           borderRadius: BorderRadius.circular(12),
         ),
-        child: Icon(icon, size: 18, color: BracuPalette.primary),
+        child: Icon(icon, size: 18, color: AppPalette.primary),
       ),
     );
   }
@@ -325,7 +325,7 @@ class _SupportButtonState extends State<_SupportButton> {
           color: Colors.transparent,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: BracuPalette.primary.withValues(alpha: 0.35),
+            color: AppPalette.primary.withValues(alpha: 0.35),
             width: 0.8,
           ),
         ),
@@ -335,7 +335,7 @@ class _SupportButtonState extends State<_SupportButton> {
             Text(
               _labelText(),
               style: TextStyle(
-                color: BracuPalette.primary,
+                color: AppPalette.primary,
                 fontSize: 12,
                 fontWeight: FontWeight.w700,
               ),
@@ -366,7 +366,7 @@ class _OverviewHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final baseBorderColor = BracuPalette.textSecondary(
+    final baseBorderColor = AppPalette.textSecondary(
       context,
     ).withValues(alpha: isDark ? 0.35 : 0.18);
     final normalizedSemester = formatSemesterTitle(currentSemester);
@@ -395,7 +395,7 @@ class _OverviewHeader extends StatelessWidget {
                     semester: displaySemester,
                   ),
                   style: TextStyle(
-                    color: BracuPalette.textPrimary(context),
+                    color: AppPalette.textPrimary(context),
                     fontSize: 14,
                     fontWeight: FontWeight.w700,
                     letterSpacing: -0.2,
@@ -407,7 +407,7 @@ class _OverviewHeader extends StatelessWidget {
                   overflow: TextOverflow.fade,
                   softWrap: true,
                   style: TextStyle(
-                    color: BracuPalette.textSecondary(context),
+                    color: AppPalette.textSecondary(context),
                     fontSize: 11,
                     fontWeight: FontWeight.w600,
                   ),

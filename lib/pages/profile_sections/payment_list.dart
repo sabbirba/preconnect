@@ -25,14 +25,14 @@ class _PaymentListState extends State<PaymentList> {
     return Column(
       children: [
         ...visiblePayments.map((payment) {
-          final textSecondary = BracuPalette.textSecondary(context);
-          final textPrimary = BracuPalette.textPrimary(context);
+          final textSecondary = AppPalette.textSecondary(context);
+          final textPrimary = AppPalette.textPrimary(context);
           final dueDate = formatDate(payment.dueDate.toIso8601String());
           final status = payment.paymentStatus;
           final isPaid = status == 'PAID';
           final amount = _formatAmount(payment.totalAmount);
           final statusColor = isPaid
-              ? BracuPalette.accent
+              ? AppPalette.accent
               : const Color(0xFFFF8A34);
           final statusBg = statusColor.withValues(alpha: 0.14);
           final semester = formatSemesterFromSessionIdInt(
@@ -41,10 +41,10 @@ class _PaymentListState extends State<PaymentList> {
           final paymentType = _formatPaymentType(payment.paymentType);
           final cardTint = Colors.transparent;
           final cardBorder = isPaid
-              ? BracuPalette.primary.withValues(alpha: 0.08)
+              ? AppPalette.primary.withValues(alpha: 0.08)
               : statusBg.withValues(alpha: 0.6);
           final iconColor = isPaid
-              ? BracuPalette.accent
+              ? AppPalette.accent
               : const Color(0xFFFF8A34);
           final iconBg = Colors.transparent;
           return GestureDetector(
@@ -186,7 +186,7 @@ class _PaymentListState extends State<PaymentList> {
         if (hasMore) ...[
           const Gap(4),
           Center(
-            child: BracuActionButton(
+            child: AppActionButton(
               label: 'Load More',
               onPressed: () {
                 setState(() {
@@ -217,8 +217,8 @@ class _InfoLine extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final textSecondary = BracuPalette.textSecondary(context);
-    final textPrimary = BracuPalette.textPrimary(context);
+    final textSecondary = AppPalette.textSecondary(context);
+    final textPrimary = AppPalette.textPrimary(context);
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 2),
       child: Row(

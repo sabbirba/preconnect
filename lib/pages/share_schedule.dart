@@ -293,7 +293,7 @@ class _ShareSchedulePageState extends State<ShareSchedulePage>
     if (errorMessage != null) {
       return Padding(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 20),
-        child: BracuEmptyState(message: 'Error: $errorMessage'),
+        child: AppEmptyState(message: 'Error: $errorMessage'),
       );
     }
 
@@ -317,18 +317,18 @@ class _ShareSchedulePageState extends State<ShareSchedulePage>
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              BracuActionButton(
+              AppActionButton(
                 onPressed: _copyToClipboard,
                 label: _copied ? 'Copied' : 'Copy Code',
                 icon: _copied ? Icons.check_circle_rounded : Icons.copy_rounded,
                 outlined: false,
                 backgroundColor: _copied
-                    ? BracuPalette.accent
-                    : BracuPalette.primary,
+                    ? AppPalette.accent
+                    : AppPalette.primary,
                 foregroundColor: Colors.white,
               ),
               const Gap(12),
-              BracuActionButton(
+              AppActionButton(
                 onPressed: _shareQrCode,
                 label: 'Share via QR',
                 icon: Icons.qr_code_scanner,
@@ -353,7 +353,7 @@ class _ShareScheduleLoadingState extends StatelessWidget {
         child: SizedBox(
           width: 28,
           height: 28,
-          child: BracuSpinner(size: 28, strokeWidth: 2.6),
+          child: AppSpinner(size: 28, strokeWidth: 2.6),
         ),
       ),
     );

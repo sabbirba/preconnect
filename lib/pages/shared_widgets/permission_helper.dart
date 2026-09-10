@@ -29,7 +29,7 @@ class PermissionRequirement {
   });
 }
 
-class BracuPermissionHelper {
+class AppPermissionHelper {
   static const List<PermissionRequirement> list = [
     PermissionRequirement(
       permission: Permission.nearbyWifiDevices,
@@ -140,14 +140,14 @@ class BracuPermissionHelper {
 
     if (!context.mounted) return;
 
-    await showBracuBottomSheet<void>(
+    await showAppBottomSheet<void>(
       context,
       title: 'Permissions Required',
       subtitle:
           'PreConnect needs the following permissions to function properly. Please grant them to continue.',
       initialChildSize: 0.52,
       builder: (sheetContext, textPrimary, textSecondary) {
-        return _BracuPermissionBottomSheetContent(requirements: allPending);
+        return _AppPermissionBottomSheetContent(requirements: allPending);
       },
     );
 
@@ -181,18 +181,18 @@ class BracuPermissionHelper {
   }
 }
 
-class _BracuPermissionBottomSheetContent extends StatefulWidget {
+class _AppPermissionBottomSheetContent extends StatefulWidget {
   final List<PermissionRequirement> requirements;
 
-  const _BracuPermissionBottomSheetContent({required this.requirements});
+  const _AppPermissionBottomSheetContent({required this.requirements});
 
   @override
-  State<_BracuPermissionBottomSheetContent> createState() =>
-      _BracuPermissionBottomSheetContentState();
+  State<_AppPermissionBottomSheetContent> createState() =>
+      _AppPermissionBottomSheetContentState();
 }
 
-class _BracuPermissionBottomSheetContentState
-    extends State<_BracuPermissionBottomSheetContent>
+class _AppPermissionBottomSheetContentState
+    extends State<_AppPermissionBottomSheetContent>
     with WidgetsBindingObserver {
   late Map<Permission, PermissionStatus> _statuses;
 
@@ -253,8 +253,8 @@ class _BracuPermissionBottomSheetContentState
 
   @override
   Widget build(BuildContext context) {
-    final textPrimary = BracuPalette.textPrimary(context);
-    final textSecondary = BracuPalette.textSecondary(context);
+    final textPrimary = AppPalette.textPrimary(context);
+    final textSecondary = AppPalette.textSecondary(context);
     final scrollController = bottomSheetScrollController(context);
 
     return ListView.separated(
@@ -267,7 +267,7 @@ class _BracuPermissionBottomSheetContentState
         if (index == widget.requirements.length) {
           return Padding(
             padding: const EdgeInsets.only(top: 4),
-            child: BracuActionButton(
+            child: AppActionButton(
               label: 'Continue',
               onPressed: () => Navigator.of(context).maybePop(),
             ),
@@ -281,12 +281,12 @@ class _BracuPermissionBottomSheetContentState
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
           decoration: BoxDecoration(
             color: isGranted
-                ? BracuPalette.primary.withValues(alpha: 0.08)
+                ? AppPalette.primary.withValues(alpha: 0.08)
                 : textSecondary.withValues(alpha: 0.04),
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
               color: isGranted
-                  ? BracuPalette.primary.withValues(alpha: 0.16)
+                  ? AppPalette.primary.withValues(alpha: 0.16)
                   : Colors.transparent,
               width: 0.8,
             ),
@@ -296,7 +296,7 @@ class _BracuPermissionBottomSheetContentState
             children: [
               Icon(
                 req.icon,
-                color: isGranted ? BracuPalette.primary : textSecondary,
+                color: isGranted ? AppPalette.primary : textSecondary,
                 size: 32,
               ),
               const Gap(12),
@@ -324,10 +324,10 @@ class _BracuPermissionBottomSheetContentState
               isGranted
                   ? const Icon(
                       Icons.check_circle_rounded,
-                      color: BracuPalette.primary,
+                      color: AppPalette.primary,
                       size: 20,
                     )
-                  : BracuActionButton(
+                  : AppActionButton(
                       label: status.isPermanentlyDenied ? 'Settings' : 'Grant',
                       outlined: true,
                       padding: const EdgeInsets.symmetric(

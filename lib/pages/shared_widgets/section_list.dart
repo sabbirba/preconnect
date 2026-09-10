@@ -12,16 +12,16 @@ class AppEmptyCard extends StatelessWidget {
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(12),
-        color: BracuPalette.card(context).withValues(alpha: 0.35),
+        color: AppPalette.card(context).withValues(alpha: 0.35),
         border: Border.all(
-          color: BracuPalette.textSecondary(context).withValues(alpha: 0.22),
+          color: AppPalette.textSecondary(context).withValues(alpha: 0.22),
         ),
       ),
       child: Text(
         message,
         style: TextStyle(
           fontSize: 12,
-          color: BracuPalette.textSecondary(context),
+          color: AppPalette.textSecondary(context),
         ),
       ),
     );
@@ -51,7 +51,7 @@ class AppErrorState extends StatelessWidget {
             Icon(
               Icons.error_outline_rounded,
               size: 40,
-              color: BracuPalette.textSecondary(context),
+              color: AppPalette.textSecondary(context),
             ),
             const Gap(12),
             Text(
@@ -59,7 +59,7 @@ class AppErrorState extends StatelessWidget {
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontWeight: FontWeight.w600,
-                color: BracuPalette.textPrimary(context),
+                color: AppPalette.textPrimary(context),
               ),
             ),
             const Gap(6),
@@ -68,7 +68,7 @@ class AppErrorState extends StatelessWidget {
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 12,
-                color: BracuPalette.textSecondary(context),
+                color: AppPalette.textSecondary(context),
               ),
             ),
             const Gap(16),
@@ -103,10 +103,10 @@ class SectionListCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final borderColor = BracuPalette.textSecondary(
+    final borderColor = AppPalette.textSecondary(
       context,
     ).withValues(alpha: 0.22);
-    final cardColor = BracuPalette.card(context).withValues(alpha: 0.35);
+    final cardColor = AppPalette.card(context).withValues(alpha: 0.35);
 
     if (sections.isEmpty) {
       return AppEmptyCard(
@@ -130,7 +130,7 @@ class SectionListCard extends StatelessWidget {
             style: TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.w700,
-              color: BracuPalette.textPrimary(context),
+              color: AppPalette.textPrimary(context),
             ),
           ),
           const Gap(10),
@@ -139,7 +139,7 @@ class SectionListCard extends StatelessWidget {
             if (i != sections.length - 1)
               Divider(
                 height: 18,
-                color: BracuPalette.textSecondary(
+                color: AppPalette.textSecondary(
                   context,
                 ).withValues(alpha: 0.14),
               ),
@@ -166,7 +166,7 @@ class SectionListCard extends StatelessWidget {
           style: TextStyle(
             fontSize: 13,
             fontWeight: FontWeight.w600,
-            color: BracuPalette.textPrimary(context),
+            color: AppPalette.textPrimary(context),
           ),
         ),
         const Gap(2),
@@ -175,7 +175,7 @@ class SectionListCard extends StatelessWidget {
           '${section.consumedSeat}/${section.capacity} seats',
           style: TextStyle(
             fontSize: 12,
-            color: BracuPalette.textSecondary(context),
+            color: AppPalette.textSecondary(context),
           ),
         ),
         if (scheduleLabel.isNotEmpty) ...[
@@ -184,7 +184,7 @@ class SectionListCard extends StatelessWidget {
             scheduleLabel,
             style: TextStyle(
               fontSize: 12,
-              color: BracuPalette.textSecondary(context),
+              color: AppPalette.textSecondary(context),
             ),
           ),
         ],

@@ -256,8 +256,8 @@ class _OnboardingPageState extends State<OnboardingPage> {
           : Brightness.dark,
       systemNavigationBarContrastEnforced: false,
     );
-    final titleColor = BracuPalette.textPrimary(context);
-    final bodyColor = BracuPalette.textSecondary(context);
+    final titleColor = AppPalette.textPrimary(context);
+    final bodyColor = AppPalette.textSecondary(context);
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: overlayStyle,
@@ -267,10 +267,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
             gradient: LinearGradient(
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
-              colors: [
-                BracuPalette.bgTop(context),
-                BracuPalette.bgBottom(context),
-              ],
+              colors: [AppPalette.bgTop(context), AppPalette.bgBottom(context)],
             ),
           ),
           child: SafeArea(
@@ -325,7 +322,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
                           title: 'About the App',
                           body:
                               'Track classes, exams, and reminders in one place with your BRACU SSO account.',
-                          color: BracuPalette.primary,
+                          color: AppPalette.primary,
                         ),
                         const Gap(12),
                         _InfoCard(
@@ -333,7 +330,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
                           title: 'Privacy First',
                           body:
                               'PreConnect is not an official BRAC University app. It is an initiative run by BRAC University students. Your data stays on your device with sign-in tokens kept locally.',
-                          color: BracuPalette.accent,
+                          color: AppPalette.accent,
                         ),
                         const Gap(12),
                         _InfoCard(
@@ -354,7 +351,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
                         const Gap(12),
                         ActionBannerCard(
                           icon: Icons.public_rounded,
-                          iconColor: BracuPalette.accent,
+                          iconColor: AppPalette.accent,
                           title: 'Open PreConnect Website',
                           subtitle: 'Visit our website for more services',
                           onTap: () =>
@@ -368,7 +365,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
                   left: 10,
                   right: 10,
                   bottom: 10,
-                  child: BracuGlassContainer(
+                  child: AppGlassContainer(
                     borderRadius: BorderRadius.circular(20),
                     blurSigma: 18,
                     padding: const EdgeInsets.fromLTRB(12, 8, 12, 10),
@@ -430,7 +427,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
                         const Gap(6),
                         SizedBox(
                           width: double.infinity,
-                          child: BracuActionButton(
+                          child: AppActionButton(
                             onPressed: _openCampusMapBottomSheet,
                             label: 'Campus Map',
                             backgroundColor: isDark
@@ -447,7 +444,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
                         Row(
                           children: [
                             Expanded(
-                              child: BracuActionButton(
+                              child: AppActionButton(
                                 onPressed: _isGoogleLoggingIn
                                     ? null
                                     : _handleGoogleSignIn,
@@ -466,7 +463,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
                             ),
                             const Gap(6),
                             Expanded(
-                              child: BracuActionButton(
+                              child: AppActionButton(
                                 onPressed: _isStartingWebLogin
                                     ? null
                                     : () => _completeOnboarding(context),
@@ -526,7 +523,7 @@ class _OnboardingQuickNavigatorState extends State<_OnboardingQuickNavigator> {
   Widget build(BuildContext context) {
     return NavigatorPopHandler<void>(
       onPopWithResult: (_) => _goBack(),
-      child: BracuBackScope(
+      child: AppBackScope(
         canGoBack: true,
         onBack: _goBack,
         child: Navigator(
@@ -564,7 +561,7 @@ class _HeroCard extends StatelessWidget {
         Text(
           'Prepare. Connect. Succeed.',
           style: TextStyle(
-            color: BracuPalette.textPrimary(context),
+            color: AppPalette.textPrimary(context),
             fontWeight: FontWeight.w700,
             fontSize: 16,
           ),
@@ -589,7 +586,7 @@ class _InfoCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return BracuGlassCard(
+    return AppGlassCard(
       padding: const EdgeInsets.all(14),
       borderRadius: BorderRadius.circular(16),
       borderColor: color.withValues(alpha: 0.22),
@@ -615,7 +612,7 @@ class _InfoCard extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w700,
-                    color: BracuPalette.textPrimary(context),
+                    color: AppPalette.textPrimary(context),
                   ),
                 ),
                 const Gap(4),
@@ -624,7 +621,7 @@ class _InfoCard extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 12,
                     height: 1.45,
-                    color: BracuPalette.textSecondary(context),
+                    color: AppPalette.textSecondary(context),
                   ),
                 ),
               ],

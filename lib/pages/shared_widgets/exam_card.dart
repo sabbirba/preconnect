@@ -31,7 +31,7 @@ class ExamCard extends StatelessWidget {
   static String formatExamDate(String? input) {
     if (input == null || input.trim().isEmpty) return 'Not published yet';
     final raw = input.trim();
-    final dt = BracuTime.parseDate(raw) ?? DateTime.tryParse(raw);
+    final dt = AppTime.parseDate(raw) ?? DateTime.tryParse(raw);
     if (dt == null) return raw;
     return DateFormat('EEEE, d MMMM, yyyy').format(dt);
   }
@@ -50,15 +50,15 @@ class ExamCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return BracuCard(
+    return AppCard(
       key: highlightKey,
       isHighlighted: isHighlighted,
-      highlightColor: BracuPalette.primary,
+      highlightColor: AppPalette.primary,
       child: Row(
         children: [
           SectionBadge(
             label: formatSectionBadge(sectionName),
-            color: BracuPalette.primary,
+            color: AppPalette.primary,
           ),
           const Gap(12),
           Expanded(
@@ -74,7 +74,7 @@ class ExamCard extends StatelessWidget {
                 Text(
                   formatExamTime(startTime, endTime),
                   style: TextStyle(
-                    color: BracuPalette.textPrimary(context),
+                    color: AppPalette.textPrimary(context),
                     fontWeight: FontWeight.w700,
                   ),
                 ),
@@ -91,7 +91,7 @@ class ExamCard extends StatelessWidget {
                   formatExamRoom(roomNumber),
                   textAlign: TextAlign.right,
                   style: TextStyle(
-                    color: BracuPalette.textPrimary(context),
+                    color: AppPalette.textPrimary(context),
                     fontSize: 14,
                     fontWeight: FontWeight.w700,
                   ),
@@ -108,7 +108,7 @@ class ExamCard extends StatelessWidget {
                             style: TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.w700,
-                              color: BracuPalette.textPrimary(context),
+                              color: AppPalette.textPrimary(context),
                             ),
                           ),
                         if (consumedSeat > 0)
@@ -117,7 +117,7 @@ class ExamCard extends StatelessWidget {
                                 '${(faculties ?? '').trim().isEmpty ? '' : ' '}($consumedSeat)',
                             style: TextStyle(
                               fontSize: 12,
-                              color: BracuPalette.textSecondary(context),
+                              color: AppPalette.textSecondary(context),
                             ),
                           ),
                       ],

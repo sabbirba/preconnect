@@ -251,7 +251,7 @@ class _DeviceDiagnosticsPageState extends State<DeviceDiagnosticsPage> {
             child: Text(
               label,
               style: TextStyle(
-                color: BracuPalette.textSecondary(context),
+                color: AppPalette.textSecondary(context),
                 fontSize: 13,
                 fontWeight: FontWeight.w600,
               ),
@@ -266,7 +266,7 @@ class _DeviceDiagnosticsPageState extends State<DeviceDiagnosticsPage> {
                 value,
                 textAlign: TextAlign.right,
                 style: TextStyle(
-                  color: BracuPalette.textPrimary(context),
+                  color: AppPalette.textPrimary(context),
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
                 ),
@@ -282,7 +282,7 @@ class _DeviceDiagnosticsPageState extends State<DeviceDiagnosticsPage> {
     return Divider(
       height: 18,
       thickness: 1,
-      color: BracuPalette.textSecondary(
+      color: AppPalette.textSecondary(
         context,
       ).withValues(alpha: isDark ? 0.22 : 0.14),
     );
@@ -385,12 +385,12 @@ class _DeviceDiagnosticsPageState extends State<DeviceDiagnosticsPage> {
       );
     }
 
-    return BracuPageScaffold(
+    return AppPageScaffold(
       title: 'Diagnostics',
       subtitle: 'System & Logs',
       icon: Icons.developer_board_rounded,
       actions: [
-        BracuRefreshButton(
+        AppRefreshButton(
           onPressed: () {
             unawaited(_loadAll());
           },
@@ -398,7 +398,7 @@ class _DeviceDiagnosticsPageState extends State<DeviceDiagnosticsPage> {
         ),
       ],
       body: _loading
-          ? const Center(child: BracuLoading())
+          ? const Center(child: AppLoading())
           : ListView(
               padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
               children: items,

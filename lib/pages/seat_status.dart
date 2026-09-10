@@ -386,8 +386,8 @@ class _SeatStatusCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final textPrimary = BracuPalette.textPrimary(context);
-    final textSecondary = BracuPalette.textSecondary(context);
+    final textPrimary = AppPalette.textPrimary(context);
+    final textSecondary = AppPalette.textSecondary(context);
     final theoryLabel = _titleCaseText(item.courseType);
     final courseHeader = _headerLine(item.courseCode, item.sectionName);
     final faculty = item.faculty;
@@ -406,7 +406,7 @@ class _SeatStatusCard extends StatelessWidget {
       item.finalExamEndTime,
     );
 
-    final card = BracuCard(
+    final card = AppCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -594,7 +594,7 @@ class _SeatStatusCard extends StatelessWidget {
                     value: item.remaining,
                     label: 'Remaining',
                     color: item.remaining <= 0
-                        ? BracuPalette.danger
+                        ? AppPalette.danger
                         : textPrimary,
                   ),
                 ),
@@ -676,7 +676,7 @@ class _RoomBlock extends StatelessWidget {
         TextSpan(
           text: '$theoryLabel: ',
           style: TextStyle(
-            color: BracuPalette.textSecondary(context),
+            color: AppPalette.textSecondary(context),
             fontWeight: FontWeight.w500,
           ),
         ),
@@ -685,7 +685,7 @@ class _RoomBlock extends StatelessWidget {
         TextSpan(
           text: theoryRoom.trim(),
           style: TextStyle(
-            color: BracuPalette.textPrimary(context),
+            color: AppPalette.textPrimary(context),
             fontWeight: FontWeight.w700,
           ),
         ),
@@ -699,7 +699,7 @@ class _RoomBlock extends StatelessWidget {
         TextSpan(
           text: 'Lab: ',
           style: TextStyle(
-            color: BracuPalette.textSecondary(context),
+            color: AppPalette.textSecondary(context),
             fontWeight: FontWeight.w500,
           ),
         ),
@@ -708,7 +708,7 @@ class _RoomBlock extends StatelessWidget {
         TextSpan(
           text: labRoom.trim(),
           style: TextStyle(
-            color: BracuPalette.textPrimary(context),
+            color: AppPalette.textPrimary(context),
             fontWeight: FontWeight.w700,
           ),
         ),
@@ -722,7 +722,7 @@ class _RoomBlock extends StatelessWidget {
         Text(
           'Room:',
           style: TextStyle(
-            color: BracuPalette.textSecondary(context),
+            color: AppPalette.textSecondary(context),
             fontSize: 12,
             fontWeight: FontWeight.w500,
           ),
@@ -733,7 +733,7 @@ class _RoomBlock extends StatelessWidget {
             style: TextStyle(
               fontSize: 14,
               height: 1.25,
-              color: BracuPalette.textPrimary(context),
+              color: AppPalette.textPrimary(context),
               fontWeight: FontWeight.w700,
             ),
             children: lines,
@@ -758,7 +758,7 @@ class _SeatScheduleBlock extends StatelessWidget {
         Text(
           '$title:',
           style: TextStyle(
-            color: BracuPalette.textSecondary(context),
+            color: AppPalette.textSecondary(context),
             fontSize: 12,
             fontWeight: FontWeight.w500,
           ),
@@ -768,7 +768,7 @@ class _SeatScheduleBlock extends StatelessWidget {
           Text(
             line,
             style: TextStyle(
-              color: BracuPalette.textPrimary(context),
+              color: AppPalette.textPrimary(context),
               fontSize: 14,
               fontWeight: FontWeight.w700,
             ),
@@ -809,9 +809,7 @@ class _PinIconButton extends StatelessWidget {
       icon: Icon(
         pinned ? Icons.notifications_rounded : Icons.notifications_none_rounded,
         size: 28,
-        color: pinned
-            ? BracuPalette.primary
-            : BracuPalette.textSecondary(context),
+        color: pinned ? AppPalette.primary : AppPalette.textSecondary(context),
       ),
     );
   }
@@ -941,7 +939,7 @@ class _SeatMetric extends StatelessWidget {
           label,
           textAlign: TextAlign.center,
           style: TextStyle(
-            color: BracuPalette.textSecondary(context),
+            color: AppPalette.textSecondary(context),
             fontSize: 11.5,
             fontWeight: FontWeight.w700,
           ),

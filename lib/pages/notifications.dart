@@ -268,7 +268,7 @@ class _NotificationsPageState extends State<NotificationsPage>
 
   Future<void> _openConnectNotification(RecentConnectNotification item) async {
     if (!mounted) return;
-    await showBracuBottomSheet<void>(
+    await showAppBottomSheet<void>(
       context,
       title: item.title.trim().isEmpty ? 'Notification' : item.title.trim(),
       initialChildSize: 0.80,
@@ -311,7 +311,7 @@ class _NotificationsPageState extends State<NotificationsPage>
 
   Future<void> _openScraperNotification(NotificationListItem item) async {
     if (!mounted) return;
-    await showBracuBottomSheet<void>(
+    await showAppBottomSheet<void>(
       context,
       title: item.title.trim().isEmpty ? 'Notification' : item.title.trim(),
       initialChildSize: 0.80,
@@ -339,7 +339,7 @@ class _NotificationsPageState extends State<NotificationsPage>
 
   @override
   Widget build(BuildContext context) {
-    return BracuPageScaffold(
+    return AppPageScaffold(
       title: 'Notifications',
       subtitle: 'Recent Alerts',
       icon: Icons.notifications_outlined,
@@ -380,7 +380,7 @@ class _NotificationsPageState extends State<NotificationsPage>
           final hasMore = visibleCount < items.length;
           final showBackToTop = _visibleItemCount > _pageSize;
 
-          return BracuRefreshScroll(
+          return AppRefreshScroll(
             controller: _scrollController,
             onRefresh: _refresh,
             padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),

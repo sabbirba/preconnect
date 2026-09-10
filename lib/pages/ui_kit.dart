@@ -40,15 +40,15 @@ part 'shared_widgets/quick_access.dart';
 part 'shared_widgets/section_list.dart';
 
 String formatDate(String? input) {
-  return BracuTime.formatDate(input);
+  return AppTime.formatDate(input);
 }
 
 String formatTime(String? input) {
-  return BracuTime.format(input);
+  return AppTime.format(input);
 }
 
 String formatTimeRange(String? start, String? end) {
-  return BracuTime.range(start, end);
+  return AppTime.range(start, end);
 }
 
 String formatLongDate(DateTime date) {
@@ -79,7 +79,7 @@ String formatRelativeDayLabel(
 String formatDateTimeLabel(DateTime dateTime, {String separator = ' • '}) {
   final localDateTime = dateTime.toLocal();
   final date = formatLongDate(localDateTime);
-  return '$date$separator${BracuTime.formatDateTime(localDateTime)}';
+  return '$date$separator${AppTime.formatDateTime(localDateTime)}';
 }
 
 String formatDateTimeRange(DateTime start, DateTime end) {
@@ -92,7 +92,7 @@ String formatDateTimeRange(DateTime start, DateTime end) {
 
   final startLabel = formatDateTimeLabel(start);
   if (sameDay) {
-    return '$startLabel – ${BracuTime.formatDateTime(endLocal)}';
+    return '$startLabel – ${AppTime.formatDateTime(endLocal)}';
   } else {
     return '$startLabel – ${formatDateTimeLabel(end)}';
   }
@@ -249,7 +249,7 @@ void showAppSnackBar(
   messenger.showSnackBar(
     SnackBar(
       content: Text(trimmed, style: const TextStyle(color: Colors.white)),
-      backgroundColor: isDark ? const Color(0xFF1E6BE3) : BracuPalette.primary,
+      backgroundColor: isDark ? const Color(0xFF1E6BE3) : AppPalette.primary,
       duration: duration,
       behavior: SnackBarBehavior.floating,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
@@ -328,7 +328,7 @@ void _showPdfSnackBar(
   messenger.showSnackBar(
     SnackBar(
       content: Text(message, style: const TextStyle(color: Colors.white)),
-      backgroundColor: isDark ? const Color(0xFF1E6BE3) : BracuPalette.primary,
+      backgroundColor: isDark ? const Color(0xFF1E6BE3) : AppPalette.primary,
       duration: const Duration(seconds: 2),
       behavior: SnackBarBehavior.floating,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
@@ -358,7 +358,7 @@ class ActionBannerCard extends StatelessWidget {
     required this.title,
     this.subtitle,
     required this.onTap,
-    this.iconColor = BracuPalette.primary,
+    this.iconColor = AppPalette.primary,
     this.iconDecoration = false,
     this.showTrailingIcon = true,
     this.showBorder = true,
@@ -392,7 +392,7 @@ class ActionBannerCard extends StatelessWidget {
             borderRadius: BorderRadius.circular(18),
             border: showBorder
                 ? Border.all(
-                    color: BracuPalette.textSecondary(context).withValues(
+                    color: AppPalette.textSecondary(context).withValues(
                       alpha: Theme.of(context).brightness == Brightness.dark
                           ? 0.22
                           : 0.16,
@@ -421,7 +421,7 @@ class ActionBannerCard extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
-                        color: BracuPalette.textPrimary(context),
+                        color: AppPalette.textPrimary(context),
                       ),
                     ),
                     if (subtitle != null && subtitle!.isNotEmpty) ...[
@@ -433,7 +433,7 @@ class ActionBannerCard extends StatelessWidget {
                         style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w500,
-                          color: BracuPalette.textSecondary(context),
+                          color: AppPalette.textSecondary(context),
                         ),
                       ),
                     ],
@@ -456,7 +456,7 @@ class ActionBannerCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(18),
           border: showBorder
               ? Border.all(
-                  color: BracuPalette.textSecondary(context).withValues(
+                  color: AppPalette.textSecondary(context).withValues(
                     alpha: Theme.of(context).brightness == Brightness.dark
                         ? 0.22
                         : 0.16,
@@ -493,7 +493,7 @@ class ActionBannerCard extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w600,
-                      color: BracuPalette.textPrimary(context),
+                      color: AppPalette.textPrimary(context),
                     ),
                   ),
                   if (subtitle != null && subtitle!.isNotEmpty) ...[
@@ -505,7 +505,7 @@ class ActionBannerCard extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.w500,
-                        color: BracuPalette.textSecondary(context),
+                        color: AppPalette.textSecondary(context),
                       ),
                     ),
                   ],
@@ -517,7 +517,7 @@ class ActionBannerCard extends StatelessWidget {
             else if (showTrailingIcon)
               Icon(
                 Icons.chevron_right,
-                color: BracuPalette.textSecondary(context),
+                color: AppPalette.textSecondary(context),
               ),
           ],
         ),
@@ -581,7 +581,7 @@ class _CountdownCell extends StatelessWidget {
           Text(
             value,
             style: TextStyle(
-              color: BracuPalette.textPrimary(context),
+              color: AppPalette.textPrimary(context),
               fontWeight: FontWeight.w700,
               fontSize: 14,
               fontFeatures: const [FontFeature.tabularFigures()],
@@ -591,7 +591,7 @@ class _CountdownCell extends StatelessWidget {
           Text(
             label,
             style: TextStyle(
-              color: BracuPalette.textSecondary(context),
+              color: AppPalette.textSecondary(context),
               fontWeight: FontWeight.w600,
               fontSize: 10,
             ),
@@ -732,7 +732,7 @@ class PreConnectGitHubIcon extends StatelessWidget {
       heightFactor: 1,
       child: CustomPaint(
         size: Size.square(size),
-        painter: _GitHubLogoPainter(color: color ?? BracuPalette.primary),
+        painter: _GitHubLogoPainter(color: color ?? AppPalette.primary),
       ),
     );
   }
@@ -804,7 +804,7 @@ class CommunityLink extends StatelessWidget {
       return _SponsorActionChip(
         iconWidget: const PreConnectDiscordIcon(
           size: 18,
-          color: BracuPalette.primary,
+          color: AppPalette.primary,
         ),
         label: _label,
         onTap: () => openExternalUrl(
@@ -850,7 +850,7 @@ class EmailLink extends StatelessWidget {
         iconWidget: const Icon(
           Icons.mail_outline_rounded,
           size: 18,
-          color: BracuPalette.primary,
+          color: AppPalette.primary,
         ),
         label: _label,
         onTap: () => openMailComposer(
@@ -948,8 +948,8 @@ class _FundingPromoDividerState extends State<FundingPromoDivider> {
   Widget build(BuildContext context) {
     final content = _content;
     if (content == null) return const SizedBox.shrink();
-    final textSecondary = BracuPalette.textSecondary(context);
-    final textPrimary = BracuPalette.textPrimary(context);
+    final textSecondary = AppPalette.textSecondary(context);
+    final textPrimary = AppPalette.textPrimary(context);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1109,7 +1109,7 @@ class _CampaignSupportersState extends State<CampaignSupporters> {
                 textBaseline: TextBaseline.alphabetic,
                 children: [
                   const Flexible(
-                    child: BracuSectionTitle(title: 'Campaign Supporters'),
+                    child: AppSectionTitle(title: 'Campaign Supporters'),
                   ),
                   const Gap(6),
                   Text(
@@ -1117,7 +1117,7 @@ class _CampaignSupportersState extends State<CampaignSupporters> {
                     style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
-                      color: BracuPalette.textPrimary(context),
+                      color: AppPalette.textPrimary(context),
                     ),
                   ),
                 ],
@@ -1129,7 +1129,7 @@ class _CampaignSupportersState extends State<CampaignSupporters> {
               style: TextStyle(
                 fontSize: 15,
                 fontWeight: FontWeight.w700,
-                color: BracuPalette.textPrimary(context),
+                color: AppPalette.textPrimary(context),
               ),
             ),
           ],
@@ -1141,7 +1141,7 @@ class _CampaignSupportersState extends State<CampaignSupporters> {
             Divider(
               height: 12,
               thickness: 1,
-              color: BracuPalette.textSecondary(
+              color: AppPalette.textSecondary(
                 context,
               ).withValues(alpha: isDark ? 0.22 : 0.14),
             ),
@@ -1176,7 +1176,7 @@ class _SupporterTile extends StatelessWidget {
         child: Icon(
           Icons.person_rounded,
           size: 20,
-          color: BracuPalette.textPrimary(context),
+          color: AppPalette.textPrimary(context),
         ),
       );
     }
@@ -1191,7 +1191,7 @@ class _SupporterTile extends StatelessWidget {
             child: Text(
               item.name,
               style: TextStyle(
-                color: BracuPalette.textPrimary(context),
+                color: AppPalette.textPrimary(context),
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
               ),
@@ -1200,7 +1200,7 @@ class _SupporterTile extends StatelessWidget {
           Text(
             '৳${item.amount}',
             style: TextStyle(
-              color: BracuPalette.primary,
+              color: AppPalette.primary,
               fontSize: 14,
               fontWeight: FontWeight.w700,
             ),
@@ -1226,7 +1226,7 @@ class FundingSupportContent extends StatelessWidget {
           child: Text(
             'Your support helps cover server costs, ongoing development, and app releases so PreConnect can stay reliable.',
             style: TextStyle(
-              color: BracuPalette.textSecondary(context),
+              color: AppPalette.textSecondary(context),
               fontSize: 13,
               fontWeight: FontWeight.w400,
               height: 1.45,
@@ -1245,7 +1245,7 @@ class FundingSupportContent extends StatelessWidget {
                 iconWidget: const Icon(
                   Icons.volunteer_activism_rounded,
                   size: 18,
-                  color: BracuPalette.primary,
+                  color: AppPalette.primary,
                 ),
                 label: 'iOS Campaign',
                 onTap: () => openExternalUrl(
@@ -1258,7 +1258,7 @@ class FundingSupportContent extends StatelessWidget {
                 iconWidget: const Icon(
                   Icons.chat_rounded,
                   size: 18,
-                  color: BracuPalette.primary,
+                  color: AppPalette.primary,
                 ),
                 label: 'WhatsApp',
                 onTap: () => openExternalUrl(
@@ -1270,7 +1270,7 @@ class FundingSupportContent extends StatelessWidget {
               _SponsorActionChip(
                 iconWidget: const PreConnectDiscordIcon(
                   size: 18,
-                  color: BracuPalette.primary,
+                  color: AppPalette.primary,
                 ),
                 label: 'Discord',
                 onTap: () => openExternalUrl(
@@ -1282,7 +1282,7 @@ class FundingSupportContent extends StatelessWidget {
               _SponsorActionChip(
                 iconWidget: const PreConnectGitHubIcon(
                   size: 18,
-                  color: BracuPalette.primary,
+                  color: AppPalette.primary,
                 ),
                 label: 'GitHub',
                 onTap: () => openExternalUrl(context, kPreConnectRepositoryUrl),
@@ -1291,7 +1291,7 @@ class FundingSupportContent extends StatelessWidget {
                 iconWidget: const Icon(
                   Icons.fork_right_rounded,
                   size: 18,
-                  color: BracuPalette.primary,
+                  color: AppPalette.primary,
                 ),
                 label: 'Fork',
                 onTap: () => openExternalUrl(
@@ -1330,9 +1330,7 @@ class _SponsorActionChip extends StatelessWidget {
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(999),
             border: Border.all(
-              color: BracuPalette.textSecondary(
-                context,
-              ).withValues(alpha: 0.18),
+              color: AppPalette.textSecondary(context).withValues(alpha: 0.18),
             ),
           ),
           child: Row(
@@ -1344,7 +1342,7 @@ class _SponsorActionChip extends StatelessWidget {
                 label,
                 style: TextStyle(
                   fontWeight: FontWeight.w600,
-                  color: BracuPalette.primary,
+                  color: AppPalette.primary,
                 ),
               ),
             ],
@@ -1361,166 +1359,3 @@ class _SponsorActionChip extends StatelessWidget {
     );
   }
 }
-
-typedef BracuSelectOption<T> = AppSelectOption<T>;
-typedef BracuActionButton = AppActionButton;
-typedef BracuActionCard = AppActionCard;
-typedef BracuSpinner = AppSpinner;
-typedef BracuRefreshButton = AppRefreshButton;
-typedef BracuPalette = AppPalette;
-typedef BracuPageScaffold = AppPageScaffold;
-typedef BracuGlassContainer = AppGlassContainer;
-typedef BracuGlassCard = AppGlassCard;
-typedef BracuCard = AppCard;
-typedef BracuSectionTitle = AppSectionTitle;
-typedef BracuLoading = AppLoading;
-typedef BracuSkeletonList = AppSkeletonList;
-typedef BracuSkeletonGrid = AppSkeletonGrid;
-typedef BracuMetricGridData = AppMetricGridData;
-typedef BracuMetricGrid = AppMetricGrid;
-typedef BracuEmptyState = AppEmptyState;
-typedef BracuBackScope = AppBackScope;
-typedef BracuTodayScheduleStatus = AppTodayScheduleStatus;
-typedef BracuScheduleTile = AppScheduleTile;
-typedef BracuSelectChip = AppSelectChip;
-typedef BracuSelectDropdownChip<T> = AppSelectDropdownChip<T>;
-typedef BracuNotificationsIconButton = AppNotificationsIconButton;
-typedef BracuSearchField = AppSearchField;
-typedef BracuRefreshList = AppRefreshList;
-typedef BracuRefreshListBuilder = AppRefreshListBuilder;
-typedef BracuRefreshPlaceholder = AppRefreshPlaceholder;
-typedef BracuRefreshScroll = AppRefreshScroll;
-typedef BracuEmptyCard = AppEmptyCard;
-typedef BracuErrorState = AppErrorState;
-
-Future<T?> showBracuBottomSheet<T>(
-  BuildContext context, {
-  required String title,
-  ValueListenable<String>? liveTitle,
-  String? subtitle,
-  List<Widget> actions = const <Widget>[],
-  double initialChildSize = 0.80,
-  bool draggable = true,
-  bool isScrollControlled = true,
-  required Widget Function(
-    BuildContext sheetContext,
-    Color textPrimary,
-    Color textSecondary,
-  )
-  builder,
-}) => showAppBottomSheet<T>(
-  context,
-  title: title,
-  liveTitle: liveTitle,
-  subtitle: subtitle,
-  actions: actions,
-  initialChildSize: initialChildSize,
-  draggable: draggable,
-  isScrollControlled: isScrollControlled,
-  builder: builder,
-);
-
-Future<T?> showBracuCustomBottomSheet<T>({
-  required BuildContext context,
-  required WidgetBuilder builder,
-  Color? backgroundColor,
-  ShapeBorder? shape,
-  Clip? clipBehavior,
-  bool isScrollControlled = true,
-  bool useSafeArea = false,
-  bool useRootNavigator = false,
-  bool draggable = true,
-  double initialChildSize = 0.80,
-  double minChildSize = 0.12,
-  double maxChildSize = 0.96,
-  bool closeOnMinExtent = true,
-}) => showAppCustomBottomSheet<T>(
-  context: context,
-  builder: builder,
-  backgroundColor: backgroundColor,
-  shape: shape,
-  clipBehavior: clipBehavior,
-  isScrollControlled: isScrollControlled,
-  useSafeArea: useSafeArea,
-  useRootNavigator: useRootNavigator,
-  draggable: draggable,
-  initialChildSize: initialChildSize,
-  minChildSize: minChildSize,
-  maxChildSize: maxChildSize,
-  closeOnMinExtent: closeOnMinExtent,
-);
-
-Future<bool> showBracuConfirmationWithActionDialog(
-  BuildContext context, {
-  required IconData icon,
-  required String title,
-  required String message,
-  String cancelLabel = 'Cancel',
-  required String confirmLabel,
-  Color confirmColor = AppPalette.primary,
-  required Future<void> Function() onConfirm,
-}) => showAppConfirmationWithActionDialog(
-  context,
-  icon: icon,
-  title: title,
-  message: message,
-  cancelLabel: cancelLabel,
-  confirmLabel: confirmLabel,
-  confirmColor: confirmColor,
-  onConfirm: onConfirm,
-);
-
-Future<T?> showBracuSelectSheet<T>(
-  BuildContext context, {
-  required String title,
-  String? subtitle,
-  required List<AppSelectOption<T>> options,
-  T? selectedValue,
-}) => showAppSelectSheet<T>(
-  context,
-  title: title,
-  subtitle: subtitle,
-  options: options,
-  selectedValue: selectedValue,
-);
-
-Future<T?> showBracuSelectDropdown<T>(
-  BuildContext context, {
-  String? title,
-  String? subtitle,
-  required List<AppSelectOption<T>> options,
-  T? selectedValue,
-  double optionFontSize = 14,
-  EdgeInsetsGeometry optionPadding = const EdgeInsets.symmetric(
-    horizontal: 12,
-    vertical: 6,
-  ),
-}) => showAppSelectDropdown<T>(
-  context,
-  title: title,
-  subtitle: subtitle,
-  options: options,
-  selectedValue: selectedValue,
-  optionFontSize: optionFontSize,
-  optionPadding: optionPadding,
-);
-
-Future<DateTime?> showBracuDatePicker(
-  BuildContext context, {
-  required DateTime initialDate,
-  required DateTime firstDate,
-  required DateTime lastDate,
-}) => showAppDatePicker(
-  context,
-  initialDate: initialDate,
-  firstDate: firstDate,
-  lastDate: lastDate,
-);
-
-Future<TimeOfDay?> showBracuTimePicker(
-  BuildContext context, {
-  required TimeOfDay initialTime,
-}) => showAppTimePicker(context, initialTime: initialTime);
-
-void showBracuLoadingDialog(BuildContext context) =>
-    showAppLoadingDialog(context);
