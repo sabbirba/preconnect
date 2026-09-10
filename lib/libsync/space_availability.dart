@@ -763,7 +763,7 @@ class _CounterControl extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         SizedBox(
-          width: 38,
+          width: 28,
           height: 38,
           child: BracuActionButton(
             onPressed: onDecrement,
@@ -774,9 +774,8 @@ class _CounterControl extends StatelessWidget {
             fontSize: 18,
           ),
         ),
-        const Gap(8),
         SizedBox(
-          width: 32,
+          width: 24,
           height: 38,
           child: Center(
             child: TextField(
@@ -806,9 +805,8 @@ class _CounterControl extends StatelessWidget {
             ),
           ),
         ),
-        const Gap(8),
         SizedBox(
-          width: 38,
+          width: 28,
           height: 38,
           child: BracuActionButton(
             onPressed: onIncrement,
