@@ -8,6 +8,7 @@ import 'auth_service.dart';
 import 'package:intl/intl.dart';
 import 'package:preconnect/tools/app_storage.dart';
 import 'error_reporter.dart';
+import 'availability_response.dart';
 
 class SpaceAvailabilityPage extends StatefulWidget {
   const SpaceAvailabilityPage({super.key});
@@ -121,7 +122,7 @@ class _SpaceAvailabilityPageState extends State<SpaceAvailabilityPage> {
             !first.containsKey('room')) {
           if (mounted) {
             setState(() {
-              _errorMessage = first['message'].toString();
+              _errorMessage = availabilityMessage(first['message']);
               _isLoading = false;
             });
           }
@@ -148,7 +149,9 @@ class _SpaceAvailabilityPageState extends State<SpaceAvailabilityPage> {
       if (mounted) {
         setState(() {
           if (_availabilityData == null) {
-            _errorMessage = e.toString().replaceAll('Exception: ', '');
+            _errorMessage = e is AvailabilityException
+                ? e.message
+                : AvailabilityException.defaultMessage;
           }
           _isLoading = false;
         });

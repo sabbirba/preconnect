@@ -6,6 +6,7 @@ import 'google_auth.dart';
 import 'libsync_client.dart';
 import 'package:preconnect/libsync/libsync_page.dart';
 import 'error_reporter.dart';
+import 'availability_response.dart';
 
 enum LibSyncAuthStatus { authenticated, unauthenticated, loading, error }
 
@@ -339,17 +340,7 @@ class LibSyncAuthService extends ChangeNotifier {
       ),
     );
 
-    final decoded = jsonDecode(response.body);
-    if (response.statusCode == 200 && decoded is List) {
-      return decoded;
-    }
-
-    throw Exception(
-      _extractErrorMessage(
-        decoded,
-        'Failed to load availability data. Please try again.',
-      ),
-    );
+    return parseAvailabilityResponse(response.statusCode, response.body);
   }
 
   Future<Map<String, dynamic>?> holdSlot({
