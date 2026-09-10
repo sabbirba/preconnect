@@ -31,7 +31,7 @@ fun envFromDotEnv(name: String): String? {
     return null
 }
 
-extensions.configure<ApplicationExtension> {
+android {
     val keystoreProperties = Properties()
     val keystorePropertiesFile = rootProject.file("key.properties")
 

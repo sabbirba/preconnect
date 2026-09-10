@@ -238,8 +238,6 @@ class _SupportButtonState extends State<_SupportButton> {
         '৳${_formatAmount(status.totalRaised)} Raised',
       if (status != null && status.goal > 0)
         '৳${_formatAmount(status.goal)} Goal',
-      'mail@preconnect.app',
-      'preconnect.app',
       'Join Discord',
       'GitHub Repo',
       'Fork Repo',
@@ -255,20 +253,6 @@ class _SupportButtonState extends State<_SupportButton> {
     try {
       final currentLabel = _labelText();
       switch (currentLabel) {
-        case 'mail@preconnect.app':
-          await openExternalUrl(
-            context,
-            kPreConnectMailUrl,
-            failureMessage: 'Unable to open email client.',
-          );
-          break;
-        case 'preconnect.app':
-          await openExternalUrl(
-            context,
-            kPreConnectWebsiteUrl,
-            failureMessage: 'Unable to open preconnect.app.',
-          );
-          break;
         case 'Join Discord':
           await openExternalUrl(
             context,

@@ -197,7 +197,7 @@ Future<bool> openExternalUrl(
 Future<bool> openMailComposer(
   BuildContext context,
   String email, {
-  String failureMessage = 'Unable to open email compose',
+  String failureMessage = 'Unable to open email client.',
   String? subject,
 }) async {
   final cleaned = email.trim();
@@ -225,7 +225,7 @@ Future<bool> openMailComposer(
 Future<bool> openPhoneDialer(
   BuildContext context,
   String phone, {
-  String failureMessage = 'Unable to open phone dialer',
+  String failureMessage = 'Unable to open phone dialer.',
 }) async {
   final cleaned = phone.trim();
   if (cleaned.isEmpty) {

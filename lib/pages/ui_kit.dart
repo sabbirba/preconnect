@@ -853,9 +853,9 @@ class EmailLink extends StatelessWidget {
           color: BracuPalette.primary,
         ),
         label: _label,
-        onTap: () => openExternalUrl(
+        onTap: () => openMailComposer(
           context,
-          kPreConnectMailUrl,
+          kPreConnectEmail,
           failureMessage: 'Unable to open email client.',
         ),
       );
@@ -865,14 +865,11 @@ class EmailLink extends StatelessWidget {
       icon: Icons.mail_outline_rounded,
       title: _title,
       subtitle: _subtitle,
-      onTap: () {
-        openExternalUrl(
-          context,
-          kPreConnectMailUrl,
-          failureMessage: 'Unable to open email client.',
-        );
-        showAppSnackBar(context, 'Opened email client.');
-      },
+      onTap: () => openMailComposer(
+        context,
+        kPreConnectEmail,
+        failureMessage: 'Unable to open email client.',
+      ),
     );
   }
 }

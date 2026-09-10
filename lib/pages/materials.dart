@@ -322,7 +322,7 @@ class _MaterialsPageState extends State<MaterialsPage> {
           ),
         ],
         body: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
           child: Column(
             children: [
               BracuSearchField(
@@ -332,9 +332,8 @@ class _MaterialsPageState extends State<MaterialsPage> {
               const Gap(12),
               _buildBody(),
               if (selectedSrc == null)
-                const SafeArea(
-                  top: false,
-                  minimum: EdgeInsets.symmetric(vertical: 12),
+                const Padding(
+                  padding: EdgeInsets.only(top: 12),
                   child: _MaterialsSubmissionCard(),
                 ),
             ],
@@ -651,9 +650,10 @@ class _MaterialsSubmissionCard extends StatelessWidget {
                     ),
                     title: 'Send',
                     subtitle: 'Via Email',
-                    onTap: () => openExternalUrl(
+                    onTap: () => openMailComposer(
                       context,
-                      'mailto:mail@preconnect.app?subject=Course%20Materials%20Submission',
+                      kPreConnectEmail,
+                      subject: 'Course Materials Submission',
                       failureMessage: 'Unable to open email client.',
                     ),
                   ),
