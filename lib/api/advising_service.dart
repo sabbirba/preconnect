@@ -20,7 +20,7 @@ bool isMissingAdvisingPhaseResponse(ApiException error) {
 }
 
 String advisingErrorMessage(Object error) {
-  if (error is TimeoutException) return 'BRACU Connect request timed out';
+  if (error is TimeoutException) return 'Connect request timed out';
   final message = '$error';
   if (message.contains('Failed to fetch') ||
       message.contains('ClientException') ||
@@ -28,9 +28,9 @@ String advisingErrorMessage(Object error) {
       message.contains('Failed host lookup') ||
       message.contains('Connection refused') ||
       message.contains('Connection timed out')) {
-    return 'Could not reach the BRACU Connect API';
+    return 'Could not reach the Connect API';
   }
-  return message.replaceAll(RegExp(r'https?://\S+'), 'BRACU Connect API');
+  return message.replaceAll(RegExp(r'https?://\S+'), 'Connect API');
 }
 
 Map<String, dynamic> advisingSectionMutationPayload({

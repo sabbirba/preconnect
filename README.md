@@ -200,7 +200,7 @@ High-level request/data flow:
 ```mermaid
 flowchart LR
   A[PreConnect Client\nAndroid/iOS/macOS/Web/Browser Extensions] --> B[PreConnect Hosted API\napi.preconnect.app]
-  B --> C[BRACU Connect APIs]
+  B --> C[Connect APIs]
   B --> D[Seat Status Cache + Stream]
   B --> E[Alert Queue]
   E --> A
@@ -208,7 +208,7 @@ flowchart LR
 
 Why this architecture:
 
-- Reduces direct upstream pressure on BRACU Connect APIs
+- Reduces direct upstream pressure on Connect APIs
 - Centralizes seat-status caching and real-time triggers
 - Supports push-based alerts for important seat changes
 - Improves reliability and consistency across client platforms
@@ -229,7 +229,7 @@ Privacy notes:
 
 - **100% Databaseless**: PreConnect uses 0 database engines (no Cloud Firestore, Realtime Database, SQLite, PostgreSQL, or remote user tracking database).
 - **Zero Tracking & Zero Telemetry**: 0 analytics SDKs (no Firebase Analytics, Mixpanel, Amplitude, Segment, or tracking pixels). Student activity is never logged, tracked, or commercialized.
-- **On-Device Local Cache Only**: All student schedules and profile data are fetched live from BRACU API endpoints and cached strictly on-device.
+- **On-Device Local Cache Only**: All student schedules and profile data are fetched live from API endpoints and cached strictly on-device.
 - **Encrypted Credentials**: Auth tokens and the captive Wi-Fi password are stored only through `flutter_secure_storage` in the native platform keychain.
 - **Complete Cleanup**: Logout removes all sensitive values, including tokens and saved Wi-Fi passwords.
 - **Permission Control**: Users can control OS-level permissions such as camera and notifications at any time.
@@ -237,7 +237,7 @@ Privacy notes:
 
 ## Seat Status Proxy
 
-The app does not call BRACU Connect seat-status endpoints directly. It uses the hosted proxy API:
+The app does not call Connect seat-status endpoints directly. It uses the hosted proxy API:
 
 - `GET /seat-status`
 - `GET /details/:sectionId`
@@ -278,7 +278,7 @@ Support the project via [preconnect.app/funding](https://preconnect.app/funding)
 
 - Improve offline reliability and sync conflict handling for schedule and profile views
 - Expand notification controls (fine-grained seat alert preferences)
-- Add more onboarding guidance for first-time BRACU students
+- Add more onboarding guidance for first-time students
 - Increase automated coverage for API/service and schedule flows
 - Harden release pipeline with richer health checks and release validation
 

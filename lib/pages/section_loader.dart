@@ -95,15 +95,15 @@ String sectionLoadErrorMessage(Object error) {
   if (error is StudentPortfolioUnavailableException) return error.toString();
   if (error is ApiException) {
     return switch (error.statusCode) {
-      401 => 'Your BRACU session expired. Sign in again and retry.',
+      401 => 'Your session expired. Sign in again and retry.',
       403 => 'This advising information is not available for your account.',
       404 => 'This advising phase is not currently available.',
-      >= 500 => 'BRACU Connect is temporarily unavailable. Try again later.',
+      >= 500 => 'Connect is temporarily unavailable. Try again later.',
       _ => 'Could not load advising information. Try again.',
     };
   }
   if (error is FormatException) {
-    return 'BRACU Connect returned an unsupported response. Try again later.';
+    return 'Connect returned an unsupported response. Try again later.';
   }
   return 'Could not load advising information. Check your connection and retry.';
 }

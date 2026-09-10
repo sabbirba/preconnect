@@ -90,7 +90,7 @@ void main() {
         advisingErrorMessage(
           TimeoutException('Future not completed', const Duration(seconds: 12)),
         ),
-        'BRACU Connect request timed out',
+        'Connect request timed out',
       );
       expect(
         advisingErrorMessage(
@@ -98,11 +98,11 @@ void main() {
             'Failed to fetch https://connect.bracu.ac.bd/api/adv/v1/advising/70801/advising-session?publicKey=secret',
           ),
         ),
-        'Could not reach the BRACU Connect API',
+        'Could not reach the Connect API',
       );
       expect(
         advisingErrorMessage(Exception('ClientException: Connection refused')),
-        'Could not reach the BRACU Connect API',
+        'Could not reach the Connect API',
       );
     });
 

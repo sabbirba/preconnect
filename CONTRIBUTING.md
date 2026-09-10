@@ -295,7 +295,7 @@ Use this quick pass before opening a PR:
 7. Check that buttons are tappable on a small device.
 8. Run `flutter test` after the manual pass.
 
-For login-dependent screens, note whether you tested with a real BRACU account, cached/offline data, or a non-login fallback path.
+For login-dependent screens, note whether you tested with a real account, cached/offline data, or a non-login fallback path.
 
 ## PR Checklist
 

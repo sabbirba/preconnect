@@ -283,7 +283,7 @@ class _ApiTestPageState extends State<ApiTestPage> {
   Widget build(BuildContext context) {
     return AppPageScaffold(
       title: 'Connect API Test',
-      subtitle: 'BRACU SSO Auth Session',
+      subtitle: 'SSO Auth Session',
       icon: Icons.science_outlined,
       body: AppRefreshList(
         onRefresh: _sendRequest,

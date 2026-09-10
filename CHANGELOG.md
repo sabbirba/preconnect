@@ -74,7 +74,6 @@ Universal Compatibility: Expanded hardware feature definitions and optimized res
 - Added help instructions and an automated Connect/Disconnect button to Captive Wi-Fi
 - Swapped the SSID display to a read-only input field matching the rest of the text fields
 - Replaced the webview portal page header with a transparent overlay for back and refresh controls
-- Setup real-time updates for push notifications and added Library and BRACU Leaks
 
 ## [1.6.7] — 2026-06-17
 
@@ -112,7 +111,7 @@ Universal Compatibility: Expanded hardware feature definitions and optimized res
 
 ## [1.5.0] — 2026-03
 
-- Seat status checker: real-time BRACU section seat availability during advising
+- Seat status checker: real-time section seat availability during advising
 - Exam schedule viewer with room and building details
 - CGPA calculator and degree progress tracker
 - Campus bus route guide

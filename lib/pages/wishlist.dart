@@ -101,7 +101,7 @@ class _WishlistPageState extends State<WishlistPage> {
       return (
         title: 'You\'re Offline',
         message:
-            'Wishlist requires an active connection to BRACU Connect. '
+            'Wishlist requires an active connection to Connect. '
             'Check your internet and try again.',
       );
     }

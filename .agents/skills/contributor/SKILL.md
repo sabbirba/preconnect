@@ -17,7 +17,7 @@ description: Investigate, implement, validate, or review contributions to the re
   - Maintain API services (`ApiConfig`, `ScheduleService`, `ProfileService`, `PaymentService`, `FundingService`, `FcmService`) decoupled from presentation.
 - **Presentation (`lib/pages`)**:
   - `home_sections/`, `profile_sections/`, `custom_sections/`, `notifications_sections/`, `bus/`.
-  - Shared UI system in `lib/pages/ui_kit.dart` (`BracuPageScaffold`, `BracuPalette`, `BracuActionButton`, `BracuRefreshList`).
+  - Shared UI system in `lib/pages/ui_kit.dart` (`AppPageScaffold`, `AppPalette`, `AppActionButton`, `AppRefreshList`).
   - Virtual ID card rendering in `lib/pages/card_section.dart`.
   - Contributor layout and adaptive grids in `lib/pages/devs.dart`.
   - Wi-Fi Printer tool in `lib/pages/wifi_printer.dart`.

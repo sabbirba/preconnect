@@ -486,7 +486,7 @@ class _PayslipDetailSheetState extends State<PayslipDetailSheet> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'BRACU Deposit Bank Accounts',
+          'Deposit Bank Accounts',
           style: TextStyle(
             fontSize: 14.5,
             fontWeight: FontWeight.w700,

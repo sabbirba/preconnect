@@ -1935,7 +1935,7 @@ Future<void> _handleConnectRequest(Map message) async {
     }
     final tabId = connectTab?.id;
     if (tabId == null) {
-      throw StateError('Open a signed-in BRACU Connect tab');
+      throw StateError('Open a signed-in Connect tab');
     }
     var browserAuthorization = _connectAuthorizationByTab[tabId];
     if (browserAuthorization == null) {

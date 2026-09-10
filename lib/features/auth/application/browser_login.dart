@@ -27,7 +27,7 @@ class BrowserLogin {
       webOnlyWindowName: '_self',
     );
     if (!opened) {
-      throw StateError('Unable to open BRACU sign in.');
+      throw StateError('Unable to open sign in.');
     }
   }
 }
