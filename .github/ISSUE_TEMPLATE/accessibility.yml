@@ -1,0 +1,62 @@
+name: UI and Accessibility Feedback
+description: Report contrast issues, screen reader flaws, tap target sizing, or visual layout defects
+title: "[A11y] "
+labels:
+  - accessibility
+  - design
+body:
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before Submitting
+      options:
+        - label: I verified the issue on the latest release or current main branch.
+          required: true
+        - label: Screenshots or screen recordings do not expose private student information.
+          required: true
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Affected Platform
+      options:
+        - Android
+        - iOS
+        - macOS
+        - Web
+        - Chrome Extension
+        - Firefox Extension
+    validations:
+      required: true
+  - type: dropdown
+    id: issue_type
+    attributes:
+      label: Issue Category
+      options:
+        - Color Contrast / Theme Issue
+        - Screen Reader / TalkBack / VoiceOver
+        - Touch Target / Hit Area Sizing
+        - Overflow / Layout Clipping
+        - Keyboard Navigation / Focus Order
+        - Motion / Animation Preference
+        - Typography / Text Scaling
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: Description of the Issue
+      description: Explain where the issue occurs and why it affects usability or accessibility.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected Experience
+      description: Describe what the accessible behavior or visual presentation should be.
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Screenshots or Screen Recordings
+      description: Attach screenshots or screen recordings illustrating the issue.

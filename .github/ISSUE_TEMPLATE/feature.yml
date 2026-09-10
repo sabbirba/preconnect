@@ -1,6 +1,6 @@
-name: Feature Idea
-description: Propose an improvement for students or contributors
-title: "[Idea] "
+name: Feature Request
+description: Suggest a new feature, tool, or workflow for PreConnect
+title: "[Feature] "
 labels:
   - enhancement
 body:
@@ -9,9 +9,9 @@ body:
     attributes:
       label: Before Submitting
       options:
-        - label: I searched existing issues and the roadmap for this idea.
+        - label: I searched existing issues and discussions for similar requests.
           required: true
-        - label: This idea does not require publishing private student data or credentials.
+        - label: This proposal does not require publishing private student data or credentials.
           required: true
   - type: dropdown
     id: area
@@ -26,6 +26,7 @@ body:
         - Profile and Degree Progress
         - Friends and Sharing
         - Campus Tools
+        - Course Materials
         - Notifications
         - Offline and Caching
         - Accessibility and Design
@@ -39,35 +40,29 @@ body:
   - type: textarea
     id: problem
     attributes:
-      label: Problem to Solve
-      description: Describe the student or contributor need before proposing implementation.
+      label: Problem Statement
+      description: Describe the student or contributor problem you are trying to solve.
     validations:
       required: true
   - type: textarea
     id: proposal
     attributes:
-      label: Proposed Experience
-      description: Describe the smallest useful version and how a user would interact with it.
+      label: Proposed Solution
+      description: Describe how the new feature should work and how users will interact with it.
     validations:
       required: true
   - type: textarea
     id: criteria
     attributes:
       label: Acceptance Criteria
-      description: List observable outcomes that would make the idea complete.
+      description: List observable behaviors or requirements that define completion.
     validations:
-      required: true
+      required: false
   - type: textarea
     id: alternatives
     attributes:
       label: Alternatives Considered
-  - type: textarea
-    id: impact
-    attributes:
-      label: Privacy, Offline, and Platform Impact
-      description: Explain permissions, stored data, network behavior, caching, and affected platforms.
-    validations:
-      required: true
+      description: Describe any alternative solutions or workarounds you considered.
   - type: dropdown
     id: contribution
     attributes:

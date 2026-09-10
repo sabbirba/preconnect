@@ -1,0 +1,49 @@
+name: Wi-Fi and Campus Printer Issue
+description: Report connectivity problems with campus captive Wi-Fi or wireless printing
+title: "[Printer] "
+labels:
+  - tools
+body:
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before Submitting
+      options:
+        - label: I tested while physically on campus connected to the campus network.
+          required: true
+        - label: I removed my student Wi-Fi password and credentials from logs.
+          required: true
+  - type: dropdown
+    id: tool
+    attributes:
+      label: Feature
+      options:
+        - Campus Wi-Fi Auto-Login
+        - Wi-Fi Printer (A4 PDF Spooler)
+        - Network Diagnostics
+        - Other
+    validations:
+      required: true
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Platform
+      options:
+        - Android
+        - iOS
+        - macOS
+        - Web
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: Issue Description
+      description: Describe what failed during Wi-Fi authentication or printer job submission.
+    validations:
+      required: true
+  - type: textarea
+    id: details
+    attributes:
+      label: Device or Printer Details
+      description: Mention building/floor location, device OS, and printer model if known.

@@ -1,0 +1,51 @@
+name: Documentation Improvement
+description: Propose updates or corrections to README, setup guides, FAQs, or contributing documentation
+title: "[Docs] "
+labels:
+  - documentation
+body:
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before Submitting
+      options:
+        - label: I checked existing documentation files and pull requests.
+          required: true
+  - type: dropdown
+    id: document
+    attributes:
+      label: Document or Guide
+      options:
+        - README.md
+        - CONTRIBUTING.md
+        - AGENTS.md
+        - SECURITY.md
+        - TRADEMARKS.md
+        - Skill Guides (.agents/skills)
+        - In-App FAQs or Help
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: suggestion
+    attributes:
+      label: Proposed Changes
+      description: Explain what needs to be added, clarified, or updated.
+    validations:
+      required: true
+  - type: textarea
+    id: rationale
+    attributes:
+      label: Reason for Change
+      description: Why is this change helpful for contributors or students?
+    validations:
+      required: false
+  - type: dropdown
+    id: contribution
+    attributes:
+      label: Would you like to submit a pull request?
+      options:
+        - Yes
+        - No, seeking a maintainer
+    validations:
+      required: true

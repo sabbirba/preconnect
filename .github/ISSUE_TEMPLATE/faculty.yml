@@ -1,0 +1,36 @@
+name: Faculty Directory Update
+description: Report missing, outdated, or incorrect faculty and department staff details
+title: "[Faculty] "
+labels:
+  - data
+body:
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before Submitting
+      options:
+        - label: The updated information is publicly listed on the official department portal.
+          required: true
+        - label: No personal phone numbers or private non-institutional contacts are included.
+          required: true
+  - type: input
+    id: faculty_name
+    attributes:
+      label: Faculty Name and Initial
+      placeholder: Dr. John Doe (JDE)
+    validations:
+      required: true
+  - type: input
+    id: department
+    attributes:
+      label: Department
+      placeholder: Computer Science and Engineering (CSE)
+    validations:
+      required: true
+  - type: textarea
+    id: changes
+    attributes:
+      label: Corrected Details
+      description: Provide the updated email, office room, designation, or profile link.
+    validations:
+      required: true

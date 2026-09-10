@@ -1,0 +1,52 @@
+name: Performance and Battery Report
+description: Report high CPU/memory consumption, stutter, freeze, or battery drain
+title: "[Perf] "
+labels:
+  - performance
+body:
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before Submitting
+      options:
+        - label: I observed the issue repeatedly across app sessions.
+          required: true
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Platform
+      options:
+        - Android
+        - iOS
+        - macOS
+        - Web
+        - Browser Extension
+    validations:
+      required: true
+  - type: input
+    id: device
+    attributes:
+      label: Device and OS Version
+      placeholder: Pixel 7 (Android 14) / MacBook Air M2 (macOS 15)
+    validations:
+      required: true
+  - type: dropdown
+    id: symptom
+    attributes:
+      label: Performance Symptom
+      options:
+        - UI Stutter / Frame Drops (Jank)
+        - Slow App Startup (Cold Launch)
+        - Heavy Battery Consumption
+        - High Memory Usage / Out of Memory
+        - App Freeze / ANR
+        - Long Network Request Latency
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to Reproduce
+      description: Explain the user actions that trigger the performance degradation.
+    validations:
+      required: true

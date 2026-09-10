@@ -1,0 +1,47 @@
+name: Browser Extension Issue
+description: Report problems specific to the PreConnect Chrome or Firefox browser extension
+title: "[Extension] "
+labels:
+  - extension
+  - bug
+body:
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before Submitting
+      options:
+        - label: I verified the extension version and browser version.
+          required: true
+        - label: I removed student credentials, session cookies, and tokens from logs.
+          required: true
+  - type: dropdown
+    id: browser
+    attributes:
+      label: Browser
+      options:
+        - Google Chrome
+        - Mozilla Firefox
+        - Brave / Chromium-based
+        - Microsoft Edge
+        - Safari / Other
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Extension Version
+      placeholder: e.g. 2.0.4
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: Issue Description
+      description: Describe what failed in the extension popup, overlay, or background worker.
+    validations:
+      required: true
+  - type: textarea
+    id: console_errors
+    attributes:
+      label: Browser Console Errors
+      description: Paste any JavaScript/Dart console errors from extension inspection.

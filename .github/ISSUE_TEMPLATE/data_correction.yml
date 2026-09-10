@@ -1,0 +1,49 @@
+name: Data or Schedule Correction
+description: Report incorrect or outdated bus routes, building locations, exams, or course information
+title: "[Data] "
+labels:
+  - data
+body:
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before Submitting
+      options:
+        - label: I verified that the updated data is accurate and publicly verifiable.
+          required: true
+        - label: I removed private student identifiers, personal phone numbers, and credentials.
+          required: true
+  - type: dropdown
+    id: category
+    attributes:
+      label: Data Category
+      options:
+        - Bus Route or Timing
+        - Campus Map or Room Location
+        - Exam Schedule or Slot
+        - Academic Calendar Date
+        - Course or Faculty Information
+        - Other Campus Data
+    validations:
+      required: true
+  - type: textarea
+    id: current
+    attributes:
+      label: Current Incorrect Information
+      description: Describe what is currently shown in the app.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Corrected Information
+      description: Provide the accurate data or updated schedule details.
+    validations:
+      required: true
+  - type: textarea
+    id: source
+    attributes:
+      label: Source or Reference
+      description: Official notice, university noticeboard link, department circular, or photo evidence without private data.
+    validations:
+      required: false

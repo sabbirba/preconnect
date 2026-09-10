@@ -1,0 +1,45 @@
+name: Localization and Formatting
+description: Report missing translations, typos, incorrect date/time formats, or numeric errors
+title: "[L10n] "
+labels:
+  - localization
+body:
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before Submitting
+      options:
+        - label: I checked the current app locale and time settings.
+          required: true
+  - type: dropdown
+    id: category
+    attributes:
+      label: Issue Type
+      options:
+        - Date, Time, or Weekday Formatting
+        - CGPA / GPA Decimal Formatting
+        - Translation Typo or Wording
+        - Missing Localized String
+        - Currency / Payment Display
+        - Other
+    validations:
+      required: true
+  - type: input
+    id: location
+    attributes:
+      label: App Screen / Location
+      placeholder: Home / Exam Tab / Profile / Degree Progress
+    validations:
+      required: true
+  - type: textarea
+    id: current
+    attributes:
+      label: Current Displayed Text / Format
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Suggested Correction
+    validations:
+      required: true
