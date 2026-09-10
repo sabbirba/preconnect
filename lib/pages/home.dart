@@ -578,19 +578,12 @@ class _HomeData {
   final String? scheduleJson;
   final Map<String, String?>? advisingInfo;
 
-  bool get hasRequiredProfileFields {
+  bool get hasProfileIdentity {
     final profileData = profile;
     if (profileData == null) return false;
     final studentId = (profileData['studentId'] ?? '').trim();
     final fullName = (profileData['fullName'] ?? '').trim();
-    final shortCode = (profileData['shortCode'] ?? '').trim();
-    final departmentName = (profileData['departmentName'] ?? '').trim();
-    final currentSemester = (profileData['currentSemester'] ?? '').trim();
-    return studentId.isNotEmpty &&
-        fullName.isNotEmpty &&
-        shortCode.isNotEmpty &&
-        departmentName.isNotEmpty &&
-        currentSemester.isNotEmpty;
+    return studentId.isNotEmpty && fullName.isNotEmpty;
   }
 
   _HomeData copyWith({
@@ -760,7 +753,7 @@ class _HomeData {
       scheduleJson: scheduleJson,
       advisingInfo: advisingInfo,
     );
-    return data.hasRequiredProfileFields ? data : null;
+    return data.hasProfileIdentity ? data : null;
   }
 }
 

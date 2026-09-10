@@ -71,9 +71,8 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
     if (forceRefresh) {
       _cachedData = null;
       _preloadFuture = null;
-    } else {
-      _loadHomeDashboardSnapshotSync();
     }
+    _loadHomeDashboardSnapshotSync();
     _future = _latestData != null
         ? Future<_HomeData>.value(_latestData!)
         : _initializeHomeData(forceRefresh: forceRefresh);
@@ -192,7 +191,7 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
     _lastBackgroundRefreshAt = DateTime.now();
     try {
       final fresh = await _loadData(forceRefresh: true);
-      if (!fresh.hasRequiredProfileFields && _latestData != null) {
+      if (!fresh.hasProfileIdentity && _latestData != null) {
         return;
       }
       if (!mounted) return;
@@ -210,8 +209,8 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
 
   Future<void> _warmAndBind({bool forceRefresh = false}) async {
     try {
-      if (_latestData != null && !forceRefresh) {
-        unawaited(_backgroundRefresh());
+      if (_latestData != null) {
+        unawaited(_backgroundRefresh(ignoreMinInterval: forceRefresh));
         return;
       }
       final data = await preloadData(forceRefresh: forceRefresh);
@@ -228,7 +227,7 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
   }
 
   Future<void> _saveHomeDashboardSnapshot(_HomeData data) async {
-    if (!data.hasRequiredProfileFields) return;
+    if (!data.hasProfileIdentity) return;
     try {
       await RepositoryCache.instance.writeString(
         _homeDashboardSnapshotCacheKey,
@@ -453,8 +452,10 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
       );
       final fresh = await _loadData(forceRefresh: true);
       if (!mounted) return;
+      if (!fresh.hasProfileIdentity && _latestData != null) return;
       setState(() {
         _latestData = fresh;
+        _cachedData = fresh;
       });
       unawaited(_saveHomeDashboardSnapshot(fresh));
       if (notify) {
