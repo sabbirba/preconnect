@@ -69,7 +69,7 @@ class StudentOverviewCard extends StatelessWidget {
                 ],
                 const Gap(8),
                 _IconButton(
-                  icon: Icons.launch_rounded,
+                  icon: Icons.language_rounded,
                   onTap: () => openExternalUrl(
                     context,
                     kPreConnectWebsiteUrl,
