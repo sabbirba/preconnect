@@ -386,7 +386,7 @@ class ActionBannerCard extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(18),
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
           decoration: BoxDecoration(
             color: Colors.transparent,
             borderRadius: BorderRadius.circular(18),
@@ -401,13 +401,13 @@ class ActionBannerCard extends StatelessWidget {
                 : null,
           ),
           child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisAlignment: MainAxisAlignment.start,
             children: [
               if (iconWidget != null)
                 iconWidget!
               else if (icon != null)
                 Icon(icon, color: iconColor, size: 22),
-              const Gap(8),
+              const Gap(10),
               Flexible(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -419,19 +419,19 @@ class ActionBannerCard extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
-                        fontSize: 13,
+                        fontSize: 12,
                         fontWeight: FontWeight.w600,
                         color: AppPalette.textPrimary(context),
                       ),
                     ),
                     if (subtitle != null && subtitle!.isNotEmpty) ...[
-                      const Gap(2),
+                      const Gap(1),
                       Text(
                         subtitle!,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
-                          fontSize: 11,
+                          fontSize: 10,
                           fontWeight: FontWeight.w500,
                           color: AppPalette.textSecondary(context),
                         ),
@@ -790,12 +790,22 @@ class _GitHubLogoPainter extends CustomPainter {
 }
 
 class CommunityLink extends StatelessWidget {
-  const CommunityLink({super.key, this.compact = false});
+  const CommunityLink({
+    super.key,
+    this.compact = false,
+    this.centered = false,
+    this.title,
+    this.subtitle,
+  });
 
   final bool compact;
+  final bool centered;
+  final String? title;
+  final String? subtitle;
 
-  static const String _title = 'Discord Community';
-  static const String _subtitle = 'Connect, share ideas, and get support';
+  static const String _defaultTitle = 'Discord Community';
+  static const String _defaultSubtitle =
+      'Connect, share ideas, and get support';
   static const String _label = 'Discord';
 
   @override
@@ -816,12 +826,13 @@ class CommunityLink extends StatelessWidget {
     }
 
     return ActionBannerCard(
+      centered: centered,
       iconWidget: const PreConnectDiscordIcon(
-        size: 24,
+        size: 22,
         color: Color.fromRGBO(88, 101, 242, 1),
       ),
-      title: _title,
-      subtitle: _subtitle,
+      title: title ?? (centered ? 'Discord' : _defaultTitle),
+      subtitle: subtitle ?? (centered ? 'Community' : _defaultSubtitle),
       onTap: () {
         openExternalUrl(
           context,
@@ -835,12 +846,21 @@ class CommunityLink extends StatelessWidget {
 }
 
 class EmailLink extends StatelessWidget {
-  const EmailLink({super.key, this.compact = false});
+  const EmailLink({
+    super.key,
+    this.compact = false,
+    this.centered = false,
+    this.title,
+    this.subtitle,
+  });
 
   final bool compact;
+  final bool centered;
+  final String? title;
+  final String? subtitle;
 
-  static const String _title = 'Email Support';
-  static const String _subtitle = 'Reach out to us via email';
+  static const String _defaultTitle = 'Email Support';
+  static const String _defaultSubtitle = 'Reach out to us via email';
   static const String _label = 'Email';
 
   @override
@@ -862,9 +882,10 @@ class EmailLink extends StatelessWidget {
     }
 
     return ActionBannerCard(
+      centered: centered,
       icon: Icons.mail_outline_rounded,
-      title: _title,
-      subtitle: _subtitle,
+      title: title ?? (centered ? 'Email' : _defaultTitle),
+      subtitle: subtitle ?? (centered ? 'Reach & Support' : _defaultSubtitle),
       onTap: () => openMailComposer(
         context,
         kPreConnectEmail,

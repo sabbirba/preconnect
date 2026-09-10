@@ -470,23 +470,29 @@ class _IntroCard extends StatelessWidget {
         ),
         const Gap(6),
         Text(
-          'If you have an idea, spot a bug, or want to help, '
-          'we would love to hear from you on GitHub. '
-          'You can open an issue, share suggestions, or send a pull request.',
+          'PreConnect is a 100% databaseless, student-run, open-source initiative dedicated to simplifying academic life at BRAC University. '
+          'All data stays securely on user\'s device. '
+          'Everything from class schedules and seat status tracking to campus utilities is created and maintained by BRACU students, for students. '
+          'If you have an idea, spot a bug, or want to help, we would love to hear from you on GitHub. '
+          'You can open an issue, share suggestions, or submit a pull request.',
           style: TextStyle(color: textSecondary),
         ),
         const Gap(12),
-        const _RepoButton(),
-        const Gap(12),
-        const CommunityLink(),
-        const Gap(12),
-        const EmailLink(),
-        const Gap(12),
-        const AppSectionTitle(title: 'Web & API'),
-        const Gap(8),
-        const _WebsiteButton(),
-        const Gap(12),
-        const _ApiButton(),
+        const Row(
+          children: [
+            Expanded(child: _RepoButton()),
+            Gap(10),
+            Expanded(child: CommunityLink(centered: true)),
+          ],
+        ),
+        const Gap(10),
+        const Row(
+          children: [
+            Expanded(child: EmailLink(centered: true)),
+            Gap(10),
+            Expanded(child: _ApiButton()),
+          ],
+        ),
       ],
     );
   }
@@ -498,28 +504,11 @@ class _RepoButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ActionBannerCard(
-      iconWidget: const PreConnectGitHubIcon(size: 24),
-      title: 'View Repository',
-      subtitle: 'Explore the source code and contribute',
+      centered: true,
+      iconWidget: const PreConnectGitHubIcon(size: 22),
+      title: 'GitHub',
+      subtitle: 'Repository',
       onTap: () => openExternalUrl(context, kPreConnectRepositoryUrl),
-    );
-  }
-}
-
-class _WebsiteButton extends StatelessWidget {
-  const _WebsiteButton();
-
-  @override
-  Widget build(BuildContext context) {
-    return ActionBannerCard(
-      icon: Icons.launch_rounded,
-      title: 'preconnect.app',
-      subtitle: 'Web companion and service portal',
-      onTap: () => openExternalUrl(
-        context,
-        kPreConnectWebsiteUrl,
-        failureMessage: 'Unable to open preconnect.app.',
-      ),
     );
   }
 }
@@ -530,9 +519,10 @@ class _ApiButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ActionBannerCard(
+      centered: true,
       icon: Icons.api_rounded,
-      title: 'api.preconnect.app',
-      subtitle: 'Data feeds and developer endpoints',
+      title: 'Swagger Docs',
+      subtitle: 'api.preconnect.app',
       onTap: () => openExternalUrl(
         context,
         kPreConnectApiUrl,
