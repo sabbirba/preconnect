@@ -503,13 +503,7 @@ Future<void> showCampusMapBottomSheet(
   BuildContext context, {
   required Future<CampusMapData?> campusMapFuture,
   required Future<String?> transportScheduleUrlFuture,
-  bool showContacts = true,
-  bool showCallAction = true,
-  int collapsedVisibleCount = 5,
 }) async {
-  var highlightsExpanded = false;
-  var officesExpanded = false;
-  var emergencyExpanded = false;
   await showBracuBottomSheet<void>(
     context,
     title: 'Campus Map',
@@ -901,129 +895,199 @@ Future<void> showCampusMapBottomSheet(
               ],
               if (mapData.highlights.isNotEmpty) ...[
                 sectionTitle('Highlights'),
-                StatefulBuilder(
-                  builder: (context, setLocalState) {
-                    final visibleHighlights = highlightsExpanded
-                        ? mapData.highlights
-                        : mapData.highlights
-                              .take(collapsedVisibleCount)
-                              .toList(growable: false);
-                    return Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        ...visibleHighlights.map(
-                          (item) => Padding(
-                            padding: const EdgeInsets.only(bottom: 8),
-                            child: Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Padding(
-                                  padding: const EdgeInsets.only(top: 6),
-                                  child: Icon(
-                                    Icons.circle,
-                                    size: 6,
-                                    color: BracuPalette.primary,
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: mapData.highlights
+                      .map(
+                        (item) => Padding(
+                          padding: const EdgeInsets.only(bottom: 8),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Padding(
+                                padding: const EdgeInsets.only(top: 6),
+                                child: Icon(
+                                  Icons.circle,
+                                  size: 6,
+                                  color: BracuPalette.primary,
+                                ),
+                              ),
+                              const Gap(8),
+                              Expanded(
+                                child: Text(
+                                  item,
+                                  style: TextStyle(
+                                    color: textSecondary,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w500,
+                                    height: 1.35,
                                   ),
                                 ),
-                                const Gap(8),
-                                Expanded(
-                                  child: Text(
-                                    item,
-                                    style: TextStyle(
-                                      color: textSecondary,
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w500,
-                                      height: 1.35,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
+                              ),
+                            ],
                           ),
                         ),
-                        if (mapData.highlights.length > collapsedVisibleCount)
-                          buildCenteredOutlinedActionButton(
-                            label: highlightsExpanded
-                                ? 'Show Less'
-                                : 'Show More',
-                            padding: const EdgeInsets.only(top: 2, bottom: 2),
-                            onPressed: () {
-                              setLocalState(() {
-                                highlightsExpanded = !highlightsExpanded;
-                              });
-                            },
-                          ),
-                      ],
-                    );
-                  },
+                      )
+                      .toList(growable: false),
                 ),
               ],
-              if (showContacts && mapData.emergencyContacts.isNotEmpty) ...[
+              if (mapData.emergencyContacts.isNotEmpty) ...[
                 sectionTitle('Emergency Contacts'),
-                StatefulBuilder(
-                  builder: (context, setLocalState) {
-                    final visibleEmergency = emergencyExpanded
-                        ? mapData.emergencyContacts
-                        : mapData.emergencyContacts
-                              .take(collapsedVisibleCount)
-                              .toList(growable: false);
-                    return Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        ...visibleEmergency.map((item) {
-                          return Padding(
-                            padding: const EdgeInsets.only(bottom: 8),
-                            child: minimalBlock(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: mapData.emergencyContacts
+                      .map((item) {
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 8),
+                          child: minimalBlock(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  item.name,
+                                  style: TextStyle(
+                                    color: textPrimary,
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                                if (item.services.isNotEmpty) ...[
+                                  const Gap(2),
                                   Text(
-                                    item.name,
+                                    item.services,
                                     style: TextStyle(
-                                      color: textPrimary,
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w700,
+                                      color: textSecondary,
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w500,
                                     ),
                                   ),
-                                  if (item.services.isNotEmpty) ...[
-                                    const Gap(2),
-                                    Text(
-                                      item.services,
-                                      style: TextStyle(
+                                ],
+                                if (item.hours.isNotEmpty) ...[
+                                  const Gap(4),
+                                  Row(
+                                    children: [
+                                      Icon(
+                                        Icons.schedule_rounded,
+                                        size: 13,
                                         color: textSecondary,
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.w500,
                                       ),
-                                    ),
-                                  ],
-                                  if (item.hours.isNotEmpty) ...[
-                                    const Gap(4),
-                                    Row(
-                                      children: [
-                                        Icon(
-                                          Icons.schedule_rounded,
-                                          size: 13,
+                                      const Gap(4),
+                                      Text(
+                                        item.hours,
+                                        style: TextStyle(
                                           color: textSecondary,
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w500,
                                         ),
-                                        const Gap(4),
-                                        Text(
-                                          item.hours,
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                                if (item.email.isNotEmpty) ...[
+                                  const Gap(4),
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: Text(
+                                          item.email,
                                           style: TextStyle(
                                             color: textSecondary,
                                             fontSize: 11,
                                             fontWeight: FontWeight.w500,
                                           ),
                                         ),
-                                      ],
-                                    ),
-                                  ],
-                                  if (item.email.isNotEmpty) ...[
-                                    const Gap(4),
-                                    Row(
+                                      ),
+                                      IconButton(
+                                        onPressed: () => openMailComposer(
+                                          sheetContext,
+                                          item.email,
+                                        ),
+                                        icon: const Icon(
+                                          Icons.email_rounded,
+                                          size: 16,
+                                        ),
+                                        tooltip: 'Email',
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                                if (item.phones.isNotEmpty) ...[
+                                  const Gap(4),
+                                  ...item.phones.map(
+                                    (phone) => Row(
                                       children: [
                                         Expanded(
                                           child: Text(
-                                            item.email,
+                                            phone,
+                                            style: TextStyle(
+                                              color: textSecondary,
+                                              fontSize: 11,
+                                              fontWeight: FontWeight.w500,
+                                            ),
+                                          ),
+                                        ),
+                                        IconButton(
+                                          onPressed: () async {
+                                            final normalized =
+                                                normalizeCampusPhoneValue(
+                                                  phone,
+                                                );
+                                            if (normalized.isEmpty) return;
+                                            copyToClipboard(
+                                              sheetContext,
+                                              normalized,
+                                            );
+                                            await openPhoneDialer(
+                                              sheetContext,
+                                              normalized,
+                                            );
+                                          },
+                                          icon: const Icon(
+                                            Icons.phone_rounded,
+                                            size: 18,
+                                          ),
+                                          tooltip: 'Call',
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
+                        );
+                      })
+                      .toList(growable: false),
+                ),
+              ],
+              if (mapData.offices.isNotEmpty) ...[
+                sectionTitle('General Contacts'),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: mapData.offices
+                      .map((office) {
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 8),
+                          child: minimalBlock(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  office.office,
+                                  style: TextStyle(
+                                    color: textPrimary,
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                                if (office.emails.isNotEmpty) ...[
+                                  const Gap(6),
+                                  ...office.emails.map(
+                                    (email) => Row(
+                                      children: [
+                                        Expanded(
+                                          child: Text(
+                                            email,
                                             style: TextStyle(
                                               color: textSecondary,
                                               fontSize: 11,
@@ -1034,7 +1098,7 @@ Future<void> showCampusMapBottomSheet(
                                         IconButton(
                                           onPressed: () => openMailComposer(
                                             sheetContext,
-                                            item.email,
+                                            email,
                                           ),
                                           icon: const Icon(
                                             Icons.email_rounded,
@@ -1044,156 +1108,24 @@ Future<void> showCampusMapBottomSheet(
                                         ),
                                       ],
                                     ),
-                                  ],
-                                  if (item.phones.isNotEmpty) ...[
-                                    const Gap(4),
-                                    ...item.phones.map(
-                                      (phone) => Row(
-                                        children: [
-                                          Expanded(
-                                            child: Text(
-                                              phone,
-                                              style: TextStyle(
-                                                color: textSecondary,
-                                                fontSize: 11,
-                                                fontWeight: FontWeight.w500,
-                                              ),
-                                            ),
-                                          ),
-                                          IconButton(
-                                            onPressed: () async {
-                                              final normalized =
-                                                  normalizeCampusPhoneValue(
-                                                    phone,
-                                                  );
-                                              if (normalized.isEmpty) return;
-                                              copyToClipboard(
-                                                sheetContext,
-                                                normalized,
-                                              );
-                                              await openPhoneDialer(
-                                                sheetContext,
-                                                normalized,
-                                              );
-                                            },
-                                            icon: const Icon(
-                                              Icons.phone_rounded,
-                                              size: 18,
-                                            ),
-                                            tooltip: 'Call',
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ],
-                                ],
-                              ),
-                            ),
-                          );
-                        }),
-                        if (mapData.emergencyContacts.length >
-                            collapsedVisibleCount)
-                          buildCenteredOutlinedActionButton(
-                            label: emergencyExpanded
-                                ? 'Show Less'
-                                : 'Show More',
-                            padding: const EdgeInsets.only(top: 2, bottom: 2),
-                            onPressed: () {
-                              setLocalState(() {
-                                emergencyExpanded = !emergencyExpanded;
-                              });
-                            },
-                          ),
-                      ],
-                    );
-                  },
-                ),
-              ],
-              if (showContacts && mapData.offices.isNotEmpty) ...[
-                sectionTitle('General Contacts'),
-                StatefulBuilder(
-                  builder: (context, setLocalState) {
-                    final visibleOffices = officesExpanded
-                        ? mapData.offices
-                        : mapData.offices
-                              .take(collapsedVisibleCount)
-                              .toList(growable: false);
-                    return Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        ...visibleOffices.map((office) {
-                          return Padding(
-                            padding: const EdgeInsets.only(bottom: 8),
-                            child: minimalBlock(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
+                                  ),
+                                ] else ...[
+                                  const Gap(4),
                                   Text(
-                                    office.office,
+                                    'No email listed',
                                     style: TextStyle(
-                                      color: textPrimary,
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w700,
+                                      color: textSecondary,
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w500,
                                     ),
                                   ),
-                                  if (office.emails.isNotEmpty) ...[
-                                    const Gap(6),
-                                    ...office.emails.map(
-                                      (email) => Row(
-                                        children: [
-                                          Expanded(
-                                            child: Text(
-                                              email,
-                                              style: TextStyle(
-                                                color: textSecondary,
-                                                fontSize: 11,
-                                                fontWeight: FontWeight.w500,
-                                              ),
-                                            ),
-                                          ),
-                                          IconButton(
-                                            onPressed: () => openMailComposer(
-                                              sheetContext,
-                                              email,
-                                            ),
-                                            icon: const Icon(
-                                              Icons.email_rounded,
-                                              size: 16,
-                                            ),
-                                            tooltip: 'Email',
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ] else ...[
-                                    const Gap(4),
-                                    Text(
-                                      'No email listed',
-                                      style: TextStyle(
-                                        color: textSecondary,
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.w500,
-                                      ),
-                                    ),
-                                  ],
                                 ],
-                              ),
+                              ],
                             ),
-                          );
-                        }),
-                        if (mapData.offices.length > collapsedVisibleCount)
-                          buildCenteredOutlinedActionButton(
-                            label: officesExpanded ? 'Show Less' : 'Show More',
-                            padding: const EdgeInsets.only(top: 2, bottom: 2),
-                            onPressed: () {
-                              setLocalState(() {
-                                officesExpanded = !officesExpanded;
-                              });
-                            },
                           ),
-                      ],
-                    );
-                  },
+                        );
+                      })
+                      .toList(growable: false),
                 ),
               ],
             ],

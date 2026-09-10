@@ -1,7 +1,7 @@
 part of 'package:preconnect/pages/ui_kit.dart';
 
-class BracuEmptyCard extends StatelessWidget {
-  const BracuEmptyCard({super.key, required this.message});
+class AppEmptyCard extends StatelessWidget {
+  const AppEmptyCard({super.key, required this.message});
 
   final String message;
 
@@ -28,8 +28,8 @@ class BracuEmptyCard extends StatelessWidget {
   }
 }
 
-class BracuErrorState extends StatelessWidget {
-  const BracuErrorState({
+class AppErrorState extends StatelessWidget {
+  const AppErrorState({
     super.key,
     required this.title,
     required this.message,
@@ -72,7 +72,7 @@ class BracuErrorState extends StatelessWidget {
               ),
             ),
             const Gap(16),
-            BracuActionButton(
+            AppActionButton(
               onPressed: onRetry,
               icon: Icons.refresh_rounded,
               label: 'Retry',
@@ -109,7 +109,7 @@ class SectionListCard extends StatelessWidget {
     final cardColor = BracuPalette.card(context).withValues(alpha: 0.35);
 
     if (sections.isEmpty) {
-      return BracuEmptyCard(
+      return AppEmptyCard(
         message: emptyMessage ?? '$label: no sections returned.',
       );
     }

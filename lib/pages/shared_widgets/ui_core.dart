@@ -1,7 +1,7 @@
 part of 'package:preconnect/pages/ui_kit.dart';
 
-class BracuSelectOption<T> {
-  const BracuSelectOption({
+class AppSelectOption<T> {
+  const AppSelectOption({
     required this.value,
     required this.label,
     this.icon,
@@ -81,8 +81,8 @@ ButtonStyle appCompactIconButtonStyle({
   );
 }
 
-class BracuActionButton extends StatelessWidget {
-  const BracuActionButton({
+class AppActionButton extends StatelessWidget {
+  const AppActionButton({
     super.key,
     this.icon,
     this.iconWidget,
@@ -122,7 +122,7 @@ class BracuActionButton extends StatelessWidget {
     final spinnerColor =
         foregroundColor ??
         (outlined ? BracuPalette.textPrimary(context) : Colors.white);
-    return BracuSpinner(
+    return AppSpinner(
       size: iconSize,
       color: spinnerColor,
       strokeWidth: 2.2,
@@ -219,8 +219,8 @@ class BracuActionButton extends StatelessWidget {
   }
 }
 
-class BracuActionCard extends StatelessWidget {
-  const BracuActionCard({
+class AppActionCard extends StatelessWidget {
+  const AppActionCard({
     super.key,
     required this.title,
     this.subtitle,
@@ -294,8 +294,8 @@ class BracuActionCard extends StatelessWidget {
   }
 }
 
-class BracuSpinner extends StatefulWidget {
-  const BracuSpinner({
+class AppSpinner extends StatefulWidget {
+  const AppSpinner({
     super.key,
     this.size = 20,
     this.color,
@@ -309,10 +309,10 @@ class BracuSpinner extends StatefulWidget {
   final IconData? icon;
 
   @override
-  State<BracuSpinner> createState() => _BracuSpinnerState();
+  State<AppSpinner> createState() => _AppSpinnerState();
 }
 
-class _BracuSpinnerState extends State<BracuSpinner>
+class _AppSpinnerState extends State<AppSpinner>
     with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
 
@@ -350,8 +350,8 @@ class _BracuSpinnerState extends State<BracuSpinner>
   }
 }
 
-class BracuRefreshButton extends StatelessWidget {
-  const BracuRefreshButton({
+class AppRefreshButton extends StatelessWidget {
+  const AppRefreshButton({
     super.key,
     required this.onPressed,
     required this.isLoading,
@@ -371,7 +371,7 @@ class BracuRefreshButton extends StatelessWidget {
       tooltip: 'Refresh',
       onPressed: isLoading ? null : onPressed,
       icon: isLoading
-          ? BracuSpinner(size: 24, color: themeColor, icon: icon)
+          ? AppSpinner(size: 24, color: themeColor, icon: icon)
           : Icon(icon, color: themeColor),
     );
   }

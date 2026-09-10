@@ -184,9 +184,6 @@ class _OnboardingPageState extends State<OnboardingPage> {
       context,
       campusMapFuture: _campusMapFuture!,
       transportScheduleUrlFuture: _transportScheduleUrlFuture!,
-      showContacts: true,
-      showCallAction: false,
-      collapsedVisibleCount: 5,
     );
   }
 

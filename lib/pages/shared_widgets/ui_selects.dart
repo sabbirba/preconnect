@@ -1,7 +1,7 @@
 part of 'package:preconnect/pages/ui_kit.dart';
 
-class BracuSelectChip extends StatelessWidget {
-  const BracuSelectChip({
+class AppSelectChip extends StatelessWidget {
+  const AppSelectChip({
     super.key,
     this.label,
     this.icon,
@@ -80,8 +80,8 @@ class BracuSelectChip extends StatelessWidget {
   }
 }
 
-class BracuSelectDropdownChip<T> extends StatelessWidget {
-  const BracuSelectDropdownChip({
+class AppSelectDropdownChip<T> extends StatelessWidget {
+  const AppSelectDropdownChip({
     super.key,
     required this.label,
     required this.options,
@@ -101,7 +101,7 @@ class BracuSelectDropdownChip<T> extends StatelessWidget {
   final String? title;
   final String? subtitle;
   final IconData? icon;
-  final List<BracuSelectOption<T>> options;
+  final List<AppSelectOption<T>> options;
   final T? selectedValue;
   final ValueChanged<T> onSelected;
   final bool selected;
@@ -113,7 +113,7 @@ class BracuSelectDropdownChip<T> extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Builder(
-      builder: (chipContext) => BracuSelectChip(
+      builder: (chipContext) => AppSelectChip(
         label: label,
         icon: icon,
         selected: selected,
@@ -122,7 +122,7 @@ class BracuSelectDropdownChip<T> extends StatelessWidget {
         showArrow: showArrow,
         showBorder: showBorder,
         onTap: () async {
-          final value = await showBracuSelectDropdown<T>(
+          final value = await showAppSelectDropdown<T>(
             chipContext,
             title: title,
             subtitle: subtitle,
@@ -137,8 +137,8 @@ class BracuSelectDropdownChip<T> extends StatelessWidget {
   }
 }
 
-class BracuNotificationsIconButton extends StatefulWidget {
-  const BracuNotificationsIconButton({
+class AppNotificationsIconButton extends StatefulWidget {
+  const AppNotificationsIconButton({
     super.key,
     required this.onTap,
     this.iconSize = 20,
@@ -150,12 +150,11 @@ class BracuNotificationsIconButton extends StatefulWidget {
   final double padding;
 
   @override
-  State<BracuNotificationsIconButton> createState() =>
-      _BracuNotificationsIconButtonState();
+  State<AppNotificationsIconButton> createState() =>
+      _AppNotificationsIconButtonState();
 }
 
-class _BracuNotificationsIconButtonState
-    extends State<BracuNotificationsIconButton>
+class _AppNotificationsIconButtonState extends State<AppNotificationsIconButton>
     with RefreshBusState {
   late Future<int> _future;
   int? _cachedCount;
@@ -254,8 +253,8 @@ class _BracuNotificationsIconButtonState
   }
 }
 
-class BracuSearchField extends StatelessWidget {
-  const BracuSearchField({
+class AppSearchField extends StatelessWidget {
+  const AppSearchField({
     super.key,
     required this.controller,
     required this.hintText,

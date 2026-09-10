@@ -1352,7 +1352,7 @@ class _SponsorActionChip extends StatelessWidget {
         ),
       );
     }
-    return BracuActionButton(
+    return AppActionButton(
       onPressed: onTap,
       label: label,
       borderRadius: 999,
@@ -1361,3 +1361,166 @@ class _SponsorActionChip extends StatelessWidget {
     );
   }
 }
+
+typedef BracuSelectOption<T> = AppSelectOption<T>;
+typedef BracuActionButton = AppActionButton;
+typedef BracuActionCard = AppActionCard;
+typedef BracuSpinner = AppSpinner;
+typedef BracuRefreshButton = AppRefreshButton;
+typedef BracuPalette = AppPalette;
+typedef BracuPageScaffold = AppPageScaffold;
+typedef BracuGlassContainer = AppGlassContainer;
+typedef BracuGlassCard = AppGlassCard;
+typedef BracuCard = AppCard;
+typedef BracuSectionTitle = AppSectionTitle;
+typedef BracuLoading = AppLoading;
+typedef BracuSkeletonList = AppSkeletonList;
+typedef BracuSkeletonGrid = AppSkeletonGrid;
+typedef BracuMetricGridData = AppMetricGridData;
+typedef BracuMetricGrid = AppMetricGrid;
+typedef BracuEmptyState = AppEmptyState;
+typedef BracuBackScope = AppBackScope;
+typedef BracuTodayScheduleStatus = AppTodayScheduleStatus;
+typedef BracuScheduleTile = AppScheduleTile;
+typedef BracuSelectChip = AppSelectChip;
+typedef BracuSelectDropdownChip<T> = AppSelectDropdownChip<T>;
+typedef BracuNotificationsIconButton = AppNotificationsIconButton;
+typedef BracuSearchField = AppSearchField;
+typedef BracuRefreshList = AppRefreshList;
+typedef BracuRefreshListBuilder = AppRefreshListBuilder;
+typedef BracuRefreshPlaceholder = AppRefreshPlaceholder;
+typedef BracuRefreshScroll = AppRefreshScroll;
+typedef BracuEmptyCard = AppEmptyCard;
+typedef BracuErrorState = AppErrorState;
+
+Future<T?> showBracuBottomSheet<T>(
+  BuildContext context, {
+  required String title,
+  ValueListenable<String>? liveTitle,
+  String? subtitle,
+  List<Widget> actions = const <Widget>[],
+  double initialChildSize = 0.80,
+  bool draggable = true,
+  bool isScrollControlled = true,
+  required Widget Function(
+    BuildContext sheetContext,
+    Color textPrimary,
+    Color textSecondary,
+  )
+  builder,
+}) => showAppBottomSheet<T>(
+  context,
+  title: title,
+  liveTitle: liveTitle,
+  subtitle: subtitle,
+  actions: actions,
+  initialChildSize: initialChildSize,
+  draggable: draggable,
+  isScrollControlled: isScrollControlled,
+  builder: builder,
+);
+
+Future<T?> showBracuCustomBottomSheet<T>({
+  required BuildContext context,
+  required WidgetBuilder builder,
+  Color? backgroundColor,
+  ShapeBorder? shape,
+  Clip? clipBehavior,
+  bool isScrollControlled = true,
+  bool useSafeArea = false,
+  bool useRootNavigator = false,
+  bool draggable = true,
+  double initialChildSize = 0.80,
+  double minChildSize = 0.12,
+  double maxChildSize = 0.96,
+  bool closeOnMinExtent = true,
+}) => showAppCustomBottomSheet<T>(
+  context: context,
+  builder: builder,
+  backgroundColor: backgroundColor,
+  shape: shape,
+  clipBehavior: clipBehavior,
+  isScrollControlled: isScrollControlled,
+  useSafeArea: useSafeArea,
+  useRootNavigator: useRootNavigator,
+  draggable: draggable,
+  initialChildSize: initialChildSize,
+  minChildSize: minChildSize,
+  maxChildSize: maxChildSize,
+  closeOnMinExtent: closeOnMinExtent,
+);
+
+Future<bool> showBracuConfirmationWithActionDialog(
+  BuildContext context, {
+  required IconData icon,
+  required String title,
+  required String message,
+  String cancelLabel = 'Cancel',
+  required String confirmLabel,
+  Color confirmColor = AppPalette.primary,
+  required Future<void> Function() onConfirm,
+}) => showAppConfirmationWithActionDialog(
+  context,
+  icon: icon,
+  title: title,
+  message: message,
+  cancelLabel: cancelLabel,
+  confirmLabel: confirmLabel,
+  confirmColor: confirmColor,
+  onConfirm: onConfirm,
+);
+
+Future<T?> showBracuSelectSheet<T>(
+  BuildContext context, {
+  required String title,
+  String? subtitle,
+  required List<AppSelectOption<T>> options,
+  T? selectedValue,
+}) => showAppSelectSheet<T>(
+  context,
+  title: title,
+  subtitle: subtitle,
+  options: options,
+  selectedValue: selectedValue,
+);
+
+Future<T?> showBracuSelectDropdown<T>(
+  BuildContext context, {
+  String? title,
+  String? subtitle,
+  required List<AppSelectOption<T>> options,
+  T? selectedValue,
+  double optionFontSize = 14,
+  EdgeInsetsGeometry optionPadding = const EdgeInsets.symmetric(
+    horizontal: 12,
+    vertical: 6,
+  ),
+}) => showAppSelectDropdown<T>(
+  context,
+  title: title,
+  subtitle: subtitle,
+  options: options,
+  selectedValue: selectedValue,
+  optionFontSize: optionFontSize,
+  optionPadding: optionPadding,
+);
+
+Future<DateTime?> showBracuDatePicker(
+  BuildContext context, {
+  required DateTime initialDate,
+  required DateTime firstDate,
+  required DateTime lastDate,
+}) => showAppDatePicker(
+  context,
+  initialDate: initialDate,
+  firstDate: firstDate,
+  lastDate: lastDate,
+);
+
+Future<TimeOfDay?> showBracuTimePicker(
+  BuildContext context, {
+  required TimeOfDay initialTime,
+}) => showAppTimePicker(context, initialTime: initialTime);
+
+void showBracuLoadingDialog(BuildContext context) =>
+    showAppLoadingDialog(context);

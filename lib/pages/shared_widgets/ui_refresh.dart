@@ -43,8 +43,8 @@ const EdgeInsets kPageListPadding = EdgeInsets.fromLTRB(14, 8, 14, 28);
   );
 }
 
-class BracuRefreshList extends StatefulWidget {
-  const BracuRefreshList({
+class AppRefreshList extends StatefulWidget {
+  const AppRefreshList({
     super.key,
     required this.onRefresh,
     required this.children,
@@ -58,10 +58,10 @@ class BracuRefreshList extends StatefulWidget {
   final EdgeInsets padding;
 
   @override
-  State<BracuRefreshList> createState() => _BracuRefreshListState();
+  State<AppRefreshList> createState() => _AppRefreshListState();
 }
 
-class _BracuRefreshListState extends State<BracuRefreshList> {
+class _AppRefreshListState extends State<AppRefreshList> {
   ScrollController? _internalController;
 
   ScrollController get _controller => widget.controller ?? _internalController!;
@@ -73,14 +73,15 @@ class _BracuRefreshListState extends State<BracuRefreshList> {
   }
 
   @override
-  void didUpdateWidget(covariant BracuRefreshList oldWidget) {
+  void didUpdateWidget(covariant AppRefreshList oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.controller == widget.controller) return;
-    if (oldWidget.controller == null && widget.controller != null) {
-      _internalController?.dispose();
-      _internalController = null;
-    } else if (oldWidget.controller != null && widget.controller == null) {
-      _internalController = ScrollController();
+    if (oldWidget.controller != widget.controller) {
+      if (widget.controller == null) {
+        _internalController ??= ScrollController();
+      } else {
+        _internalController?.dispose();
+        _internalController = null;
+      }
     }
   }
 
@@ -104,8 +105,8 @@ class _BracuRefreshListState extends State<BracuRefreshList> {
   }
 }
 
-class BracuRefreshListBuilder extends StatefulWidget {
-  const BracuRefreshListBuilder({
+class AppRefreshListBuilder extends StatefulWidget {
+  const AppRefreshListBuilder({
     super.key,
     required this.onRefresh,
     required this.itemCount,
@@ -121,11 +122,10 @@ class BracuRefreshListBuilder extends StatefulWidget {
   final EdgeInsets padding;
 
   @override
-  State<BracuRefreshListBuilder> createState() =>
-      _BracuRefreshListBuilderState();
+  State<AppRefreshListBuilder> createState() => _AppRefreshListBuilderState();
 }
 
-class _BracuRefreshListBuilderState extends State<BracuRefreshListBuilder> {
+class _AppRefreshListBuilderState extends State<AppRefreshListBuilder> {
   ScrollController? _internalController;
 
   ScrollController get _controller => widget.controller ?? _internalController!;
@@ -137,7 +137,7 @@ class _BracuRefreshListBuilderState extends State<BracuRefreshListBuilder> {
   }
 
   @override
-  void didUpdateWidget(covariant BracuRefreshListBuilder oldWidget) {
+  void didUpdateWidget(covariant AppRefreshListBuilder oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.controller == widget.controller) return;
     if (oldWidget.controller == null && widget.controller != null) {
@@ -169,8 +169,8 @@ class _BracuRefreshListBuilderState extends State<BracuRefreshListBuilder> {
   }
 }
 
-class BracuRefreshPlaceholder extends StatelessWidget {
-  const BracuRefreshPlaceholder({
+class AppRefreshPlaceholder extends StatelessWidget {
+  const AppRefreshPlaceholder({
     super.key,
     required this.onRefresh,
     required this.child,
@@ -183,7 +183,7 @@ class BracuRefreshPlaceholder extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return BracuRefreshList(
+    return AppRefreshList(
       onRefresh: onRefresh,
       children: [Gap(topSpacing), child],
     );
@@ -195,10 +195,10 @@ Widget buildRefreshLoadingState({
   String label = '',
   double topSpacing = 160,
 }) {
-  return BracuRefreshPlaceholder(
+  return AppRefreshPlaceholder(
     onRefresh: onRefresh,
     topSpacing: topSpacing,
-    child: const BracuLoading(),
+    child: const AppLoading(),
   );
 }
 
@@ -207,10 +207,10 @@ Widget buildRefreshErrorState({
   required Object? error,
   double topSpacing = 160,
 }) {
-  return BracuRefreshPlaceholder(
+  return AppRefreshPlaceholder(
     onRefresh: onRefresh,
     topSpacing: topSpacing,
-    child: BracuEmptyState(message: 'Error: $error'),
+    child: AppEmptyState(message: 'Error: $error'),
   );
 }
 
@@ -219,15 +219,15 @@ Widget buildRefreshEmptyState({
   required String message,
   double topSpacing = 160,
 }) {
-  return BracuRefreshPlaceholder(
+  return AppRefreshPlaceholder(
     onRefresh: onRefresh,
     topSpacing: topSpacing,
-    child: BracuEmptyState(message: message),
+    child: AppEmptyState(message: message),
   );
 }
 
-class BracuRefreshScroll extends StatefulWidget {
-  const BracuRefreshScroll({
+class AppRefreshScroll extends StatefulWidget {
+  const AppRefreshScroll({
     super.key,
     required this.onRefresh,
     required this.child,
@@ -241,10 +241,10 @@ class BracuRefreshScroll extends StatefulWidget {
   final ScrollController? controller;
 
   @override
-  State<BracuRefreshScroll> createState() => _BracuRefreshScrollState();
+  State<AppRefreshScroll> createState() => _AppRefreshScrollState();
 }
 
-class _BracuRefreshScrollState extends State<BracuRefreshScroll> {
+class _AppRefreshScrollState extends State<AppRefreshScroll> {
   ScrollController? _controller;
 
   ScrollController get _effectiveController =>

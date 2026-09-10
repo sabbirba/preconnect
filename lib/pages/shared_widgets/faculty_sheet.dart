@@ -32,6 +32,20 @@ Future<void> showBracuFacultyScheduleSheet(
   String? staffName,
   required List<FacultyScheduleItem> items,
   bool isRamadan = false,
+}) => showFacultyScheduleSheet(
+  context,
+  facultyInitial: facultyInitial,
+  staffName: staffName,
+  items: items,
+  isRamadan: isRamadan,
+);
+
+Future<void> showFacultyScheduleSheet(
+  BuildContext context, {
+  required String facultyInitial,
+  String? staffName,
+  required List<FacultyScheduleItem> items,
+  bool isRamadan = false,
 }) async {
   if (facultyInitial.trim().isEmpty) return;
 
@@ -60,7 +74,7 @@ Future<void> showBracuFacultyScheduleSheet(
       ? '${staffName.trim()} (${facultyInitial.trim().toUpperCase()})'
       : facultyInitial.trim().toUpperCase();
 
-  await showBracuBottomSheet<void>(
+  await showAppBottomSheet<void>(
     context,
     title: displayTitle,
     subtitle: 'Faculty Schedule',

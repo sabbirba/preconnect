@@ -1073,9 +1073,6 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
       context,
       campusMapFuture: _campusMapFuture!,
       transportScheduleUrlFuture: _transportScheduleUrlFuture!,
-      showContacts: true,
-      showCallAction: true,
-      collapsedVisibleCount: 5,
     );
   }
 

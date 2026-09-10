@@ -195,7 +195,6 @@ class _BracuPermissionBottomSheetContentState
     extends State<_BracuPermissionBottomSheetContent>
     with WidgetsBindingObserver {
   late Map<Permission, PermissionStatus> _statuses;
-  late Map<Permission, bool> _services;
 
   @override
   void initState() {
@@ -205,7 +204,6 @@ class _BracuPermissionBottomSheetContentState
       for (final req in widget.requirements)
         req.permission: PermissionStatus.denied,
     };
-    _services = {for (final req in widget.requirements) req.permission: true};
     _updateStatuses();
   }
 
@@ -224,47 +222,21 @@ class _BracuPermissionBottomSheetContentState
 
   Future<void> _updateStatuses() async {
     final updatedStatuses = <Permission, PermissionStatus>{};
-    final updatedServices = <Permission, bool>{};
 
     for (final req in widget.requirements) {
       final status = await req.permission.status;
       updatedStatuses[req.permission] = status;
-
-      const serviceOn = true;
-      updatedServices[req.permission] = serviceOn;
     }
 
     if (mounted) {
       setState(() {
         _statuses = updatedStatuses;
-        _services = updatedServices;
       });
-      _checkCompletion();
-    }
-  }
-
-  void _checkCompletion() {
-    final allGranted = widget.requirements
-        .where((req) => !req.isOptional)
-        .every((req) {
-          final s = _statuses[req.permission];
-          final serviceOn = _services[req.permission] ?? true;
-          return s != null && (s.isGranted || s.isLimited) && serviceOn;
-        });
-
-    if (allGranted) {
-      Navigator.of(context).maybePop();
     }
   }
 
   Future<void> _grantPermission(PermissionRequirement req) async {
     final status = _statuses[req.permission] ?? PermissionStatus.denied;
-    final isGranted = status.isGranted || status.isLimited;
-    final serviceOn = _services[req.permission] ?? true;
-
-    if (isGranted && !serviceOn) {
-      return;
-    }
 
     if (status.isPermanentlyDenied) {
       await openAppSettings();
@@ -289,24 +261,31 @@ class _BracuPermissionBottomSheetContentState
       controller: scrollController,
       physics: const ClampingScrollPhysics(),
       padding: const EdgeInsets.only(bottom: 24, top: 8),
-      itemCount: widget.requirements.length,
+      itemCount: widget.requirements.length + 1,
       separatorBuilder: (context, index) => const Gap(12),
       itemBuilder: (context, index) {
+        if (index == widget.requirements.length) {
+          return Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: BracuActionButton(
+              label: 'Continue',
+              onPressed: () => Navigator.of(context).maybePop(),
+            ),
+          );
+        }
         final req = widget.requirements[index];
         final status = _statuses[req.permission] ?? PermissionStatus.denied;
         final isGranted = status.isGranted || status.isLimited;
-        final serviceOn = _services[req.permission] ?? true;
-        final isCompleted = isGranted && serviceOn;
 
         return Container(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
           decoration: BoxDecoration(
-            color: isCompleted
+            color: isGranted
                 ? BracuPalette.primary.withValues(alpha: 0.08)
                 : textSecondary.withValues(alpha: 0.04),
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
-              color: isCompleted
+              color: isGranted
                   ? BracuPalette.primary.withValues(alpha: 0.16)
                   : Colors.transparent,
               width: 0.8,
@@ -317,7 +296,7 @@ class _BracuPermissionBottomSheetContentState
             children: [
               Icon(
                 req.icon,
-                color: isCompleted ? BracuPalette.primary : textSecondary,
+                color: isGranted ? BracuPalette.primary : textSecondary,
                 size: 32,
               ),
               const Gap(12),
@@ -342,16 +321,14 @@ class _BracuPermissionBottomSheetContentState
                 ),
               ),
               const Gap(8),
-              isCompleted
+              isGranted
                   ? const Icon(
                       Icons.check_circle_rounded,
                       color: BracuPalette.primary,
                       size: 20,
                     )
                   : BracuActionButton(
-                      label: !isGranted
-                          ? (status.isPermanentlyDenied ? 'Settings' : 'Grant')
-                          : 'Turn On',
+                      label: status.isPermanentlyDenied ? 'Settings' : 'Grant',
                       outlined: true,
                       padding: const EdgeInsets.symmetric(
                         horizontal: 12,

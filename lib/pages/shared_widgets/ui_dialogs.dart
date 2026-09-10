@@ -1,6 +1,6 @@
 part of 'package:preconnect/pages/ui_kit.dart';
 
-Future<T?> showBracuBottomSheet<T>(
+Future<T?> showAppBottomSheet<T>(
   BuildContext context, {
   required String title,
   ValueListenable<String>? liveTitle,
@@ -16,7 +16,7 @@ Future<T?> showBracuBottomSheet<T>(
   )
   builder,
 }) {
-  return showBracuCustomBottomSheet<T>(
+  return showAppCustomBottomSheet<T>(
     context: context,
     backgroundColor: BracuPalette.card(context),
     clipBehavior: Clip.antiAlias,
@@ -139,7 +139,7 @@ Future<T?> showBracuBottomSheet<T>(
   );
 }
 
-Future<T?> showBracuCustomBottomSheet<T>({
+Future<T?> showAppCustomBottomSheet<T>({
   required BuildContext context,
   required WidgetBuilder builder,
   Color? backgroundColor,
@@ -259,7 +259,7 @@ class _BottomSheetControllerScope extends InheritedWidget {
   }
 }
 
-Future<bool> showBracuConfirmationWithActionDialog(
+Future<bool> showAppConfirmationWithActionDialog(
   BuildContext context, {
   required IconData icon,
   required String title,
@@ -273,7 +273,7 @@ Future<bool> showBracuConfirmationWithActionDialog(
     context: context,
     barrierColor: Colors.black.withValues(alpha: 0.25),
     barrierDismissible: false,
-    builder: (dialogContext) => _BracuConfirmationActionDialog(
+    builder: (dialogContext) => _AppConfirmationActionDialog(
       icon: icon,
       title: title,
       message: message,
@@ -286,8 +286,8 @@ Future<bool> showBracuConfirmationWithActionDialog(
   return result == true;
 }
 
-class _BracuConfirmationActionDialog extends StatefulWidget {
-  const _BracuConfirmationActionDialog({
+class _AppConfirmationActionDialog extends StatefulWidget {
+  const _AppConfirmationActionDialog({
     required this.icon,
     required this.title,
     required this.message,
@@ -306,12 +306,12 @@ class _BracuConfirmationActionDialog extends StatefulWidget {
   final Future<void> Function() onConfirm;
 
   @override
-  State<_BracuConfirmationActionDialog> createState() =>
-      _BracuConfirmationActionDialogState();
+  State<_AppConfirmationActionDialog> createState() =>
+      _AppConfirmationActionDialogState();
 }
 
-class _BracuConfirmationActionDialogState
-    extends State<_BracuConfirmationActionDialog> {
+class _AppConfirmationActionDialogState
+    extends State<_AppConfirmationActionDialog> {
   bool _isLoading = false;
   static const Duration _minLoadingDuration = Duration(milliseconds: 300);
 
@@ -424,14 +424,14 @@ class _BracuConfirmationActionDialogState
   }
 }
 
-Future<T?> showBracuSelectSheet<T>(
+Future<T?> showAppSelectSheet<T>(
   BuildContext context, {
   required String title,
   String? subtitle,
-  required List<BracuSelectOption<T>> options,
+  required List<AppSelectOption<T>> options,
   T? selectedValue,
 }) {
-  return showBracuBottomSheet<T>(
+  return showAppBottomSheet<T>(
     context,
     title: title,
     subtitle: subtitle,
@@ -541,11 +541,11 @@ Future<T?> showBracuSelectSheet<T>(
   );
 }
 
-Future<T?> showBracuSelectDropdown<T>(
+Future<T?> showAppSelectDropdown<T>(
   BuildContext context, {
   String? title,
   String? subtitle,
-  required List<BracuSelectOption<T>> options,
+  required List<AppSelectOption<T>> options,
   T? selectedValue,
   double optionFontSize = 14,
   EdgeInsetsGeometry optionPadding = const EdgeInsets.symmetric(
@@ -556,7 +556,7 @@ Future<T?> showBracuSelectDropdown<T>(
   final renderBox = context.findRenderObject() as RenderBox?;
   final overlay = Overlay.of(context).context.findRenderObject() as RenderBox?;
   if (renderBox == null || overlay == null) {
-    return showBracuSelectSheet<T>(
+    return showAppSelectSheet<T>(
       context,
       title: title ?? 'Select Option',
       subtitle: subtitle,
@@ -699,7 +699,7 @@ Future<T?> showBracuSelectDropdown<T>(
   );
 }
 
-Future<DateTime?> showBracuDatePicker(
+Future<DateTime?> showAppDatePicker(
   BuildContext context, {
   required DateTime initialDate,
   required DateTime firstDate,
@@ -709,7 +709,7 @@ Future<DateTime?> showBracuDatePicker(
   final today = DateTime(now.year, now.month, now.day);
   final dates = List.generate(10, (index) => today.add(Duration(days: index)));
 
-  return await showBracuBottomSheet<DateTime>(
+  return await showAppBottomSheet<DateTime>(
     context,
     title: 'Select Date',
     initialChildSize: 0.60,
@@ -756,11 +756,11 @@ Future<DateTime?> showBracuDatePicker(
   );
 }
 
-Future<TimeOfDay?> showBracuTimePicker(
+Future<TimeOfDay?> showAppTimePicker(
   BuildContext context, {
   required TimeOfDay initialTime,
 }) async {
-  return await showBracuBottomSheet<TimeOfDay>(
+  return await showAppBottomSheet<TimeOfDay>(
     context,
     title: 'Select Time',
     initialChildSize: 0.55,
@@ -966,7 +966,7 @@ class _BracuTimePickerSheetState extends State<_BracuTimePickerSheet> {
   }
 }
 
-void showBracuLoadingDialog(BuildContext context) {
+void showAppLoadingDialog(BuildContext context) {
   showDialog<void>(
     context: context,
     barrierDismissible: false,
@@ -981,7 +981,7 @@ void showBracuLoadingDialog(BuildContext context) {
           padding: EdgeInsets.all(24),
           child: Column(
             mainAxisSize: MainAxisSize.min,
-            children: [BracuLoading()],
+            children: [AppLoading()],
           ),
         ),
       ),

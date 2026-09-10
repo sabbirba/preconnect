@@ -1,6 +1,6 @@
 part of 'package:preconnect/pages/ui_kit.dart';
 
-class BracuPalette {
+class AppPalette {
   static const Color bgTopLight = Colors.white;
   static const Color bgBottomLight = Colors.white;
   static const Color primary = Color(0xFF1E6BE3);
@@ -43,8 +43,8 @@ class BracuPalette {
   }
 }
 
-class BracuPageScaffold extends StatefulWidget {
-  const BracuPageScaffold({
+class AppPageScaffold extends StatefulWidget {
+  const AppPageScaffold({
     super.key,
     required this.title,
     required this.subtitle,
@@ -70,10 +70,10 @@ class BracuPageScaffold extends StatefulWidget {
   final Color? subtitleColor;
 
   @override
-  State<BracuPageScaffold> createState() => _BracuPageScaffoldState();
+  State<AppPageScaffold> createState() => _AppPageScaffoldState();
 }
 
-class _BracuPageScaffoldState extends State<BracuPageScaffold> {
+class _AppPageScaffoldState extends State<AppPageScaffold> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -272,8 +272,8 @@ class _PageHeader extends StatelessWidget {
   }
 }
 
-class BracuGlassContainer extends StatelessWidget {
-  const BracuGlassContainer({
+class AppGlassContainer extends StatelessWidget {
+  const AppGlassContainer({
     super.key,
     required this.child,
     this.padding,
@@ -345,8 +345,8 @@ class BracuGlassContainer extends StatelessWidget {
   }
 }
 
-class BracuGlassCard extends StatelessWidget {
-  const BracuGlassCard({
+class AppGlassCard extends StatelessWidget {
+  const AppGlassCard({
     super.key,
     required this.child,
     this.padding = const EdgeInsets.all(14),
@@ -371,7 +371,7 @@ class BracuGlassCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return BracuGlassContainer(
+    return AppGlassContainer(
       padding: padding,
       margin: margin,
       borderRadius: borderRadius ?? BorderRadius.circular(18),
@@ -385,8 +385,8 @@ class BracuGlassCard extends StatelessWidget {
   }
 }
 
-class BracuCard extends StatelessWidget {
-  const BracuCard({
+class AppCard extends StatelessWidget {
+  const AppCard({
     super.key,
     required this.child,
     this.isHighlighted = false,
@@ -425,8 +425,8 @@ class BracuCard extends StatelessWidget {
   }
 }
 
-class BracuSectionTitle extends StatelessWidget {
-  const BracuSectionTitle({super.key, required this.title});
+class AppSectionTitle extends StatelessWidget {
+  const AppSectionTitle({super.key, required this.title});
 
   final String title;
 
@@ -443,8 +443,8 @@ class BracuSectionTitle extends StatelessWidget {
   }
 }
 
-class BracuLoading extends StatelessWidget {
-  const BracuLoading({super.key, this.itemCount = 3, this.compact});
+class AppLoading extends StatelessWidget {
+  const AppLoading({super.key, this.itemCount = 3, this.compact});
 
   final int itemCount;
   final bool? compact;
@@ -454,14 +454,14 @@ class BracuLoading extends StatelessWidget {
     return const Center(
       child: Padding(
         padding: EdgeInsets.symmetric(vertical: 36),
-        child: BracuSpinner(size: 28, strokeWidth: 2.6),
+        child: AppSpinner(size: 28, strokeWidth: 2.6),
       ),
     );
   }
 }
 
-class BracuSkeletonList extends StatelessWidget {
-  const BracuSkeletonList({
+class AppSkeletonList extends StatelessWidget {
+  const AppSkeletonList({
     super.key,
     this.itemCount = 3,
     this.compact = false,
@@ -480,8 +480,8 @@ class BracuSkeletonList extends StatelessWidget {
   }
 }
 
-class BracuSkeletonGrid extends StatelessWidget {
-  const BracuSkeletonGrid({
+class AppSkeletonGrid extends StatelessWidget {
+  const AppSkeletonGrid({
     super.key,
     this.itemCount = 6,
     this.crossAxisCount = 3,
@@ -500,8 +500,8 @@ class BracuSkeletonGrid extends StatelessWidget {
   }
 }
 
-class BracuMetricGridData {
-  const BracuMetricGridData({
+class AppMetricGridData {
+  const AppMetricGridData({
     required this.icon,
     required this.title,
     required this.value,
@@ -512,10 +512,10 @@ class BracuMetricGridData {
   final String value;
 }
 
-class BracuMetricGrid extends StatelessWidget {
-  const BracuMetricGrid({super.key, required this.items});
+class AppMetricGrid extends StatelessWidget {
+  const AppMetricGrid({super.key, required this.items});
 
-  final List<BracuMetricGridData> items;
+  final List<AppMetricGridData> items;
 
   @override
   Widget build(BuildContext context) {
@@ -524,17 +524,17 @@ class BracuMetricGrid extends StatelessWidget {
     return Row(
       children: [
         for (var index = 0; index < count; index++) ...[
-          Expanded(child: _BracuMetricTile(data: items[index])),
+          Expanded(child: _AppMetricTile(data: items[index])),
         ],
       ],
     );
   }
 }
 
-class _BracuMetricTile extends StatelessWidget {
-  const _BracuMetricTile({required this.data});
+class _AppMetricTile extends StatelessWidget {
+  const _AppMetricTile({required this.data});
 
-  final BracuMetricGridData data;
+  final AppMetricGridData data;
 
   @override
   Widget build(BuildContext context) {
@@ -581,8 +581,8 @@ class _BracuMetricTile extends StatelessWidget {
   }
 }
 
-class BracuEmptyState extends StatelessWidget {
-  const BracuEmptyState({
+class AppEmptyState extends StatelessWidget {
+  const AppEmptyState({
     super.key,
     required this.message,
     this.icon = Icons.info_outline_rounded,
@@ -818,8 +818,8 @@ class _LogoEmblemPainter extends CustomPainter {
   }
 }
 
-class BracuBackScope extends InheritedWidget {
-  const BracuBackScope({
+class AppBackScope extends InheritedWidget {
+  const AppBackScope({
     super.key,
     required this.canGoBack,
     required this.onBack,
@@ -829,12 +829,12 @@ class BracuBackScope extends InheritedWidget {
   final bool canGoBack;
   final VoidCallback onBack;
 
-  static BracuBackScope? maybeOf(BuildContext context) {
-    return context.dependOnInheritedWidgetOfExactType<BracuBackScope>();
+  static AppBackScope? maybeOf(BuildContext context) {
+    return context.dependOnInheritedWidgetOfExactType<AppBackScope>();
   }
 
   @override
-  bool updateShouldNotify(BracuBackScope oldWidget) {
+  bool updateShouldNotify(AppBackScope oldWidget) {
     return canGoBack != oldWidget.canGoBack;
   }
 }
@@ -909,19 +909,19 @@ class SectionBadge extends StatelessWidget {
   }
 }
 
-class BracuTodayScheduleStatus {
-  const BracuTodayScheduleStatus({
+class AppTodayScheduleStatus {
+  const AppTodayScheduleStatus({
     required this.badge,
     required this.title,
     required this.subtitle,
   });
 
-  const BracuTodayScheduleStatus.noClasses()
+  const AppTodayScheduleStatus.noClasses()
     : badge = '--',
       title = 'No Classes Today',
       subtitle = 'Enjoy your day off.';
 
-  factory BracuTodayScheduleStatus.resolve({
+  factory AppTodayScheduleStatus.resolve({
     required HolidayStatus holidayStatus,
     String? overrideTitle,
     String? overrideSubtitle,
@@ -929,20 +929,20 @@ class BracuTodayScheduleStatus {
     String fallbackSubtitle = 'Enjoy your day off.',
   }) {
     if (overrideTitle != null || overrideSubtitle != null) {
-      return BracuTodayScheduleStatus(
+      return AppTodayScheduleStatus(
         badge: '--',
         title: overrideTitle ?? 'No Classes Today',
         subtitle: overrideSubtitle ?? fallbackSubtitle,
       );
     }
     if (holidayStatus.isTodayHoliday) {
-      return BracuTodayScheduleStatus(
+      return AppTodayScheduleStatus(
         badge: 'OFF',
         title: 'National holiday',
         subtitle: holidayStatus.displayNames,
       );
     }
-    return BracuTodayScheduleStatus(
+    return AppTodayScheduleStatus(
       badge: '--',
       title: fallbackTitle,
       subtitle: fallbackSubtitle,
@@ -954,8 +954,8 @@ class BracuTodayScheduleStatus {
   final String subtitle;
 }
 
-class BracuScheduleTile extends StatelessWidget {
-  const BracuScheduleTile({
+class AppScheduleTile extends StatelessWidget {
+  const AppScheduleTile({
     super.key,
     required this.title,
     required this.subtitle,
@@ -978,7 +978,7 @@ class BracuScheduleTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final textSecondary = BracuPalette.textSecondary(context);
     final textPrimary = BracuPalette.textPrimary(context);
-    return BracuCard(
+    return AppCard(
       isHighlighted: isHighlighted,
       highlightColor: BracuPalette.primary,
       child: LayoutBuilder(
