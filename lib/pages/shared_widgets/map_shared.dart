@@ -32,34 +32,173 @@ String normalizeCampusPhoneValue(String raw) {
   return value;
 }
 
+class CampusProfile {
+  const CampusProfile({
+    this.landAreaAcres,
+    this.buildingAreaSqft,
+    this.buildingFloors,
+    this.basements,
+    this.studentCapacityMin,
+    this.studentCapacityMax,
+  });
+
+  final num? landAreaAcres;
+  final int? buildingAreaSqft;
+  final int? buildingFloors;
+  final int? basements;
+  final int? studentCapacityMin;
+  final int? studentCapacityMax;
+
+  bool get hasData =>
+      landAreaAcres != null ||
+      buildingAreaSqft != null ||
+      buildingFloors != null ||
+      basements != null ||
+      studentCapacityMin != null ||
+      studentCapacityMax != null;
+
+  factory CampusProfile.fromJson(Map<dynamic, dynamic> json) {
+    num? parseNum(dynamic v) {
+      if (v is num) return v;
+      if (v == null) return null;
+      return num.tryParse('$v'.replaceAll(',', '').trim());
+    }
+
+    int? parseInt(dynamic v) {
+      if (v is int) return v;
+      if (v is num) return v.toInt();
+      if (v == null) return null;
+      return int.tryParse('$v'.replaceAll(',', '').trim());
+    }
+
+    final cap = json['student_capacity'];
+    final capMap = cap is Map ? cap : null;
+
+    return CampusProfile(
+      landAreaAcres: parseNum(json['land_area_acres']),
+      buildingAreaSqft: parseInt(json['building_area_sqft']),
+      buildingFloors: parseInt(json['building_floors']),
+      basements: parseInt(json['basements']),
+      studentCapacityMin: parseInt(
+        capMap?['min'] ?? json['student_capacity_min'],
+      ),
+      studentCapacityMax: parseInt(
+        capMap?['max'] ?? json['student_capacity_max'],
+      ),
+    );
+  }
+}
+
+class CampusFacilities {
+  const CampusFacilities({
+    this.classrooms,
+    this.lectureTheatres,
+    this.laboratories,
+    this.libraryBooks,
+    this.libraryHasArVr = false,
+  });
+
+  final int? classrooms;
+  final int? lectureTheatres;
+  final int? laboratories;
+  final int? libraryBooks;
+  final bool libraryHasArVr;
+
+  bool get hasData =>
+      classrooms != null ||
+      lectureTheatres != null ||
+      laboratories != null ||
+      libraryBooks != null ||
+      libraryHasArVr;
+
+  factory CampusFacilities.fromJson(Map<dynamic, dynamic> json) {
+    int? parseInt(dynamic v) {
+      if (v is int) return v;
+      if (v is num) return v.toInt();
+      if (v == null) return null;
+      return int.tryParse('$v'.replaceAll(',', '').trim());
+    }
+
+    return CampusFacilities(
+      classrooms: parseInt(json['classrooms']),
+      lectureTheatres: parseInt(json['lecture_theatres']),
+      laboratories: parseInt(json['laboratories']),
+      libraryBooks: parseInt(json['library_books']),
+      libraryHasArVr: json['library_has_ar_vr'] == true,
+    );
+  }
+}
+
+class CampusSustainability {
+  const CampusSustainability({
+    this.rainwaterWaterDemandPercent,
+    this.solarEnergyDemandPercent,
+  });
+
+  final num? rainwaterWaterDemandPercent;
+  final num? solarEnergyDemandPercent;
+
+  bool get hasData =>
+      rainwaterWaterDemandPercent != null || solarEnergyDemandPercent != null;
+
+  factory CampusSustainability.fromJson(Map<dynamic, dynamic> json) {
+    num? parseNum(dynamic v) {
+      if (v is num) return v;
+      if (v == null) return null;
+      return num.tryParse('$v'.replaceAll(',', '').trim());
+    }
+
+    return CampusSustainability(
+      rainwaterWaterDemandPercent: parseNum(
+        json['rainwater_water_demand_percent'],
+      ),
+      solarEnergyDemandPercent: parseNum(json['solar_energy_demand_percent']),
+    );
+  }
+}
+
 class CampusMapData {
   const CampusMapData({
     required this.campusName,
     required this.address,
+    required this.summary,
     required this.mapImageUrl,
     required this.googleMapsUrl,
     required this.sourceUrl,
     required this.transportScheduleUrl,
     required this.images,
     required this.highlights,
+    required this.nearbyAreas,
+    required this.profile,
+    required this.facilities,
+    required this.sustainability,
     required this.primaryEmail,
     required this.primaryPhone,
     required this.primaryPhoneRaw,
+    required this.allEmails,
+    required this.allPhones,
     required this.offices,
     required this.emergencyContacts,
   });
 
   final String campusName;
   final String address;
+  final String summary;
   final String mapImageUrl;
   final String googleMapsUrl;
   final String sourceUrl;
   final String transportScheduleUrl;
   final List<String> images;
   final List<String> highlights;
+  final List<String> nearbyAreas;
+  final CampusProfile? profile;
+  final CampusFacilities? facilities;
+  final CampusSustainability? sustainability;
   final String primaryEmail;
   final String primaryPhone;
   final String primaryPhoneRaw;
+  final List<String> allEmails;
+  final List<String> allPhones;
   final List<CampusOfficeContact> offices;
   final List<CampusEmergencyContact> emergencyContacts;
 
@@ -74,8 +213,8 @@ class CampusMapData {
         ? officeRows
               .whereType<Map>()
               .map((item) => CampusOfficeContact.fromJson(item))
-              .toList(growable: false)
-        : const <CampusOfficeContact>[];
+              .toList(growable: true)
+        : <CampusOfficeContact>[];
     final emergencies = emergencyRows is List
         ? emergencyRows
               .whereType<Map>()
@@ -90,6 +229,30 @@ class CampusMapData {
               .where((item) => item.isNotEmpty)
               .toList(growable: false)
         : const <String>[];
+
+    final nearbyRaw = json['nearby_areas'];
+    final nearbyAreas = nearbyRaw is List
+        ? nearbyRaw
+              .map((item) => '$item'.trim())
+              .where((item) => item.isNotEmpty)
+              .toList(growable: false)
+        : const <String>[];
+
+    final profileRaw = json['campus_profile'] ?? json['profile'];
+    final profile = profileRaw is Map
+        ? CampusProfile.fromJson(profileRaw)
+        : null;
+
+    final facilitiesRaw = json['learning_facilities'] ?? json['facilities'];
+    final facilities = facilitiesRaw is Map
+        ? CampusFacilities.fromJson(facilitiesRaw)
+        : null;
+
+    final sustainRaw = json['sustainability'];
+    final sustainability = sustainRaw is Map
+        ? CampusSustainability.fromJson(sustainRaw)
+        : null;
+
     final imagesRaw = json['images'];
     var images = imagesRaw is List
         ? imagesRaw
@@ -141,6 +304,23 @@ class CampusMapData {
       return '';
     }
 
+    final rawAllEmails = contactMap?['emails'];
+    final allEmails = rawAllEmails is List
+        ? rawAllEmails
+              .map((item) => '$item'.trim())
+              .where((item) => item.isNotEmpty)
+              .toSet()
+              .toList(growable: false)
+        : const <String>[];
+
+    final rawAllPhones = contactMap?['phones'];
+    final allPhones = rawAllPhones is List
+        ? rawAllPhones
+              .map((item) => '$item'.trim())
+              .where((item) => item.isNotEmpty)
+              .toList(growable: false)
+        : const <String>[];
+
     final primaryEmail = '${contactMap?['email'] ?? ''}'.trim().isNotEmpty
         ? '${contactMap?['email'] ?? ''}'.trim()
         : firstValueFromList(contactMap?['emails']);
@@ -153,9 +333,30 @@ class CampusMapData {
         ? primaryPhoneFromList
         : normalizeCampusPhoneValue('${contactMap?['telephone'] ?? ''}');
 
+    final existingOfficeEmails = offices.expand((o) => o.emails).toSet();
+    final emergencyEmails = emergencies
+        .map((e) => e.email)
+        .where((e) => e.isNotEmpty)
+        .toSet();
+    final unassignedEmails = allEmails
+        .where(
+          (e) =>
+              !existingOfficeEmails.contains(e) && !emergencyEmails.contains(e),
+        )
+        .toList(growable: false);
+    if (unassignedEmails.isNotEmpty) {
+      offices.add(
+        CampusOfficeContact(
+          office: 'Other Inquiries',
+          emails: unassignedEmails,
+        ),
+      );
+    }
+
     return CampusMapData(
       campusName: '${json['campus_name'] ?? ''}'.trim(),
       address: '${json['address'] ?? ''}'.trim(),
+      summary: '${json['summary'] ?? ''}'.trim(),
       mapImageUrl:
           normalizeImageUrl(
             '${json['map_image_url'] ?? ''}',
@@ -169,9 +370,15 @@ class CampusMapData {
           : '${transportMap?['schedule_url'] ?? ''}'.trim(),
       images: images,
       highlights: highlights,
+      nearbyAreas: nearbyAreas,
+      profile: profile,
+      facilities: facilities,
+      sustainability: sustainability,
       primaryEmail: primaryEmail,
       primaryPhone: primaryPhone,
       primaryPhoneRaw: primaryPhoneRaw,
+      allEmails: allEmails,
+      allPhones: allPhones,
       offices: offices,
       emergencyContacts: emergencies,
     );
@@ -203,11 +410,15 @@ class CampusEmergencyContact {
     required this.name,
     required this.services,
     required this.phones,
+    this.email = '',
+    this.hours = '',
   });
 
   final String name;
   final String services;
   final List<String> phones;
+  final String email;
+  final String hours;
 
   factory CampusEmergencyContact.fromJson(Map<dynamic, dynamic> json) {
     final rawPhones = json['phones'];
@@ -220,6 +431,8 @@ class CampusEmergencyContact {
                 .where((item) => item.isNotEmpty)
                 .toList(growable: false)
           : const <String>[],
+      email: '${json['email'] ?? ''}'.trim(),
+      hours: '${json['hours'] ?? ''}'.trim(),
     );
   }
 }
@@ -365,6 +578,46 @@ Future<void> showCampusMapBottomSheet(
             );
           }
 
+          Widget statChip({
+            required IconData icon,
+            required String label,
+            required String value,
+          }) {
+            return Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              decoration: BoxDecoration(
+                color: BracuPalette.card(sheetContext).withValues(alpha: 0.6),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                  color: textSecondary.withValues(alpha: 0.12),
+                ),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(icon, size: 16, color: BracuPalette.primary),
+                  const Gap(6),
+                  Text(
+                    '$label: ',
+                    style: TextStyle(
+                      color: textSecondary,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  Text(
+                    value,
+                    style: TextStyle(
+                      color: textPrimary,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }
+
           final resolvedTransportUrl =
               transportScheduleUrl != null &&
                   transportScheduleUrl.trim().isNotEmpty
@@ -476,6 +729,172 @@ Future<void> showCampusMapBottomSheet(
                   );
                 },
               ),
+              if (mapData.summary.isNotEmpty) ...[
+                sectionTitle('About Campus'),
+                minimalBlock(
+                  child: Text(
+                    mapData.summary,
+                    style: TextStyle(
+                      color: textSecondary,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                      height: 1.45,
+                    ),
+                  ),
+                ),
+              ],
+              if (mapData.profile != null && mapData.profile!.hasData) ...[
+                sectionTitle('Campus Profile'),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    if (mapData.profile!.landAreaAcres != null)
+                      statChip(
+                        icon: Icons.landscape_rounded,
+                        label: 'Land Area',
+                        value: '${mapData.profile!.landAreaAcres} Acres',
+                      ),
+                    if (mapData.profile!.buildingAreaSqft != null)
+                      statChip(
+                        icon: Icons.apartment_rounded,
+                        label: 'Building Area',
+                        value: '${mapData.profile!.buildingAreaSqft} sq ft',
+                      ),
+                    if (mapData.profile!.buildingFloors != null)
+                      statChip(
+                        icon: Icons.layers_rounded,
+                        label: 'Floors',
+                        value: '${mapData.profile!.buildingFloors} Stories',
+                      ),
+                    if (mapData.profile!.basements != null)
+                      statChip(
+                        icon: Icons.foundation_rounded,
+                        label: 'Basements',
+                        value: '${mapData.profile!.basements}',
+                      ),
+                    if (mapData.profile!.studentCapacityMin != null &&
+                        mapData.profile!.studentCapacityMax != null)
+                      statChip(
+                        icon: Icons.groups_rounded,
+                        label: 'Capacity',
+                        value:
+                            '${mapData.profile!.studentCapacityMin} - ${mapData.profile!.studentCapacityMax} Students',
+                      ),
+                  ],
+                ),
+              ],
+              if (mapData.facilities != null &&
+                  mapData.facilities!.hasData) ...[
+                sectionTitle('Learning Facilities'),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    if (mapData.facilities!.classrooms != null)
+                      statChip(
+                        icon: Icons.school_rounded,
+                        label: 'Classrooms',
+                        value: '${mapData.facilities!.classrooms}',
+                      ),
+                    if (mapData.facilities!.lectureTheatres != null)
+                      statChip(
+                        icon: Icons.theater_comedy_rounded,
+                        label: 'Lecture Theatres',
+                        value: '${mapData.facilities!.lectureTheatres}',
+                      ),
+                    if (mapData.facilities!.laboratories != null)
+                      statChip(
+                        icon: Icons.science_rounded,
+                        label: 'Laboratories',
+                        value: '${mapData.facilities!.laboratories}',
+                      ),
+                    if (mapData.facilities!.libraryBooks != null)
+                      statChip(
+                        icon: Icons.menu_book_rounded,
+                        label: 'Library Books',
+                        value: '${mapData.facilities!.libraryBooks}+',
+                      ),
+                    if (mapData.facilities!.libraryHasArVr)
+                      statChip(
+                        icon: Icons.view_in_ar_rounded,
+                        label: 'AR/VR',
+                        value: 'Supported',
+                      ),
+                  ],
+                ),
+              ],
+              if (mapData.sustainability != null &&
+                  mapData.sustainability!.hasData) ...[
+                sectionTitle('Sustainability'),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    if (mapData.sustainability!.rainwaterWaterDemandPercent !=
+                        null)
+                      statChip(
+                        icon: Icons.water_drop_rounded,
+                        label: 'Rainwater System',
+                        value:
+                            '${mapData.sustainability!.rainwaterWaterDemandPercent}% demand',
+                      ),
+                    if (mapData.sustainability!.solarEnergyDemandPercent !=
+                        null)
+                      statChip(
+                        icon: Icons.solar_power_rounded,
+                        label: 'Solar Energy',
+                        value:
+                            '${mapData.sustainability!.solarEnergyDemandPercent}% demand',
+                      ),
+                  ],
+                ),
+              ],
+              if (mapData.nearbyAreas.isNotEmpty) ...[
+                sectionTitle('Nearby Accessible Areas'),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: mapData.nearbyAreas
+                      .map(
+                        (area) => Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 6,
+                          ),
+                          decoration: BoxDecoration(
+                            color: BracuPalette.card(
+                              sheetContext,
+                            ).withValues(alpha: 0.5),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                              color: textSecondary.withValues(alpha: 0.12),
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.location_on_outlined,
+                                size: 13,
+                                color: BracuPalette.primary,
+                              ),
+                              const Gap(4),
+                              Text(
+                                area,
+                                style: TextStyle(
+                                  color: textPrimary,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      )
+                      .toList(growable: false),
+                ),
+              ],
               if (mapData.images.isNotEmpty) ...[
                 sectionTitle('Campus Gallery'),
                 ImageCarousel(imageUrls: mapData.images, borderRadius: 12),
@@ -531,6 +950,157 @@ Future<void> showCampusMapBottomSheet(
                             onPressed: () {
                               setLocalState(() {
                                 highlightsExpanded = !highlightsExpanded;
+                              });
+                            },
+                          ),
+                      ],
+                    );
+                  },
+                ),
+              ],
+              if (showContacts && mapData.emergencyContacts.isNotEmpty) ...[
+                sectionTitle('Emergency Contacts'),
+                StatefulBuilder(
+                  builder: (context, setLocalState) {
+                    final visibleEmergency = emergencyExpanded
+                        ? mapData.emergencyContacts
+                        : mapData.emergencyContacts
+                              .take(collapsedVisibleCount)
+                              .toList(growable: false);
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        ...visibleEmergency.map((item) {
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 8),
+                            child: minimalBlock(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    item.name,
+                                    style: TextStyle(
+                                      color: textPrimary,
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                  if (item.services.isNotEmpty) ...[
+                                    const Gap(2),
+                                    Text(
+                                      item.services,
+                                      style: TextStyle(
+                                        color: textSecondary,
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ],
+                                  if (item.hours.isNotEmpty) ...[
+                                    const Gap(4),
+                                    Row(
+                                      children: [
+                                        Icon(
+                                          Icons.schedule_rounded,
+                                          size: 13,
+                                          color: textSecondary,
+                                        ),
+                                        const Gap(4),
+                                        Text(
+                                          item.hours,
+                                          style: TextStyle(
+                                            color: textSecondary,
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                  if (item.email.isNotEmpty) ...[
+                                    const Gap(4),
+                                    Row(
+                                      children: [
+                                        Expanded(
+                                          child: Text(
+                                            item.email,
+                                            style: TextStyle(
+                                              color: textSecondary,
+                                              fontSize: 11,
+                                              fontWeight: FontWeight.w500,
+                                            ),
+                                          ),
+                                        ),
+                                        IconButton(
+                                          onPressed: () => openMailComposer(
+                                            sheetContext,
+                                            item.email,
+                                          ),
+                                          icon: const Icon(
+                                            Icons.email_rounded,
+                                            size: 16,
+                                          ),
+                                          tooltip: 'Email',
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                  if (item.phones.isNotEmpty) ...[
+                                    const Gap(4),
+                                    ...item.phones.map(
+                                      (phone) => Row(
+                                        children: [
+                                          Expanded(
+                                            child: Text(
+                                              phone,
+                                              style: TextStyle(
+                                                color: textSecondary,
+                                                fontSize: 11,
+                                                fontWeight: FontWeight.w500,
+                                              ),
+                                            ),
+                                          ),
+                                          IconButton(
+                                            onPressed: () async {
+                                              final normalized =
+                                                  normalizeCampusPhoneValue(
+                                                    phone,
+                                                  );
+                                              if (normalized.isEmpty) return;
+                                              copyToClipboard(
+                                                sheetContext,
+                                                normalized,
+                                              );
+                                              await openPhoneDialer(
+                                                sheetContext,
+                                                normalized,
+                                              );
+                                            },
+                                            icon: const Icon(
+                                              Icons.phone_rounded,
+                                              size: 18,
+                                            ),
+                                            tooltip: 'Call',
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            ),
+                          );
+                        }),
+                        if (mapData.emergencyContacts.length >
+                            collapsedVisibleCount)
+                          buildCenteredOutlinedActionButton(
+                            label: emergencyExpanded
+                                ? 'Show Less'
+                                : 'Show More',
+                            padding: const EdgeInsets.only(top: 2, bottom: 2),
+                            onPressed: () {
+                              setLocalState(() {
+                                emergencyExpanded = !emergencyExpanded;
                               });
                             },
                           ),
@@ -618,118 +1188,6 @@ Future<void> showCampusMapBottomSheet(
                             onPressed: () {
                               setLocalState(() {
                                 officesExpanded = !officesExpanded;
-                              });
-                            },
-                          ),
-                      ],
-                    );
-                  },
-                ),
-              ],
-              if (showContacts && mapData.emergencyContacts.isNotEmpty) ...[
-                sectionTitle('Emergency Contacts'),
-                StatefulBuilder(
-                  builder: (context, setLocalState) {
-                    final visibleEmergency = emergencyExpanded
-                        ? mapData.emergencyContacts
-                        : mapData.emergencyContacts
-                              .take(collapsedVisibleCount)
-                              .toList(growable: false);
-                    return Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        ...visibleEmergency.map((item) {
-                          return Padding(
-                            padding: const EdgeInsets.only(bottom: 8),
-                            child: minimalBlock(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    item.name,
-                                    style: TextStyle(
-                                      color: textPrimary,
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w700,
-                                    ),
-                                  ),
-                                  if (item.services.isNotEmpty) ...[
-                                    const Gap(2),
-                                    Text(
-                                      item.services,
-                                      style: TextStyle(
-                                        color: textSecondary,
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.w500,
-                                      ),
-                                    ),
-                                  ],
-                                  if (item.phones.isNotEmpty) ...[
-                                    const Gap(6),
-                                    ...item.phones.map(
-                                      (phone) => Row(
-                                        children: [
-                                          Expanded(
-                                            child: Text(
-                                              phone,
-                                              style: TextStyle(
-                                                color: textSecondary,
-                                                fontSize: 11,
-                                                fontWeight: FontWeight.w500,
-                                              ),
-                                            ),
-                                          ),
-                                          IconButton(
-                                            onPressed: () async {
-                                              final normalized =
-                                                  normalizeCampusPhoneValue(
-                                                    phone,
-                                                  );
-                                              if (normalized.isEmpty) return;
-                                              copyToClipboard(
-                                                sheetContext,
-                                                normalized,
-                                              );
-                                              await openPhoneDialer(
-                                                sheetContext,
-                                                normalized,
-                                              );
-                                            },
-                                            icon: const Icon(
-                                              Icons.phone_rounded,
-                                              size: 18,
-                                            ),
-                                            tooltip: 'Call',
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ] else ...[
-                                    const Gap(4),
-                                    Text(
-                                      'No phone listed',
-                                      style: TextStyle(
-                                        color: textSecondary,
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.w500,
-                                      ),
-                                    ),
-                                  ],
-                                ],
-                              ),
-                            ),
-                          );
-                        }),
-                        if (mapData.emergencyContacts.length >
-                            collapsedVisibleCount)
-                          buildCenteredOutlinedActionButton(
-                            label: emergencyExpanded
-                                ? 'Show Less'
-                                : 'Show More',
-                            padding: const EdgeInsets.only(top: 2, bottom: 2),
-                            onPressed: () {
-                              setLocalState(() {
-                                emergencyExpanded = !emergencyExpanded;
                               });
                             },
                           ),
