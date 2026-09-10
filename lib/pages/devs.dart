@@ -514,7 +514,7 @@ class _WebsiteButton extends StatelessWidget {
     return ActionBannerCard(
       icon: Icons.launch_rounded,
       title: 'preconnect.app',
-      subtitle: 'Official web companion and service portal',
+      subtitle: 'Web companion and service portal',
       onTap: () => openExternalUrl(
         context,
         kPreConnectWebsiteUrl,

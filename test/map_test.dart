@@ -13,25 +13,6 @@ void main() {
         'images': ['https://example.com/1.jpg', 'https://example.com/2.jpg'],
         'source_url': 'https://example.com',
         'highlights': ['Feature 1', 'Feature 2'],
-        'nearby_areas': ['Rampura', 'Gulshan', 'Banasree'],
-        'campus_profile': {
-          'land_area_acres': 5.0,
-          'building_area_sqft': 1700000,
-          'building_floors': 13,
-          'basements': 3,
-          'student_capacity': {'min': 12000, 'max': 15000},
-        },
-        'learning_facilities': {
-          'classrooms': 123,
-          'lecture_theatres': 5,
-          'laboratories': 105,
-          'library_books': 45000,
-          'library_has_ar_vr': true,
-        },
-        'sustainability': {
-          'rainwater_water_demand_percent': 20,
-          'solar_energy_demand_percent': 25,
-        },
         'contact': {
           'telephone': '+8809638464646',
           'email': 'info@bracu.ac.bd',
@@ -64,30 +45,8 @@ void main() {
       expect(data.campusName, 'BRAC University Campus');
       expect(data.address, 'Kha 224 Pragati Sarani, Dhaka');
       expect(data.summary, 'A modern sustainable campus.');
-      expect(data.nearbyAreas, ['Rampura', 'Gulshan', 'Banasree']);
+      expect(data.primaryEmail, 'info@bracu.ac.bd');
       expect(data.highlights.length, 2);
-
-      expect(data.profile, isNotNull);
-      expect(data.profile!.hasData, isTrue);
-      expect(data.profile!.landAreaAcres, 5.0);
-      expect(data.profile!.buildingAreaSqft, 1700000);
-      expect(data.profile!.buildingFloors, 13);
-      expect(data.profile!.basements, 3);
-      expect(data.profile!.studentCapacityMin, 12000);
-      expect(data.profile!.studentCapacityMax, 15000);
-
-      expect(data.facilities, isNotNull);
-      expect(data.facilities!.hasData, isTrue);
-      expect(data.facilities!.classrooms, 123);
-      expect(data.facilities!.lectureTheatres, 5);
-      expect(data.facilities!.laboratories, 105);
-      expect(data.facilities!.libraryBooks, 45000);
-      expect(data.facilities!.libraryHasArVr, isTrue);
-
-      expect(data.sustainability, isNotNull);
-      expect(data.sustainability!.hasData, isTrue);
-      expect(data.sustainability!.rainwaterWaterDemandPercent, 20);
-      expect(data.sustainability!.solarEnergyDemandPercent, 25);
 
       expect(data.emergencyContacts.length, 1);
       expect(data.emergencyContacts.first.name, 'Medical Centre');

@@ -32,131 +32,6 @@ String normalizeCampusPhoneValue(String raw) {
   return value;
 }
 
-class CampusProfile {
-  const CampusProfile({
-    this.landAreaAcres,
-    this.buildingAreaSqft,
-    this.buildingFloors,
-    this.basements,
-    this.studentCapacityMin,
-    this.studentCapacityMax,
-  });
-
-  final num? landAreaAcres;
-  final int? buildingAreaSqft;
-  final int? buildingFloors;
-  final int? basements;
-  final int? studentCapacityMin;
-  final int? studentCapacityMax;
-
-  bool get hasData =>
-      landAreaAcres != null ||
-      buildingAreaSqft != null ||
-      buildingFloors != null ||
-      basements != null ||
-      studentCapacityMin != null ||
-      studentCapacityMax != null;
-
-  factory CampusProfile.fromJson(Map<dynamic, dynamic> json) {
-    num? parseNum(dynamic v) {
-      if (v is num) return v;
-      if (v == null) return null;
-      return num.tryParse('$v'.replaceAll(',', '').trim());
-    }
-
-    int? parseInt(dynamic v) {
-      if (v is int) return v;
-      if (v is num) return v.toInt();
-      if (v == null) return null;
-      return int.tryParse('$v'.replaceAll(',', '').trim());
-    }
-
-    final cap = json['student_capacity'];
-    final capMap = cap is Map ? cap : null;
-
-    return CampusProfile(
-      landAreaAcres: parseNum(json['land_area_acres']),
-      buildingAreaSqft: parseInt(json['building_area_sqft']),
-      buildingFloors: parseInt(json['building_floors']),
-      basements: parseInt(json['basements']),
-      studentCapacityMin: parseInt(
-        capMap?['min'] ?? json['student_capacity_min'],
-      ),
-      studentCapacityMax: parseInt(
-        capMap?['max'] ?? json['student_capacity_max'],
-      ),
-    );
-  }
-}
-
-class CampusFacilities {
-  const CampusFacilities({
-    this.classrooms,
-    this.lectureTheatres,
-    this.laboratories,
-    this.libraryBooks,
-    this.libraryHasArVr = false,
-  });
-
-  final int? classrooms;
-  final int? lectureTheatres;
-  final int? laboratories;
-  final int? libraryBooks;
-  final bool libraryHasArVr;
-
-  bool get hasData =>
-      classrooms != null ||
-      lectureTheatres != null ||
-      laboratories != null ||
-      libraryBooks != null ||
-      libraryHasArVr;
-
-  factory CampusFacilities.fromJson(Map<dynamic, dynamic> json) {
-    int? parseInt(dynamic v) {
-      if (v is int) return v;
-      if (v is num) return v.toInt();
-      if (v == null) return null;
-      return int.tryParse('$v'.replaceAll(',', '').trim());
-    }
-
-    return CampusFacilities(
-      classrooms: parseInt(json['classrooms']),
-      lectureTheatres: parseInt(json['lecture_theatres']),
-      laboratories: parseInt(json['laboratories']),
-      libraryBooks: parseInt(json['library_books']),
-      libraryHasArVr: json['library_has_ar_vr'] == true,
-    );
-  }
-}
-
-class CampusSustainability {
-  const CampusSustainability({
-    this.rainwaterWaterDemandPercent,
-    this.solarEnergyDemandPercent,
-  });
-
-  final num? rainwaterWaterDemandPercent;
-  final num? solarEnergyDemandPercent;
-
-  bool get hasData =>
-      rainwaterWaterDemandPercent != null || solarEnergyDemandPercent != null;
-
-  factory CampusSustainability.fromJson(Map<dynamic, dynamic> json) {
-    num? parseNum(dynamic v) {
-      if (v is num) return v;
-      if (v == null) return null;
-      return num.tryParse('$v'.replaceAll(',', '').trim());
-    }
-
-    return CampusSustainability(
-      rainwaterWaterDemandPercent: parseNum(
-        json['rainwater_water_demand_percent'],
-      ),
-      solarEnergyDemandPercent: parseNum(json['solar_energy_demand_percent']),
-    );
-  }
-}
-
 class CampusMapData {
   const CampusMapData({
     required this.campusName,
@@ -166,17 +41,9 @@ class CampusMapData {
     required this.googleMapsUrl,
     required this.sourceUrl,
     required this.transportScheduleUrl,
+    required this.primaryEmail,
     required this.images,
     required this.highlights,
-    required this.nearbyAreas,
-    required this.profile,
-    required this.facilities,
-    required this.sustainability,
-    required this.primaryEmail,
-    required this.primaryPhone,
-    required this.primaryPhoneRaw,
-    required this.allEmails,
-    required this.allPhones,
     required this.offices,
     required this.emergencyContacts,
   });
@@ -188,24 +55,14 @@ class CampusMapData {
   final String googleMapsUrl;
   final String sourceUrl;
   final String transportScheduleUrl;
+  final String primaryEmail;
   final List<String> images;
   final List<String> highlights;
-  final List<String> nearbyAreas;
-  final CampusProfile? profile;
-  final CampusFacilities? facilities;
-  final CampusSustainability? sustainability;
-  final String primaryEmail;
-  final String primaryPhone;
-  final String primaryPhoneRaw;
-  final List<String> allEmails;
-  final List<String> allPhones;
   final List<CampusOfficeContact> offices;
   final List<CampusEmergencyContact> emergencyContacts;
 
   factory CampusMapData.fromJson(Map<String, dynamic> json) {
     final sourceUrl = '${json['source_url'] ?? ''}'.trim();
-    final contact = json['contact'];
-    final contactMap = contact is Map ? contact.cast<String, dynamic>() : null;
     final officeRows = json['general_contacts'];
     final emergencyRows = json['emergency_contacts'];
 
@@ -230,108 +87,15 @@ class CampusMapData {
               .toList(growable: false)
         : const <String>[];
 
-    final nearbyRaw = json['nearby_areas'];
-    final nearbyAreas = nearbyRaw is List
-        ? nearbyRaw
-              .map((item) => '$item'.trim())
-              .where((item) => item.isNotEmpty)
-              .toList(growable: false)
-        : const <String>[];
-
-    final profileRaw = json['campus_profile'] ?? json['profile'];
-    final profile = profileRaw is Map
-        ? CampusProfile.fromJson(profileRaw)
-        : null;
-
-    final facilitiesRaw = json['learning_facilities'] ?? json['facilities'];
-    final facilities = facilitiesRaw is Map
-        ? CampusFacilities.fromJson(facilitiesRaw)
-        : null;
-
-    final sustainRaw = json['sustainability'];
-    final sustainability = sustainRaw is Map
-        ? CampusSustainability.fromJson(sustainRaw)
-        : null;
-
     final imagesRaw = json['images'];
-    var images = imagesRaw is List
+    final images = imagesRaw is List
         ? imagesRaw
-              .map((item) {
-                if (item is Map) {
-                  final map = item.cast<dynamic, dynamic>();
-                  return normalizeImageUrl(
-                    '${map['url'] ?? map['image_url'] ?? map['src'] ?? ''}',
-                    baseUrl: sourceUrl,
-                  );
-                }
-                return normalizeImageUrl('$item', baseUrl: sourceUrl);
-              })
+              .map((item) => normalizeImageUrl('$item', baseUrl: sourceUrl))
               .whereType<String>()
-              .toSet()
-              .toList(growable: false)
-        : const <String>[];
-    if (images.isEmpty) {
-      final mapImageUrl = normalizeImageUrl(
-        '${json['map_image_url'] ?? ''}',
-        baseUrl: sourceUrl,
-      );
-      if (mapImageUrl != null) {
-        images = <String>[mapImageUrl];
-      }
-    }
-    final transportRaw = json['transport'];
-    final transportMap = transportRaw is Map
-        ? transportRaw.cast<String, dynamic>()
-        : null;
-
-    String firstValueFromList(dynamic value) {
-      if (value is List) {
-        for (final item in value) {
-          final cleaned = '$item'.trim();
-          if (cleaned.isNotEmpty) return cleaned;
-        }
-      }
-      return '';
-    }
-
-    String firstPhoneFromList(dynamic value) {
-      if (value is List) {
-        for (final item in value) {
-          final normalized = normalizeCampusPhoneValue('$item');
-          if (normalized.isNotEmpty) return normalized;
-        }
-      }
-      return '';
-    }
-
-    final rawAllEmails = contactMap?['emails'];
-    final allEmails = rawAllEmails is List
-        ? rawAllEmails
-              .map((item) => '$item'.trim())
-              .where((item) => item.isNotEmpty)
-              .toSet()
               .toList(growable: false)
         : const <String>[];
 
-    final rawAllPhones = contactMap?['phones'];
-    final allPhones = rawAllPhones is List
-        ? rawAllPhones
-              .map((item) => '$item'.trim())
-              .where((item) => item.isNotEmpty)
-              .toList(growable: false)
-        : const <String>[];
-
-    final primaryEmail = '${contactMap?['email'] ?? ''}'.trim().isNotEmpty
-        ? '${contactMap?['email'] ?? ''}'.trim()
-        : firstValueFromList(contactMap?['emails']);
-    final primaryPhoneRaw =
-        '${contactMap?['telephone'] ?? ''}'.trim().isNotEmpty
-        ? '${contactMap?['telephone'] ?? ''}'.trim()
-        : firstValueFromList(contactMap?['phones']);
-    final primaryPhoneFromList = firstPhoneFromList(contactMap?['phones']);
-    final primaryPhone = primaryPhoneFromList.isNotEmpty
-        ? primaryPhoneFromList
-        : normalizeCampusPhoneValue('${contactMap?['telephone'] ?? ''}');
+    const primaryEmail = 'info@bracu.ac.bd';
 
     return CampusMapData(
       campusName: '${json['campus_name'] ?? ''}'.trim(),
@@ -345,20 +109,10 @@ class CampusMapData {
           '',
       googleMapsUrl: '${json['google_maps_url'] ?? ''}'.trim(),
       sourceUrl: '${json['source_url'] ?? ''}'.trim(),
-      transportScheduleUrl: '${json['schedule_url'] ?? ''}'.trim().isNotEmpty
-          ? '${json['schedule_url'] ?? ''}'.trim()
-          : '${transportMap?['schedule_url'] ?? ''}'.trim(),
+      transportScheduleUrl: '${json['schedule_url'] ?? ''}'.trim(),
+      primaryEmail: primaryEmail,
       images: images,
       highlights: highlights,
-      nearbyAreas: nearbyAreas,
-      profile: profile,
-      facilities: facilities,
-      sustainability: sustainability,
-      primaryEmail: primaryEmail,
-      primaryPhone: primaryPhone,
-      primaryPhoneRaw: primaryPhoneRaw,
-      allEmails: allEmails,
-      allPhones: allPhones,
       offices: offices,
       emergencyContacts: emergencies,
     );
@@ -552,46 +306,6 @@ Future<void> showCampusMapBottomSheet(
             );
           }
 
-          Widget statChip({
-            required IconData icon,
-            required String label,
-            required String value,
-          }) {
-            return Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-              decoration: BoxDecoration(
-                color: AppPalette.card(sheetContext).withValues(alpha: 0.6),
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(
-                  color: textSecondary.withValues(alpha: 0.12),
-                ),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(icon, size: 16, color: AppPalette.primary),
-                  const Gap(6),
-                  Text(
-                    '$label: ',
-                    style: TextStyle(
-                      color: textSecondary,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  Text(
-                    value,
-                    style: TextStyle(
-                      color: textPrimary,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ],
-              ),
-            );
-          }
-
           final resolvedTransportUrl =
               transportScheduleUrl != null &&
                   transportScheduleUrl.trim().isNotEmpty
@@ -615,9 +329,7 @@ Future<void> showCampusMapBottomSheet(
                       const Gap(12),
                     ],
                     Text(
-                      mapData.campusName.isEmpty
-                          ? 'BRAC University Campus'
-                          : mapData.campusName,
+                      mapData.campusName,
                       style: TextStyle(
                         color: textPrimary,
                         fontSize: 16,
@@ -676,7 +388,7 @@ Future<void> showCampusMapBottomSheet(
                       SizedBox(
                         width: buttonWidth,
                         child: AppActionButton(
-                          iconWidget: const Icon(Icons.email_rounded, size: 16),
+                          icon: Icons.email_rounded,
                           label: 'Email',
                           onPressed: mapData.primaryEmail.isEmpty
                               ? null
@@ -715,158 +427,6 @@ Future<void> showCampusMapBottomSheet(
                       height: 1.45,
                     ),
                   ),
-                ),
-              ],
-              if (mapData.profile != null && mapData.profile!.hasData) ...[
-                sectionTitle('Campus Profile'),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    if (mapData.profile!.landAreaAcres != null)
-                      statChip(
-                        icon: Icons.landscape_rounded,
-                        label: 'Land Area',
-                        value: '${mapData.profile!.landAreaAcres} Acres',
-                      ),
-                    if (mapData.profile!.buildingAreaSqft != null)
-                      statChip(
-                        icon: Icons.apartment_rounded,
-                        label: 'Building Area',
-                        value: '${mapData.profile!.buildingAreaSqft} sq ft',
-                      ),
-                    if (mapData.profile!.buildingFloors != null)
-                      statChip(
-                        icon: Icons.layers_rounded,
-                        label: 'Floors',
-                        value: '${mapData.profile!.buildingFloors} Stories',
-                      ),
-                    if (mapData.profile!.basements != null)
-                      statChip(
-                        icon: Icons.foundation_rounded,
-                        label: 'Basements',
-                        value: '${mapData.profile!.basements}',
-                      ),
-                    if (mapData.profile!.studentCapacityMin != null &&
-                        mapData.profile!.studentCapacityMax != null)
-                      statChip(
-                        icon: Icons.groups_rounded,
-                        label: 'Capacity',
-                        value:
-                            '${mapData.profile!.studentCapacityMin} - ${mapData.profile!.studentCapacityMax} Students',
-                      ),
-                  ],
-                ),
-              ],
-              if (mapData.facilities != null &&
-                  mapData.facilities!.hasData) ...[
-                sectionTitle('Learning Facilities'),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    if (mapData.facilities!.classrooms != null)
-                      statChip(
-                        icon: Icons.school_rounded,
-                        label: 'Classrooms',
-                        value: '${mapData.facilities!.classrooms}',
-                      ),
-                    if (mapData.facilities!.lectureTheatres != null)
-                      statChip(
-                        icon: Icons.theater_comedy_rounded,
-                        label: 'Lecture Theatres',
-                        value: '${mapData.facilities!.lectureTheatres}',
-                      ),
-                    if (mapData.facilities!.laboratories != null)
-                      statChip(
-                        icon: Icons.science_rounded,
-                        label: 'Laboratories',
-                        value: '${mapData.facilities!.laboratories}',
-                      ),
-                    if (mapData.facilities!.libraryBooks != null)
-                      statChip(
-                        icon: Icons.menu_book_rounded,
-                        label: 'Library Books',
-                        value: '${mapData.facilities!.libraryBooks}+',
-                      ),
-                    if (mapData.facilities!.libraryHasArVr)
-                      statChip(
-                        icon: Icons.view_in_ar_rounded,
-                        label: 'AR/VR',
-                        value: 'Supported',
-                      ),
-                  ],
-                ),
-              ],
-              if (mapData.sustainability != null &&
-                  mapData.sustainability!.hasData) ...[
-                sectionTitle('Sustainability'),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    if (mapData.sustainability!.rainwaterWaterDemandPercent !=
-                        null)
-                      statChip(
-                        icon: Icons.water_drop_rounded,
-                        label: 'Rainwater System',
-                        value:
-                            '${mapData.sustainability!.rainwaterWaterDemandPercent}% demand',
-                      ),
-                    if (mapData.sustainability!.solarEnergyDemandPercent !=
-                        null)
-                      statChip(
-                        icon: Icons.solar_power_rounded,
-                        label: 'Solar Energy',
-                        value:
-                            '${mapData.sustainability!.solarEnergyDemandPercent}% demand',
-                      ),
-                  ],
-                ),
-              ],
-              if (mapData.nearbyAreas.isNotEmpty) ...[
-                sectionTitle('Nearby Accessible Areas'),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: mapData.nearbyAreas
-                      .map(
-                        (area) => Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 6,
-                          ),
-                          decoration: BoxDecoration(
-                            color: AppPalette.card(
-                              sheetContext,
-                            ).withValues(alpha: 0.5),
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(
-                              color: textSecondary.withValues(alpha: 0.12),
-                            ),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                Icons.location_on_outlined,
-                                size: 13,
-                                color: AppPalette.primary,
-                              ),
-                              const Gap(4),
-                              Text(
-                                area,
-                                style: TextStyle(
-                                  color: textPrimary,
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      )
-                      .toList(growable: false),
                 ),
               ],
               if (mapData.images.isNotEmpty) ...[
@@ -1087,16 +647,6 @@ Future<void> showCampusMapBottomSheet(
                                           tooltip: 'Email',
                                         ),
                                       ],
-                                    ),
-                                  ),
-                                ] else ...[
-                                  const Gap(4),
-                                  Text(
-                                    'No email listed',
-                                    style: TextStyle(
-                                      color: textSecondary,
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.w500,
                                     ),
                                   ),
                                 ],
