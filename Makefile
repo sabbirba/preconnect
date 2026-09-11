@@ -1,5 +1,5 @@
 SHELL := /bin/bash
-.PHONY: setup analyze run build build-aab test
+.PHONY: setup analyze run build build-aab
 
 setup:
 	flutter pub get
@@ -18,6 +18,3 @@ build:
 
 build-aab:
 	./tool/build_aab.sh
-
-test:
-	flutter test

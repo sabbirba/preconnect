@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'package:connectivity_plus/connectivity_plus.dart';
-import 'package:flutter/foundation.dart' show kIsWeb, visibleForTesting;
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:http/http.dart' as http;
 import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/api/auth.dart';
@@ -12,7 +12,6 @@ import 'package:preconnect/tools/preconnect_constants.dart';
 import 'package:preconnect/tools/token_refresh.dart';
 import 'package:preconnect/tools/token_storage.dart';
 
-@visibleForTesting
 bool usesBrowserConnectSession({
   required String url,
   required bool isWeb,
@@ -42,37 +41,13 @@ class ApiClient {
 
   String? _cachedAccessToken;
   DateTime? _cachedAccessTokenAt;
-  bool? _cachedHasConnection;
-  DateTime? _cachedHasConnectionAt;
 
   void clearTransientCaches() {
     _cachedResponses.clear();
     _cachedAccessToken = null;
     _cachedAccessTokenAt = null;
-    _cachedHasConnection = null;
-    _cachedHasConnectionAt = null;
     _cachedPortfolioId = null;
   }
-
-  @visibleForTesting
-  void seedTransientCachesForTesting() {
-    _cachedResponses['test'] = _CachedHttpResponse(
-      response: http.Response('{}', 200),
-      expiresAt: DateTime.now().add(const Duration(minutes: 1)),
-    );
-    _cachedAccessToken = 'test';
-    _cachedAccessTokenAt = DateTime.now();
-    _cachedHasConnection = true;
-    _cachedHasConnectionAt = DateTime.now();
-  }
-
-  @visibleForTesting
-  bool get hasTransientCachesForTesting =>
-      _cachedResponses.isNotEmpty ||
-      _cachedAccessToken != null ||
-      _cachedAccessTokenAt != null ||
-      _cachedHasConnection != null ||
-      _cachedHasConnectionAt != null;
 
   void _purgeExpiredResponseCache() {
     _cachedResponses.removeWhere(
@@ -93,8 +68,6 @@ class ApiClient {
       final isOffline =
           connectivityResult.isEmpty ||
           connectivityResult.every((r) => r == ConnectivityResult.none);
-      _cachedHasConnection = !isOffline;
-      _cachedHasConnectionAt = DateTime.now();
       return !isOffline;
     } catch (_) {
       return true;

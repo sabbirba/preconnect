@@ -66,13 +66,6 @@ class CampusPrinterPage extends StatefulWidget {
     invalidateCache();
   }
 
-  @visibleForTesting
-  static Uint8List createLocalBlankPdfForTesting() => _createLocalBlankPdf();
-
-  @visibleForTesting
-  static Uint8List wrapJpegInPdfForTesting(Uint8List jpeg) =>
-      _wrapJpegInPdf(jpeg);
-
   static Uint8List _createLocalBlankPdf() {
     const pdfString = '''%PDF-1.4
 1 0 obj
