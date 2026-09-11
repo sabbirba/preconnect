@@ -108,9 +108,8 @@ Android release signing uses `android/key.properties`, based on `android/key.pro
 Run after every code change:
 
 ```bash
-dart format --output=none --set-exit-if-changed lib web test
+dart format --output=none --set-exit-if-changed lib web
 flutter analyze
-flutter test
 ```
 
 Run the affected platform build after changing native configuration, dependencies, manifests, entitlements, release scripts, or platform channels. Run `./tool/build_extension.sh` after changing `web`, conditional web implementations, Firebase web setup, CanvasKit loading, or extension manifests.

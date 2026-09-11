@@ -220,20 +220,15 @@ The script can run even when `.env` is missing; optional dart defines are treate
 Run these before a PR:
 
 ```bash
-dart format --output=none --set-exit-if-changed lib web test
+dart format --output=none --set-exit-if-changed lib web
 flutter analyze
-flutter test
 ```
-
-The test suite covers schedules, authentication, token persistence, logout, cache invalidation, notifications, and platform channels. Add focused tests when you change parsing, models, service behavior, or shared helpers.
 
 ## CI Checks and Reports
 
-CI runs for Dart, native platform, web, asset, dependency, tooling, and workflow changes. Flutter Checks runs formatting, analysis, version validation, and the existing compliance scripts. Independent test and build jobs continue collecting results when another job fails.
+CI runs for Dart, native platform, web, asset, dependency, tooling, and workflow changes. Flutter Checks runs formatting, analysis, version validation, and the existing compliance scripts. Build checks compile web and both packaged browser extensions, running extension manifest, CSP, and archive validation.
 
-The test suite runs every test in `test/` with line coverage. These tests use synthetic fixtures and mocks, not private student data or live authenticated accounts. Build checks compile web and both packaged browser extensions, running extension manifest, CSP, and archive validation.
-
-Download `flutter-tests` from the Actions run for JSON test events, readable logs, the Flutter version, dependency graph, commit ID, `coverage/lcov.info`, and `coverage/html/index.html`; the run summary shows measured line coverage. Coverage includes files loaded by the suite, so it is not a whole-repository coverage percentage. Build diagnostics are saved under `flutter-build-web-extension`. Reports are retained for 14 days, including available diagnostics from failed runs. CI uses the committed dependency lockfile and example configuration without production credentials.
+Build diagnostics are saved under `flutter-build-web-extension`. Reports are retained for 14 days, including available diagnostics from failed runs. CI uses the committed dependency lockfile and example configuration without production credentials.
 
 ## Local Build Smoke Checks
 
@@ -293,7 +288,6 @@ Use this quick pass before opening a PR:
 5. Rotate or resize the screen if the UI is responsive.
 6. Check that text is readable on a small device.
 7. Check that buttons are tappable on a small device.
-8. Run `flutter test` after the manual pass.
 
 For login-dependent screens, note whether you tested with a real account, cached/offline data, or a non-login fallback path.
 

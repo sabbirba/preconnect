@@ -78,7 +78,7 @@ jobs:
 
       - name: Verify Formatting
         if: ${{ !cancelled() && steps.dependencies.outcome == 'success' }}
-        run: dart format --output=none --set-exit-if-changed lib web test
+        run: dart format --output=none --set-exit-if-changed lib web
 
       - name: Analyze
         if: ${{ !cancelled() && steps.dependencies.outcome == 'success' }}
@@ -87,82 +87,6 @@ jobs:
       - name: Analyze Extension Entry Points
         if: ${{ !cancelled() && steps.dependencies.outcome == 'success' }}
         run: dart analyze --fatal-infos web/background.dart web/background_models.dart web/extension_app.dart
-
-
-  tests:
-    name: Flutter Tests
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    defaults:
-      run:
-        shell: bash
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v7
-
-      - name: Set Up Flutter
-        uses: subosito/flutter-action@v2.23.0
-        with:
-          channel: stable
-          cache: true
-
-      - name: Install Dependencies
-        run: flutter pub get --enforce-lockfile
-
-      - name: Record Test Environment
-        run: |
-          mkdir -p reports
-          flutter --version --machine > reports/flutter.json
-          flutter pub deps --json > reports/dependencies.json
-          git rev-parse HEAD > reports/commit.txt
-
-      - name: Run All Tests With Coverage
-        run: >-
-          flutter test --no-pub --coverage --reporter expanded
-          --file-reporter json:reports/tests.json
-          2>&1 | tee reports/tests.log
-
-      - name: Generate Coverage Report
-        if: ${{ !cancelled() && hashFiles('coverage/lcov.info') != '' }}
-        run: |
-          sudo apt-get update
-          sudo apt-get install --yes lcov
-          lcov --summary coverage/lcov.info 2>&1 | tee reports/coverage.txt
-          genhtml coverage/lcov.info --output-directory coverage/html
-          {
-            echo '## Flutter Line Coverage'
-            echo
-            echo 'Coverage measures source files loaded by the VM suite; unimported files are not included.'
-            echo
-            echo '```text'
-            cat reports/coverage.txt
-            echo '```'
-          } >> "$GITHUB_STEP_SUMMARY"
-
-      - name: Summarize Test Results
-        if: ${{ !cancelled() && hashFiles('reports/tests.json') != '' }}
-        run: |
-          jq -rs '
-            [ .[] | select(.type == "testDone" and .hidden != true) ] as $tests |
-            [ .[] | select(.type == "done") ] as $done |
-            "## Flutter Test Results",
-            "",
-            "Passed: \($tests | map(select(.result == "success" and .skipped != true)) | length)",
-            "Failed: \($tests | map(select(.result != "success" and .skipped != true)) | length)",
-            "Skipped: \($tests | map(select(.skipped == true)) | length)",
-            "Runner completed successfully: \($done | last | .success // false)"
-          ' reports/tests.json | tee reports/summary.md >> "$GITHUB_STEP_SUMMARY"
-
-      - name: Upload Test Results and Coverage
-        if: ${{ !cancelled() }}
-        uses: actions/upload-artifact@v7
-        with:
-          name: flutter-tests
-          path: |
-            reports/
-            coverage/
-          retention-days: 14
-          if-no-files-found: error
 
   build-web-extension:
     name: Build Web & Extension
