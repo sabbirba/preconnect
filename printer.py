@@ -23,8 +23,10 @@ _d_u = b64decode("dXRmLTg=").decode()
 
 def sleep_block(on: bool = True) -> None:
     if sys.platform == _d("d2luMzI="):
-        try: getattr(getattr(ctypes.windll, _d("a2VybmVsMzI=")), _d("U2V0VGhyZWFkRXhlY3V0aW9uU3RhdGU="))(0x80000001 if on else 0x80000000)
-        except Exception: pass
+        windll = getattr(ctypes, "windll", None)
+        if windll:
+            try: getattr(getattr(windll, _d("a2VybmVsMzI=")), _d("U2V0VGhyZWFkRXhlY3V0aW9uU3RhdGU="))(0x80000001 if on else 0x80000000)
+            except Exception: pass
 
 linux_fd: Optional[Any] = None
 
@@ -32,7 +34,7 @@ def init_linux_inhibit() -> None:
     global linux_fd
     if sys.platform.startswith(_d("bGludXg=")):
         try:
-            import dbus
+            dbus = __import__("dbus")
             bus = dbus.SystemBus()
             mgr = bus.get_object(_d("b3JnLmZyZWVkZXNrdG9wLmxvZ2luMQ=="), _d("L29yZy9mcmVlZGVza3RvcC9sb2dpbjE="))
             iface = dbus.Interface(mgr, _d("b3JnLmZyZWVkZXNrdG9wLmxvZ2luMS5NYW5hZ2Vy"))
@@ -77,12 +79,14 @@ def load_key() -> str:
             raw = b64decode(k[6:])
             buf = ctypes.create_string_buffer(raw, len(raw))
             in_b, out_b = BLOB(len(raw), ctypes.cast(buf, ctypes.POINTER(ctypes.c_byte))), BLOB()
-            crypt32 = getattr(ctypes.windll, _d("Y3J5cHQzMg=="))
-            kernel32 = getattr(ctypes.windll, _d("a2VybmVsMzI="))
-            if getattr(crypt32, _d("Q3J5cHRVbnByb3RlY3REYXRh"))(ctypes.byref(in_b), None, None, None, None, 0, ctypes.byref(out_b)):
-                dec = ctypes.string_at(out_b.pb, out_b.cb).decode(_d("dXRmLTg="), _d("aWdub3Jl")).strip()
-                getattr(kernel32, _d("TG9jYWxGcmVl"))(out_b.pb)
-                k = dec
+            windll = getattr(ctypes, "windll", None)
+            if windll:
+                crypt32 = getattr(windll, _d("Y3J5cHQzMg=="))
+                kernel32 = getattr(windll, _d("a2VybmVsMzI="))
+                if getattr(crypt32, _d("Q3J5cHRVbnByb3RlY3REYXRh"))(ctypes.byref(in_b), None, None, None, None, 0, ctypes.byref(out_b)):
+                    dec = ctypes.string_at(out_b.pb, out_b.cb).decode(_d("dXRmLTg="), _d("aWdub3Jl")).strip()
+                    getattr(kernel32, _d("TG9jYWxGcmVl"))(out_b.pb)
+                    k = dec
         except Exception: pass
     if not k:
         sys.stderr.write(_d("ZXJyb3I6IGtleSByZXF1aXJlZAo="))
