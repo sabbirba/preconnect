@@ -148,7 +148,7 @@ class ApiConfig {
       '/reg/v1/student-portfolio/$portfolioId/major-minors';
 
   static String completedCoursesPath(String portfolioId) =>
-      '/exc/v1/student-completed-courses/$portfolioId';
+      '/exc/v1/student-completed-taken-courses/$portfolioId';
 
   static String programCurriculumsPath(String portfolioId) =>
       '/reg/v1/student-portfolio/$portfolioId/program-curriculums';

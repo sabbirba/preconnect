@@ -541,7 +541,7 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
       );
       if (idToken == null || idToken.isEmpty) return;
 
-      final url = '${ApiConfig.websiteBase}/api/_client/load-snapshot';
+      final url = '${ApiConfig.websiteBase}/api/_client/snapshot';
       final client = ApiClient();
       final response = await client.publicPost(
         url,

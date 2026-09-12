@@ -340,6 +340,14 @@ class _DegreeProgressPageState extends State<DegreeProgressPage>
               courseTitleByCode[code] = title;
             }
           }
+          for (final c in info.inProgressCourses) {
+            final code = c.code.toUpperCase();
+            if (courseTitleByCode.containsKey(code)) continue;
+            final title = c.title.trim();
+            if (title.isNotEmpty) {
+              courseTitleByCode[code] = title;
+            }
+          }
           final currentSectionsForDisplay = _currentSemesterSections.where((
             current,
           ) {
@@ -353,10 +361,15 @@ class _DegreeProgressPageState extends State<DegreeProgressPage>
                     current.courseCode.trim().toUpperCase();
             return !(current.courseCredit <= 0 && hasNoRealName);
           }).toList();
-          final attemptedCredit = currentSectionsForDisplay.fold<double>(
-            0,
-            (sum, section) => sum + section.courseCredit,
-          );
+          final attemptedCredit = currentSectionsForDisplay.isNotEmpty
+              ? currentSectionsForDisplay.fold<double>(
+                  0,
+                  (sum, section) => sum + section.courseCredit,
+                )
+              : info.inProgressCourses.fold<double>(
+                  0,
+                  (sum, c) => sum + c.credit,
+                );
           final summaryStats = [
             (title: 'Total', value: formatCredit(summaryTotal)),
             (title: 'Done', value: formatCredit(summaryCompleted)),
@@ -366,12 +379,19 @@ class _DegreeProgressPageState extends State<DegreeProgressPage>
           final topCourses = [...info.completedCourses]
             ..sort((a, b) => compareNaturalText(a.code, b.code));
           final completedCodes = info.completedCourses
+              .where((c) => c.isPassed)
               .map((c) => c.code.trim().toUpperCase())
               .toSet();
-          final currentSemesterCodes = _currentSemesterSections
-              .map((s) => s.courseCode.trim().toUpperCase())
+          final inProgressCodes = info.inProgressCourses
+              .map((c) => c.code.trim().toUpperCase())
               .where((code) => code.isNotEmpty)
               .toSet();
+          final currentSemesterCodes = {
+            ..._currentSemesterSections
+                .map((s) => s.courseCode.trim().toUpperCase())
+                .where((code) => code.isNotEmpty),
+            ...inProgressCodes,
+          };
           final requiredByCode = <String, CurriculumCourse>{};
           for (final course in info.curriculumCourses) {
             final code = course.code.trim().toUpperCase();
@@ -514,14 +534,18 @@ class _DegreeProgressPageState extends State<DegreeProgressPage>
                               builder: (_) => RequirementCoursesPage(
                                 info: info,
                                 headerTitle: item.title,
-                                currentSemesterCodes: _currentSemesterSections
-                                    .map(
-                                      (section) => section.courseCode
-                                          .trim()
-                                          .toUpperCase(),
-                                    )
-                                    .where((code) => code.isNotEmpty)
-                                    .toSet(),
+                                currentSemesterCodes: {
+                                  ..._currentSemesterSections
+                                      .map(
+                                        (section) => section.courseCode
+                                            .trim()
+                                            .toUpperCase(),
+                                      )
+                                      .where((code) => code.isNotEmpty),
+                                  ...info.inProgressCourses
+                                      .map((c) => c.code.trim().toUpperCase())
+                                      .where((code) => code.isNotEmpty),
+                                },
                               ),
                             ),
                           );
@@ -867,7 +891,9 @@ class _DegreeProgressPageState extends State<DegreeProgressPage>
                           children: [
                             SectionBadge(
                               label: course.grade.isEmpty ? '--' : course.grade,
-                              color: AppPalette.primary,
+                              color: !course.isPassed
+                                  ? AppPalette.danger
+                                  : AppPalette.primary,
                               size: 40,
                               fontSize: 13,
                             ),
@@ -913,16 +939,19 @@ class _DegreeProgressPageState extends State<DegreeProgressPage>
                                   ),
                                   const Gap(2),
                                   Text(
-                                    (mandatoryByCode[course.code
-                                                .toUpperCase()] ??
-                                            false)
+                                    !course.isPassed
+                                        ? 'Retake needed'
+                                        : (mandatoryByCode[course.code
+                                                  .toUpperCase()] ??
+                                              false)
                                         ? 'Required'
                                         : 'Elective',
                                     style: TextStyle(
-                                      color:
-                                          (mandatoryByCode[course.code
-                                                  .toUpperCase()] ??
-                                              false)
+                                      color: !course.isPassed
+                                          ? AppPalette.danger
+                                          : (mandatoryByCode[course.code
+                                                    .toUpperCase()] ??
+                                                false)
                                           ? AppPalette.warning
                                           : AppPalette.accent,
                                       fontSize: 12,

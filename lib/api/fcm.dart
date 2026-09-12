@@ -436,10 +436,10 @@ class FCMService {
       );
       if (idToken == null || idToken.isEmpty) return false;
 
-      final loadUrl = '${ApiConfig.websiteBase}/api/_client/load-snapshot';
+      final snapshotUrl = '${ApiConfig.websiteBase}/api/_client/snapshot';
       final client = ApiClient();
-      final loadRes = await client.publicPost(
-        loadUrl,
+      final snapshotRes = await client.publicPost(
+        snapshotUrl,
         body: jsonEncode(<String, dynamic>{
           'idToken': idToken,
           'key': 'seat.watchlist',
@@ -447,8 +447,8 @@ class FCMService {
       );
 
       List<dynamic> currentList = <dynamic>[];
-      if (loadRes.statusCode == 200) {
-        final map = jsonDecode(loadRes.body) as Map<String, dynamic>;
+      if (snapshotRes.statusCode == 200) {
+        final map = jsonDecode(snapshotRes.body) as Map<String, dynamic>;
         final found = map['found'] as bool? ?? false;
         if (found && map['data'] is List) {
           currentList = List<dynamic>.from(map['data'] as List);

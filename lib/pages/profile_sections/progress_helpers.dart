@@ -75,13 +75,20 @@ extension _DegreeProgressPageStateHelpers on _DegreeProgressPageState {
     required List<section.Section> currentSections,
   }) {
     final completedCodes = info.completedCourses
+        .where((c) => c.isPassed)
         .map((c) => c.code.trim().toUpperCase())
         .where((code) => code.isNotEmpty)
         .toSet();
-    final currentCodes = currentSections
-        .map((s) => s.courseCode.trim().toUpperCase())
+    final inProgressCodes = info.inProgressCourses
+        .map((c) => c.code.trim().toUpperCase())
         .where((code) => code.isNotEmpty)
         .toSet();
+    final currentCodes = {
+      ...currentSections
+          .map((s) => s.courseCode.trim().toUpperCase())
+          .where((code) => code.isNotEmpty),
+      ...inProgressCodes,
+    };
     final readyCodes = <String>{...completedCodes, ...currentCodes};
 
     final wishlist = <_WishlistCourse>[];

@@ -70,10 +70,16 @@ class _RequirementCoursesPageState extends State<RequirementCoursesPage> {
     final completedMap = <String, CompletedCourse>{
       for (final c in widget.info.completedCourses) c.code.toUpperCase(): c,
     };
-    final currentSemesterCodes = widget.currentSemesterCodes
-        .map((code) => code.trim().toUpperCase())
+    final inProgressCodes = widget.info.inProgressCourses
+        .map((c) => c.code.trim().toUpperCase())
         .where((code) => code.isNotEmpty)
         .toSet();
+    final currentSemesterCodes = {
+      ...widget.currentSemesterCodes
+          .map((code) => code.trim().toUpperCase())
+          .where((code) => code.isNotEmpty),
+      ...inProgressCodes,
+    };
     final courses = [...widget.info.coursesForHeader(widget.headerTitle)]
       ..sort((a, b) {
         final aCode = a.code.trim().toUpperCase();
@@ -83,16 +89,10 @@ class _RequirementCoursesPageState extends State<RequirementCoursesPage> {
         if (ap != bp) {
           return ap.compareTo(bp);
         }
-        final aTop =
-            completedMap.containsKey(aCode) ||
-                currentSemesterCodes.contains(aCode)
-            ? 0
-            : 1;
-        final bTop =
-            completedMap.containsKey(bCode) ||
-                currentSemesterCodes.contains(bCode)
-            ? 0
-            : 1;
+        final aDone = completedMap[aCode]?.isPassed == true;
+        final bDone = completedMap[bCode]?.isPassed == true;
+        final aTop = aDone || currentSemesterCodes.contains(aCode) ? 0 : 1;
+        final bTop = bDone || currentSemesterCodes.contains(bCode) ? 0 : 1;
         if (aTop != bTop) {
           return aTop.compareTo(bTop);
         }
@@ -118,17 +118,21 @@ class _RequirementCoursesPageState extends State<RequirementCoursesPage> {
           final courseCode = course.code.trim().toUpperCase();
           final completed = completedMap[courseCode];
           final takingNow = currentSemesterCodes.contains(courseCode);
-          final done = completed != null;
+          final done = completed != null && completed.isPassed;
+          final isFailed = completed != null && !completed.isPassed;
           final grade = completed?.grade.trim() ?? '';
           final gradeLabel = grade.isEmpty ? null : grade;
           final String? statusLabel;
           final Color? statusColor;
-          if (done && gradeLabel == null) {
+          if (takingNow) {
+            statusLabel = isFailed ? 'This semester (Retake)' : 'This semester';
+            statusColor = AppPalette.primary;
+          } else if (done && gradeLabel == null) {
             statusLabel = 'Completed';
             statusColor = AppPalette.accent;
-          } else if (takingNow) {
-            statusLabel = 'This semester';
-            statusColor = AppPalette.primary;
+          } else if (isFailed) {
+            statusLabel = 'Retake needed';
+            statusColor = AppPalette.danger;
           } else {
             statusLabel = null;
             statusColor = null;

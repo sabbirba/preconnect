@@ -8,6 +8,7 @@ class ProgressInfo {
     required this.totalCredit,
     required this.headers,
     required this.completedCourses,
+    this.inProgressCourses = const <CompletedCourse>[],
     required this.majorOptions,
     required this.minorOptions,
     required this.curriculumCourses,
@@ -19,6 +20,7 @@ class ProgressInfo {
   final double totalCredit;
   final List<ProgressHeader> headers;
   final List<CompletedCourse> completedCourses;
+  final List<CompletedCourse> inProgressCourses;
   final List<String> majorOptions;
   final List<String> minorOptions;
   final List<CurriculumCourse> curriculumCourses;
@@ -102,7 +104,7 @@ class ProgressInfo {
               .toList()
         : const <ProgressHeader>[];
 
-    final completedCourses = completedRaw is List
+    final allCourses = completedRaw is List
         ? completedRaw
               .whereType<Map>()
               .map((e) => e.cast<String, dynamic>())
@@ -116,11 +118,35 @@ class ProgressInfo {
                   grade: (course['grade'] ?? '').toString().trim(),
                   credit: _toDouble(course['courseCredit']),
                   isCompleted: (course['isCompleted'] ?? true) == true,
+                  gradePoint: course['cgpa'] == null
+                      ? null
+                      : _toDouble(course['cgpa']),
+                  repeated: (course['repeated'] ?? false) == true,
+                  retaken: (course['retaken'] ?? false) == true,
+                  year: course['year'] is int
+                      ? course['year'] as int
+                      : int.tryParse('${course['year'] ?? ''}'),
+                  semester: course['semester']?.toString().trim(),
+                  sectionId: course['sectionId'] is int
+                      ? course['sectionId'] as int
+                      : int.tryParse('${course['sectionId'] ?? ''}'),
+                  parentCourseId: course['parentCourseId'] is int
+                      ? course['parentCourseId'] as int
+                      : int.tryParse('${course['parentCourseId'] ?? ''}'),
+                  parentSectionId: course['parentSectionId'] is int
+                      ? course['parentSectionId'] as int
+                      : int.tryParse('${course['parentSectionId'] ?? ''}'),
+                  semesterSessionId: course['semesterSessionId'] is int
+                      ? course['semesterSessionId'] as int
+                      : int.tryParse('${course['semesterSessionId'] ?? ''}'),
                 );
               })
-              .where((c) => c.code.isNotEmpty && c.isCompleted)
+              .where((c) => c.code.isNotEmpty)
               .toList()
         : const <CompletedCourse>[];
+
+    final completedCourses = allCourses.where((c) => c.isCompleted).toList();
+    final inProgressCourses = allCourses.where((c) => !c.isCompleted).toList();
 
     final majorOptions = <String>[];
     final minorOptions = <String>[];
@@ -149,6 +175,7 @@ class ProgressInfo {
       totalCredit: _toDouble(curriculum['totalCredit']),
       headers: headers,
       completedCourses: completedCourses,
+      inProgressCourses: inProgressCourses,
       majorOptions: majorOptions.toSet().toList()..sort(),
       minorOptions: minorOptions.toSet().toList()..sort(),
       curriculumCourses: curriculumCourses,
@@ -164,6 +191,7 @@ class ProgressInfo {
   Map<String, double> get completedCreditByCode {
     final map = <String, double>{};
     for (final course in completedCourses) {
+      if (!course.isPassed) continue;
       final key = course.code.toUpperCase();
       final current = map[key] ?? 0;
       if (course.credit > current) {
@@ -235,6 +263,15 @@ class CompletedCourse {
     required this.grade,
     required this.credit,
     required this.isCompleted,
+    this.gradePoint,
+    this.repeated = false,
+    this.retaken = false,
+    this.year,
+    this.semester,
+    this.sectionId,
+    this.parentCourseId,
+    this.parentSectionId,
+    this.semesterSessionId,
   });
 
   final String code;
@@ -243,6 +280,22 @@ class CompletedCourse {
   final String grade;
   final double credit;
   final bool isCompleted;
+  final double? gradePoint;
+  final bool repeated;
+  final bool retaken;
+  final int? year;
+  final String? semester;
+  final int? sectionId;
+  final int? parentCourseId;
+  final int? parentSectionId;
+  final int? semesterSessionId;
+
+  bool get isPassed {
+    if (!isCompleted) return false;
+    final g = grade.trim().toUpperCase();
+    if (g.isEmpty || g == 'F' || g == 'W' || g == 'I') return false;
+    return true;
+  }
 }
 
 class CurriculumCourse {

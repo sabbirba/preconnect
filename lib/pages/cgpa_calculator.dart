@@ -80,6 +80,7 @@ class _CgpaCalculatorPageState extends State<CgpaCalculatorPage> {
           title: course.title,
           credit: formatCredit(course.credit),
           grade: _normalizeImportedGrade(course.grade),
+          gradePoint: course.gradePoint,
           semester: course.semesterSession,
           isRequired:
               _mandatoryByCode[course.code.trim().toUpperCase()] ?? false,
@@ -89,16 +90,33 @@ class _CgpaCalculatorPageState extends State<CgpaCalculatorPage> {
   }
 
   void _seedCurrentCourses() {
+    final seen = <String>{};
     final sorted = [...widget.currentSections]
       ..sort((a, b) => compareNaturalText(a.courseCode, b.courseCode));
     for (final item in sorted) {
       final code = item.courseCode.trim().toUpperCase();
+      if (code.isEmpty || seen.contains(code)) continue;
+      seen.add(code);
       final title = (_titleByCode[code] ?? (item.name ?? '')).trim();
       _currentCourses.add(
         _CurrentCourseDraft(
           code: code,
           title: title,
           credit: item.courseCredit <= 0 ? '' : '${item.courseCredit}',
+          isRequired: _mandatoryByCode[code] ?? true,
+        ),
+      );
+    }
+    for (final item in widget.info.inProgressCourses) {
+      final code = item.code.trim().toUpperCase();
+      if (code.isEmpty || seen.contains(code)) continue;
+      seen.add(code);
+      final title = (_titleByCode[code] ?? item.title).trim();
+      _currentCourses.add(
+        _CurrentCourseDraft(
+          code: code,
+          title: title,
+          credit: item.credit <= 0 ? '' : '${item.credit}',
           isRequired: _mandatoryByCode[code] ?? true,
         ),
       );

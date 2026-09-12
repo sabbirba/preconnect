@@ -47,6 +47,7 @@ class _CompletedCourseDraft {
     required String title,
     required String credit,
     required this.completedGrade,
+    this.completedGradePoint,
     required String semester,
     required this.isRequired,
   }) : codeController = TextEditingController(text: code),
@@ -60,6 +61,7 @@ class _CompletedCourseDraft {
     required String title,
     required String credit,
     required String grade,
+    double? gradePoint,
     required String semester,
     required bool isRequired,
   }) {
@@ -68,6 +70,7 @@ class _CompletedCourseDraft {
       title: title,
       credit: credit,
       completedGrade: grade,
+      completedGradePoint: gradePoint,
       semester: semester,
       isRequired: isRequired,
     );
@@ -78,6 +81,7 @@ class _CompletedCourseDraft {
   final TextEditingController creditController;
   final TextEditingController semesterController;
   final String completedGrade;
+  final double? completedGradePoint;
   String? selectedRetakeGrade;
   final bool isRequired;
 
@@ -92,7 +96,7 @@ class _CompletedCourseDraft {
     final code = codeController.text.trim().toUpperCase();
     final credit = double.tryParse(creditController.text.trim()) ?? 0.0;
     final gradeValue = _normalizeGrade(completedGrade);
-    final gradePoint = _gradePointFor(gradeValue);
+    final gradePoint = completedGradePoint ?? _gradePointFor(gradeValue);
     return _CourseSnapshot(
       code: code,
       credit: credit,
