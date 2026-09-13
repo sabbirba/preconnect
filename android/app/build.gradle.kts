@@ -151,7 +151,7 @@ dependencies {
 
 configurations.all {
     resolutionStrategy {
-        force("com.google.firebase:firebase-messaging:25.1.2")
+        force("com.google.firebase:firebase-messaging:25.1.3")
     }
 }
 
