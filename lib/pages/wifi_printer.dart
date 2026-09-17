@@ -78,9 +78,15 @@ endobj
 << /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Contents 4 0 R /Resources <<>> >>
 endobj
 4 0 obj
-<< /Length 23 >>
+<< /Length 82 >>
 stream
-0 0 0 rg 590 835 1 1 re f
+0 0 0 rg
+10 10 1 1 re
+584 10 1 1 re
+10 831 1 1 re
+584 831 1 1 re
+297 420 1 1 re
+f
 endstream
 endobj
 xref
@@ -89,32 +95,18 @@ xref
 0000000009 00000 n 
 0000000058 00000 n 
 0000000115 00000 n 
-0000000227 00000 n 
+0000000218 00000 n 
 trailer
 << /Size 5 /Root 1 0 R >>
 startxref
-299
+349
 %%EOF
 ''';
     return Uint8List.fromList(utf8.encode(pdfString));
   }
 
   static Future<void> _preloadBlankPage() async {
-    if (cachedBlankPageBytes != null) return;
-    try {
-      final cachedBase64 = await AppStorage.instance.getString(
-        cachedBlankPagePdfKey,
-      );
-      if (cachedBase64 != null && cachedBase64.isNotEmpty) {
-        cachedBlankPageBytes = base64Decode(cachedBase64);
-        return;
-      }
-    } catch (_) {}
-    final bytes = _createLocalBlankPdf();
-    cachedBlankPageBytes = bytes;
-    unawaited(
-      AppStorage.instance.setString(cachedBlankPagePdfKey, base64Encode(bytes)),
-    );
+    cachedBlankPageBytes ??= _createLocalBlankPdf();
   }
 
   static Future<_CampusPrinterBootstrap> _preloadBootstrap() async {
