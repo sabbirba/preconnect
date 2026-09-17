@@ -412,14 +412,11 @@ class _MyAppState extends State<MyApp>
   }
 
   Future<void> _loadDeferredServices() async {
-    if (kIsWeb) {
-      unawaited(
-        Future<void>.value().then((_) {
-          LibSyncAuthService.instance.initialize();
-        }),
-      );
-      return;
-    }
+    unawaited(
+      Future<void>.value().then((_) {
+        LibSyncAuthService.instance.initialize();
+      }),
+    );
   }
 
   Future<void> _warmPublicCdnCaches() async {}

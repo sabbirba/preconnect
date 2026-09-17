@@ -78,14 +78,14 @@ endobj
 << /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Contents 4 0 R /Resources <<>> >>
 endobj
 4 0 obj
-<< /Length 82 >>
+<< /Length 108 >>
 stream
 0 0 0 rg
-10 10 1 1 re
-584 10 1 1 re
-10 831 1 1 re
-584 831 1 1 re
-297 420 1 1 re
+10 831 0.5 0.5 re
+584 831 0.5 0.5 re
+297.25 420.75 0.5 0.5 re
+10 10 0.5 0.5 re
+584 10 0.5 0.5 re
 f
 endstream
 endobj
@@ -99,7 +99,7 @@ xref
 trailer
 << /Size 5 /Root 1 0 R >>
 startxref
-349
+376
 %%EOF
 ''';
     return Uint8List.fromList(utf8.encode(pdfString));

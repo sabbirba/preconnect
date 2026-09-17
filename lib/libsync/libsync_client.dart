@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:math';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
@@ -14,7 +13,6 @@ class LibSyncApiClient extends http.BaseClient {
   LibSyncApiClient() : _inner = createLibSyncClient();
 
   final http.Client _inner;
-  static String? _sessionIp;
   static const _secureStorage = FlutterSecureStorage(
     mOptions: MacOsOptions(usesDataProtectionKeychain: kReleaseMode),
   );
@@ -34,7 +32,6 @@ class LibSyncApiClient extends http.BaseClient {
     if (_cacheInitialized) return;
     try {
       final store = AppPreferencesStore();
-      _sessionIp = await store.getString('libsync_session_ip');
       final bodies = await store.getJsonMap(_bodyCacheKey);
       if (bodies != null) {
         _bodyCache.addAll(bodies.map((k, v) => MapEntry(k, v.toString())));
@@ -51,7 +48,6 @@ class LibSyncApiClient extends http.BaseClient {
           }),
         );
       }
-      unawaited(_processOfflineQueue());
     } catch (error, stackTrace) {
       reportLibSyncError('Initializing the LibSync cache', error, stackTrace);
     }
@@ -146,9 +142,8 @@ class LibSyncApiClient extends http.BaseClient {
   }
 
   Future<http.StreamedResponse> _sendWithCacheFallback(
-    http.BaseRequest request, {
-    bool isRetry = false,
-  }) async {
+    http.BaseRequest request,
+  ) async {
     final isGet = request.method == 'GET';
     final urlKey = request.url.toString();
     final isMedia =
@@ -180,9 +175,6 @@ class LibSyncApiClient extends http.BaseClient {
           headers: _headersCache[urlKey] ?? {},
         );
       }
-      if (!isGet) {
-        unawaited(_queueOfflineAction(request));
-      }
       rethrow;
     }
 
@@ -192,30 +184,6 @@ class LibSyncApiClient extends http.BaseClient {
         await saveCookies(responseCookies);
       }
       return response;
-    }
-
-    if (response.statusCode == 429 && !isRetry) {
-      final spoofedIp = _generateRandomIP();
-      final newRequest = _cloneRequest(request);
-      newRequest.headers['X-Forwarded-For'] = spoofedIp;
-      newRequest.headers['X-Real-IP'] = spoofedIp;
-      newRequest.headers['Client-IP'] = spoofedIp;
-
-      final secondResponse = await _sendWithCacheFallback(
-        newRequest,
-        isRetry: true,
-      );
-      if (secondResponse.statusCode == 200) {
-        _sessionIp = spoofedIp;
-        final store = AppPreferencesStore();
-        await store.setString('libsync_session_ip', spoofedIp);
-        return secondResponse;
-      } else {
-        _sessionIp = null;
-        final store = AppPreferencesStore();
-        await store.remove('libsync_session_ip');
-        response = secondResponse;
-      }
     }
 
     if (response.statusCode == 429) {
@@ -379,14 +347,6 @@ class LibSyncApiClient extends http.BaseClient {
     return cookies;
   }
 
-  String _generateRandomIP() {
-    final random = Random();
-    final campusSubnets = ['103.67.66', '103.67.67'];
-    final baseSubnet = campusSubnets[random.nextInt(campusSubnets.length)];
-    final lastOctet = random.nextInt(254) + 1;
-    return '$baseSubnet.$lastOctet';
-  }
-
   void _injectBrowserHeaders(Map<String, String> headers) {
     headers['User-Agent'] =
         'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
@@ -396,16 +356,6 @@ class LibSyncApiClient extends http.BaseClient {
     headers['Origin'] = 'https://libsync.bracu.ac.bd';
     headers['sec-ch-ua-mobile'] = '?1';
     headers['sec-ch-ua-platform'] = '"Android"';
-
-    if (_sessionIp == null) {
-      _sessionIp = _generateRandomIP();
-      unawaited(
-        AppPreferencesStore().setString('libsync_session_ip', _sessionIp!),
-      );
-    }
-    headers['X-Forwarded-For'] = _sessionIp!;
-    headers['X-Real-IP'] = _sessionIp!;
-    headers['Client-IP'] = _sessionIp!;
   }
 
   Future<bool> _attemptTokenRefresh() async {
@@ -533,75 +483,5 @@ class LibSyncApiClient extends http.BaseClient {
       return copy;
     }
     throw ArgumentError('Unsupported request type: ${request.runtimeType}');
-  }
-
-  Future<void> _queueOfflineAction(http.BaseRequest request) async {
-    try {
-      final store = AppPreferencesStore();
-      final queueStr = await store.getString('libsync_offline_actions');
-      final List<dynamic> queue = queueStr != null ? jsonDecode(queueStr) : [];
-
-      String requestBody = '';
-      if (request is http.Request) {
-        requestBody = request.body;
-      }
-
-      queue.add({
-        'method': request.method,
-        'url': request.url.toString(),
-        'headers': request.headers,
-        'body': requestBody,
-        'timestamp': DateTime.now().millisecondsSinceEpoch,
-      });
-
-      await store.setString('libsync_offline_actions', jsonEncode(queue));
-      unawaited(_processOfflineQueue());
-    } catch (error, stackTrace) {
-      reportLibSyncError('Queuing a LibSync request', error, stackTrace);
-    }
-  }
-
-  Future<void> _processOfflineQueue() async {
-    try {
-      final store = AppPreferencesStore();
-      final queueStr = await store.getString('libsync_offline_actions');
-      if (queueStr == null) return;
-      final List<dynamic> queue = jsonDecode(queueStr);
-      if (queue.isEmpty) return;
-
-      final remaining = <dynamic>[];
-      for (final item in queue) {
-        try {
-          final method = item['method'] as String;
-          final url = Uri.parse(item['url'] as String);
-          final headers = Map<String, String>.from(item['headers'] as Map);
-          final body = item['body'] as String;
-
-          final req = http.Request(method, url);
-          req.headers.addAll(headers);
-          req.body = body;
-
-          final res = await _inner.send(req);
-          if (res.statusCode >= 200 && res.statusCode < 300) {
-            continue;
-          }
-        } catch (error, stackTrace) {
-          reportLibSyncError('Replaying a LibSync request', error, stackTrace);
-        }
-        remaining.add(item);
-      }
-
-      if (remaining.isEmpty) {
-        await store.remove('libsync_offline_actions');
-      } else {
-        await store.setString('libsync_offline_actions', jsonEncode(remaining));
-      }
-    } catch (error, stackTrace) {
-      reportLibSyncError(
-        'Processing the LibSync offline queue',
-        error,
-        stackTrace,
-      );
-    }
   }
 }

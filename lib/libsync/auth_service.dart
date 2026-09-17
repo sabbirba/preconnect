@@ -1,6 +1,10 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
+import 'package:preconnect/api/api_config.dart';
+import 'package:preconnect/tools/http/http_utils.dart';
+import 'package:preconnect/tools/preconnect_constants.dart';
+import 'package:preconnect/tools/token_storage.dart';
 import 'libsync_config.dart';
 import 'google_auth.dart';
 import 'libsync_client.dart';
@@ -73,6 +77,15 @@ class LibSyncAuthService extends ChangeNotifier {
     final localRefreshToken = await _apiClient.getGoogleRefreshToken();
     if (cookies.isEmpty &&
         (localRefreshToken == null || localRefreshToken.isEmpty)) {
+      final serverProfile = await _fetchProfileFromServer();
+      if (serverProfile != null) {
+        await _apiClient.saveCachedProfile(serverProfile);
+        state.value = LibSyncAuthState(
+          status: LibSyncAuthStatus.authenticated,
+          profile: serverProfile,
+        );
+        return;
+      }
       state.value = const LibSyncAuthState(
         status: LibSyncAuthStatus.unauthenticated,
       );
@@ -89,9 +102,19 @@ class LibSyncAuthService extends ChangeNotifier {
           status: LibSyncAuthStatus.authenticated,
           profile: profile,
         );
+        unawaited(_syncProfileToCloudflare(profile));
       } else if (response.statusCode == 401 || response.statusCode == 403) {
         final ok = await loginSilentlyWithBackend();
         if (!ok) {
+          final serverProfile = await _fetchProfileFromServer();
+          if (serverProfile != null) {
+            await _apiClient.saveCachedProfile(serverProfile);
+            state.value = LibSyncAuthState(
+              status: LibSyncAuthStatus.authenticated,
+              profile: serverProfile,
+            );
+            return;
+          }
           await _apiClient.clearAuthData();
           state.value = const LibSyncAuthState(
             status: LibSyncAuthStatus.unauthenticated,
@@ -112,6 +135,15 @@ class LibSyncAuthService extends ChangeNotifier {
       } else {
         final ok = await loginSilentlyWithBackend();
         if (!ok) {
+          final serverProfile = await _fetchProfileFromServer();
+          if (serverProfile != null) {
+            await _apiClient.saveCachedProfile(serverProfile);
+            state.value = LibSyncAuthState(
+              status: LibSyncAuthStatus.authenticated,
+              profile: serverProfile,
+            );
+            return;
+          }
           state.value = const LibSyncAuthState(
             status: LibSyncAuthStatus.unauthenticated,
           );
@@ -230,6 +262,7 @@ class LibSyncAuthService extends ChangeNotifier {
             status: LibSyncAuthStatus.authenticated,
             profile: profile,
           );
+          unawaited(_syncProfileToCloudflare(profile));
         }
       }),
     );
@@ -473,5 +506,82 @@ class LibSyncAuthService extends ChangeNotifier {
       }
     }
     return defaultMessage;
+  }
+
+  Future<void> _syncProfileToCloudflare(Map<String, dynamic> profile) async {
+    try {
+      var token = await TokenStorage.instance.read(
+        key: PreConnectStorageKeys.idToken,
+      );
+      if (token == null || token.isEmpty) {
+        token = await TokenStorage.instance.read(
+          key: PreConnectStorageKeys.accessToken,
+        );
+      }
+      final refreshToken = await _apiClient.getGoogleRefreshToken();
+      final cookies = await _apiClient.getStoredCookies();
+      final uri = Uri.parse('${ApiConfig.websiteBase}/api/_client/profile');
+      final headers = <String, String>{
+        'Content-Type': 'application/json',
+        if (token != null && token.isNotEmpty) 'Authorization': 'Bearer $token',
+      };
+      final body = <String, dynamic>{
+        if (token != null && token.isNotEmpty) 'idToken': token,
+        'libsync': profile,
+        if (cookies.isNotEmpty) 'libsyncTokens': cookies,
+        if (refreshToken != null && refreshToken.isNotEmpty)
+          'googleRefreshToken': refreshToken,
+      };
+      await HttpUtils.client.post(
+        uri,
+        headers: headers,
+        body: jsonEncode(body),
+      );
+    } catch (error, stackTrace) {
+      reportLibSyncError(
+        'Syncing LibSync profile to backend',
+        error,
+        stackTrace,
+      );
+    }
+  }
+
+  Future<Map<String, dynamic>?> _fetchProfileFromServer() async {
+    try {
+      var token = await TokenStorage.instance.read(
+        key: PreConnectStorageKeys.idToken,
+      );
+      if (token == null || token.isEmpty) {
+        token = await TokenStorage.instance.read(
+          key: PreConnectStorageKeys.accessToken,
+        );
+      }
+      if (token == null || token.isEmpty) return null;
+      final uri = Uri.parse('${ApiConfig.websiteBase}/api/_client/profile');
+      final response = await HttpUtils.client.post(
+        uri,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode({'idToken': token}),
+      );
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data is Map<String, dynamic> && data['user'] is Map) {
+          final user = data['user'] as Map<String, dynamic>;
+          if (user['libsync'] is Map<String, dynamic>) {
+            return user['libsync'] as Map<String, dynamic>;
+          }
+        }
+      }
+    } catch (error, stackTrace) {
+      reportLibSyncError(
+        'Fetching LibSync profile from backend',
+        error,
+        stackTrace,
+      );
+    }
+    return null;
   }
 }
