@@ -1,9 +1,12 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
 import 'package:preconnect/model/progress_info.dart';
 import 'package:preconnect/model/section_info.dart' as section;
 import 'package:preconnect/pages/shared_widgets/metric_tile.dart';
 import 'package:preconnect/pages/ui_kit.dart';
+import 'package:preconnect/tools/app_storage.dart';
+import 'package:preconnect/tools/storage_keys.dart';
 import 'package:preconnect/tools/string_utils.dart';
 
 part 'shared_widgets/cgpa_models.dart';
@@ -26,6 +29,7 @@ class CgpaCalculatorPage extends StatefulWidget {
 
 class _CgpaCalculatorPageState extends State<CgpaCalculatorPage> {
   final List<_CurrentCourseDraft> _currentCourses = <_CurrentCourseDraft>[];
+  final List<_PlannedCourseDraft> _plannedCourses = <_PlannedCourseDraft>[];
   final List<_CompletedCourseDraft> _completedCourses =
       <_CompletedCourseDraft>[];
   final Map<String, String> _titleByCode = <String, String>{};
@@ -37,11 +41,148 @@ class _CgpaCalculatorPageState extends State<CgpaCalculatorPage> {
     _buildTitleMap();
     _seedCompletedCourses();
     _seedCurrentCourses();
+    _loadFromStorage();
+  }
+
+  Future<String> _storageKey() async {
+    final studentId = await AppStorage.instance.getString(
+      StorageKeys.studentId,
+    );
+    final trimmed = studentId?.trim();
+    if (trimmed != null && trimmed.isNotEmpty) {
+      return 'cgpa_calc_data_$trimmed';
+    }
+    return 'cgpa_calc_data_default';
+  }
+
+  Future<void> _saveToStorage() async {
+    final currentGrades = <String, String>{};
+    for (final draft in _currentCourses) {
+      if (draft.codeValue.isNotEmpty && draft.grade != 'A') {
+        currentGrades[draft.codeValue] = draft.grade;
+      }
+    }
+
+    final plannedList = _plannedCourses.map((draft) {
+      return {
+        'code': draft.codeValue,
+        'title': draft.titleValue,
+        'credit': draft.creditValue,
+        'grade': draft.grade,
+      };
+    }).toList();
+
+    final retakeGrades = <String, String>{};
+    for (final draft in _completedCourses) {
+      if (draft.hasRetakeSelection && draft.codeValue.isNotEmpty) {
+        retakeGrades[draft.codeValue] = draft.selectedRetakeGrade!;
+      }
+    }
+
+    final key = await _storageKey();
+    if (currentGrades.isEmpty && plannedList.isEmpty && retakeGrades.isEmpty) {
+      await AppStorage.instance.setString(key, '');
+      return;
+    }
+
+    final payload = jsonEncode({
+      'currentGrades': currentGrades,
+      'plannedCourses': plannedList,
+      'retakeGrades': retakeGrades,
+    });
+    await AppStorage.instance.setString(key, payload);
+  }
+
+  Future<void> _loadFromStorage() async {
+    try {
+      final key = await _storageKey();
+      final raw = await AppStorage.instance.getString(key);
+      if (raw == null || raw.trim().isEmpty) return;
+      final decoded = jsonDecode(raw);
+      if (decoded is! Map<String, dynamic>) return;
+
+      final currentGrades = decoded['currentGrades'];
+      if (currentGrades is Map) {
+        for (final draft in _currentCourses) {
+          final saved = currentGrades[draft.codeValue];
+          if (saved is String && _gradeOptions.contains(saved)) {
+            draft.grade = saved;
+          }
+        }
+      }
+
+      final plannedList = decoded['plannedCourses'];
+      if (plannedList is List) {
+        for (final draft in _plannedCourses) {
+          draft.dispose();
+        }
+        _plannedCourses.clear();
+        for (final item in plannedList) {
+          if (item is Map) {
+            final code = (item['code'] ?? '').toString();
+            final title = (item['title'] ?? '').toString();
+            final credit = (item['credit'] ?? '3').toString();
+            final grade = (item['grade'] ?? 'A').toString();
+            _plannedCourses.add(
+              _PlannedCourseDraft(
+                code: code,
+                title: title,
+                credit: credit,
+                grade: _normalizeGrade(grade),
+              ),
+            );
+          }
+        }
+      }
+
+      final retakeGrades = decoded['retakeGrades'];
+      if (retakeGrades is Map) {
+        for (final draft in _completedCourses) {
+          final saved = retakeGrades[draft.codeValue];
+          if (saved is String && _gradeOptions.contains(saved)) {
+            draft.selectedRetakeGrade = saved;
+          }
+        }
+      }
+
+      if (mounted) {
+        setState(() {});
+      }
+    } catch (_) {}
+  }
+
+  bool get _hasCurrentModifications =>
+      _currentCourses.any((draft) => draft.grade != 'A');
+
+  bool get _hasCompletedRetakeModifications =>
+      _completedCourses.any((draft) => draft.hasRetakeSelection);
+
+  void _resetCurrentCourses() {
+    setState(() {
+      for (final draft in _currentCourses) {
+        draft.grade = 'A';
+      }
+    });
+    _saveToStorage();
+    _showCalculatorSnackBar('Current course grades reset to A');
+  }
+
+  void _resetCompletedRetakes() {
+    setState(() {
+      for (final draft in _completedCourses) {
+        draft.selectedRetakeGrade = null;
+      }
+    });
+    _saveToStorage();
+    _showCalculatorSnackBar('All retake courses reset');
   }
 
   @override
   void dispose() {
     for (final draft in _currentCourses) {
+      draft.dispose();
+    }
+    for (final draft in _plannedCourses) {
       draft.dispose();
     }
     for (final draft in _completedCourses) {
@@ -143,6 +284,85 @@ class _CgpaCalculatorPageState extends State<CgpaCalculatorPage> {
               child: _buildCurrentCourseCard(context, draft),
             );
           }),
+          if (_hasCurrentModifications)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: Center(
+                child: OutlinedButton.icon(
+                  onPressed: _resetCurrentCourses,
+                  icon: const Icon(Icons.refresh_rounded, size: 16),
+                  label: const Text('Reset Current Courses'),
+                  style: appOutlinedButtonStyle(
+                    context,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 9,
+                    ),
+                    borderRadius: 14,
+                  ),
+                ),
+              ),
+            ),
+          const Gap(16),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const AppSectionTitle(title: 'Planned Courses'),
+              TextButton.icon(
+                onPressed: _showAddPlannedCourseSheet,
+                icon: const Icon(Icons.add_rounded, size: 18),
+                label: const Text('Add Course'),
+                style: TextButton.styleFrom(
+                  foregroundColor: AppPalette.primary,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
+                  minimumSize: Size.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+              ),
+            ],
+          ),
+          const Gap(12),
+          if (_plannedCourses.isEmpty)
+            InkWell(
+              borderRadius: BorderRadius.circular(18),
+              onTap: _showAddPlannedCourseSheet,
+              child: AppCard(
+                child: Center(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.add_circle_outline_rounded,
+                          size: 18,
+                          color: AppPalette.primary,
+                        ),
+                        const Gap(8),
+                        Text(
+                          'Add hypothetical or future course',
+                          style: TextStyle(
+                            color: AppPalette.primary,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            )
+          else
+            ..._plannedCourses.map((draft) {
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: _buildPlannedCourseCard(context, draft),
+              );
+            }),
           const Gap(16),
           const AppSectionTitle(title: 'Completed Courses'),
           const Gap(12),
@@ -152,6 +372,25 @@ class _CgpaCalculatorPageState extends State<CgpaCalculatorPage> {
               child: _buildCompletedCourseCard(context, draft),
             );
           }),
+          if (_hasCompletedRetakeModifications)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: Center(
+                child: OutlinedButton.icon(
+                  onPressed: _resetCompletedRetakes,
+                  icon: const Icon(Icons.refresh_rounded, size: 16),
+                  label: const Text('Reset Retake Courses'),
+                  style: appOutlinedButtonStyle(
+                    context,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 9,
+                    ),
+                    borderRadius: 14,
+                  ),
+                ),
+              ),
+            ),
         ],
       ),
     );
@@ -260,12 +499,14 @@ class _CgpaCalculatorPageState extends State<CgpaCalculatorPage> {
           subtitle: 'Choose expected grade',
           currentGrade: draft.grade,
           resetGrade: 'A',
+          isRetake: isRetake,
         );
         if (!mounted || selected == null) return;
         final wasReset = selected == 'A' && draft.grade != 'A';
         setState(() {
           draft.grade = selected;
         });
+        _saveToStorage();
         _showCalculatorSnackBar(
           wasReset
               ? '${draft.codeValue} reset to A'
@@ -290,6 +531,352 @@ class _CgpaCalculatorPageState extends State<CgpaCalculatorPage> {
     );
   }
 
+  Widget _buildPlannedCourseCard(
+    BuildContext context,
+    _PlannedCourseDraft draft,
+  ) {
+    final isRetake = _completedEffectiveCodes.contains(draft.codeValue);
+    return Dismissible(
+      key: ValueKey(draft),
+      direction: DismissDirection.endToStart,
+      onDismissed: (_) {
+        setState(() {
+          _plannedCourses.remove(draft);
+        });
+        draft.dispose();
+        _saveToStorage();
+        _showCalculatorSnackBar('Removed ${draft.codeValue}');
+      },
+      background: Container(
+        alignment: Alignment.centerRight,
+        padding: const EdgeInsets.only(right: 20),
+        decoration: BoxDecoration(
+          color: AppPalette.danger.withValues(alpha: 0.16),
+          borderRadius: BorderRadius.circular(18),
+        ),
+        child: const Icon(
+          Icons.delete_outline_rounded,
+          color: AppPalette.danger,
+        ),
+      ),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(18),
+        onTap: () async {
+          final selected = await _pickGrade(
+            courseCode: draft.codeValue,
+            subtitle: 'Choose expected grade',
+            currentGrade: draft.grade,
+            resetGrade: 'A',
+            isRetake: isRetake,
+          );
+          if (!mounted || selected == null) return;
+          final wasReset = selected == 'A' && draft.grade != 'A';
+          setState(() {
+            draft.grade = selected;
+          });
+          _saveToStorage();
+          _showCalculatorSnackBar(
+            wasReset
+                ? '${draft.codeValue} reset to A'
+                : '${draft.codeValue} grade set to $selected',
+          );
+        },
+        child: AppCard(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              SectionBadge(
+                label: draft.grade,
+                color: AppPalette.primary,
+                size: 40,
+                fontSize: 13,
+              ),
+              const Gap(12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      draft.codeValue.isEmpty
+                          ? 'Custom Course'
+                          : draft.codeValue,
+                      style: TextStyle(
+                        color: AppPalette.textPrimary(context),
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const Gap(3),
+                    Text(
+                      draft.titleValue.isEmpty
+                          ? 'Planned Course'
+                          : draft.titleValue,
+                      style: TextStyle(
+                        color: AppPalette.textSecondary(context),
+                        fontSize: 11,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Gap(8),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    '${draft.creditValue.isEmpty ? "3" : draft.creditValue} credits',
+                    style: TextStyle(
+                      color: AppPalette.textPrimary(context),
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const Gap(2),
+                  Text(
+                    isRetake ? 'Retake' : 'Planned',
+                    style: TextStyle(
+                      color: isRetake ? AppPalette.info : AppPalette.accent,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ),
+              const Gap(4),
+              IconButton(
+                onPressed: () {
+                  setState(() {
+                    _plannedCourses.remove(draft);
+                  });
+                  draft.dispose();
+                  _saveToStorage();
+                  _showCalculatorSnackBar('Removed ${draft.codeValue}');
+                },
+                icon: Icon(
+                  Icons.delete_outline_rounded,
+                  size: 20,
+                  color: AppPalette.textSecondary(context),
+                ),
+                tooltip: 'Remove',
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _showAddPlannedCourseSheet() async {
+    final codeController = TextEditingController();
+    final titleController = TextEditingController();
+    var selectedCredit = '3';
+    var selectedGrade = 'A';
+    final creditOptions = [
+      '1',
+      '1.5',
+      '2',
+      '3',
+      '4',
+      '4.5',
+      '6',
+      '8',
+      '10',
+      '12',
+      '18',
+    ];
+
+    await showAppBottomSheet<void>(
+      context,
+      title: 'Add Planned Course',
+      subtitle: 'Simulate a future or hypothetical course',
+      initialChildSize: 0.75,
+      builder: (sheetContext, textPrimary, textSecondary) {
+        return StatefulBuilder(
+          builder: (dialogContext, setDialogState) {
+            final dragController = bottomSheetScrollController(sheetContext);
+            return ListView(
+              controller: dragController,
+              physics: const ClampingScrollPhysics(),
+              padding: const EdgeInsets.only(bottom: 24),
+              children: [
+                TextField(
+                  controller: codeController,
+                  textCapitalization: TextCapitalization.characters,
+                  style: TextStyle(color: textPrimary),
+                  decoration: InputDecoration(
+                    labelText: 'Course Code',
+                    hintText: 'e.g. CSE421',
+                    labelStyle: TextStyle(color: textSecondary),
+                    hintStyle: TextStyle(
+                      color: textSecondary.withValues(alpha: 0.6),
+                    ),
+                    isDense: true,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      borderSide: BorderSide(
+                        color: textSecondary.withValues(alpha: 0.24),
+                      ),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      borderSide: const BorderSide(color: AppPalette.primary),
+                    ),
+                  ),
+                ),
+                const Gap(12),
+                TextField(
+                  controller: titleController,
+                  textCapitalization: TextCapitalization.words,
+                  style: TextStyle(color: textPrimary),
+                  decoration: InputDecoration(
+                    labelText: 'Course Title (Optional)',
+                    hintText: 'e.g. Computer Networks',
+                    labelStyle: TextStyle(color: textSecondary),
+                    hintStyle: TextStyle(
+                      color: textSecondary.withValues(alpha: 0.6),
+                    ),
+                    isDense: true,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      borderSide: BorderSide(
+                        color: textSecondary.withValues(alpha: 0.24),
+                      ),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      borderSide: const BorderSide(color: AppPalette.primary),
+                    ),
+                  ),
+                ),
+                const Gap(16),
+                Text(
+                  'Credits',
+                  style: TextStyle(
+                    color: textPrimary,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const Gap(8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: creditOptions.map((credit) {
+                    final isSelected = selectedCredit == credit;
+                    return ChoiceChip(
+                      label: Text(credit),
+                      selected: isSelected,
+                      showCheckmark: false,
+                      labelStyle: TextStyle(
+                        color: isSelected ? AppPalette.primary : textPrimary,
+                        fontWeight: FontWeight.w700,
+                      ),
+                      backgroundColor: AppPalette.card(
+                        sheetContext,
+                      ).withValues(alpha: 0.92),
+                      selectedColor: AppPalette.primary.withValues(alpha: 0.14),
+                      side: BorderSide(
+                        color: isSelected
+                            ? AppPalette.primary
+                            : textSecondary.withValues(alpha: 0.24),
+                      ),
+                      onSelected: (_) {
+                        setDialogState(() {
+                          selectedCredit = credit;
+                        });
+                      },
+                    );
+                  }).toList(),
+                ),
+                const Gap(16),
+                Text(
+                  'Expected Grade',
+                  style: TextStyle(
+                    color: textPrimary,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const Gap(8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: _gradeOptions.take(13).map((grade) {
+                    final isSelected = selectedGrade == grade;
+                    return ChoiceChip(
+                      label: Text(grade),
+                      selected: isSelected,
+                      showCheckmark: false,
+                      labelStyle: TextStyle(
+                        color: isSelected ? AppPalette.primary : textPrimary,
+                        fontWeight: FontWeight.w700,
+                      ),
+                      backgroundColor: AppPalette.card(
+                        sheetContext,
+                      ).withValues(alpha: 0.92),
+                      selectedColor: AppPalette.primary.withValues(alpha: 0.14),
+                      side: BorderSide(
+                        color: isSelected
+                            ? AppPalette.primary
+                            : textSecondary.withValues(alpha: 0.24),
+                      ),
+                      onSelected: (_) {
+                        setDialogState(() {
+                          selectedGrade = grade;
+                        });
+                      },
+                    );
+                  }).toList(),
+                ),
+                const Gap(24),
+                FilledButton(
+                  onPressed: () {
+                    final rawCode = codeController.text.trim();
+                    final code = rawCode.isEmpty
+                        ? 'PLANNED ${_plannedCourses.length + 1}'
+                        : rawCode.toUpperCase();
+                    final title = titleController.text.trim();
+                    setState(() {
+                      _plannedCourses.add(
+                        _PlannedCourseDraft(
+                          code: code,
+                          title: title,
+                          credit: selectedCredit,
+                          grade: selectedGrade,
+                        ),
+                      );
+                    });
+                    _saveToStorage();
+                    Navigator.of(sheetContext).pop();
+                    _showCalculatorSnackBar('Added $code to planner');
+                  },
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppPalette.primary,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                  child: const Text(
+                    'Add Course',
+                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+                  ),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
   Widget _buildCompletedCourseCard(
     BuildContext context,
     _CompletedCourseDraft draft,
@@ -302,6 +889,7 @@ class _CgpaCalculatorPageState extends State<CgpaCalculatorPage> {
           subtitle: 'Choose retake grade',
           currentGrade: draft.selectedRetakeGrade ?? draft.completedGrade,
           resetGrade: draft.completedGrade,
+          isRetake: true,
         );
         if (!mounted || selected == null) return;
         final wasReset = selected == draft.completedGrade;
@@ -310,6 +898,7 @@ class _CgpaCalculatorPageState extends State<CgpaCalculatorPage> {
               ? null
               : selected;
         });
+        _saveToStorage();
         _showCalculatorSnackBar(
           wasReset
               ? '${draft.codeValue} retake reset'
@@ -447,6 +1036,12 @@ class _CgpaCalculatorPageState extends State<CgpaCalculatorPage> {
       if (!baseline.effectiveByCode.containsKey(snapshot.code)) continue;
       autoRetakeByCode[snapshot.code] = snapshot;
     }
+    for (final draft in _plannedCourses) {
+      final snapshot = draft.toSnapshot();
+      if (!snapshot.countsToGpa || snapshot.code.isEmpty) continue;
+      if (!baseline.effectiveByCode.containsKey(snapshot.code)) continue;
+      autoRetakeByCode[snapshot.code] = snapshot;
+    }
     final retakeCodes = <String>{
       ...manualRetakeByCode.keys,
       ...autoRetakeByCode.keys,
@@ -458,9 +1053,15 @@ class _CgpaCalculatorPageState extends State<CgpaCalculatorPage> {
         continue;
       }
       final manualDraft = manualRetakeByCode[code];
-      final retakeSnapshot =
+      final rawRetakeSnapshot =
           autoRetakeByCode[code] ?? manualDraft?.toRetakeSnapshot();
-      if (retakeSnapshot == null || !retakeSnapshot.countsToGpa) continue;
+      if (rawRetakeSnapshot == null || !rawRetakeSnapshot.countsToGpa) continue;
+      final retakeSnapshot = _CourseSnapshot(
+        code: rawRetakeSnapshot.code,
+        credit: rawRetakeSnapshot.credit,
+        grade: rawRetakeSnapshot.grade,
+        gradePoint: _retakeCappedGradePoint(rawRetakeSnapshot.gradePoint),
+      );
 
       selectedCredits += retakeSnapshot.credit;
       selectedQualityPoints += retakeSnapshot.qualityPoints;
@@ -478,11 +1079,23 @@ class _CgpaCalculatorPageState extends State<CgpaCalculatorPage> {
       totalQualityPoints += snapshot.qualityPoints;
     }
 
+    for (final draft in _plannedCourses) {
+      final snapshot = draft.toSnapshot();
+      if (!snapshot.countsToGpa) continue;
+      if (retakeCodes.contains(snapshot.code)) continue;
+      selectedCredits += snapshot.credit;
+      selectedQualityPoints += snapshot.qualityPoints;
+      totalCredits += snapshot.credit;
+      totalQualityPoints += snapshot.qualityPoints;
+    }
+
     final manualRetakesNotInCurrent = manualRetakeByCode.keys
         .where((k) => !autoRetakeByCode.containsKey(k))
         .length;
     final evaluatedCourseCount =
-        _currentCourses.length + manualRetakesNotInCurrent;
+        _currentCourses.length +
+        _plannedCourses.length +
+        manualRetakesNotInCurrent;
     final retakeCount = retakeCodes.length;
 
     final currentCgpa = baseline.cgpa;
@@ -540,6 +1153,7 @@ class _CgpaCalculatorPageState extends State<CgpaCalculatorPage> {
     required String subtitle,
     required String currentGrade,
     required String resetGrade,
+    bool isRetake = false,
   }) {
     return showAppBottomSheet<String>(
       context,
@@ -563,13 +1177,52 @@ class _CgpaCalculatorPageState extends State<CgpaCalculatorPage> {
           physics: const ClampingScrollPhysics(),
           padding: const EdgeInsets.only(bottom: 24),
           children: [
+            if (isRetake) ...[
+              Container(
+                margin: const EdgeInsets.only(bottom: 14),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 10,
+                ),
+                decoration: BoxDecoration(
+                  color: AppPalette.info.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(
+                    color: AppPalette.info.withValues(alpha: 0.28),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.info_outline_rounded,
+                      size: 20,
+                      color: AppPalette.info,
+                    ),
+                    const Gap(10),
+                    Expanded(
+                      child: Text(
+                        'BRACU Policy: Retake course grades are capped at B+ (3.30).',
+                        style: TextStyle(
+                          color: textPrimary,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
             Wrap(
               spacing: 8,
               runSpacing: 8,
               children: _gradeOptions.map((grade) {
                 final selected = currentGrade == grade;
+                final isCapped =
+                    isRetake && (_gradePointFor(grade) ?? 0.0) > 3.3;
+                final label = isCapped ? '$grade (B+ cap)' : grade;
                 return ChoiceChip(
-                  label: Text(grade),
+                  label: Text(label),
                   selected: selected,
                   showCheckmark: false,
                   labelStyle: TextStyle(

@@ -41,6 +41,45 @@ class _CurrentCourseDraft {
   }
 }
 
+class _PlannedCourseDraft {
+  _PlannedCourseDraft({
+    String code = '',
+    String title = '',
+    String credit = '3',
+    this.grade = 'A',
+  }) : codeController = TextEditingController(text: code),
+       titleController = TextEditingController(text: title),
+       creditController = TextEditingController(text: credit);
+
+  final TextEditingController codeController;
+  final TextEditingController titleController;
+  final TextEditingController creditController;
+  String grade;
+
+  String get codeValue => codeController.text.trim().toUpperCase();
+  String get titleValue => titleController.text.trim();
+  String get creditValue => creditController.text.trim();
+
+  _CourseSnapshot toSnapshot() {
+    final code = codeController.text.trim().toUpperCase();
+    final credit = double.tryParse(creditController.text.trim()) ?? 0.0;
+    final gradeValue = _normalizeGrade(grade);
+    final gradePoint = _gradePointFor(gradeValue);
+    return _CourseSnapshot(
+      code: code,
+      credit: credit,
+      grade: gradeValue,
+      gradePoint: gradePoint,
+    );
+  }
+
+  void dispose() {
+    codeController.dispose();
+    titleController.dispose();
+    creditController.dispose();
+  }
+}
+
 class _CompletedCourseDraft {
   _CompletedCourseDraft._({
     required String code,
@@ -109,7 +148,7 @@ class _CompletedCourseDraft {
     final code = codeController.text.trim().toUpperCase();
     final credit = double.tryParse(creditController.text.trim()) ?? 0.0;
     final gradeValue = _normalizeGrade(selectedRetakeGrade ?? completedGrade);
-    final gradePoint = _gradePointFor(gradeValue);
+    final gradePoint = _retakeCappedGradePoint(_gradePointFor(gradeValue));
     return _CourseSnapshot(
       code: code,
       credit: credit,
@@ -414,4 +453,9 @@ double? _gradePointFor(String grade) {
     default:
       return null;
   }
+}
+
+double? _retakeCappedGradePoint(double? gradePoint) {
+  if (gradePoint == null) return null;
+  return gradePoint > 3.3 ? 3.3 : gradePoint;
 }
