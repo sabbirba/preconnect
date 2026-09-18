@@ -308,10 +308,6 @@ class AuthService {
           ApiClient().clearTransientCaches();
           unawaited(_loginMercureSession(accessToken));
         },
-        clearTokens: () async {
-          await _storage.deleteAll();
-          ApiClient().clearTransientCaches();
-        },
       );
       _cacheRefreshResult(status);
       return status;
@@ -347,34 +343,11 @@ class AuthService {
     if (!expired) {
       return true;
     }
-    if (_bootstrapStartTime != null) {
-      final timeSinceBootstrap = DateTime.now().difference(
-        _bootstrapStartTime!,
-      );
-      if (timeSinceBootstrap < _bootstrapGracePeriod) {
-        return true;
-      }
+
+    if (await ApiClient().hasConnection()) {
+      await refreshTokenStatus();
     }
-    if (!await ApiClient().hasConnection()) {
-      return true;
-    }
-    final refreshStatus = await refreshTokenStatus();
-    if (refreshStatus == TokenRefreshStatus.refreshed) {
-      return true;
-    }
-    if (refreshStatus == TokenRefreshStatus.retryableFailure) {
-      return true;
-    }
-    if (_bootstrapStartTime != null) {
-      final timeSinceBootstrap = DateTime.now().difference(
-        _bootstrapStartTime!,
-      );
-      if (timeSinceBootstrap < _bootstrapGracePeriod) {
-        return false;
-      }
-    }
-    await logout(force: true);
-    return false;
+    return true;
   }
 
   bool _isValidJwt(String token) {

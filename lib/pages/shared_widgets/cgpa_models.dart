@@ -167,6 +167,8 @@ class _ExpectedResult {
     required this.cgpaDelta,
     required this.selectedCredits,
     required this.usedOfficialCgpa,
+    required this.retakeCount,
+    required this.evaluatedCourseCount,
   });
 
   final double currentCgpa;
@@ -175,6 +177,8 @@ class _ExpectedResult {
   final double cgpaDelta;
   final double selectedCredits;
   final bool usedOfficialCgpa;
+  final int retakeCount;
+  final int evaluatedCourseCount;
 
   String get currentCgpaLabel => currentCgpa.toStringAsFixed(3);
   String get expectedCgpaLabel => expectedCgpa.toStringAsFixed(3);
@@ -224,42 +228,22 @@ const List<_GradeGuideRow> _gradeGuideRows = <_GradeGuideRow>[
     comment: 'Exceptional',
   ),
   _GradeGuideRow(
-    range: '90 - 97',
+    range: '90 - <97',
     grade: 'A',
     point: '4.0',
     comment: 'Excellent',
   ),
-  _GradeGuideRow(
-    range: '85 - 90',
-    grade: 'A-',
-    point: '3.7',
-    comment: 'Very good',
-  ),
-  _GradeGuideRow(range: '80 - 85', grade: 'B+', point: '3.3', comment: 'Good'),
-  _GradeGuideRow(range: '75 - 80', grade: 'B', point: '3.0', comment: 'Good'),
-  _GradeGuideRow(range: '70 - 75', grade: 'B-', point: '2.7', comment: 'Fair'),
-  _GradeGuideRow(
-    range: '65 - 70',
-    grade: 'C+',
-    point: '2.3',
-    comment: 'Average',
-  ),
-  _GradeGuideRow(range: '60 - 65', grade: 'C', point: '2.0', comment: 'Fair'),
-  _GradeGuideRow(
-    range: '57 - 60',
-    grade: 'C-',
-    point: '1.7',
-    comment: 'Marginal',
-  ),
-  _GradeGuideRow(range: '55 - 57', grade: 'D+', point: '1.3', comment: 'Weak'),
-  _GradeGuideRow(range: '52 - 55', grade: 'D', point: '1.0', comment: 'Poor'),
-  _GradeGuideRow(range: '50 - 52', grade: 'D-', point: '0.7', comment: 'Poor'),
-  _GradeGuideRow(
-    range: '00 - 49',
-    grade: 'F',
-    point: '0.0',
-    comment: 'Failure',
-  ),
+  _GradeGuideRow(range: '85 - <90', grade: 'A-', point: '3.7', comment: ''),
+  _GradeGuideRow(range: '80 - <85', grade: 'B+', point: '3.3', comment: ''),
+  _GradeGuideRow(range: '75 - <80', grade: 'B', point: '3.0', comment: 'Good'),
+  _GradeGuideRow(range: '70 - <75', grade: 'B-', point: '2.7', comment: ''),
+  _GradeGuideRow(range: '65 - <70', grade: 'C+', point: '2.3', comment: ''),
+  _GradeGuideRow(range: '60 - <65', grade: 'C', point: '2.0', comment: 'Fair'),
+  _GradeGuideRow(range: '57 - <60', grade: 'C-', point: '1.7', comment: ''),
+  _GradeGuideRow(range: '55 - <57', grade: 'D+', point: '1.3', comment: ''),
+  _GradeGuideRow(range: '52 - <55', grade: 'D', point: '1.0', comment: 'Poor'),
+  _GradeGuideRow(range: '50 - <52', grade: 'D-', point: '0.7', comment: ''),
+  _GradeGuideRow(range: '<50', grade: 'F', point: '0.0', comment: 'Failure'),
   _GradeGuideRow(range: '70 - 100', grade: 'P', point: '', comment: 'Pass'),
   _GradeGuideRow(
     range: '80 - 100',

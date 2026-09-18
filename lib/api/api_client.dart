@@ -122,7 +122,6 @@ class ApiClient {
         }
       }
       if (status == TokenRefreshStatus.invalidSession) {
-        await AuthService().logout(force: true);
         throw const SessionExpiredException();
       }
     } catch (_) {
@@ -139,7 +138,6 @@ class ApiClient {
   }) async {
     final token = await getAccessToken();
     if (token == null || token.isEmpty) {
-      unawaited(AuthService().logout(force: true));
       throw const UnauthenticatedException();
     }
     final headers = await _authHeaders(token, method: 'GET', url: url);
@@ -481,6 +479,18 @@ class ApiClient {
       unawaited(
         AppLog.write('Network Request Error: $normalizedMethod $url - $error'),
       );
+      if (cachedBody != null && cachedBody.isNotEmpty) {
+        return http.Response(
+          cachedBody,
+          200,
+          headers: const <String, String>{'content-type': 'application/json'},
+          reasonPhrase: 'OK',
+        );
+      }
+      final expiredCache = _cachedResponses[inFlightKey];
+      if (expiredCache != null) {
+        return expiredCache.response;
+      }
       rethrow;
     } finally {
       _inFlightRequests.remove(inFlightKey);

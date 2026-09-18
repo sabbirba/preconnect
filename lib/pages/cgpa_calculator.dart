@@ -126,19 +126,6 @@ class _CgpaCalculatorPageState extends State<CgpaCalculatorPage> {
   @override
   Widget build(BuildContext context) {
     final expectedResult = _buildExpectedResult();
-    final completedCodes = _completedEffectiveCodes;
-    final autoRetakeCodes = _currentCourses
-        .where((draft) => completedCodes.contains(draft.codeValue))
-        .map((draft) => draft.codeValue)
-        .toSet();
-    final autoRetakeCurrentCourses =
-        _currentCourses
-            .where((draft) => autoRetakeCodes.contains(draft.codeValue))
-            .toList()
-          ..sort((a, b) => compareNaturalText(a.codeValue, b.codeValue));
-    final manualRetakeCourses = _selectedRetakeCourses
-        .where((draft) => !autoRetakeCodes.contains(draft.codeValue))
-        .toList();
     return AppPageScaffold(
       title: 'Expected CGPA',
       subtitle: 'Grade Calculator',
@@ -147,24 +134,6 @@ class _CgpaCalculatorPageState extends State<CgpaCalculatorPage> {
         padding: kPageListPadding,
         children: [
           _buildSummaryCard(context, expectedResult),
-          if (autoRetakeCurrentCourses.isNotEmpty ||
-              manualRetakeCourses.isNotEmpty) ...[
-            const Gap(12),
-            const AppSectionTitle(title: 'Retake Courses'),
-            const Gap(12),
-            ...autoRetakeCurrentCourses.map((draft) {
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 10),
-                child: _buildCurrentRetakeCourseCard(context, draft),
-              );
-            }),
-            ...manualRetakeCourses.map((draft) {
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: _buildRetakeCourseCard(context, draft),
-              );
-            }),
-          ],
           const Gap(16),
           const AppSectionTitle(title: 'Current Courses'),
           const Gap(12),
@@ -213,7 +182,6 @@ class _CgpaCalculatorPageState extends State<CgpaCalculatorPage> {
     final delta = expectedResult.cgpaDelta;
     final deltaValue = delta.abs().clamp(0.0, 1.0);
     final deltaColor = delta >= 0 ? AppPalette.accent : AppPalette.warning;
-    final selectedRetakes = _selectedRetakeCourses;
     final stats = <({String title, String value})>[
       (title: 'Current', value: expectedResult.currentCgpaLabel),
       (title: 'Expected', value: expectedResult.expectedCgpaLabel),
@@ -222,11 +190,8 @@ class _CgpaCalculatorPageState extends State<CgpaCalculatorPage> {
         value:
             '${expectedResult.cgpaDelta >= 0 ? '+' : ''}${expectedResult.cgpaDelta.toStringAsFixed(3)}',
       ),
-      (
-        title: 'Courses',
-        value: '${_currentCourses.length + selectedRetakes.length}',
-      ),
-      (title: 'Retakes', value: '${selectedRetakes.length}'),
+      (title: 'Courses', value: '${expectedResult.evaluatedCourseCount}'),
+      (title: 'Retakes', value: '${expectedResult.retakeCount}'),
       (title: 'Credits', value: formatCredit(expectedResult.selectedCredits)),
     ];
     return AppCard(
@@ -324,84 +289,6 @@ class _CgpaCalculatorPageState extends State<CgpaCalculatorPage> {
     );
   }
 
-  Widget _buildCurrentRetakeCourseCard(
-    BuildContext context,
-    _CurrentCourseDraft draft,
-  ) {
-    return InkWell(
-      borderRadius: BorderRadius.circular(18),
-      onTap: () async {
-        final selected = await _pickGrade(
-          courseCode: draft.codeValue,
-          subtitle: 'Choose retake grade',
-          currentGrade: draft.grade,
-          resetGrade: 'A',
-        );
-        if (!mounted || selected == null) return;
-        final wasReset = selected == 'A' && draft.grade != 'A';
-        setState(() {
-          draft.grade = selected;
-        });
-        _showCalculatorSnackBar(
-          wasReset
-              ? '${draft.codeValue} retake reset to A'
-              : '${draft.codeValue} retake set to $selected',
-        );
-      },
-      child: AppCard(
-        child: _buildCourseCard(
-          context,
-          badgeLabel: draft.grade,
-          codeLine: draft.codeValue,
-          titleLine: draft.titleValue,
-          creditLine: draft.creditValue,
-          statusLabel: 'Retake',
-          statusColor: AppPalette.info,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildRetakeCourseCard(
-    BuildContext context,
-    _CompletedCourseDraft draft,
-  ) {
-    return InkWell(
-      borderRadius: BorderRadius.circular(18),
-      onTap: () async {
-        final selected = await _pickGrade(
-          courseCode: draft.codeValue,
-          subtitle: 'Choose retake grade',
-          currentGrade: draft.selectedRetakeGrade ?? draft.completedGrade,
-          resetGrade: draft.completedGrade,
-        );
-        if (!mounted || selected == null) return;
-        final wasReset = selected == draft.completedGrade;
-        setState(() {
-          draft.selectedRetakeGrade = selected == draft.completedGrade
-              ? null
-              : selected;
-        });
-        _showCalculatorSnackBar(
-          wasReset
-              ? '${draft.codeValue} retake reset'
-              : '${draft.codeValue} retake set to $selected',
-        );
-      },
-      child: AppCard(
-        child: _buildCourseCard(
-          context,
-          badgeLabel: draft.selectedRetakeGrade ?? draft.completedGrade,
-          codeLine: draft.codeValue,
-          titleLine: draft.titleValue,
-          creditLine: draft.creditValue,
-          statusLabel: 'Retake',
-          statusColor: AppPalette.info,
-        ),
-      ),
-    );
-  }
-
   Widget _buildCompletedCourseCard(
     BuildContext context,
     _CompletedCourseDraft draft,
@@ -431,7 +318,7 @@ class _CgpaCalculatorPageState extends State<CgpaCalculatorPage> {
       child: AppCard(
         child: _buildCourseCard(
           context,
-          badgeLabel: draft.selectedRetakeGrade ?? draft.completedGrade,
+          badgeLabel: draft.completedGrade,
           codeLine: draft.semesterValue.isEmpty
               ? draft.codeValue
               : '${draft.codeValue} • ${formatSemesterTitle(draft.semesterValue)}',
@@ -590,6 +477,13 @@ class _CgpaCalculatorPageState extends State<CgpaCalculatorPage> {
       totalQualityPoints += snapshot.qualityPoints;
     }
 
+    final manualRetakesNotInCurrent = manualRetakeByCode.keys
+        .where((k) => !autoRetakeByCode.containsKey(k))
+        .length;
+    final evaluatedCourseCount =
+        _currentCourses.length + manualRetakesNotInCurrent;
+    final retakeCount = retakeCodes.length;
+
     final currentCgpa = baseline.cgpa;
     final expectedCgpa = totalCredits <= 0
         ? 0.0
@@ -604,6 +498,8 @@ class _CgpaCalculatorPageState extends State<CgpaCalculatorPage> {
       cgpaDelta: expectedCgpa - currentCgpa,
       selectedCredits: selectedCredits,
       usedOfficialCgpa: baseline.usedOfficialCgpa,
+      retakeCount: retakeCount,
+      evaluatedCourseCount: evaluatedCourseCount,
     );
   }
 
