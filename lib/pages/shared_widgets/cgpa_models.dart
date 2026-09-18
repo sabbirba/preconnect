@@ -148,7 +148,7 @@ class _CompletedCourseDraft {
     final code = codeController.text.trim().toUpperCase();
     final credit = double.tryParse(creditController.text.trim()) ?? 0.0;
     final gradeValue = _normalizeGrade(selectedRetakeGrade ?? completedGrade);
-    final gradePoint = _retakeCappedGradePoint(_gradePointFor(gradeValue));
+    final gradePoint = _gradePointFor(gradeValue);
     return _CourseSnapshot(
       code: code,
       credit: credit,
@@ -453,9 +453,4 @@ double? _gradePointFor(String grade) {
     default:
       return null;
   }
-}
-
-double? _retakeCappedGradePoint(double? gradePoint) {
-  if (gradePoint == null) return null;
-  return gradePoint > 3.3 ? 3.3 : gradePoint;
 }

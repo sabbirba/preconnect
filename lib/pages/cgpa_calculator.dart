@@ -869,6 +869,60 @@ class _CgpaCalculatorPageState extends State<CgpaCalculatorPage> {
                     style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
                   ),
                 ),
+                const Gap(16),
+                InkWell(
+                  borderRadius: BorderRadius.circular(14),
+                  onTap: () => openExternalUrl(
+                    sheetContext,
+                    'https://www.bracu.ac.bd/academics/policies-and-procedures',
+                  ),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 12,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.transparent,
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(
+                        color: textSecondary.withValues(alpha: 0.24),
+                      ),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Official BRAC University Policies & Procedures:',
+                          style: TextStyle(
+                            color: textPrimary,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const Gap(8),
+                        Text(
+                          '1. Retake Policy (for courses with an "F" grade):\n"The best of the grades received is counted for the calculation of the CGPA."',
+                          style: TextStyle(
+                            color: textPrimary,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w500,
+                            height: 1.35,
+                          ),
+                        ),
+                        const Gap(8),
+                        Text(
+                          '2. Repeat Policy (for grade improvement):\n"A student may repeat a course once in order to improve the grade, however, s/he must repeat the course within 2 semesters of the initial enrollment on the course. There will not be any cap on the grade of the repeated course and the latest grade earned would be counted for the CGPA calculation."',
+                          style: TextStyle(
+                            color: textPrimary,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w500,
+                            height: 1.35,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
               ],
             );
           },
@@ -1053,15 +1107,9 @@ class _CgpaCalculatorPageState extends State<CgpaCalculatorPage> {
         continue;
       }
       final manualDraft = manualRetakeByCode[code];
-      final rawRetakeSnapshot =
+      final retakeSnapshot =
           autoRetakeByCode[code] ?? manualDraft?.toRetakeSnapshot();
-      if (rawRetakeSnapshot == null || !rawRetakeSnapshot.countsToGpa) continue;
-      final retakeSnapshot = _CourseSnapshot(
-        code: rawRetakeSnapshot.code,
-        credit: rawRetakeSnapshot.credit,
-        grade: rawRetakeSnapshot.grade,
-        gradePoint: _retakeCappedGradePoint(rawRetakeSnapshot.gradePoint),
-      );
+      if (retakeSnapshot == null || !retakeSnapshot.countsToGpa) continue;
 
       selectedCredits += retakeSnapshot.credit;
       selectedQualityPoints += retakeSnapshot.qualityPoints;
@@ -1177,52 +1225,13 @@ class _CgpaCalculatorPageState extends State<CgpaCalculatorPage> {
           physics: const ClampingScrollPhysics(),
           padding: const EdgeInsets.only(bottom: 24),
           children: [
-            if (isRetake) ...[
-              Container(
-                margin: const EdgeInsets.only(bottom: 14),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 14,
-                  vertical: 10,
-                ),
-                decoration: BoxDecoration(
-                  color: AppPalette.info.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(
-                    color: AppPalette.info.withValues(alpha: 0.28),
-                  ),
-                ),
-                child: Row(
-                  children: [
-                    const Icon(
-                      Icons.info_outline_rounded,
-                      size: 20,
-                      color: AppPalette.info,
-                    ),
-                    const Gap(10),
-                    Expanded(
-                      child: Text(
-                        'BRACU Policy: Retake course grades are capped at B+ (3.30).',
-                        style: TextStyle(
-                          color: textPrimary,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
             Wrap(
               spacing: 8,
               runSpacing: 8,
               children: _gradeOptions.map((grade) {
                 final selected = currentGrade == grade;
-                final isCapped =
-                    isRetake && (_gradePointFor(grade) ?? 0.0) > 3.3;
-                final label = isCapped ? '$grade (B+ cap)' : grade;
                 return ChoiceChip(
-                  label: Text(label),
+                  label: Text(grade),
                   selected: selected,
                   showCheckmark: false,
                   labelStyle: TextStyle(
