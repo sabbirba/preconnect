@@ -190,6 +190,7 @@ class _CgpaCalculatorPageState extends State<CgpaCalculatorPage> {
         value:
             '${expectedResult.cgpaDelta >= 0 ? '+' : ''}${expectedResult.cgpaDelta.toStringAsFixed(3)}',
       ),
+      (title: 'Round Up', value: expectedResult.roundUpCgpaLabel),
       (title: 'Courses', value: '${expectedResult.evaluatedCourseCount}'),
       (title: 'Retakes', value: '${expectedResult.retakeCount}'),
       (title: 'Credits', value: formatCredit(expectedResult.selectedCredits)),
