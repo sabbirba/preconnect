@@ -35,7 +35,7 @@ dependencies:
   firebase_core: ^4.15.0
   firebase_messaging: ^16.7.0
   flutter_local_notifications: ^22.3.1
-  flutter_cache_manager: ^3.4.3
+  flutter_cache_manager: ^3.4.5
   package_info_plus: ^10.2.1
   device_info_plus: ^13.2.0
   gap: ^3.0.1
