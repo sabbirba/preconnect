@@ -6,7 +6,7 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:preconnect/api/friend_store.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/token_storage.dart';
-import 'package:flutter_zxing/flutter_zxing.dart'
+import 'package:mobile_scanner/mobile_scanner.dart'
     if (dart.library.js_interop) 'package:preconnect/tools/scanner_stub.dart';
 import 'package:preconnect/tools/clipboard_stub.dart'
     if (dart.library.js_interop) 'package:preconnect/tools/clipboard_web.dart';
@@ -22,6 +22,11 @@ class ScanSchedulePage extends StatefulWidget {
 
 class _ScanSchedulePageState extends State<ScanSchedulePage> {
   final FriendScheduleStore _store = FriendScheduleStore();
+  late final MobileScannerController _controller = MobileScannerController(
+    formats: const [BarcodeFormat.qrCode],
+    detectionSpeed: DetectionSpeed.noDuplicates,
+    returnImage: false,
+  );
   String? scannedValue;
   bool? _cameraGranted;
   bool _cameraFailed = false;
@@ -32,6 +37,12 @@ class _ScanSchedulePageState extends State<ScanSchedulePage> {
   void initState() {
     super.initState();
     _ensureCameraPermission();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
   }
 
   Future<void> _ensureCameraPermission({
@@ -57,6 +68,7 @@ class _ScanSchedulePageState extends State<ScanSchedulePage> {
       await _store.importPayload(value);
       if (!mounted) return;
       setState(() => scannedValue = value);
+      _controller.stop();
     } on FormatException {
       if (!mounted) return;
       showAppSnackBar(context, 'Invalid friend schedule QR code');
@@ -98,6 +110,7 @@ class _ScanSchedulePageState extends State<ScanSchedulePage> {
       scannedValue = null;
       _cameraFailed = false;
     });
+    _controller.start();
   }
 
   @override
@@ -218,32 +231,53 @@ class _ScanSchedulePageState extends State<ScanSchedulePage> {
                                 ],
                               ),
                             )
-                          : ReaderWidget(
-                              codeFormat: Format.qrCode,
-                              resolution: ResolutionPreset.high,
-                              cropPercent: 0.85,
-                              tryHarder: false,
-                              tryRotate: true,
-                              tryInverted: false,
-                              tryDownscale: true,
-                              maxNumberOfSymbols: 1,
-                              showScannerOverlay: false,
-                              showFlashlight: false,
-                              showGallery: false,
-                              showToggleCamera: false,
-                              allowPinchZoom: false,
-                              onControllerCreated: (_, error) {
-                                if (error == null || !mounted) return;
-                                setState(() => _cameraFailed = true);
+                          : MobileScanner(
+                              controller: _controller,
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error) {
+                                return Container(
+                                  color: Colors.black,
+                                  alignment: Alignment.center,
+                                  padding: const EdgeInsets.all(16),
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      const Icon(
+                                        Icons.error_outline,
+                                        color: Colors.white,
+                                        size: 34,
+                                      ),
+                                      const Gap(12),
+                                      const Text(
+                                        'Camera unavailable',
+                                        textAlign: TextAlign.center,
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 16,
+                                        ),
+                                      ),
+                                      const Gap(12),
+                                      AppActionButton(
+                                        onPressed: () =>
+                                            _ensureCameraPermission(
+                                              openSettingsOnDeny: true,
+                                            ),
+                                        label: 'Retry Camera',
+                                        outlined: true,
+                                        foregroundColor: Colors.white,
+                                      ),
+                                    ],
+                                  ),
+                                );
                               },
-                              onScan: (code) async {
+                              onDetect: (capture) async {
                                 if (scannedValue != null || _isSaving) return;
-                                final value = code.text;
-                                if (value == null || value.trim().isEmpty) {
+                                final barcode = capture.barcodes.firstOrNull;
+                                final value = barcode?.rawValue?.trim();
+                                if (value == null || value.isEmpty) {
                                   return;
                                 }
-                                final normalized = value.trim();
-                                await _acceptScannedValue(normalized);
+                                await _acceptScannedValue(value);
                               },
                             )
                     : Center(

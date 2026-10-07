@@ -332,11 +332,18 @@ class _MyAppState extends State<MyApp>
   }
 
   void _handleIncomingDeepLink(Uri uri) {
-    final isHttps =
-        uri.host == 'preconnect.app' &&
-        uri.path.startsWith('/api/auth/callback');
-    final isCustomScheme = uri.scheme == 'preconnect' && uri.host == 'callback';
-    if (!isHttps && !isCustomScheme) return;
+    final isMatchingHost =
+        uri.host == 'preconnect.app' || uri.host == 'callback';
+    final isCallbackPath =
+        uri.path.startsWith('/api/auth/callback') ||
+        uri.path.startsWith('/auth/callback') ||
+        uri.host == 'callback';
+    final isValidScheme =
+        uri.scheme == 'preconnect' ||
+        uri.scheme == 'https' ||
+        uri.scheme == 'http';
+
+    if (!isValidScheme || !isMatchingHost || !isCallbackPath) return;
 
     final token = uri.queryParameters['google_access_token'];
     final refresh = uri.queryParameters['google_refresh_token'];
@@ -348,10 +355,7 @@ class _MyAppState extends State<MyApp>
             googleRefreshToken: refresh,
           )
         : code != null && code.isNotEmpty
-        ? LibSyncAuthService.instance.authenticateWithCode(
-            code,
-            redirectUri: isCustomScheme ? 'preconnect://callback' : null,
-          )
+        ? LibSyncAuthService.instance.authenticateWithCode(code)
         : null;
 
     if (authFuture != null) {

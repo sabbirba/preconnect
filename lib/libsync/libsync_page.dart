@@ -282,9 +282,7 @@ class _LibSyncPageState extends State<LibSyncPage>
     _googleSigningInProgress = true;
     try {
       if (!kIsWeb) {
-        final oauthUrl = LibSyncConfig.buildOAuthUrl(
-          redirectUri: LibSyncConfig.googleNativeRedirectUri,
-        );
+        final oauthUrl = LibSyncConfig.buildOAuthUrl();
         await launchUrl(oauthUrl, mode: LaunchMode.externalApplication);
         return;
       }

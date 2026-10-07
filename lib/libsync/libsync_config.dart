@@ -28,11 +28,10 @@ class LibSyncConfig {
   );
   static const String googleRedirectUri =
       'https://preconnect.app/api/auth/callback';
-  static const String googleNativeRedirectUri = 'preconnect://callback';
   static const String googleScopes = 'openid email profile';
 
   static Uri buildOAuthUrl({
-    required String redirectUri,
+    String redirectUri = googleRedirectUri,
     bool includeState = true,
   }) {
     return Uri.parse('https://accounts.google.com/o/oauth2/v2/auth').replace(

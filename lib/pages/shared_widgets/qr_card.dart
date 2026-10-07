@@ -17,7 +17,9 @@ class QrCard extends StatelessWidget {
           decoration: const BoxDecoration(color: Colors.white),
           padding: const EdgeInsets.all(12),
           child: BarcodeWidget(
-            barcode: Barcode.qrCode(),
+            barcode: Barcode.qrCode(
+              errorCorrectLevel: BarcodeQRCorrectionLevel.low,
+            ),
             data: data,
             color: Colors.black,
             backgroundColor: Colors.white,

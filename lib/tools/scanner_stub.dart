@@ -1,52 +1,63 @@
 import 'package:flutter/material.dart';
 
-class Format {
-  static const int qrCode = 8192;
+enum BarcodeFormat { qrCode }
+
+enum DetectionSpeed { normal, noDuplicates, unrestricted }
+
+class Barcode {
+  const Barcode({this.rawValue});
+
+  final String? rawValue;
 }
 
-class Code {
-  const Code({this.text});
+class BarcodeCapture {
+  const BarcodeCapture({this.barcodes = const []});
 
-  final String? text;
+  final List<Barcode> barcodes;
 }
 
-enum ResolutionPreset { high }
+class MobileScannerException implements Exception {}
 
-class ReaderWidget extends StatelessWidget {
-  const ReaderWidget({
-    super.key,
-    this.codeFormat = Format.qrCode,
-    this.resolution = ResolutionPreset.high,
-    this.cropPercent = 0.85,
-    this.tryHarder = false,
-    this.tryRotate = true,
-    this.tryInverted = false,
-    this.tryDownscale = false,
-    this.maxNumberOfSymbols = 1,
-    this.showScannerOverlay = false,
-    this.showFlashlight = false,
-    this.showGallery = false,
-    this.showToggleCamera = false,
-    this.allowPinchZoom = false,
-    this.onControllerCreated,
-    this.onScan,
+class MobileScannerPlatform {
+  static final MobileScannerPlatform instance = MobileScannerPlatform();
+
+  Future<BarcodeCapture?> analyzeImage(
+    String path, {
+    List<BarcodeFormat> formats = const [],
+  }) async => null;
+}
+
+class MobileScannerController {
+  MobileScannerController({
+    List<BarcodeFormat>? formats,
+    DetectionSpeed? detectionSpeed,
+    Size? cameraResolution,
+    bool? autoStart,
+    bool? returnImage,
   });
 
-  final int codeFormat;
-  final ResolutionPreset resolution;
-  final double cropPercent;
-  final bool tryHarder;
-  final bool tryRotate;
-  final bool tryInverted;
-  final bool tryDownscale;
-  final int maxNumberOfSymbols;
-  final bool showScannerOverlay;
-  final bool showFlashlight;
-  final bool showGallery;
-  final bool showToggleCamera;
-  final bool allowPinchZoom;
-  final void Function(Object?, Exception?)? onControllerCreated;
-  final void Function(Code)? onScan;
+  Future<void> start() async {}
+  Future<void> stop() async {}
+  Future<BarcodeCapture?> analyzeImage(
+    String path, {
+    List<BarcodeFormat> formats = const [],
+  }) async => null;
+  void dispose() {}
+}
+
+class MobileScanner extends StatelessWidget {
+  const MobileScanner({
+    super.key,
+    this.controller,
+    this.onDetect,
+    this.errorBuilder,
+    this.fit,
+  });
+
+  final MobileScannerController? controller;
+  final void Function(BarcodeCapture)? onDetect;
+  final Widget Function(BuildContext, dynamic)? errorBuilder;
+  final BoxFit? fit;
 
   @override
   Widget build(BuildContext context) {

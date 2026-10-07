@@ -68,19 +68,6 @@ subprojects {
             )
         }
     }
-    if (name == "flutter_zxing") {
-        plugins.withId("com.android.library") {
-            extensions.configure<LibraryExtension> {
-                defaultConfig {
-                    externalNativeBuild {
-                        cmake {
-                            arguments += "-DCMAKE_CXX_STANDARD=20"
-                        }
-                    }
-                }
-            }
-        }
-    }
 }
 
 tasks.register<Delete>("clean") {
