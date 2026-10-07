@@ -163,6 +163,7 @@ class _AppNotificationsIconButtonState extends State<AppNotificationsIconButton>
   @override
   void initState() {
     super.initState();
+    _cachedCount = AppStorage.instance.getIntSync(_cachedUnreadCountKey);
     unawaited(_loadCachedCount());
     _future = NotificationService().getTotalUnreadCount();
     unawaited(_future.then(_persistCount));

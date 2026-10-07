@@ -14,8 +14,12 @@ import 'package:preconnect/tools/refresh_bus.dart';
 class NotificationsPage extends StatefulWidget {
   const NotificationsPage({super.key});
 
+  static Future<NotificationsViewData> preloadData({
+    bool forceRefresh = false,
+  }) => _NotificationsPageState.preloadData(forceRefresh: forceRefresh);
+
   static Future<void> preload() async {
-    await _NotificationsPageState.preloadData();
+    await preloadData();
   }
 
   @override
@@ -40,12 +44,10 @@ class _NotificationsPageState extends State<NotificationsPage>
       final recentFeedJson = AppStorage.instance.getStringSync(
         'RecentNotificationsFeed',
       );
-      final scraperFeedJson = AppStorage.instance.getStringSync(
-        'scraper_notifications_feed_v1',
+      final feedJson = AppStorage.instance.getStringSync(
+        'feed_notifications_v1',
       );
-      final seenScraperJson = AppStorage.instance.getStringSync(
-        'scraper_notifications_seen_v1',
-      );
+      final seenJson = AppStorage.instance.getStringSync('feed_seen_v1');
 
       NotificationsFeed? connect;
       if (recentFeedJson != null) {
@@ -54,41 +56,38 @@ class _NotificationsPageState extends State<NotificationsPage>
         );
       }
 
-      List<ScraperContentItem> scraped = [];
-      if (scraperFeedJson != null) {
-        final decoded = jsonDecode(scraperFeedJson) as Map<String, dynamic>;
+      List<FeedItem> feed = [];
+      if (feedJson != null) {
+        final decoded = jsonDecode(feedJson) as Map<String, dynamic>;
         final rawItems = decoded['items'];
         if (rawItems is List) {
-          scraped = rawItems
+          feed = rawItems
               .whereType<Map>()
-              .map(
-                (item) =>
-                    ScraperContentItem.fromJson(item.cast<String, dynamic>()),
-              )
+              .map((item) => FeedItem.fromJson(item.cast<String, dynamic>()))
               .toList();
         }
       }
 
-      Set<String> seenScraperIds = {};
-      if (seenScraperJson != null) {
-        final decoded = jsonDecode(seenScraperJson) as Map<String, dynamic>;
+      Set<String> seenFeedIds = {};
+      if (seenJson != null) {
+        final decoded = jsonDecode(seenJson) as Map<String, dynamic>;
         final raw = decoded['ids'];
         if (raw is List) {
-          seenScraperIds = raw
+          seenFeedIds = raw
               .map((v) => '$v'.trim())
               .where((v) => v.isNotEmpty)
               .toSet();
         }
       }
 
-      if (connect == null && scraped.isEmpty && seenScraperIds.isEmpty) {
+      if (connect == null && feed.isEmpty && seenFeedIds.isEmpty) {
         return null;
       }
 
       return NotificationsViewData(
         connect: connect,
-        scraped: scraped,
-        seenScraperIds: seenScraperIds,
+        feed: feed,
+        seenFeedIds: seenFeedIds,
       );
     } catch (_) {
       return null;
@@ -127,33 +126,9 @@ class _NotificationsPageState extends State<NotificationsPage>
   }
 
   Future<NotificationsViewData> _startWithCache() async {
-    final cached = await _loadCachedData();
-    final data = cached ?? await preloadData();
+    final data = await preloadData();
     _lastData = data;
     return data;
-  }
-
-  static Future<NotificationsViewData?> _loadCachedData() async {
-    try {
-      final connect = await NotificationService().getRecentNotifications(
-        fromFetch: true,
-      );
-      final scraper = await NotificationService().getScraperContentFeed(
-        forceRefresh: false,
-      );
-      final seenScraperIds = await NotificationService()
-          .getSeenScraperNotificationIds();
-      if (connect == null && scraper.isEmpty && seenScraperIds.isEmpty) {
-        return null;
-      }
-      return NotificationsViewData(
-        connect: connect,
-        scraped: scraper,
-        seenScraperIds: seenScraperIds,
-      );
-    } catch (_) {
-      return null;
-    }
   }
 
   static Future<NotificationsViewData> preloadData({
@@ -175,25 +150,35 @@ class _NotificationsPageState extends State<NotificationsPage>
             .catchError((e) {
               return null;
             });
-    final scraperFuture = NotificationService()
-        .getScraperContentFeed(forceRefresh: forceRefresh)
+    final feedFuture = NotificationService()
+        .getFeedItems(forceRefresh: forceRefresh)
         .catchError((e) {
-          return const <ScraperContentItem>[];
+          return const <FeedItem>[];
         });
-    final seenScraperIdsFuture = NotificationService()
-        .getSeenScraperNotificationIds()
-        .catchError((e) {
-          return <String>{};
-        });
+    final seenFeedIdsFuture = NotificationService().getSeenFeedIds().catchError(
+      (e) {
+        return <String>{};
+      },
+    );
     final results = await Future.wait<dynamic>(<Future<dynamic>>[
       connectFuture,
-      scraperFuture,
-      seenScraperIdsFuture,
+      feedFuture,
+      seenFeedIdsFuture,
     ]);
+    final connect = results[0] as NotificationsFeed?;
+    final feed = results[1] as List<FeedItem>;
+    final seenFeedIds = results[2] as Set<String>;
+    final unreadFeed = feed
+        .where((item) => !seenFeedIds.contains(item.id))
+        .length;
+    final totalUnread = (connect?.newCount ?? 0) + unreadFeed;
+    unawaited(
+      AppStorage.instance.setInt('notifications_unread_count_v1', totalUnread),
+    );
     return NotificationsViewData(
-      connect: results[0] as NotificationsFeed?,
-      scraped: results[1] as List<ScraperContentItem>,
-      seenScraperIds: results[2] as Set<String>,
+      connect: connect,
+      feed: feed,
+      seenFeedIds: seenFeedIds,
     );
   }
 
@@ -231,13 +216,13 @@ class _NotificationsPageState extends State<NotificationsPage>
     if (!mounted) return;
 
     final updated = await NotificationService().markAllSeen();
-    final scraperIds = currentData.scraped.map((item) => item.id).toSet();
-    await NotificationService().markAllScraperNotificationsSeen(scraperIds);
+    final feedIds = currentData.feed.map((item) => item.id).toSet();
+    await NotificationService().markAllFeedSeen(feedIds);
 
     final optimisticData = NotificationsViewData(
       connect: updated ?? currentData.connect,
-      scraped: currentData.scraped,
-      seenScraperIds: {...currentData.seenScraperIds, ...scraperIds},
+      feed: currentData.feed,
+      seenFeedIds: {...currentData.seenFeedIds, ...feedIds},
     );
 
     final refreshedFuture = _loadData(forceRefresh: true);
@@ -300,8 +285,8 @@ class _NotificationsPageState extends State<NotificationsPage>
       setState(() {
         _lastData = NotificationsViewData(
           connect: updatedConnect ?? currentData.connect,
-          scraped: currentData.scraped,
-          seenScraperIds: currentData.seenScraperIds,
+          feed: currentData.feed,
+          seenFeedIds: currentData.seenFeedIds,
         );
         cache.value = _lastData;
       });
@@ -309,27 +294,27 @@ class _NotificationsPageState extends State<NotificationsPage>
     });
   }
 
-  Future<void> _openScraperNotification(NotificationListItem item) async {
+  Future<void> _openFeedNotification(NotificationListItem item) async {
     if (!mounted) return;
     await showAppBottomSheet<void>(
       context,
       title: item.title.trim().isEmpty ? 'Notification' : item.title.trim(),
       initialChildSize: 0.80,
       builder: (context, textPrimary, textSecondary) =>
-          ScraperNotificationDetailPanel(item: item),
+          FeedDetailPanel(item: item),
     );
     if (!mounted) return;
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) return;
-      await NotificationService().markScraperNotificationSeen(item.id);
+      await NotificationService().markFeedSeen(item.id);
       if (!mounted) return;
       setState(() {
         final current = _lastData;
         if (current == null) return;
         _lastData = NotificationsViewData(
           connect: current.connect,
-          scraped: current.scraped,
-          seenScraperIds: {...current.seenScraperIds, item.id},
+          feed: current.feed,
+          seenFeedIds: {...current.seenFeedIds, item.id},
         );
         cache.value = _lastData;
       });
@@ -400,7 +385,7 @@ class _NotificationsPageState extends State<NotificationsPage>
                                 _openConnectNotification(item.connectItem!);
                                 return;
                               }
-                              _openScraperNotification(item);
+                              _openFeedNotification(item);
                             },
                           ),
                         )
@@ -435,13 +420,9 @@ class _NotificationsPageState extends State<NotificationsPage>
     }
     final connectItems =
         data?.connect?.items ?? const <RecentConnectNotification>[];
-    final scrapedItems = data?.scraped ?? const <ScraperContentItem>[];
-    final seenScraperIds = data?.seenScraperIds ?? const <String>{};
-    final items = _buildCombinedItems(
-      connectItems,
-      scrapedItems,
-      seenScraperIds,
-    );
+    final feedItems = data?.feed ?? const <FeedItem>[];
+    final seenFeedIds = data?.seenFeedIds ?? const <String>{};
+    final items = _buildCombinedItems(connectItems, feedItems, seenFeedIds);
     _combinedItemsForData = data;
     _combinedItemsCache = items;
     return items;
@@ -449,8 +430,8 @@ class _NotificationsPageState extends State<NotificationsPage>
 
   List<NotificationListItem> _buildCombinedItems(
     List<RecentConnectNotification> connect,
-    List<ScraperContentItem> scraped,
-    Set<String> seenScraperIds,
+    List<FeedItem> feed,
+    Set<String> seenFeedIds,
   ) {
     final output = <NotificationListItem>[
       ...connect.map(
@@ -467,7 +448,7 @@ class _NotificationsPageState extends State<NotificationsPage>
           seen: item.seen,
         ),
       ),
-      ...scraped.map(
+      ...feed.map(
         (item) => NotificationListItem(
           id: item.id,
           title: item.title,
@@ -477,7 +458,7 @@ class _NotificationsPageState extends State<NotificationsPage>
           url: item.url,
           imageUrl: item.imageUrl,
           imageUrls: item.imageUrls,
-          seen: seenScraperIds.contains(item.id),
+          seen: seenFeedIds.contains(item.id),
         ),
       ),
     ];

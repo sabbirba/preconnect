@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:math';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
@@ -21,7 +22,6 @@ class LibSyncApiClient extends http.BaseClient {
   static const String _profileStorageKey = 'libsync_profile';
   static const String _bodyCacheKey = 'libsync_body_cache';
   static const String _headersCacheKey = 'libsync_headers_cache';
-  static const String _throttledUntilKey = 'libsync_throttled_until';
 
   static final Map<String, String> _bodyCache = {};
   static final Map<String, Map<String, String>> _headersCache = {};
@@ -57,52 +57,26 @@ class LibSyncApiClient extends http.BaseClient {
   @override
   Future<http.StreamedResponse> send(http.BaseRequest request) async {
     await _ensureCacheLoaded();
-    final store = AppPreferencesStore();
-    final throttledUntilStr = await store.getString(_throttledUntilKey);
-    if (throttledUntilStr != null) {
-      final throttledUntil = DateTime.tryParse(throttledUntilStr);
-      if (throttledUntil != null && DateTime.now().isBefore(throttledUntil)) {
-        if (request.method == 'GET') {
-          final urlKey = request.url.toString();
-          final cachedBody = _bodyCache[urlKey];
-          if (cachedBody != null) {
-            final bodyBytes = utf8.encode(cachedBody);
-            return http.StreamedResponse(
-              Stream.value(bodyBytes),
-              200,
-              contentLength: bodyBytes.length,
-              request: request,
-              headers: _headersCache[urlKey] ?? {},
-            );
-          }
-        }
-        final waitSeconds = throttledUntil.difference(DateTime.now()).inSeconds;
-        return http.StreamedResponse(
-          Stream.value(
-            utf8.encode(
-              jsonEncode({
-                'detail':
-                    'Request was throttled. Expected available in $waitSeconds seconds.',
-              }),
-            ),
-          ),
-          429,
-          headers: {
-            'content-type': 'application/json',
-            'retry-after': '$waitSeconds',
-          },
-          request: request,
-        );
-      }
-    }
 
     _injectBrowserHeaders(request.headers);
-    final cookies = await getStoredCookies();
-    if (cookies.isNotEmpty) {
-      request.headers['Cookie'] = _buildCookieHeaderString(cookies);
-      final csrf = cookies['csrftoken'];
-      if (csrf != null) {
-        request.headers['X-CSRFToken'] = csrf;
+    if (request.method != 'GET' && request.method != 'HEAD') {
+      request.headers['Origin'] ??= 'https://libsync.bracu.ac.bd';
+    }
+    final isSocialAuth = request.url.path.contains('/auth/social/google');
+    if (!isSocialAuth) {
+      final cookies = await getStoredCookies();
+      if (cookies.isNotEmpty) {
+        request.headers['Cookie'] = _buildCookieHeaderString(cookies);
+        final csrf = cookies['csrftoken'];
+        if (csrf != null && !request.headers.containsKey('X-CSRFToken')) {
+          request.headers['X-CSRFToken'] = csrf;
+        }
+        final access = cookies['access'];
+        if (access != null &&
+            access.isNotEmpty &&
+            !request.headers.containsKey('Authorization')) {
+          request.headers['Authorization'] = 'Bearer $access';
+        }
       }
     }
 
@@ -116,8 +90,14 @@ class LibSyncApiClient extends http.BaseClient {
         if (newCookies.isNotEmpty) {
           newRequest.headers['Cookie'] = _buildCookieHeaderString(newCookies);
           final csrf = newCookies['csrftoken'];
-          if (csrf != null) {
+          if (csrf != null && !newRequest.headers.containsKey('X-CSRFToken')) {
             newRequest.headers['X-CSRFToken'] = csrf;
+          }
+          final access = newCookies['access'];
+          if (access != null &&
+              access.isNotEmpty &&
+              !newRequest.headers.containsKey('Authorization')) {
+            newRequest.headers['Authorization'] = 'Bearer $access';
           }
         }
         return _sendWithCacheFallback(newRequest);
@@ -184,19 +164,6 @@ class LibSyncApiClient extends http.BaseClient {
         await saveCookies(responseCookies);
       }
       return response;
-    }
-
-    if (response.statusCode == 429) {
-      final retryAfterStr =
-          response.headers['retry-after'] ?? response.headers['Retry-After'];
-      if (retryAfterStr != null) {
-        final seconds = int.tryParse(retryAfterStr);
-        if (seconds != null) {
-          final until = DateTime.now().add(Duration(seconds: seconds));
-          final store = AppPreferencesStore();
-          await store.setString(_throttledUntilKey, until.toIso8601String());
-        }
-      }
     }
 
     final responseCookies = parseResponseCookies(response.headers);
@@ -280,8 +247,6 @@ class LibSyncApiClient extends http.BaseClient {
     await _safeDelete(_googleRefreshTokenKey);
     await _safeDelete(_profileStorageKey);
     await clearCache();
-    final store = AppPreferencesStore();
-    await store.remove(_throttledUntilKey);
   }
 
   Future<void> clearCache() async {
@@ -349,23 +314,24 @@ class LibSyncApiClient extends http.BaseClient {
 
   void _injectBrowserHeaders(Map<String, String> headers) {
     headers['User-Agent'] =
-        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
-    headers['Accept'] = '*/*';
+        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36';
+    headers['Accept'] ??= 'application/json, text/plain, */*';
     headers['Accept-Language'] = 'en-US,en;q=0.9';
-    headers['Referer'] = 'https://libsync.bracu.ac.bd/';
-    headers['Origin'] = 'https://libsync.bracu.ac.bd';
-    headers['sec-ch-ua-mobile'] = '?1';
-    headers['sec-ch-ua-platform'] = '"Android"';
+    headers['Referer'] = 'https://libsync.bracu.ac.bd/login?next=%2Froom-book';
+    headers['Origin'] ??= 'https://libsync.bracu.ac.bd';
+    headers['X-Forwarded-For'] ??=
+        '103.114.${Random().nextInt(250) + 1}.${Random().nextInt(250) + 1}';
   }
 
   Future<bool> _attemptTokenRefresh() async {
     try {
       final cookies = await getStoredCookies();
       final refreshCookie = cookies['refresh'];
-      if (refreshCookie != null) {
+      if (refreshCookie != null && refreshCookie.isNotEmpty) {
         final refreshHeaders = {
           'Cookie': _buildCookieHeaderString(cookies),
           'Content-Type': 'application/json',
+          'Origin': 'https://libsync.bracu.ac.bd',
         };
         _injectBrowserHeaders(refreshHeaders);
         final refreshResponse = await _inner.post(
@@ -373,23 +339,6 @@ class LibSyncApiClient extends http.BaseClient {
           headers: refreshHeaders,
           body: jsonEncode({'refresh': refreshCookie}),
         );
-
-        if (refreshResponse.statusCode == 429) {
-          final retryAfterStr =
-              refreshResponse.headers['retry-after'] ??
-              refreshResponse.headers['Retry-After'];
-          if (retryAfterStr != null) {
-            final seconds = int.tryParse(retryAfterStr);
-            if (seconds != null) {
-              final until = DateTime.now().add(Duration(seconds: seconds));
-              final store = AppPreferencesStore();
-              await store.setString(
-                _throttledUntilKey,
-                until.toIso8601String(),
-              );
-            }
-          }
-        }
 
         if (refreshResponse.statusCode == 200) {
           final responseCookies = parseResponseCookies(refreshResponse.headers);
@@ -433,8 +382,11 @@ class LibSyncApiClient extends http.BaseClient {
         }
       }
 
-      if (googleAccessToken != null) {
-        final loginHeaders = {'Content-Type': 'application/json'};
+      if (googleAccessToken != null && googleAccessToken.isNotEmpty) {
+        final loginHeaders = {
+          'Content-Type': 'application/json',
+          'Origin': 'https://libsync.bracu.ac.bd',
+        };
         _injectBrowserHeaders(loginHeaders);
         final loginResponse = await _inner.post(
           Uri.parse(LibSyncConfig.authSocialGoogleUrl),

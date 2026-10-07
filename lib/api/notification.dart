@@ -62,10 +62,10 @@ class RecentConnectNotification {
   }
 }
 
-class ScraperDataService {
-  ScraperDataService._internal();
-  static final ScraperDataService _instance = ScraperDataService._internal();
-  factory ScraperDataService() => _instance;
+class FeedService {
+  FeedService._internal();
+  static final FeedService _instance = FeedService._internal();
+  factory FeedService() => _instance;
 
   final ApiClient _client = ApiClient();
   final RepositoryCache _repo = RepositoryCache.instance;
@@ -269,8 +269,8 @@ class ConnectNotificationDetail {
   }
 }
 
-class ScraperContentItem {
-  const ScraperContentItem({
+class FeedItem {
+  const FeedItem({
     required this.id,
     required this.source,
     required this.title,
@@ -290,11 +290,11 @@ class ScraperContentItem {
   final String? imageUrl;
   final List<String> imageUrls;
 
-  factory ScraperContentItem.fromJson(Map<String, dynamic> json) {
+  factory FeedItem.fromJson(Map<String, dynamic> json) {
     final list = json['imageUrls'] as List?;
     final urls = list != null ? list.cast<String>() : <String>[];
 
-    return ScraperContentItem(
+    return FeedItem(
       id: _trimString(json['id'] as String?),
       source: _trimString(json['source'] as String?),
       title: _trimString(json['title'] as String?),
@@ -326,38 +326,42 @@ class NotificationService {
   factory NotificationService() => _instance;
 
   final ApiClient _client = ApiClient();
-  final ScraperDataService _scraper = ScraperDataService();
+  final FeedService _feed = FeedService();
   final RepositoryCache _repo = RepositoryCache.instance;
 
   static const String _recentFeedKey = 'RecentNotificationsFeed';
-  static const String _scraperFeedCacheKey = 'scraper_notifications_feed_v1';
-  static const String _scraperSeenIdsCacheKey = 'scraper_notifications_seen_v1';
+  static const String _feedCacheKey = 'feed_notifications_v1';
+  static const String _seenIdsCacheKey = 'feed_seen_v1';
 
-  Future<List<ScraperContentItem>> getScraperContentFeed({
-    bool forceRefresh = false,
-  }) async {
+  NotificationsFeed? _inMemoryFeed;
+  List<FeedItem>? _inMemoryFeedItems;
+  Set<String>? _inMemorySeenIds;
+
+  Future<List<FeedItem>> getFeedItems({bool forceRefresh = false}) async {
     if (!forceRefresh) {
-      final cached = await _readCachedScraperFeed();
-      if (cached != null) return cached;
+      if (_inMemoryFeedItems != null) return _inMemoryFeedItems!;
+      final cached = await _readCachedFeedItems();
+      if (cached != null) {
+        _inMemoryFeedItems = cached;
+        return cached;
+      }
     }
 
-    final results = await Future.wait<List<ScraperContentItem>>(
-      <Future<List<ScraperContentItem>>>[
-        _fetchScraperItems(
-          path: ApiConfig.announcementFeedUrl,
-          source: 'Announcement',
-          cacheKey: 'scraper_announcements_v1',
-          forceRefresh: forceRefresh,
-        ),
-        _fetchScraperItems(
-          path: ApiConfig.newsFeedUrl,
-          source: 'News',
-          cacheKey: 'scraper_news_v1',
-          forceRefresh: forceRefresh,
-        ),
-      ],
-    );
-    final merged = <ScraperContentItem>[...results[0], ...results[1]];
+    final results = await Future.wait<List<FeedItem>>(<Future<List<FeedItem>>>[
+      _fetchFeedItems(
+        path: ApiConfig.announcementFeedUrl,
+        source: 'Announcement',
+        cacheKey: 'announcements_v1',
+        forceRefresh: forceRefresh,
+      ),
+      _fetchFeedItems(
+        path: ApiConfig.newsFeedUrl,
+        source: 'News',
+        cacheKey: 'news_v1',
+        forceRefresh: forceRefresh,
+      ),
+    ]);
+    final merged = <FeedItem>[...results[0], ...results[1]];
     merged.sort((a, b) {
       final aTime = a.publishedAt;
       final bTime = b.publishedAt;
@@ -366,22 +370,29 @@ class NotificationService {
       if (bTime == null) return -1;
       return bTime.compareTo(aTime);
     });
-    final oldFeed = await _readCachedScraperFeed();
+    final oldFeed = await _readCachedFeedItems();
     final oldIds = oldFeed?.map((item) => item.id).toSet() ?? {};
 
-    await _writeCachedScraperFeed(merged);
+    await _writeCachedFeedItems(merged);
+    _inMemoryFeedItems = merged;
 
     if (oldFeed != null) {
       for (final item in merged) {
         if (!oldIds.contains(item.id)) {
+          final cleanedMessage = FCMService.cleanNotificationDescription(
+            item.message,
+            source: item.source,
+          );
           unawaited(
             FCMService.instance.showLocalNotificationDirect(
               title: item.title,
-              body: '${item.source}: ${item.message}',
+              body: cleanedMessage,
               imageUrl: item.imageUrl,
-              data: item.url.isNotEmpty
-                  ? <String, dynamic>{'url': item.url}
-                  : const {},
+              data: <String, dynamic>{
+                if (item.url.isNotEmpty) 'url': item.url,
+                if (item.source.isNotEmpty) 'category': item.source,
+                if (cleanedMessage.isNotEmpty) 'description': cleanedMessage,
+              },
             ),
           );
         }
@@ -390,40 +401,41 @@ class NotificationService {
     return merged;
   }
 
-  Future<Set<String>> getSeenScraperNotificationIds() async {
-    final cached = await _repo.readJsonMap(_scraperSeenIdsCacheKey);
+  Future<Set<String>> getSeenFeedIds() async {
+    if (_inMemorySeenIds != null) return _inMemorySeenIds!;
+    final cached = await _repo.readJsonMap(_seenIdsCacheKey);
     final raw = cached?['ids'];
     if (raw is! List) return <String>{};
-    return raw
+    final seen = raw
         .map((value) => '$value'.trim())
         .where((value) => value.isNotEmpty)
         .toSet();
+    _inMemorySeenIds = seen;
+    return seen;
   }
 
-  Future<void> markScraperNotificationSeen(String id) async {
+  Future<void> markFeedSeen(String id) async {
     final cleaned = id.trim();
     if (cleaned.isEmpty) return;
-    final seen = await getSeenScraperNotificationIds();
+    final seen = await getSeenFeedIds();
     if (seen.contains(cleaned)) return;
     seen.add(cleaned);
-    await _writeSeenScraperNotificationIds(await _prunedSeenIds(seen));
+    await _writeSeenFeedIds(await _prunedSeenIds(seen));
   }
 
-  Future<void> markAllScraperNotificationsSeen(Iterable<String> ids) async {
+  Future<void> markAllFeedSeen(Iterable<String> ids) async {
     final normalized = ids
         .map((id) => id.trim())
         .where((id) => id.isNotEmpty)
         .toSet();
     if (normalized.isEmpty) return;
-    final seen = await getSeenScraperNotificationIds();
+    final seen = await getSeenFeedIds();
     seen.addAll(normalized);
-    await _writeSeenScraperNotificationIds(await _prunedSeenIds(seen));
+    await _writeSeenFeedIds(await _prunedSeenIds(seen));
   }
 
   Future<Set<String>> _prunedSeenIds(Set<String> seen) async {
-    final liveIds = (await getScraperContentFeed())
-        .map((item) => item.id)
-        .toSet();
+    final liveIds = (await getFeedItems()).map((item) => item.id).toSet();
     final pruned = seen.where(liveIds.contains).toSet();
     return pruned.isEmpty ? seen : pruned;
   }
@@ -432,12 +444,10 @@ class NotificationService {
     final connect = forceRefresh
         ? await fetchRecentNotifications()
         : await getRecentNotifications();
-    final scraper = await getScraperContentFeed(forceRefresh: forceRefresh);
-    final seenScraperIds = await getSeenScraperNotificationIds();
-    final scraperUnread = scraper
-        .where((item) => !seenScraperIds.contains(item.id))
-        .length;
-    return (connect?.newCount ?? 0) + scraperUnread;
+    final feed = await getFeedItems(forceRefresh: forceRefresh);
+    final seenIds = await getSeenFeedIds();
+    final feedUnread = feed.where((item) => !seenIds.contains(item.id)).length;
+    return (connect?.newCount ?? 0) + feedUnread;
   }
 
   Future<NotificationsFeed?> fetchRecentNotifications({
@@ -458,20 +468,13 @@ class NotificationService {
           jsonDecode(response.body) as Map<String, dynamic>,
         );
 
+        _inMemoryFeed = newFeed;
         await _repo.writeString(_recentFeedKey, response.body);
 
         if (oldFeed != null) {
           for (final item in newFeed.items) {
             if (!oldIds.contains(item.id)) {
-              unawaited(
-                FCMService.instance.showLocalNotificationDirect(
-                  title: item.title,
-                  body: item.module,
-                  data: (item.link != null && item.link!.isNotEmpty)
-                      ? <String, dynamic>{'url': item.link}
-                      : const {},
-                ),
-              );
+              unawaited(_showConnectNotification(item));
             }
           }
         }
@@ -481,11 +484,43 @@ class NotificationService {
     return getRecentNotifications(fromFetch: true);
   }
 
+  Future<void> _showConnectNotification(RecentConnectNotification item) async {
+    var description = '';
+    try {
+      final detail = await fetchNotificationDetail(item.id);
+      description = detail.details.trim();
+    } catch (_) {}
+
+    final module = item.module.trim();
+    description = FCMService.cleanNotificationDescription(
+      description,
+      module: module,
+    );
+
+    final body = description.isNotEmpty ? description : '';
+    unawaited(
+      FCMService.instance.showLocalNotificationDirect(
+        title: item.title,
+        body: body,
+        data: <String, dynamic>{
+          if (item.link != null && item.link!.isNotEmpty) 'url': item.link,
+          if (module.isNotEmpty) 'category': module,
+          if (description.isNotEmpty) 'description': description,
+        },
+      ),
+    );
+  }
+
   Future<NotificationsFeed?> getRecentNotifications({
     bool fromFetch = false,
   }) async {
+    if (_inMemoryFeed != null) return _inMemoryFeed;
     final cached = await _readCachedFeed();
-    if (cached != null || fromFetch) return cached;
+    if (cached != null) {
+      _inMemoryFeed = cached;
+      return cached;
+    }
+    if (fromFetch) return null;
     return fetchRecentNotifications(fromGet: true);
   }
 
@@ -522,7 +557,8 @@ class NotificationService {
           )
           .toList(),
     );
-    await _repo.writeJson(_recentFeedKey, _feedToJson(updated));
+    _inMemoryFeed = updated;
+    await _repo.writeJson(_recentFeedKey, updated.toJson());
     return updated;
   }
 
@@ -535,13 +571,13 @@ class NotificationService {
     );
   }
 
-  Future<List<ScraperContentItem>> _fetchScraperItems({
+  Future<List<FeedItem>> _fetchFeedItems({
     required String path,
     required String source,
     required String cacheKey,
     required bool forceRefresh,
   }) async {
-    final rows = await _scraper.fetchList(
+    final rows = await _feed.fetchList(
       path: path,
       cacheKey: cacheKey,
       ttl: const Duration(hours: 3),
@@ -552,33 +588,32 @@ class NotificationService {
           final title = '${row['title'] ?? ''}'.trim();
           final message = '${row['message'] ?? ''}'.trim();
           final url = '${row['url'] ?? ''}'.trim();
-
-          final imageUrls = _extractAndNormalizeImageUrls(row, baseUrl: url);
-
+          final imageUrls = _extractImageUrls(row, baseUrl: url);
           final publishedRaw = '${row['published_date'] ?? ''}'.trim();
           if (title.isEmpty && message.isEmpty) return null;
-          return ScraperContentItem(
-            id: _scraperContentId(
+          final publishedAt = _parsePublishedDate(publishedRaw);
+          return FeedItem(
+            id: _feedContentId(
               source: source,
               title: title,
               url: url,
-              publishedAt: _parseScraperPublishedDate(publishedRaw),
+              publishedAt: publishedAt,
             ),
             source: source,
             title: title,
             message: message,
             url: url,
-            publishedAt: _parseScraperPublishedDate(publishedRaw),
+            publishedAt: publishedAt,
             imageUrl: imageUrls.isEmpty ? null : imageUrls.first,
             imageUrls: imageUrls,
           );
         })
-        .whereType<ScraperContentItem>()
+        .whereType<FeedItem>()
         .toList(growable: false);
   }
 
-  Future<List<ScraperContentItem>?> _readCachedScraperFeed() async {
-    final cached = await _repo.readJsonMap(_scraperFeedCacheKey);
+  Future<List<FeedItem>?> _readCachedFeedItems() async {
+    final cached = await _repo.readJsonMap(_feedCacheKey);
     if (cached == null) return null;
     final ts = cached['ts'];
     if (ts is int) {
@@ -591,87 +626,25 @@ class NotificationService {
     if (rawItems is! List) return null;
     return rawItems
         .whereType<Map>()
-        .map((item) => item.cast<String, dynamic>())
-        .map((item) {
-          final baseUrl = (item['url'] ?? '').toString().trim();
-          final cachedImageUrls = item['imageUrls'];
-          final cachedImageUrl = item['imageUrl'];
-
-          final imageUrlsToNormalize = <String>[];
-          if (cachedImageUrls is List) {
-            for (final url in cachedImageUrls) {
-              final urlStr = '$url'.trim();
-              if (urlStr.isNotEmpty) imageUrlsToNormalize.add(urlStr);
-            }
-          }
-          if (cachedImageUrl is String) {
-            final urlStr = cachedImageUrl.trim();
-            if (urlStr.isNotEmpty && !imageUrlsToNormalize.contains(urlStr)) {
-              imageUrlsToNormalize.add(urlStr);
-            }
-          }
-
-          final normalizedImageUrls = imageUrlsToNormalize.isEmpty
-              ? <String>[]
-              : _normalizeScraperImageUrls(
-                  imageUrlsToNormalize.join('|'),
-                  baseUrl: baseUrl,
-                );
-
-          return ScraperContentItem(
-            id: (item['id'] ?? '').toString().trim().isEmpty
-                ? _scraperContentId(
-                    source: (item['source'] ?? '').toString().trim(),
-                    title: (item['title'] ?? '').toString().trim(),
-                    url: baseUrl,
-                    publishedAt: DateTime.tryParse(
-                      (item['publishedAt'] ?? '').toString().trim(),
-                    ),
-                  )
-                : (item['id'] ?? '').toString().trim(),
-            source: (item['source'] ?? '').toString().trim(),
-            title: (item['title'] ?? '').toString().trim(),
-            message: (item['message'] ?? '').toString().trim(),
-            url: baseUrl,
-            publishedAt: DateTime.tryParse(
-              (item['publishedAt'] ?? '').toString().trim(),
-            ),
-            imageUrl: normalizedImageUrls.isEmpty
-                ? null
-                : normalizedImageUrls.first,
-            imageUrls: normalizedImageUrls,
-          );
-        })
+        .map((item) => FeedItem.fromJson(item.cast<String, dynamic>()))
         .toList(growable: false);
   }
 
-  Future<void> _writeCachedScraperFeed(List<ScraperContentItem> items) async {
-    await _repo.writeJson(_scraperFeedCacheKey, <String, dynamic>{
+  Future<void> _writeCachedFeedItems(List<FeedItem> items) async {
+    await _repo.writeJson(_feedCacheKey, <String, dynamic>{
       'ts': DateTime.now().millisecondsSinceEpoch,
-      'items': items
-          .map(
-            (item) => <String, dynamic>{
-              'source': item.source,
-              'title': item.title,
-              'message': item.message,
-              'url': item.url,
-              'publishedAt': item.publishedAt?.toIso8601String() ?? '',
-              'imageUrl': item.imageUrl ?? '',
-              'imageUrls': item.imageUrls,
-              'id': item.id,
-            },
-          )
-          .toList(),
+      'items': items.map((item) => item.toJson()).toList(),
     });
   }
 
-  Future<void> _writeSeenScraperNotificationIds(Set<String> ids) async {
-    await _repo.writeJson(_scraperSeenIdsCacheKey, <String, dynamic>{
+  Future<void> _writeSeenFeedIds(Set<String> ids) async {
+    _inMemorySeenIds = ids;
+    await _repo.writeJson(_seenIdsCacheKey, <String, dynamic>{
       'ids': ids.toList()..sort(),
     });
   }
 
-  DateTime? _parseScraperPublishedDate(String raw) {
+  DateTime? _parsePublishedDate(String raw) {
     if (raw.trim().isEmpty) return null;
     var normalized = raw
         .replaceAll('\n', ' ')
@@ -698,73 +671,49 @@ class NotificationService {
     return DateTime.tryParse(normalized);
   }
 
-  List<String> _extractAndNormalizeImageUrls(
+  List<String> _extractImageUrls(
     Map<String, dynamic> row, {
     required String baseUrl,
   }) {
-    final candidates = <String>[];
     final value = row['image_url'];
-    if (value != null) {
-      if (value is String) {
-        final trimmed = value.trim();
-        if (trimmed.isNotEmpty) {
-          candidates.add(trimmed);
-        }
-      } else if (value is List) {
-        for (final item in value) {
-          final itemStr = '$item'.trim();
-          if (itemStr.isNotEmpty) {
-            candidates.add(itemStr);
-          }
-        }
-      }
-    }
-
-    return _normalizeScraperImageUrls(candidates.join('|'), baseUrl: baseUrl);
+    final raw = value is List
+        ? value.map((e) => '$e'.trim()).where((e) => e.isNotEmpty).join('|')
+        : '${value ?? ''}'.trim();
+    return _normalizeImageUrls(raw, baseUrl: baseUrl);
   }
 
-  List<String> _normalizeScraperImageUrls(String raw, {String? baseUrl}) {
+  List<String> _normalizeImageUrls(String raw, {String? baseUrl}) {
     final trimmed = raw.trim();
     if (trimmed.isEmpty) return const <String>[];
-
     final candidates = <String>[];
-
-    if (trimmed.contains('|')) {
-      for (final part in trimmed.split('|')) {
-        final p = part.trim();
-        if (p.isNotEmpty) candidates.add(p);
-      }
-    } else if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
+    if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
       try {
         final decoded = jsonDecode(trimmed);
         if (decoded is List) {
-          for (final item in decoded) {
-            final value = '$item'.trim();
-            if (value.isNotEmpty) candidates.add(value);
-          }
+          candidates.addAll(
+            decoded.map((e) => '$e'.trim()).where((e) => e.isNotEmpty),
+          );
         }
       } catch (_) {}
-    } else if (trimmed.contains(',')) {
-      for (final part in trimmed.split(',')) {
-        final p = part.trim();
-        if (p.isNotEmpty) candidates.add(p);
-      }
     } else {
-      candidates.add(trimmed);
+      candidates.addAll(
+        trimmed
+            .split(RegExp(r'[,|]'))
+            .map((e) => e.trim())
+            .where((e) => e.isNotEmpty),
+      );
     }
-
-    final output = <String, String>{};
-    for (var rawUrl in candidates) {
+    final output = <String>{};
+    for (final rawUrl in candidates) {
       final normalized = normalizeImageUrl(rawUrl, baseUrl: baseUrl);
       if (normalized != null && normalized.isNotEmpty) {
-        output[normalized] = normalized;
+        output.add(normalized);
       }
     }
-
-    return output.values.toList(growable: false);
+    return output.toList(growable: false);
   }
 
-  String _scraperContentId({
+  String _feedContentId({
     required String source,
     required String title,
     required String url,
@@ -772,30 +721,6 @@ class NotificationService {
   }) {
     final token =
         '${source.trim().toLowerCase()}|${title.trim().toLowerCase()}|${url.trim().toLowerCase()}|${publishedAt?.toIso8601String() ?? ''}';
-    var hash = 2166136261;
-    for (final codeUnit in token.codeUnits) {
-      hash ^= codeUnit;
-      hash = (hash * 16777619) & 0xFFFFFFFF;
-    }
-    return 'scr_${hash.toUnsigned(32).toRadixString(16)}';
-  }
-
-  Map<String, dynamic> _feedToJson(NotificationsFeed feed) {
-    return <String, dynamic>{
-      'new': feed.newCount,
-      'items': feed.items
-          .map(
-            (item) => <String, dynamic>{
-              'id': item.id,
-              'title': item.title,
-              'module': item.module,
-              'link': item.link,
-              'createdOn': item.createdOn?.toIso8601String(),
-              'expireAt': item.expireAt?.toIso8601String(),
-              'seen': item.seen,
-            },
-          )
-          .toList(),
-    };
+    return 'feed_${token.hashCode.toUnsigned(32).toRadixString(16)}';
   }
 }

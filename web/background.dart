@@ -1595,17 +1595,80 @@ Future<void> _handleGcmMessage(OnMessageMessage event) async {
     _gcmLastMessageAtKey: DateTime.now().toIso8601String(),
   });
   final data = _normalizeGcmPayload(event.data);
-  final title = _firstPayloadText(data, const <String>[
+  final category = _firstPayloadText(data, const <String>[
+    'category',
+    'module',
+    'source',
+  ]);
+  var title = _firstPayloadText(data, const <String>[
     'title',
     'notification.title',
     'gcm.notification.title',
   ], fallback: 'PreConnect');
-  var body = _firstPayloadText(data, const <String>[
-    'body',
-    'message',
-    'notification.body',
-    'gcm.notification.body',
-  ]);
+  var body = _firstPayloadText(data, const <String>['description', 'details']);
+  if (body.isEmpty) {
+    body = _firstPayloadText(data, const <String>[
+      'body',
+      'message',
+      'notification.body',
+      'gcm.notification.body',
+    ]);
+  }
+
+  const knownCategories = <String>{
+    'announcement',
+    'announcements',
+    'news',
+    'notice',
+    'notices',
+    'advising',
+    'academics',
+    'academic',
+    'exam',
+    'exams',
+    'course',
+    'courses',
+    'grade',
+    'grades',
+    'payment',
+    'library',
+    'connect',
+    'transport',
+    'bus',
+    'general',
+  };
+
+  String cleanText(String input) {
+    var text = input.trim();
+    if (text.isEmpty) return '';
+    final candidates = <String>{
+      if (category.isNotEmpty) category.toLowerCase(),
+      ...knownCategories,
+    };
+    for (final cat in candidates) {
+      if (text.toLowerCase() == cat) {
+        return '';
+      }
+      final pattern = RegExp(
+        r'^\s*(\[|\()?\s*' + RegExp.escape(cat) + r'\s*(\]|\))?\s*[:\-–|•]?\s*',
+        caseSensitive: false,
+      );
+      if (pattern.hasMatch(text)) {
+        text = text.replaceFirst(pattern, '').trim();
+      }
+    }
+    return text;
+  }
+
+  body = cleanText(body);
+  final cleanedTitle = cleanText(title);
+  if (cleanedTitle.isNotEmpty) {
+    title = cleanedTitle;
+  }
+  if (body.toLowerCase() == title.toLowerCase()) {
+    body = '';
+  }
+
   final courseCode = _firstPayloadText(data, const <String>['courseCode']);
   final sectionName = _firstPayloadText(data, const <String>['sectionName']);
   if (body.isEmpty && courseCode.isNotEmpty) {

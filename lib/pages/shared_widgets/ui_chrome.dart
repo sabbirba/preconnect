@@ -935,11 +935,23 @@ class AppTodayScheduleStatus {
         subtitle: overrideSubtitle ?? fallbackSubtitle,
       );
     }
-    if (holidayStatus.isTodayHoliday) {
+    final isHoliday =
+        holidayStatus.isTodayHoliday ||
+        holidayStatus.isHolidayOn(DateTime.now());
+    if (isHoliday) {
+      final name = holidayStatus.holidayNameOn(DateTime.now());
+      final display = (name != null && name.isNotEmpty)
+          ? name
+          : (holidayStatus.displayNames.isNotEmpty
+                ? holidayStatus.displayNames
+                : null);
       return AppTodayScheduleStatus(
         badge: 'OFF',
-        title: 'National holiday',
-        subtitle: holidayStatus.displayNames,
+        title: 'University Holiday',
+        subtitle:
+            (display != null && display.toLowerCase() != 'university holiday')
+            ? display
+            : fallbackSubtitle,
       );
     }
     return AppTodayScheduleStatus(

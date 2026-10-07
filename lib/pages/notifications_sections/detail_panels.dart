@@ -6,8 +6,8 @@ import 'package:preconnect/pages/notifications_sections/list_widgets.dart';
 import 'package:preconnect/pages/notifications_sections/text_formatter.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 
-class ScraperNotificationDetailPanel extends StatelessWidget {
-  ScraperNotificationDetailPanel({super.key, required this.item})
+class FeedDetailPanel extends StatelessWidget {
+  FeedDetailPanel({super.key, required this.item})
     : _parts = splitNotificationBodyParts(
         cleanNotificationBodyText(item.details, title: item.title),
       ),

@@ -63,7 +63,7 @@ class _ClassScheduleState extends State<ClassSchedulePage>
       HighlightScrollCoordinator(scrollController: _scrollController);
   int _visibleWeekCount = _initialVisibleWeekCount;
   bool _showDoneSections = false;
-  HolidayStatus _holidayStatus = HolidayStatus.empty;
+  HolidayStatus _holidayStatus = HolidayTiming.cachedStatus;
 
   @override
   void initState() {
@@ -116,6 +116,7 @@ class _ClassScheduleState extends State<ClassSchedulePage>
       shouldHighlightCurrentSemester: isCurrentSemester,
       isRamadan: false,
       examOverrides: overrides,
+      holidayStatus: HolidayTiming.cachedStatus,
     );
   }
 
@@ -142,6 +143,9 @@ class _ClassScheduleState extends State<ClassSchedulePage>
     }
 
     final isRamadan = await RamadanTiming.isRamadan(forceRefresh: forceRefresh);
+    final holidayStatus = await HolidayTiming.getTodayStatus(
+      forceRefresh: forceRefresh,
+    );
 
     final examOverrides = sections.isEmpty
         ? const <String, ExamScheduleOverride>{}
@@ -156,6 +160,7 @@ class _ClassScheduleState extends State<ClassSchedulePage>
       shouldHighlightCurrentSemester: true,
       isRamadan: isRamadan,
       examOverrides: examOverrides,
+      holidayStatus: holidayStatus,
     );
   }
 
@@ -222,6 +227,7 @@ class _ClassScheduleState extends State<ClassSchedulePage>
     required bool shouldHighlightCurrentSemester,
     required bool isRamadan,
     required Map<String, ExamScheduleOverride> examOverrides,
+    HolidayStatus? holidayStatus,
   }) {
     if (sections.isEmpty) {
       return _ScheduleData(
@@ -261,6 +267,7 @@ class _ClassScheduleState extends State<ClassSchedulePage>
             endDate: section.sectionSchedule.classEndDate,
             isRamadan: isRamadan,
             now: now,
+            holidayStatus: holidayStatus,
           );
           if (candidate != null &&
               (scrollDateTime == null || candidate.isBefore(scrollDateTime))) {
@@ -318,6 +325,7 @@ class _ClassScheduleState extends State<ClassSchedulePage>
     String? endDate,
     required bool isRamadan,
     required DateTime now,
+    HolidayStatus? holidayStatus,
   }) {
     final targetWeekday = AppTime.weekdayFromName(day);
     if (targetWeekday == null) return null;
@@ -350,6 +358,11 @@ class _ClassScheduleState extends State<ClassSchedulePage>
     while (candidate != null &&
         s != null &&
         candidate.isBefore(DateTime(s.year, s.month, s.day))) {
+      candidate = candidate.add(const Duration(days: 7));
+    }
+    while (candidate != null &&
+        holidayStatus != null &&
+        holidayStatus.isHolidayOn(candidate)) {
       candidate = candidate.add(const Duration(days: 7));
     }
     if (candidate != null &&
@@ -502,11 +515,15 @@ class _ClassScheduleState extends State<ClassSchedulePage>
     final currentSessionId = await resolveCurrentSessionSemesterId();
     final isCurrentSemester =
         currentSessionId == null || semesterSessionId == currentSessionId;
+    final holidayStatus = isCurrentSemester
+        ? await HolidayTiming.getTodayStatus(forceRefresh: forceRefresh)
+        : HolidayStatus.empty;
     final data = _buildScheduleDataFromSectionsStatic(
       sections,
       shouldHighlightCurrentSemester: isCurrentSemester,
       isRamadan: isRamadan,
       examOverrides: examOverrides,
+      holidayStatus: holidayStatus,
     );
     if (mounted) {
       setState(() {
@@ -642,7 +659,8 @@ class _ClassScheduleState extends State<ClassSchedulePage>
           final holidayStatus = isCurrentSemester
               ? _holidayStatus
               : HolidayStatus.empty;
-          final isTodayHoliday = holidayStatus.isTodayHoliday;
+          final isTodayHoliday =
+              holidayStatus.isTodayHoliday || holidayStatus.isHolidayOn(now);
           final todayScheduleStatus = AppTodayScheduleStatus.resolve(
             holidayStatus: holidayStatus,
           );
@@ -705,6 +723,9 @@ class _ClassScheduleState extends State<ClassSchedulePage>
             final daySchedules = visibleGrouped[sectionInfo.day] ?? const [];
             final dayDate = sectionInfo.date;
             if (dayDate == null) return sum + daySchedules.length;
+            if (!_showDoneSections && holidayStatus.isHolidayOn(dayDate)) {
+              return sum + 1;
+            }
             return sum +
                 daySchedules.where((s) => s.isActiveOn(dayDate)).length;
           });
@@ -721,6 +742,71 @@ class _ClassScheduleState extends State<ClassSchedulePage>
                 : schedules;
             if (activeSchedules.isEmpty) continue;
             final dayDateLabel = dayDate == null ? '' : formatLongDate(dayDate);
+            final holidayName = !_showDoneSections && dayDate != null
+                ? holidayStatus.holidayNameOn(dayDate)
+                : null;
+            final isDayOff = holidayName != null;
+
+            final scheduleWidgets = <Widget>[];
+            if (isDayOff) {
+              scheduleWidgets.add(
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: AppScheduleTile(
+                    title: 'University Holiday',
+                    subtitle:
+                        (holidayName.isNotEmpty &&
+                            holidayName.toLowerCase() != 'university holiday')
+                        ? holidayName
+                        : 'Enjoy your day off.',
+                    badge: 'OFF',
+                    color: AppPalette.primary,
+                  ),
+                ),
+              );
+              cardIndex++;
+            } else {
+              for (final entry in activeSchedules) {
+                final s = entry.schedule;
+                final isScrollTarget =
+                    shouldHighlightCurrentSemester &&
+                    scrollSchedule == s &&
+                    scrollDateTime != null &&
+                    dayDate != null &&
+                    scrollDateTime.year == dayDate.year &&
+                    scrollDateTime.month == dayDate.month &&
+                    scrollDateTime.day == dayDate.day;
+                if (isScrollTarget) {
+                  highlightToken =
+                      '${sectionInfo.weekOffset}_${day}_${s.startTime}_${s.endTime}_${entry.courseCode}';
+                  highlightIndex ??= cardIndex;
+                }
+                final isHighlighted = isScrollTarget;
+                _highlightScroll.markHighlighted(isHighlighted);
+                scheduleWidgets.add(
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: RepaintBoundary(
+                      child: ScheduleEntryCard(
+                        key: isHighlighted
+                            ? _highlightScroll.highlightKey
+                            : null,
+                        sectionName: entry.sectionName,
+                        courseCode: entry.courseCode,
+                        schedule: s,
+                        isRamadan: isRamadan,
+                        roomNumber: entry.roomNumber,
+                        faculties: entry.faculties,
+                        consumedSeat: entry.consumedSeat,
+                        courseType: entry.courseType.trim(),
+                        highlighted: isHighlighted,
+                      ),
+                    ),
+                  ),
+                );
+                cardIndex++;
+              }
+            }
 
             children.add(
               Column(
@@ -743,56 +829,7 @@ class _ClassScheduleState extends State<ClassSchedulePage>
                     ],
                   ),
                   const Gap(12),
-                  ...(() {
-                    final scheduleWidgets = <Widget>[];
-                    for (final entry in activeSchedules) {
-                      final s = entry.schedule;
-                      final code = entry.courseCode;
-                      final sectionName = entry.sectionName;
-                      final room = entry.roomNumber;
-                      final faculties = entry.faculties;
-                      final consumedSeat = entry.consumedSeat;
-                      final courseType = entry.courseType.trim();
-                      final isScrollTarget =
-                          shouldHighlightCurrentSemester &&
-                          scrollSchedule == s &&
-                          scrollDateTime != null &&
-                          dayDate != null &&
-                          scrollDateTime.year == dayDate.year &&
-                          scrollDateTime.month == dayDate.month &&
-                          scrollDateTime.day == dayDate.day;
-                      if (isScrollTarget) {
-                        highlightToken =
-                            '${sectionInfo.weekOffset}_${day}_${s.startTime}_${s.endTime}_$code';
-                        highlightIndex ??= cardIndex;
-                      }
-                      final isHighlighted = isScrollTarget;
-                      _highlightScroll.markHighlighted(isHighlighted);
-                      scheduleWidgets.add(
-                        Padding(
-                          padding: const EdgeInsets.only(bottom: 10),
-                          child: RepaintBoundary(
-                            child: ScheduleEntryCard(
-                              key: isHighlighted
-                                  ? _highlightScroll.highlightKey
-                                  : null,
-                              sectionName: sectionName,
-                              courseCode: code,
-                              schedule: s,
-                              isRamadan: isRamadan,
-                              roomNumber: room,
-                              faculties: faculties,
-                              consumedSeat: consumedSeat,
-                              courseType: courseType,
-                              highlighted: isHighlighted,
-                            ),
-                          ),
-                        ),
-                      );
-                      cardIndex++;
-                    }
-                    return scheduleWidgets;
-                  })(),
+                  ...scheduleWidgets,
                   const Gap(6),
                 ],
               ),

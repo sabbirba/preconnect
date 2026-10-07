@@ -19,6 +19,7 @@ Future<void> syncTodayWidgetInBackground(
     final state = _HomeDashboardState();
     final derived = state._deriveDashboardValues(data, updateWidget: false);
     await state._syncTodayWidget(data, derived);
+    unawaited(NotificationsPage.preloadData(forceRefresh: forceRefresh));
   } catch (_) {}
 }
 
@@ -723,8 +724,10 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
   ) async {
     if (!TodayWidget.isSupported) return;
 
-    final isTodayHoliday = data?.holiday.isTodayHoliday ?? false;
     final holidayStatus = data?.holiday ?? HolidayStatus.empty;
+    final isTodayHoliday =
+        holidayStatus.isTodayHoliday ||
+        holidayStatus.isHolidayOn(DateTime.now());
     final isExamWeekActive = derived.examWeekStatus.isActive;
     final todayExams = derived.todayExams;
     final visibleEntries = isTodayHoliday

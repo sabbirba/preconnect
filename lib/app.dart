@@ -20,6 +20,7 @@ import 'package:preconnect/libsync/auth_service.dart';
 import 'package:preconnect/api/api_client.dart';
 import 'package:preconnect/api/mercure_service.dart';
 import 'package:preconnect/pages/home.dart';
+import 'package:preconnect/pages/notifications.dart';
 import 'package:preconnect/pages/login.dart';
 import 'package:preconnect/pages/wifi_printer.dart';
 import 'package:preconnect/pages/home_tab.dart';
@@ -102,6 +103,8 @@ class MyApp extends StatefulWidget {
 
     final canOpenOffline = hasToken && await _hasOfflineSnapshot();
 
+    unawaited(NotificationsPage.preloadData());
+
     return AppBootstrapState(
       themeMode: _decodeTheme(savedTheme),
       isLoggedIn: hasToken,
@@ -121,6 +124,7 @@ class MyApp extends StatefulWidget {
         prefs.getBoolSync(PreConnectStorageKeys.cachedHasAuthSession) ?? false;
     final canOpenOffline = hasToken && _hasOfflineSnapshotSync();
 
+    unawaited(NotificationsPage.preloadData());
     if (hasToken) {
       unawaited(MercureService().connect());
     }
@@ -247,6 +251,7 @@ class _MyAppState extends State<MyApp>
     if (!_initialLoggedIn) {
       unawaited(_bootstrapInBackground());
     } else {
+      unawaited(NotificationsPage.preloadData());
       WidgetsBinding.instance.addPostFrameCallback((_) {
         unawaited(triggerAppRefresh());
       });
@@ -378,6 +383,7 @@ class _MyAppState extends State<MyApp>
       setState(() {});
       if (_initialLoggedIn) {
         unawaited(triggerAppRefresh());
+        unawaited(NotificationsPage.preloadData());
       }
     } catch (_) {
       if (!mounted) return;
@@ -420,6 +426,9 @@ class _MyAppState extends State<MyApp>
     unawaited(
       Future<void>.value().then((_) {
         LibSyncAuthService.instance.initialize();
+        if (_initialLoggedIn) {
+          unawaited(NotificationsPage.preloadData());
+        }
       }),
     );
   }
@@ -570,6 +579,7 @@ class _MyAppState extends State<MyApp>
         if (activeReason != 'home_dashboard') {
           RefreshBus.instance.notify(reason: 'home_dashboard');
         }
+        unawaited(NotificationsPage.preloadData(forceRefresh: forceRefresh));
       }
     } catch (_) {
     } finally {

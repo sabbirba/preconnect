@@ -36,28 +36,24 @@ class CampusMapData {
   const CampusMapData({
     required this.campusName,
     required this.address,
-    required this.summary,
     required this.mapImageUrl,
     required this.googleMapsUrl,
     required this.sourceUrl,
     required this.transportScheduleUrl,
     required this.primaryEmail,
     required this.images,
-    required this.highlights,
     required this.offices,
     required this.emergencyContacts,
   });
 
   final String campusName;
   final String address;
-  final String summary;
   final String mapImageUrl;
   final String googleMapsUrl;
   final String sourceUrl;
   final String transportScheduleUrl;
   final String primaryEmail;
   final List<String> images;
-  final List<String> highlights;
   final List<CampusOfficeContact> offices;
   final List<CampusEmergencyContact> emergencyContacts;
 
@@ -79,14 +75,6 @@ class CampusMapData {
               .toList(growable: false)
         : const <CampusEmergencyContact>[];
 
-    final highlightsRaw = json['highlights'];
-    final highlights = highlightsRaw is List
-        ? highlightsRaw
-              .map((item) => '$item'.trim())
-              .where((item) => item.isNotEmpty)
-              .toList(growable: false)
-        : const <String>[];
-
     final imagesRaw = json['images'];
     final images = imagesRaw is List
         ? imagesRaw
@@ -100,7 +88,6 @@ class CampusMapData {
     return CampusMapData(
       campusName: '${json['campus_name'] ?? ''}'.trim(),
       address: '${json['address'] ?? ''}'.trim(),
-      summary: '${json['summary'] ?? ''}'.trim(),
       mapImageUrl:
           normalizeImageUrl(
             '${json['map_image_url'] ?? ''}',
@@ -112,7 +99,6 @@ class CampusMapData {
       transportScheduleUrl: '${json['schedule_url'] ?? ''}'.trim(),
       primaryEmail: primaryEmail,
       images: images,
-      highlights: highlights,
       offices: offices,
       emergencyContacts: emergencies,
     );
@@ -184,9 +170,9 @@ void _prewarmImages(List<String> urls) {
 }
 
 Future<CampusMapData?> fetchCampusMapData({bool forceRefresh = false}) async {
-  final payload = await ScraperDataService().fetchMap(
+  final payload = await FeedService().fetchMap(
     path: ApiConfig.campusMapUrl,
-    cacheKey: 'scraper_campus_map_v1',
+    cacheKey: 'campus_map_v1',
     ttl: const Duration(hours: 12),
     forceRefresh: forceRefresh,
   );
@@ -200,9 +186,9 @@ Future<CampusMapData?> fetchCampusMapData({bool forceRefresh = false}) async {
   final hasAnyImage = parsed.mapImageUrl.isNotEmpty || parsed.images.isNotEmpty;
   if (hasAnyImage || forceRefresh) return parsed;
 
-  final freshPayload = await ScraperDataService().fetchMap(
+  final freshPayload = await FeedService().fetchMap(
     path: ApiConfig.campusMapUrl,
-    cacheKey: 'scraper_campus_map_v1',
+    cacheKey: 'campus_map_v1',
     ttl: const Duration(hours: 12),
     forceRefresh: true,
   );
@@ -220,9 +206,9 @@ Future<CampusMapData?> fetchCampusMapData({bool forceRefresh = false}) async {
 }
 
 Future<String?> fetchTransportScheduleUrl({bool forceRefresh = false}) async {
-  final rows = await ScraperDataService().fetchList(
+  final rows = await FeedService().fetchList(
     path: ApiConfig.transportUrl,
-    cacheKey: 'scraper_transport_v1',
+    cacheKey: 'transport_v1',
     ttl: const Duration(hours: 12),
     forceRefresh: forceRefresh,
   );
@@ -241,7 +227,7 @@ Future<void> showCampusMapBottomSheet(
   await showAppBottomSheet<void>(
     context,
     title: 'Campus Map',
-    subtitle: 'Directions, highlights and key contacts',
+    subtitle: 'Directions and key contacts',
     builder: (sheetContext, textPrimary, textSecondary) {
       return FutureBuilder<List<dynamic>>(
         future: Future.wait<dynamic>([
@@ -415,61 +401,9 @@ Future<void> showCampusMapBottomSheet(
                   );
                 },
               ),
-              if (mapData.summary.isNotEmpty) ...[
-                sectionTitle('About Campus'),
-                minimalBlock(
-                  child: Text(
-                    mapData.summary,
-                    style: TextStyle(
-                      color: textSecondary,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w500,
-                      height: 1.45,
-                    ),
-                  ),
-                ),
-              ],
               if (mapData.images.isNotEmpty) ...[
                 sectionTitle('Campus Gallery'),
                 ImageCarousel(imageUrls: mapData.images, borderRadius: 12),
-              ],
-              if (mapData.highlights.isNotEmpty) ...[
-                sectionTitle('Highlights'),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: mapData.highlights
-                      .map(
-                        (item) => Padding(
-                          padding: const EdgeInsets.only(bottom: 8),
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Padding(
-                                padding: const EdgeInsets.only(top: 6),
-                                child: Icon(
-                                  Icons.circle,
-                                  size: 6,
-                                  color: AppPalette.primary,
-                                ),
-                              ),
-                              const Gap(8),
-                              Expanded(
-                                child: Text(
-                                  item,
-                                  style: TextStyle(
-                                    color: textSecondary,
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w500,
-                                    height: 1.35,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      )
-                      .toList(growable: false),
-                ),
               ],
               if (mapData.emergencyContacts.isNotEmpty) ...[
                 sectionTitle('Emergency Contacts'),

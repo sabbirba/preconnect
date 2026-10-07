@@ -19,6 +19,7 @@ class AppSelectOption<T> {
 ButtonStyle appOutlinedButtonStyle(
   BuildContext context, {
   Color? foregroundColor,
+  Color? backgroundColor,
   Color? borderColor,
   EdgeInsetsGeometry padding = const EdgeInsets.symmetric(
     horizontal: 14,
@@ -28,7 +29,7 @@ ButtonStyle appOutlinedButtonStyle(
 }) {
   return OutlinedButton.styleFrom(
     foregroundColor: foregroundColor ?? AppPalette.textPrimary(context),
-    backgroundColor: Colors.transparent,
+    backgroundColor: backgroundColor ?? Colors.transparent,
     side: BorderSide(
       color:
           borderColor ??
@@ -47,6 +48,7 @@ ButtonStyle appOutlinedButtonStyle(
 ButtonStyle appCompactOutlinedButtonStyle(
   BuildContext context, {
   Color? foregroundColor,
+  Color? backgroundColor,
   Color? borderColor,
   EdgeInsetsGeometry padding = const EdgeInsets.symmetric(
     horizontal: 14,
@@ -57,6 +59,7 @@ ButtonStyle appCompactOutlinedButtonStyle(
   return appOutlinedButtonStyle(
     context,
     foregroundColor: foregroundColor,
+    backgroundColor: backgroundColor,
     borderColor: borderColor,
     padding: padding,
     borderRadius: borderRadius,
@@ -206,6 +209,7 @@ class AppActionButton extends StatelessWidget {
     return appCompactOutlinedButtonStyle(
       context,
       foregroundColor: foregroundColor ?? AppPalette.textPrimary(context),
+      backgroundColor: backgroundColor,
       padding: padding,
       borderRadius: borderRadius,
     );

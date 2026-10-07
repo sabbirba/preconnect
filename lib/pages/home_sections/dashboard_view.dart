@@ -105,7 +105,9 @@ extension _HomeDashboardView on _HomeDashboardState {
                           );
                           final holidayStatus =
                               data?.holiday ?? HolidayStatus.empty;
-                          final isTodayHoliday = holidayStatus.isTodayHoliday;
+                          final isTodayHoliday =
+                              holidayStatus.isTodayHoliday ||
+                              holidayStatus.isHolidayOn(DateTime.now());
                           final derived = _deriveDashboardValues(data);
                           final today = derived.today;
                           final todayDate = derived.todayDate;

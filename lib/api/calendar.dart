@@ -11,6 +11,7 @@ import 'package:preconnect/model/calendar_info.dart';
 import 'package:preconnect/features/schedule/application/session_resolver.dart';
 import 'package:preconnect/tools/app_log.dart';
 import 'package:preconnect/tools/app_storage.dart';
+import 'package:preconnect/tools/holiday.dart';
 
 class CalendarService {
   CalendarService._internal();
@@ -18,7 +19,7 @@ class CalendarService {
   factory CalendarService() => _instance;
 
   final ApiClient _client = ApiClient();
-  final ScraperDataService _scraper = ScraperDataService();
+  final FeedService _feed = FeedService();
   final RepositoryCache _repo = RepositoryCache.instance;
 
   static const String _cacheKey = 'calendar_feed_json';
@@ -331,8 +332,23 @@ class CalendarService {
     List<({String eventName, String startDate, String endDate})> academicDates,
   ) {
     if (academicDates.isEmpty) return base;
-    final output = <CalendarEntry>[...base];
-    final seen = base
+    final offDayWindows = academicDates
+        .where((item) => HolidayStatus.isAcademicOffDay(item.eventName))
+        .map((item) => (start: item.startDate, end: item.endDate))
+        .toList();
+    final filteredBase = offDayWindows.isEmpty
+        ? base
+        : base.where((item) {
+            if (!item.typeKey.toUpperCase().contains('CLASS_SCHEDULE')) {
+              return true;
+            }
+            final date = item.primaryDate;
+            return !offDayWindows.any(
+              (w) => date.compareTo(w.start) >= 0 && date.compareTo(w.end) <= 0,
+            );
+          }).toList();
+    final output = <CalendarEntry>[...filteredBase];
+    final seen = filteredBase
         .map(
           (item) =>
               '${item.typeKey}|${item.label}|${item.startDate}|${item.endDate}',
@@ -379,9 +395,9 @@ class CalendarService {
 
   Future<List<({String eventName, String startDate, String endDate})>>
   _fetchAcademicDates({required bool forceRefresh}) async {
-    final rows = await _scraper.fetchList(
+    final rows = await _feed.fetchList(
       path: ApiConfig.academicDatesUrl,
-      cacheKey: 'scraper_academic_dates_v1',
+      cacheKey: 'academic_dates_v1',
       ttl: const Duration(days: 30),
       forceRefresh: forceRefresh,
     );

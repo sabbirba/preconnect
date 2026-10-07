@@ -56,7 +56,7 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
   bool? _resolvedForShowDone;
   bool? _resolvedForIsPastSemester;
   _ResolvedExamLists? _resolvedListsCache;
-  HolidayStatus _holidayStatus = HolidayStatus.empty;
+  HolidayStatus _holidayStatus = HolidayTiming.cachedStatus;
 
   @override
   void initState() {
@@ -406,7 +406,8 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
           final holidayStatus = isCurrentSemester
               ? _holidayStatus
               : HolidayStatus.empty;
-          final isTodayHoliday = holidayStatus.isTodayHoliday;
+          final isTodayHoliday =
+              holidayStatus.isTodayHoliday || holidayStatus.isHolidayOn(now);
 
           if (midExams.isEmpty &&
               finalExams.isEmpty &&

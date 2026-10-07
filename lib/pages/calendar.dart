@@ -7,6 +7,7 @@ import 'package:preconnect/api/calendar.dart';
 import 'package:preconnect/model/calendar_info.dart';
 import 'package:preconnect/pages/shared_widgets/scroll_helper.dart';
 import 'package:preconnect/pages/ui_kit.dart';
+import 'package:preconnect/tools/holiday.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
 import 'package:preconnect/tools/time_utils.dart';
 
@@ -415,7 +416,10 @@ class _CalendarCard extends StatelessWidget {
     if (key.contains('FINAL')) return 'FIN';
     if (key.contains('CLASS')) return 'CLS';
     if (key.contains('HOLIDAY')) return 'OFF';
-    if (key.contains('ACADEMIC')) return 'ACD';
+    if (key.contains('ACADEMIC')) {
+      if (HolidayStatus.isAcademicOffDay(item.label)) return 'OFF';
+      return 'AC';
+    }
     if (key.contains('EXAM')) return 'EXM';
     return key.isEmpty ? 'EVT' : key.substring(0, key.length.clamp(0, 3));
   }

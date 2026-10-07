@@ -11,6 +11,7 @@ import 'package:preconnect/features/schedule/application/today_widget.dart';
 import 'package:preconnect/firebase_options.dart';
 import 'package:preconnect/pages/home.dart';
 import 'package:preconnect/pages/home_tab.dart';
+import 'package:preconnect/pages/notifications.dart';
 import 'app.dart';
 
 import 'tools/app_log.dart';
@@ -96,6 +97,8 @@ Future<void> main() async {
           initialHomeTab: HomeTab.dashboard,
         );
       }
+
+      unawaited(NotificationsPage.preloadData());
 
       runApp(MyApp(bootstrapState: initialState));
     },

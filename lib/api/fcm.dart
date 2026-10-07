@@ -15,6 +15,7 @@ import 'package:preconnect/api/materials.dart';
 import 'package:preconnect/api/profile.dart';
 import 'package:preconnect/api/repository_cache.dart';
 import 'package:preconnect/api/schedule.dart';
+import 'package:preconnect/api/notification.dart';
 import 'package:preconnect/features/notifications/data/device_registry.dart';
 import 'package:preconnect/model/section_info.dart';
 import 'package:preconnect/tools/http/http_utils.dart';
@@ -150,6 +151,8 @@ class FCMService {
     await ensureLocalNotificationsInitialized();
     await _handleBackgroundDataSync(message.data);
     _handleIncomingMessage(message);
+    unawaited(NotificationService().getFeedItems(forceRefresh: true));
+    unawaited(NotificationService().fetchRecentNotifications());
   }
 
   static Future<void> _handleBackgroundDataSync(
@@ -182,7 +185,11 @@ class FCMService {
         RefreshBus.instance.notify(reason: 'materials');
       } else if (type.contains('notice') ||
           type.contains('announcement') ||
-          type.contains('news')) {
+          type.contains('news') ||
+          type.contains('notification')) {
+        unawaited(NotificationService().getFeedItems(forceRefresh: true));
+        unawaited(NotificationService().fetchRecentNotifications());
+        RefreshBus.instance.notify(reason: 'notifications');
         RefreshBus.instance.notify(reason: 'notices');
       } else if (type.contains('bus')) {
         RefreshBus.instance.notify(reason: 'bus');
@@ -207,19 +214,115 @@ class FCMService {
     }
   }
 
+  static final Set<String> _knownCategories = {
+    'announcement',
+    'announcements',
+    'news',
+    'notice',
+    'notices',
+    'advising',
+    'academics',
+    'academic',
+    'exam',
+    'exams',
+    'course',
+    'courses',
+    'grade',
+    'grades',
+    'payment',
+    'library',
+    'connect',
+    'transport',
+    'bus',
+    'general',
+  };
+
+  static String cleanNotificationDescription(
+    String rawBody, {
+    String? category,
+    String? module,
+    String? source,
+  }) {
+    var text = rawBody.trim();
+    if (text.isEmpty) return '';
+
+    final candidates = <String>{
+      if (category != null && category.trim().isNotEmpty)
+        category.trim().toLowerCase(),
+      if (module != null && module.trim().isNotEmpty)
+        module.trim().toLowerCase(),
+      if (source != null && source.trim().isNotEmpty)
+        source.trim().toLowerCase(),
+      ..._knownCategories,
+    };
+
+    for (final cat in candidates) {
+      if (text.toLowerCase() == cat) {
+        return '';
+      }
+      final pattern = RegExp(
+        r'^\s*(\[|\()?\s*' + RegExp.escape(cat) + r'\s*(\]|\))?\s*[:\-–|•]?\s*',
+        caseSensitive: false,
+      );
+      if (pattern.hasMatch(text)) {
+        text = text.replaceFirst(pattern, '').trim();
+      }
+    }
+    return text;
+  }
+
+  static (String, String) _resolveNotificationTitleAndBody(
+    RemoteNotification? notification,
+    Map<String, dynamic> data,
+  ) {
+    var title = (data['title'] ?? notification?.title ?? '').toString().trim();
+    final category =
+        (data['category'] ?? data['module'] ?? data['source'] ?? '')
+            .toString()
+            .trim();
+
+    final descCandidate = (data['description'] ?? data['details'] ?? '')
+        .toString()
+        .trim();
+    final bodyCandidate =
+        (data['body'] ?? data['message'] ?? notification?.body ?? '')
+            .toString()
+            .trim();
+
+    var body = cleanNotificationDescription(descCandidate, category: category);
+    if (body.isEmpty) {
+      body = cleanNotificationDescription(bodyCandidate, category: category);
+    }
+
+    final cleanedTitle = cleanNotificationDescription(
+      title,
+      category: category,
+    );
+    if (cleanedTitle.isNotEmpty) {
+      title = cleanedTitle;
+    }
+
+    if (body.toLowerCase() == title.toLowerCase()) {
+      body = '';
+    }
+
+    return (title, body);
+  }
+
   static void _handleIncomingMessage(RemoteMessage message) {
     RefreshBus.instance.notify(reason: 'push_notification');
     unawaited(_handleBackgroundDataSync(message.data));
-    final title =
-        message.notification?.title ?? message.data['title']?.toString();
-    final body = message.notification?.body ?? message.data['body']?.toString();
-    if (title != null && title.isNotEmpty) {
-      final notifId = (title.hashCode ^ (body?.hashCode ?? 0)) & 0x7FFFFFFF;
+    final (title, body) = _resolveNotificationTitleAndBody(
+      message.notification,
+      message.data,
+    );
+    if (title.isNotEmpty) {
+      final notifId = (title.hashCode ^ body.hashCode) & 0x7FFFFFFF;
       unawaited(
         showNotificationStatic(
           id: notifId,
           title: title,
-          body: body ?? '',
+          body: body,
           payload: jsonEncode(message.data),
         ),
       );
@@ -767,10 +870,7 @@ class FCMService {
   }
 
   Future<void> _initNative() async {
-    FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-      _showLocalNotification(message);
-      RefreshBus.instance.notify(reason: 'push_notification');
-    });
+    FirebaseMessaging.onMessage.listen(_handleIncomingMessage);
 
     FirebaseMessaging.onMessageOpenedApp.listen(_handleMessageTap);
     FirebaseMessaging.instance.getInitialMessage().then((message) {
@@ -872,45 +972,6 @@ class FCMService {
     }
   }
 
-  void _showLocalNotification(RemoteMessage message) {
-    if (kIsWeb) return;
-    final title =
-        message.notification?.title ?? message.data['title']?.toString();
-    final body = message.notification?.body ?? message.data['body']?.toString();
-    if (title != null && title.isNotEmpty) {
-      final notifId = (title.hashCode ^ (body?.hashCode ?? 0)) & 0x7FFFFFFF;
-      try {
-        _localNotifications.show(
-          id: notifId,
-          title: title,
-          body: body ?? '',
-          payload: jsonEncode(message.data),
-          notificationDetails: const NotificationDetails(
-            android: AndroidNotificationDetails(
-              'high_importance_channel',
-              'High Importance Notifications',
-              importance: Importance.max,
-              priority: Priority.high,
-              icon: 'status_icon',
-            ),
-            iOS: DarwinNotificationDetails(
-              presentAlert: true,
-              presentBadge: true,
-              presentSound: true,
-            ),
-            macOS: DarwinNotificationDetails(
-              presentAlert: true,
-              presentBadge: true,
-              presentSound: true,
-            ),
-          ),
-        );
-      } catch (error) {
-        unawaited(AppLog.write('Local notification display error: $error'));
-      }
-    }
-  }
-
   Future<void> showLocalNotificationDirect({
     required String title,
     required String body,
@@ -918,35 +979,60 @@ class FCMService {
     Map<String, dynamic> data = const {},
   }) async {
     if (kIsWeb) return;
+    final category =
+        (data['category'] ?? data['module'] ?? data['source'] ?? '')
+            .toString()
+            .trim();
+    var resolvedBody = cleanNotificationDescription(body, category: category);
+    if (resolvedBody.isEmpty && data['description'] != null) {
+      resolvedBody = cleanNotificationDescription(
+        data['description'].toString(),
+        category: category,
+      );
+    }
+    if (resolvedBody.isEmpty && data['details'] != null) {
+      resolvedBody = cleanNotificationDescription(
+        data['details'].toString(),
+        category: category,
+      );
+    }
+    final notifId = (title.hashCode ^ resolvedBody.hashCode) & 0x7FFFFFFF;
+    if (imageUrl == null || imageUrl.isEmpty) {
+      await showNotificationStatic(
+        id: notifId,
+        title: title,
+        body: resolvedBody,
+        payload: jsonEncode(data),
+      );
+      return;
+    }
     StyleInformation? styleInformation;
     List<DarwinNotificationAttachment>? darwinAttachments;
-    if (imageUrl != null && imageUrl.isNotEmpty) {
-      try {
-        final response = await HttpUtils.client
-            .get(Uri.parse(imageUrl))
-            .timeout(const Duration(seconds: 5));
-        if (response.statusCode == 200) {
-          if (defaultTargetPlatform == TargetPlatform.android) {
-            styleInformation = BigPictureStyleInformation(
-              ByteArrayAndroidBitmap(response.bodyBytes),
-              hideExpandedLargeIcon: true,
-            );
-          } else if (defaultTargetPlatform == TargetPlatform.iOS ||
-              defaultTargetPlatform == TargetPlatform.macOS) {
-            final tempDir = await AppPaths.temporaryDirectory();
-            final tempFile = File('${tempDir.path}/${imageUrl.hashCode}.png');
-            await tempFile.writeAsBytes(response.bodyBytes);
-            darwinAttachments = [DarwinNotificationAttachment(tempFile.path)];
-          }
+    try {
+      final response = await HttpUtils.client
+          .get(Uri.parse(imageUrl))
+          .timeout(const Duration(seconds: 5));
+      if (response.statusCode == 200) {
+        if (defaultTargetPlatform == TargetPlatform.android) {
+          styleInformation = BigPictureStyleInformation(
+            ByteArrayAndroidBitmap(response.bodyBytes),
+            hideExpandedLargeIcon: true,
+          );
+        } else if (defaultTargetPlatform == TargetPlatform.iOS ||
+            defaultTargetPlatform == TargetPlatform.macOS) {
+          final tempDir = await AppPaths.temporaryDirectory();
+          final tempFile = File('${tempDir.path}/${imageUrl.hashCode}.png');
+          await tempFile.writeAsBytes(response.bodyBytes);
+          darwinAttachments = [DarwinNotificationAttachment(tempFile.path)];
         }
-      } catch (error) {
-        unawaited(AppLog.write('Notification image attachment failed: $error'));
       }
+    } catch (error) {
+      unawaited(AppLog.write('Notification image attachment failed: $error'));
     }
     await _localNotifications.show(
-      id: (title.hashCode ^ body.hashCode) & 0x7FFFFFFF,
+      id: notifId,
       title: title,
-      body: body,
+      body: resolvedBody,
       payload: jsonEncode(data),
       notificationDetails: NotificationDetails(
         android: AndroidNotificationDetails(
@@ -1058,10 +1144,31 @@ class FCMService {
   }) async {
     if (kIsWeb) return;
     await ensureLocalNotificationsInitialized();
+    String? category;
+    if (payload != null && payload.isNotEmpty) {
+      try {
+        final decoded = jsonDecode(payload);
+        if (decoded is Map<String, dynamic>) {
+          category =
+              (decoded['category'] ??
+                      decoded['module'] ??
+                      decoded['source'] ??
+                      '')
+                  .toString()
+                  .trim();
+          if (body.trim().isEmpty ||
+              body.trim().toLowerCase() == category.toLowerCase()) {
+            body = (decoded['description'] ?? decoded['details'] ?? '')
+                .toString();
+          }
+        }
+      } catch (_) {}
+    }
+    final resolvedBody = cleanNotificationDescription(body, category: category);
     await _localNotifications.show(
       id: id,
       title: title,
-      body: body,
+      body: resolvedBody,
       payload: payload,
       notificationDetails: const NotificationDetails(
         android: AndroidNotificationDetails(

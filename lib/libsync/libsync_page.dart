@@ -121,9 +121,6 @@ class _LibSyncPageState extends State<LibSyncPage>
     final status = LibSyncAuthService.instance.state.value.status;
     if (status == LibSyncAuthStatus.authenticated) {
       unawaited(_loadReservationData());
-    } else if (status == LibSyncAuthStatus.unauthenticated) {
-      if (AuthService.isLoggingOut) return;
-      unawaited(_handleGoogleSignIn());
     }
   }
 
@@ -275,11 +272,17 @@ class _LibSyncPageState extends State<LibSyncPage>
     }
   }
 
-  static bool _googleSigningInProgress = false;
+  bool _googleSigningInProgress = false;
 
   Future<void> _handleGoogleSignIn() async {
     if (_googleSigningInProgress) return;
-    _googleSigningInProgress = true;
+    if (mounted) {
+      setState(() {
+        _googleSigningInProgress = true;
+      });
+    } else {
+      _googleSigningInProgress = true;
+    }
     try {
       if (!kIsWeb) {
         final oauthUrl = LibSyncConfig.buildOAuthUrl();
@@ -313,12 +316,19 @@ class _LibSyncPageState extends State<LibSyncPage>
       }
     } catch (_) {
     } finally {
-      _googleSigningInProgress = false;
+      if (mounted) {
+        setState(() {
+          _googleSigningInProgress = false;
+        });
+      } else {
+        _googleSigningInProgress = false;
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return ValueListenableBuilder<LibSyncAuthState>(
       valueListenable: LibSyncAuthService.instance.state,
       builder: (context, state, child) {
@@ -331,55 +341,25 @@ class _LibSyncPageState extends State<LibSyncPage>
               body: Center(child: AppLoading()),
             );
           case LibSyncAuthStatus.error:
-            return AppPageScaffold(
-              title: 'Library Libsync',
-              subtitle: 'Ayesha Abed Library',
-              icon: Icons.local_library_outlined,
-              body: Center(
-                child: Padding(
-                  padding: const EdgeInsets.all(24.0),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Icon(
-                        Icons.error_outline,
-                        size: 64,
-                        color: Colors.red,
-                      ),
-                      const Gap(16),
-                      Text(
-                        'Authentication Error',
-                        style: TextStyle(
-                          color: AppPalette.textPrimary(context),
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const Gap(8),
-                      Text(
-                        _getFriendlyErrorMessage(state.errorMessage),
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: AppPalette.textSecondary(context),
-                        ),
-                      ),
-                      const Gap(24),
-                      AppActionButton(
-                        onPressed: () => LibSyncAuthService.instance.logout(),
-                        label: 'Sign In Again',
-                        outlined: false,
-                      ),
-                    ],
-                  ),
-                ),
-              ),
+            return _buildPromptScaffold(
+              context: context,
+              isDark: isDark,
+              icon: Icons.error_outline,
+              iconColor: Colors.red,
+              title: 'Authentication Error',
+              message: _getFriendlyErrorMessage(state.errorMessage),
+              buttonLabel: 'Sign In Again',
             );
           case LibSyncAuthStatus.unauthenticated:
-            return const AppPageScaffold(
-              title: 'Library Libsync',
-              subtitle: 'Ayesha Abed Library',
-              icon: Icons.local_library_outlined,
-              body: Center(child: AppLoading()),
+            return _buildPromptScaffold(
+              context: context,
+              isDark: isDark,
+              icon: Icons.account_circle_outlined,
+              iconColor: const Color(0xFF0E4B75),
+              title: 'LibSync Sign In',
+              message:
+                  'Sign in with your g.bracu.ac.bd account to access library room reservations and check your quota.',
+              buttonLabel: 'Sign In with Google',
             );
           case LibSyncAuthStatus.authenticated:
             final profile = state.profile;
@@ -623,6 +603,65 @@ class _LibSyncPageState extends State<LibSyncPage>
     return items;
   }
 
+  Widget _buildPromptScaffold({
+    required BuildContext context,
+    required bool isDark,
+    required IconData icon,
+    required Color iconColor,
+    required String title,
+    required String message,
+    required String buttonLabel,
+  }) {
+    return AppPageScaffold(
+      title: 'Library Libsync',
+      subtitle: 'Ayesha Abed Library',
+      icon: Icons.local_library_outlined,
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, size: 64, color: iconColor),
+              const Gap(16),
+              Text(
+                title,
+                style: TextStyle(
+                  color: AppPalette.textPrimary(context),
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const Gap(8),
+              Text(
+                message,
+                textAlign: TextAlign.center,
+                style: TextStyle(color: AppPalette.textSecondary(context)),
+              ),
+              const Gap(24),
+              AppActionButton(
+                onPressed: _googleSigningInProgress
+                    ? null
+                    : _handleGoogleSignIn,
+                label: buttonLabel,
+                backgroundColor: isDark
+                    ? Colors.white.withValues(alpha: 0.05)
+                    : Colors.black.withValues(alpha: 0.03),
+                borderRadius: 10,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
+                fontSize: 14,
+                isLoading: _googleSigningInProgress,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   String _getFriendlyErrorMessage(String? error) {
     if (error == null || error.isEmpty) {
       return 'An unexpected error occurred. Please try again.';
@@ -642,6 +681,9 @@ class _LibSyncPageState extends State<LibSyncPage>
     }
     if (lower.contains('403') || lower.contains('forbidden')) {
       return 'Access denied. Please contact the library administrator.';
+    }
+    if (lower.contains('429') || lower.contains('throttled')) {
+      return 'The library system is experiencing high traffic. Please try signing in again.';
     }
     if (lower.contains('50') ||
         lower.contains('server error') ||

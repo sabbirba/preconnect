@@ -7,13 +7,13 @@ import 'package:preconnect/pages/ui_kit.dart';
 class NotificationsViewData {
   const NotificationsViewData({
     required this.connect,
-    required this.scraped,
-    required this.seenScraperIds,
+    required this.feed,
+    required this.seenFeedIds,
   });
 
   final NotificationsFeed? connect;
-  final List<ScraperContentItem> scraped;
-  final Set<String> seenScraperIds;
+  final List<FeedItem> feed;
+  final Set<String> seenFeedIds;
 }
 
 class NotificationListItem {
