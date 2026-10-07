@@ -28,5 +28,23 @@ class LibSyncConfig {
   );
   static const String googleRedirectUri =
       'https://preconnect.app/api/auth/callback';
+  static const String googleNativeRedirectUri = 'preconnect://callback';
   static const String googleScopes = 'openid email profile';
+
+  static Uri buildOAuthUrl({
+    required String redirectUri,
+    bool includeState = true,
+  }) {
+    return Uri.parse('https://accounts.google.com/o/oauth2/v2/auth').replace(
+      queryParameters: {
+        'client_id': googleClientId,
+        'redirect_uri': redirectUri,
+        'response_type': 'code',
+        'scope': googleScopes,
+        'access_type': 'offline',
+        'prompt': 'consent',
+        if (includeState) 'state': 'app',
+      },
+    );
+  }
 }

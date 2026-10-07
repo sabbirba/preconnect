@@ -5,6 +5,11 @@ Entries are written for students, not developers — plain language, no commit h
 
 ## [Unreleased]
 
+## [2.1.1] — 2026-10-07
+
+- Library LibSync: Seamless library room reservation with direct deep link authentication and streamlined Google sign-in.
+- Onboarding: Refined continue action button for a more direct, intuitive sign-in experience.
+
 ## [2.1.0] — 2026-10-05
 
 - Curriculum & Degree Progress: Added required and optional course filters, dynamic dropdown labels, and seamless EMB101 and DEV101 course equivalence recognition.

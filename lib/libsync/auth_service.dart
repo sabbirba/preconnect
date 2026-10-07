@@ -77,15 +77,6 @@ class LibSyncAuthService extends ChangeNotifier {
     final localRefreshToken = await _apiClient.getGoogleRefreshToken();
     if (cookies.isEmpty &&
         (localRefreshToken == null || localRefreshToken.isEmpty)) {
-      final serverProfile = await _fetchProfileFromServer();
-      if (serverProfile != null) {
-        await _apiClient.saveCachedProfile(serverProfile);
-        state.value = LibSyncAuthState(
-          status: LibSyncAuthStatus.authenticated,
-          profile: serverProfile,
-        );
-        return;
-      }
       state.value = const LibSyncAuthState(
         status: LibSyncAuthStatus.unauthenticated,
       );
@@ -103,27 +94,12 @@ class LibSyncAuthService extends ChangeNotifier {
           profile: profile,
         );
         unawaited(_syncProfileToCloudflare(profile));
-      } else if (response.statusCode == 401 || response.statusCode == 403) {
-        final ok = await loginSilentlyWithBackend();
-        if (!ok) {
-          final serverProfile = await _fetchProfileFromServer();
-          if (serverProfile != null) {
-            await _apiClient.saveCachedProfile(serverProfile);
-            state.value = LibSyncAuthState(
-              status: LibSyncAuthStatus.authenticated,
-              profile: serverProfile,
-            );
-            return;
-          }
-          await _apiClient.clearAuthData();
-          state.value = const LibSyncAuthState(
-            status: LibSyncAuthStatus.unauthenticated,
-          );
-        }
-      } else {
+        return;
+      }
+      if (response.statusCode != 401 && response.statusCode != 403) {
         throw Exception('Server returned ${response.statusCode}');
       }
-    } catch (e) {
+    } catch (_) {
       if (cookies.isNotEmpty) {
         final cachedProfile = await _apiClient.getCachedProfile();
         state.value = LibSyncAuthState(
@@ -132,23 +108,23 @@ class LibSyncAuthService extends ChangeNotifier {
               cachedProfile ??
               const {'student_id': 'Cached User', 'name': 'Offline Mode'},
         );
-      } else {
-        final ok = await loginSilentlyWithBackend();
-        if (!ok) {
-          final serverProfile = await _fetchProfileFromServer();
-          if (serverProfile != null) {
-            await _apiClient.saveCachedProfile(serverProfile);
-            state.value = LibSyncAuthState(
-              status: LibSyncAuthStatus.authenticated,
-              profile: serverProfile,
-            );
-            return;
-          }
-          state.value = const LibSyncAuthState(
-            status: LibSyncAuthStatus.unauthenticated,
-          );
-        }
+        return;
       }
+    }
+
+    try {
+      final ok = await loginSilentlyWithBackend();
+      if (!ok) {
+        await _apiClient.clearAuthData();
+        state.value = const LibSyncAuthState(
+          status: LibSyncAuthStatus.unauthenticated,
+        );
+      }
+    } catch (_) {
+      await _apiClient.clearAuthData();
+      state.value = const LibSyncAuthState(
+        status: LibSyncAuthStatus.unauthenticated,
+      );
     }
   }
 
@@ -180,18 +156,8 @@ class LibSyncAuthService extends ChangeNotifier {
     }
   }
 
-  Future<void> authenticateWithAccessToken(String googleAccessToken) async {
-    state.value = const LibSyncAuthState(status: LibSyncAuthStatus.loading);
-    try {
-      await _authenticateWithGoogleAccessToken(googleAccessToken);
-    } catch (e) {
-      await _apiClient.clearAuthData();
-      state.value = LibSyncAuthState(
-        status: LibSyncAuthStatus.error,
-        errorMessage: e.toString(),
-      );
-    }
-  }
+  Future<void> authenticateWithAccessToken(String googleAccessToken) =>
+      authenticateWithTokens(googleAccessToken: googleAccessToken);
 
   Future<void> authenticateWithTokens({
     required String googleAccessToken,
@@ -255,16 +221,28 @@ class LibSyncAuthService extends ChangeNotifier {
     );
 
     unawaited(
-      _fetchUserProfile().then((profile) async {
-        if (profile != null) {
-          await _apiClient.saveCachedProfile(profile);
-          state.value = LibSyncAuthState(
-            status: LibSyncAuthStatus.authenticated,
-            profile: profile,
-          );
-          unawaited(_syncProfileToCloudflare(profile));
-        }
-      }),
+      _fetchUserProfile()
+          .then((profile) async {
+            if (profile != null) {
+              await _apiClient.saveCachedProfile(profile);
+              state.value = LibSyncAuthState(
+                status: LibSyncAuthStatus.authenticated,
+                profile: profile,
+              );
+              unawaited(_syncProfileToCloudflare(profile));
+            } else {
+              await _apiClient.clearAuthData();
+              state.value = const LibSyncAuthState(
+                status: LibSyncAuthStatus.unauthenticated,
+              );
+            }
+          })
+          .catchError((_) async {
+            await _apiClient.clearAuthData();
+            state.value = const LibSyncAuthState(
+              status: LibSyncAuthStatus.unauthenticated,
+            );
+          }),
     );
   }
 
@@ -493,17 +471,12 @@ class LibSyncAuthService extends ChangeNotifier {
   }
 
   String _extractErrorMessage(dynamic decoded, String defaultMessage) {
-    if (decoded is Map) {
-      if (decoded.containsKey('message')) return decoded['message'].toString();
-      if (decoded.containsKey('detail')) return decoded['detail'].toString();
-      if (decoded.containsKey('error')) return decoded['error'].toString();
-    } else if (decoded is List && decoded.isNotEmpty) {
-      final first = decoded.first;
-      if (first is Map) {
-        if (first.containsKey('message')) return first['message'].toString();
-        if (first.containsKey('detail')) return first['detail'].toString();
-        if (first.containsKey('error')) return first['error'].toString();
-      }
+    final target = decoded is List && decoded.isNotEmpty
+        ? decoded.first
+        : decoded;
+    if (target is Map) {
+      final msg = target['message'] ?? target['detail'] ?? target['error'];
+      if (msg != null) return msg.toString();
     }
     return defaultMessage;
   }
@@ -544,44 +517,5 @@ class LibSyncAuthService extends ChangeNotifier {
         stackTrace,
       );
     }
-  }
-
-  Future<Map<String, dynamic>?> _fetchProfileFromServer() async {
-    try {
-      var token = await TokenStorage.instance.read(
-        key: PreConnectStorageKeys.idToken,
-      );
-      if (token == null || token.isEmpty) {
-        token = await TokenStorage.instance.read(
-          key: PreConnectStorageKeys.accessToken,
-        );
-      }
-      if (token == null || token.isEmpty) return null;
-      final uri = Uri.parse('${ApiConfig.websiteBase}/api/_client/profile');
-      final response = await HttpUtils.client.post(
-        uri,
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
-        body: jsonEncode({'idToken': token}),
-      );
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        if (data is Map<String, dynamic> && data['user'] is Map) {
-          final user = data['user'] as Map<String, dynamic>;
-          if (user['libsync'] is Map<String, dynamic>) {
-            return user['libsync'] as Map<String, dynamic>;
-          }
-        }
-      }
-    } catch (error, stackTrace) {
-      reportLibSyncError(
-        'Fetching LibSync profile from backend',
-        error,
-        stackTrace,
-      );
-    }
-    return null;
   }
 }

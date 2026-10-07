@@ -45,7 +45,6 @@ class _LibSyncPageState extends State<LibSyncPage>
   Map<String, dynamic>? _totalReservationCount;
   bool _loadingData = false;
   int? _selectedChartIndex;
-  bool _isGoogleSigningIn = false;
 
   static final List<DateTime> _fetchTimestamps = [];
   static DateTime? _lastReservationFetchTime;
@@ -263,90 +262,49 @@ class _LibSyncPageState extends State<LibSyncPage>
           })
           .catchError((_) {});
 
-      Future.wait([f1, f2, f3, f4]).whenComplete(() {
-        if (mounted) {
-          setState(() {
-            _loadingData = false;
-          });
-        }
-      });
+      await Future.wait([f1, f2, f3, f4]);
     } catch (_) {
+    } finally {
       if (mounted) {
         setState(() {
           _loadingData = false;
         });
+      } else {
+        _loadingData = false;
       }
     }
   }
 
+  static bool _googleSigningInProgress = false;
+
   Future<void> _handleGoogleSignIn() async {
-    if (_isGoogleSigningIn) return;
-    _isGoogleSigningIn = true;
+    if (_googleSigningInProgress) return;
+    _googleSigningInProgress = true;
     try {
-      String? authCode;
-      String? redirectUri;
       if (!kIsWeb) {
-        final oauthUrl =
-            Uri.parse('https://accounts.google.com/o/oauth2/v2/auth').replace(
-              queryParameters: {
-                'client_id': LibSyncConfig.googleClientId,
-                'redirect_uri': LibSyncConfig.googleRedirectUri,
-                'response_type': 'code',
-                'scope': LibSyncConfig.googleScopes,
-                'access_type': 'offline',
-                'prompt': 'consent',
-                'state': 'app',
-              },
-            );
+        final oauthUrl = LibSyncConfig.buildOAuthUrl(
+          redirectUri: LibSyncConfig.googleNativeRedirectUri,
+        );
         await launchUrl(oauthUrl, mode: LaunchMode.externalApplication);
         return;
-      } else {
-        if (isChromeRuntimeAvailable()) {
-          final oauthUrl =
-              Uri.parse('https://accounts.google.com/o/oauth2/v2/auth').replace(
-                queryParameters: {
-                  'client_id': LibSyncConfig.googleClientId,
-                  'redirect_uri': LibSyncConfig.googleRedirectUri,
-                  'response_type': 'code',
-                  'scope': LibSyncConfig.googleScopes,
-                  'access_type': 'offline',
-                  'prompt': 'consent',
-                  'state': 'app',
-                },
-              );
-          authCode = await openChromeExtensionOAuthFlow(
-            oauthUrl.toString(),
-            LibSyncConfig.googleRedirectUri,
-          );
-          redirectUri = LibSyncConfig.googleRedirectUri;
-        } else {
-          final oauthUrl =
-              Uri.parse('https://accounts.google.com/o/oauth2/v2/auth').replace(
-                queryParameters: {
-                  'client_id': LibSyncConfig.googleClientId,
-                  'redirect_uri': LibSyncConfig.googleRedirectUri,
-                  'response_type': 'code',
-                  'scope': LibSyncConfig.googleScopes,
-                  'access_type': 'offline',
-                  'prompt': 'consent',
-                },
-              );
-          authCode = await openWebOAuthFlow(
-            oauthUrl.toString(),
-            LibSyncConfig.googleRedirectUri,
-          );
-          redirectUri = LibSyncConfig.googleRedirectUri;
-        }
       }
+
+      final redirectUri = LibSyncConfig.googleRedirectUri;
+      final oauthUrl = LibSyncConfig.buildOAuthUrl(
+        redirectUri: redirectUri,
+        includeState: isChromeRuntimeAvailable(),
+      ).toString();
+
+      final authCode = isChromeRuntimeAvailable()
+          ? await openChromeExtensionOAuthFlow(oauthUrl, redirectUri)
+          : await openWebOAuthFlow(oauthUrl, redirectUri);
 
       if (authCode != null) {
         if (authCode.startsWith('{')) {
           final map = jsonDecode(authCode) as Map<String, dynamic>;
-          final access = map['access_token'] as String;
-          final refresh = map['refresh_token'] as String?;
           await LibSyncAuthService.instance.authenticateWithTokens(
-            googleAccessToken: access,
-            googleRefreshToken: refresh,
+            googleAccessToken: map['access_token'] as String,
+            googleRefreshToken: map['refresh_token'] as String?,
           );
         } else {
           await LibSyncAuthService.instance.authenticateWithCode(
@@ -357,7 +315,7 @@ class _LibSyncPageState extends State<LibSyncPage>
       }
     } catch (_) {
     } finally {
-      _isGoogleSigningIn = false;
+      _googleSigningInProgress = false;
     }
   }
 

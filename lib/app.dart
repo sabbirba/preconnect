@@ -332,35 +332,34 @@ class _MyAppState extends State<MyApp>
   }
 
   void _handleIncomingDeepLink(Uri uri) {
-    if (uri.host == 'preconnect.app' &&
-        uri.path.startsWith('/api/auth/callback')) {
-      final accessToken = uri.queryParameters['google_access_token'];
-      final refreshToken = uri.queryParameters['google_refresh_token'];
-      if (accessToken != null && accessToken.isNotEmpty) {
-        unawaited(
-          LibSyncAuthService.instance
-              .authenticateWithTokens(
-                googleAccessToken: accessToken,
-                googleRefreshToken: refreshToken,
-              )
-              .then((_) {
-                if (mounted) {
-                  unawaited(triggerAppRefresh(forceRefresh: true));
-                }
-              }),
-        );
-        return;
-      }
-      final code = uri.queryParameters['code'];
-      if (code != null && code.isNotEmpty) {
-        unawaited(
-          LibSyncAuthService.instance.authenticateWithCode(code).then((_) {
-            if (mounted) {
-              unawaited(triggerAppRefresh(forceRefresh: true));
-            }
-          }),
-        );
-      }
+    final isHttps =
+        uri.host == 'preconnect.app' &&
+        uri.path.startsWith('/api/auth/callback');
+    final isCustomScheme = uri.scheme == 'preconnect' && uri.host == 'callback';
+    if (!isHttps && !isCustomScheme) return;
+
+    final token = uri.queryParameters['google_access_token'];
+    final refresh = uri.queryParameters['google_refresh_token'];
+    final code = uri.queryParameters['code'];
+
+    final Future<void>? authFuture = token != null && token.isNotEmpty
+        ? LibSyncAuthService.instance.authenticateWithTokens(
+            googleAccessToken: token,
+            googleRefreshToken: refresh,
+          )
+        : code != null && code.isNotEmpty
+        ? LibSyncAuthService.instance.authenticateWithCode(
+            code,
+            redirectUri: isCustomScheme ? 'preconnect://callback' : null,
+          )
+        : null;
+
+    if (authFuture != null) {
+      unawaited(
+        authFuture.then((_) {
+          if (mounted) unawaited(triggerAppRefresh(forceRefresh: true));
+        }),
+      );
     }
   }
 

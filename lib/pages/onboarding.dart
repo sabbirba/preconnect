@@ -469,7 +469,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
                                     : () => _completeOnboarding(context),
                                 outlined: false,
                                 isLoading: _isStartingWebLogin,
-                                label: 'Continue SSO',
+                                label: 'Continue',
                                 backgroundColor: const Color(
                                   0xFF1E5BFF,
                                 ).withValues(alpha: 0.85),
