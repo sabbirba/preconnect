@@ -25,7 +25,7 @@ An initiative run by [BRAC University](https://bracu.ac.bd) students.
 <a href="https://play.google.com/store/apps/details?id=com.sabbirba.preconnect"><img alt="Google Play" src="https://img.shields.io/badge/Google_Play-414141?style=for-the-badge&logo=googleplay&logoColor=white" /></a>&nbsp;&nbsp;
 <a href="https://chromewebstore.google.com/detail/preconnect/fcfkbdogaciifaihbfhnaijfhdcjokca"><img alt="Chrome Extension" src="https://img.shields.io/badge/Chrome_Extension-4285F4?style=for-the-badge&logo=googlechrome&logoColor=white" /></a>&nbsp;&nbsp;
 <a href="https://addons.mozilla.org/firefox/addon/preconnect/"><img alt="Firefox Add-on" src="https://img.shields.io/badge/Firefox_Add--on-FF7139?style=for-the-badge&logo=firefox-browser&logoColor=white" /></a>&nbsp;&nbsp;
-<a href="https://web.preconnect.app"><img alt="Web App" src="https://img.shields.io/badge/Web_App-02569B?style=for-the-badge&logo=flutter&logoColor=white" /></a>&nbsp;&nbsp;
+<a href="https://preconnect.app"><img alt="Web App" src="https://img.shields.io/badge/Web_App-02569B?style=for-the-badge&logo=flutter&logoColor=white" /></a>&nbsp;&nbsp;
 <a href="https://github.com/sabbirba/preconnect/releases/latest"><img alt="GitHub Releases" src="https://img.shields.io/badge/GitHub_Releases-181717?style=for-the-badge&logo=github&logoColor=white" /></a>&nbsp;&nbsp;
 <a href="https://preconnect.app/funding"><img alt="Funding" src="https://img.shields.io/badge/Funding-E11D48?style=for-the-badge&logo=githubsponsors&logoColor=white" /></a>
 </div>
@@ -67,7 +67,7 @@ A Flutter app for BRAC University students with SSO login and Connect API integr
 Installation is available for multiple platforms through:
 
 - Latest release assets (APK / AAB / Chrome extension / iOS / macOS): [GitHub Releases](https://github.com/sabbirba/preconnect/releases/latest)
-- Web App: [web.preconnect.app](https://web.preconnect.app)
+- Web App: [preconnect.app](https://preconnect.app)
 - iOS: [Apple App Store](https://apps.apple.com/app/id6791423431)
 - Android: [Google Play Store](https://play.google.com/store/apps/details?id=com.sabbirba.preconnect)
 - Chrome: [Chrome Web Store](https://chromewebstore.google.com/detail/preconnect/fcfkbdogaciifaihbfhnaijfhdcjokca)

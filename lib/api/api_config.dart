@@ -15,7 +15,7 @@ class ApiConfig {
   static String get _webProxyBase {
     final origin = getWebAppOrigin();
     if (origin.contains('localhost') || origin.contains('127.0.0.1')) {
-      return 'https://web.preconnect.app';
+      return 'https://preconnect.app';
     }
     return origin;
   }
