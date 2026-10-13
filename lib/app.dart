@@ -536,6 +536,9 @@ class _MyAppState extends State<MyApp>
     if (state == AppLifecycleState.inactive ||
         state == AppLifecycleState.paused ||
         state == AppLifecycleState.hidden) {
+      if (state == AppLifecycleState.paused) {
+        MercureService().disconnect();
+      }
       if (_appLockEnabled && _isUnlocked && !_isUnlocking) {
         _lastPausedAt ??= DateTime.now();
       }
@@ -594,6 +597,7 @@ class _MyAppState extends State<MyApp>
 
   @override
   void dispose() {
+    MercureService().disconnect();
     _connectivitySub?.cancel();
     _deepLinkSub?.cancel();
     _webSessionSub?.cancel();
@@ -615,6 +619,7 @@ class _MyAppState extends State<MyApp>
   Future<void> _completeLogoutNavigation() async {
     if (!mounted || _logoutNavigationInFlight) return;
     _logoutNavigationInFlight = true;
+    MercureService().disconnect();
     _initialLoggedIn = false;
     _canOpenOffline = false;
     _resolvedBootstrapState = const AppBootstrapState(
