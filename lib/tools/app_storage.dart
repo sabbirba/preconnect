@@ -160,7 +160,11 @@ class AppStorage {
     _memCache[key] = value;
     if (kIsWeb) {
       _webCache[key] = value;
-      await webExtensionStorageSet(key, value);
+      try {
+        await webExtensionStorageSet(key, value);
+      } catch (e) {
+        unawaited(AppLog.write('AppStorage setString Error ($key): $e'));
+      }
       return;
     }
     try {
@@ -172,7 +176,9 @@ class AppStorage {
         await _deleteFile(key);
         await prefs.setString(key, value);
       }
-    } catch (_) {}
+    } catch (e) {
+      unawaited(AppLog.write('AppStorage setString Error ($key): $e'));
+    }
   }
 
   Future<bool?> getBool(String key) async {
@@ -225,14 +231,20 @@ class AppStorage {
     _memCache.remove(key);
     if (kIsWeb) {
       _webCache.remove(key);
-      await webExtensionStorageSet(key, null);
+      try {
+        await webExtensionStorageSet(key, null);
+      } catch (e) {
+        unawaited(AppLog.write('AppStorage remove Error ($key): $e'));
+      }
       return;
     }
     try {
       final prefs = await _getInstance();
       await _deleteFile(key);
       await prefs.remove(key);
-    } catch (_) {}
+    } catch (e) {
+      unawaited(AppLog.write('AppStorage remove Error ($key): $e'));
+    }
   }
 
   Future<void> clear() async {
@@ -240,7 +252,11 @@ class AppStorage {
     if (kIsWeb) {
       final keys = _webCache.keys.toList();
       _webCache.clear();
-      await webExtensionStorageRemoveKeys(keys);
+      try {
+        await webExtensionStorageRemoveKeys(keys);
+      } catch (e) {
+        unawaited(AppLog.write('AppStorage clear Error: $e'));
+      }
       return;
     }
     try {
@@ -257,7 +273,9 @@ class AppStorage {
         }
       }
       await _initCacheDir();
-    } catch (_) {}
+    } catch (e) {
+      unawaited(AppLog.write('AppStorage clear Error: $e'));
+    }
   }
 
   String? getStringSync(String key) {

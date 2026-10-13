@@ -220,8 +220,9 @@ The script can run even when `.env` is missing; optional dart defines are treate
 Run these before a PR:
 
 ```bash
-dart format --output=none --set-exit-if-changed lib web
+dart format --output=none --set-exit-if-changed lib web test
 flutter analyze
+flutter test
 ```
 
 ## CI Checks and Reports

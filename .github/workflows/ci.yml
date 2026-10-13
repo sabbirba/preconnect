@@ -7,6 +7,7 @@ on:
       - "**/*.dart"
       - "**/*.sh"
       - "web/**"
+      - "test/**"
       - "android/**"
       - "ios/**"
       - "macos/**"
@@ -25,6 +26,7 @@ on:
       - "**/*.dart"
       - "**/*.sh"
       - "web/**"
+      - "test/**"
       - "android/**"
       - "ios/**"
       - "macos/**"
@@ -78,7 +80,7 @@ jobs:
 
       - name: Verify Formatting
         if: ${{ !cancelled() && steps.dependencies.outcome == 'success' }}
-        run: dart format --output=none --set-exit-if-changed lib web
+        run: dart format --output=none --set-exit-if-changed lib web test
 
       - name: Analyze
         if: ${{ !cancelled() && steps.dependencies.outcome == 'success' }}
@@ -87,6 +89,10 @@ jobs:
       - name: Analyze Extension Entry Points
         if: ${{ !cancelled() && steps.dependencies.outcome == 'success' }}
         run: dart analyze --fatal-infos web/background.dart web/background_models.dart web/extension_app.dart
+
+      - name: Run Tests
+        if: ${{ !cancelled() && steps.dependencies.outcome == 'success' }}
+        run: flutter test
 
   build-web-extension:
     name: Build Web & Extension

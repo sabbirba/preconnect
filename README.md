@@ -145,6 +145,7 @@ flutter run --dart-define-from-file=.env
 
 ```bash
 flutter analyze
+flutter test
 ```
 
 ## Community

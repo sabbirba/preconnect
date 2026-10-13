@@ -34,13 +34,6 @@
 			remoteGlobalIDString = 97C146ED1CF9000F007C117D;
 			remoteInfo = Runner;
 		};
-		42EA5E0C1F97EFEACBD6FCA3 /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = 97C146E61CF9000F007C117D /* Project object */;
-			proxyType = 1;
-			remoteGlobalIDString = 80F437744B18B551B2CCB37E;
-			remoteInfo = AlarmkitWidgetExtension;
-		};
 		8CF1DC3D96F87532E497E4AD /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 97C146E61CF9000F007C117D /* Project object */;
@@ -77,10 +70,6 @@
 /* Begin PBXFileReference section */
 		1498D2321E8E86230040F4C2 /* GeneratedPluginRegistrant.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = GeneratedPluginRegistrant.h; sourceTree = "<group>"; };
 		1498D2331E8E89220040F4C2 /* GeneratedPluginRegistrant.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = GeneratedPluginRegistrant.m; sourceTree = "<group>"; };
-		243E2C42A36C75412BFE839F /* AlarmkitWidgetExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = AlarmkitWidgetExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
-		2F3E9C2A9E1A4F5B9C1D2E41 /* Alarmkit.Debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = Alarmkit.Debug.xcconfig; path = Flutter/Alarmkit.Debug.xcconfig; sourceTree = "<group>"; };
-		2F3E9C2A9E1A4F5B9C1D2E42 /* Alarmkit.Release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = Alarmkit.Release.xcconfig; path = Flutter/Alarmkit.Release.xcconfig; sourceTree = "<group>"; };
-		2F3E9C2A9E1A4F5B9C1D2E43 /* Alarmkit.Profile.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = Alarmkit.Profile.xcconfig; path = Flutter/Alarmkit.Profile.xcconfig; sourceTree = "<group>"; };
 		331C807B294A618700263BE5 /* RunnerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunnerTests.swift; sourceTree = "<group>"; };
 		331C8081294A63A400263BE5 /* RunnerTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = RunnerTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		387F21CB0ADCD64780015C32 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS18.0.sdk/System/Library/Frameworks/Foundation.framework; sourceTree = DEVELOPER_DIR; };
@@ -159,9 +148,6 @@
 				3B3967151E833CAA004F5970 /* AppFrameworkInfo.plist */,
 				9740EEB21CF90195004384FC /* Debug.xcconfig */,
 				7AFA3C8E1D35360C0083082E /* Release.xcconfig */,
-				2F3E9C2A9E1A4F5B9C1D2E41 /* Alarmkit.Debug.xcconfig */,
-				2F3E9C2A9E1A4F5B9C1D2E42 /* Alarmkit.Release.xcconfig */,
-				2F3E9C2A9E1A4F5B9C1D2E43 /* Alarmkit.Profile.xcconfig */,
 				9740EEB31CF90195004384FC /* Generated.xcconfig */,
 			);
 			name = Flutter;
@@ -186,7 +172,6 @@
 			children = (
 				97C146EE1CF9000F007C117D /* Runner.app */,
 				331C8081294A63A400263BE5 /* RunnerTests.xctest */,
-				243E2C42A36C75412BFE839F /* AlarmkitWidgetExtension.appex */,
 				B449BD9D60EC8EEB30DDA22F /* TodayWidgetExtension.appex */,
 			);
 			name = Products;
@@ -269,7 +254,6 @@
 			buildRules = (
 			);
 			dependencies = (
-				374B73DEB2407A9AE29B30FD /* PBXTargetDependency */,
 				7B3635CA287B44DEA27442DD /* PBXTargetDependency */,
 			);
 			name = Runner;
@@ -444,10 +428,6 @@
 			isa = PBXTargetDependency;
 			target = 97C146ED1CF9000F007C117D /* Runner */;
 			targetProxy = 331C8085294A63A400263BE5 /* PBXContainerItemProxy */;
-		};
-		374B73DEB2407A9AE29B30FD /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			targetProxy = 42EA5E0C1F97EFEACBD6FCA3 /* PBXContainerItemProxy */;
 		};
 		7B3635CA287B44DEA27442DD /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
