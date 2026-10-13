@@ -40,7 +40,8 @@ class _SpaceAvailabilityPageState extends State<SpaceAvailabilityPage> {
           final timestamp = (decoded['timestamp'] as num?)?.toInt() ?? 0;
           final now = DateTime.now().millisecondsSinceEpoch;
           if (now - timestamp < 30000) {
-            _availabilityData = decoded['data'] as List<dynamic>?;
+            final data = decoded['data'];
+            _availabilityData = data is List ? data : null;
             return timestamp;
           }
         }
@@ -619,14 +620,19 @@ class _SpaceAvailabilityPageState extends State<SpaceAvailabilityPage> {
               itemCount: availabilityData.length,
               itemBuilder: (context, index) {
                 final item = availabilityData[index];
-                final space = item['room'] as Map<String, dynamic>? ?? {};
-                final slots = item['slots'] as List<dynamic>? ?? [];
+                final space = (item is Map && item['room'] is Map)
+                    ? (item['room'] as Map).cast<String, dynamic>()
+                    : const <String, dynamic>{};
+                final slots = (item is Map && item['slots'] is List)
+                    ? item['slots'] as List
+                    : const [];
 
                 final spaceNo = space['room_no']?.toString() ?? 'Unknown Space';
                 final spaceCat = space['room_cat']?.toString() ?? 'Study Space';
                 final location = space['location']?.toString() ?? '';
-                final facilityList =
-                    space['facility_list'] as List<dynamic>? ?? [];
+                final facilityList = space['facility_list'] is List
+                    ? space['facility_list'] as List
+                    : const [];
 
                 return Padding(
                   padding: const EdgeInsets.only(bottom: 12),

@@ -163,7 +163,8 @@ class TargetSectionItem {
   };
 
   factory TargetSectionItem.fromJson(Map<String, dynamic> json) {
-    final repMap = json['replacement'] as Map<String, dynamic>?;
+    final rep = json['replacement'];
+    final repMap = rep is Map ? rep.cast<String, dynamic>() : null;
     return TargetSectionItem(
       sectionId: _requiredInt(json, 'sectionId'),
       courseId: _requiredInt(json, 'courseId'),

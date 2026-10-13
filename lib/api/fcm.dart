@@ -219,10 +219,18 @@ class FCMService {
   static Future<void> _handleBackgroundDataSync(
     Map<String, dynamic> data,
   ) async {
-    final type = (data['type'] ?? data['sync_type'] ?? data['event'] ?? '')
-        .toString()
-        .trim()
-        .toLowerCase();
+    final type =
+        (data['type'] ??
+                data['sync_type'] ??
+                data['event'] ??
+                data['category'] ??
+                data['module'] ??
+                data['source'] ??
+                data['topic'] ??
+                '')
+            .toString()
+            .trim()
+            .toLowerCase();
     if (type.isEmpty) return;
 
     try {
@@ -342,11 +350,21 @@ class FCMService {
             .toString()
             .trim();
 
-    final descCandidate = (data['description'] ?? data['details'] ?? '')
-        .toString()
-        .trim();
+    final descCandidate =
+        (data['description'] ??
+                data['details'] ??
+                data['content'] ??
+                data['text'] ??
+                '')
+            .toString()
+            .trim();
     final bodyCandidate =
-        (data['body'] ?? data['message'] ?? notification?.body ?? '')
+        (data['body'] ??
+                data['message'] ??
+                data['alert'] ??
+                data['headline'] ??
+                notification?.body ??
+                '')
             .toString()
             .trim();
 
@@ -361,6 +379,10 @@ class FCMService {
     );
     if (cleanedTitle.isNotEmpty) {
       title = cleanedTitle;
+    }
+
+    if (title.isEmpty && body.isNotEmpty) {
+      title = category.isNotEmpty ? category : 'PreConnect';
     }
 
     if (body.toLowerCase() == title.toLowerCase()) {
@@ -378,13 +400,20 @@ class FCMService {
       message.data,
     );
     if (title.isNotEmpty) {
-      final notifId = (title.hashCode ^ body.hashCode) & 0x7FFFFFFF;
+      final imageUrl =
+          (message.data['image'] ??
+                  message.data['imageUrl'] ??
+                  message.data['image_url'] ??
+                  message.notification?.android?.imageUrl ??
+                  message.notification?.apple?.imageUrl)
+              ?.toString()
+              .trim();
       unawaited(
-        showNotificationStatic(
-          id: notifId,
+        FCMService.instance.showLocalNotificationDirect(
           title: title,
           body: body,
-          payload: jsonEncode(message.data),
+          imageUrl: (imageUrl != null && imageUrl.isNotEmpty) ? imageUrl : null,
+          data: message.data,
         ),
       );
     }
@@ -951,9 +980,6 @@ class FCMService {
       }
     });
 
-    if (defaultTargetPlatform == TargetPlatform.android) {
-      await Future<void>.delayed(const Duration(seconds: 3));
-    }
     await _subscribeToDefaultTopics();
   }
 

@@ -147,7 +147,12 @@ class GradeSheetService {
     var output = value;
     if (output.startsWith('"') && output.endsWith('"') && output.length >= 2) {
       try {
-        output = jsonDecode(output) as String;
+        final dec = jsonDecode(output);
+        if (dec is String) {
+          output = dec;
+        } else {
+          output = output.substring(1, output.length - 1);
+        }
       } catch (_) {
         output = output.substring(1, output.length - 1);
       }

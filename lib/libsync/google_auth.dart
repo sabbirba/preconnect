@@ -23,7 +23,11 @@ class GoogleAuthHelper {
 
       if (response.statusCode != 200) throw Exception('Token refresh failed');
 
-      return jsonDecode(response.body) as Map<String, dynamic>;
+      final decoded = jsonDecode(response.body);
+      if (decoded is Map) {
+        return decoded.cast<String, dynamic>();
+      }
+      throw Exception('Invalid token refresh response');
     } finally {
       client.close();
     }
@@ -49,7 +53,11 @@ class GoogleAuthHelper {
 
       if (response.statusCode != 200) throw Exception('Token exchange failed');
 
-      return jsonDecode(response.body) as Map<String, dynamic>;
+      final decoded = jsonDecode(response.body);
+      if (decoded is Map) {
+        return decoded.cast<String, dynamic>();
+      }
+      throw Exception('Invalid token exchange response');
     } finally {
       client.close();
     }

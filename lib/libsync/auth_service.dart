@@ -265,7 +265,8 @@ class LibSyncAuthService extends ChangeNotifier {
     try {
       final response = await _apiClient.get(Uri.parse(LibSyncConfig.userMeUrl));
       if (response.statusCode == 200) {
-        return jsonDecode(response.body) as Map<String, dynamic>;
+        final decoded = jsonDecode(response.body);
+        if (decoded is Map) return decoded.cast<String, dynamic>();
       }
     } catch (error, stackTrace) {
       reportLibSyncError('Loading LibSync quota', error, stackTrace);
@@ -281,7 +282,8 @@ class LibSyncAuthService extends ChangeNotifier {
         ),
       );
       if (response.statusCode == 200) {
-        return jsonDecode(response.body) as List<dynamic>;
+        final decoded = jsonDecode(response.body);
+        if (decoded is List) return decoded;
       }
     } catch (error, stackTrace) {
       reportLibSyncError('Loading LibSync reservations', error, stackTrace);
@@ -295,7 +297,8 @@ class LibSyncAuthService extends ChangeNotifier {
         Uri.parse('${LibSyncConfig.apiBaseUrl}/api/reservation/?limit=$limit'),
       );
       if (response.statusCode == 200) {
-        return jsonDecode(response.body) as Map<String, dynamic>;
+        final decoded = jsonDecode(response.body);
+        if (decoded is Map) return decoded.cast<String, dynamic>();
       }
     } catch (error, stackTrace) {
       reportLibSyncError('Loading LibSync room data', error, stackTrace);
@@ -311,7 +314,8 @@ class LibSyncAuthService extends ChangeNotifier {
         ),
       );
       if (response.statusCode == 200) {
-        return jsonDecode(response.body) as List<dynamic>;
+        final decoded = jsonDecode(response.body);
+        if (decoded is List) return decoded;
       }
     } catch (error, stackTrace) {
       reportLibSyncError('Loading LibSync statistics', error, stackTrace);
@@ -327,7 +331,8 @@ class LibSyncAuthService extends ChangeNotifier {
         ),
       );
       if (response.statusCode == 200) {
-        return jsonDecode(response.body) as Map<String, dynamic>;
+        final decoded = jsonDecode(response.body);
+        if (decoded is Map) return decoded.cast<String, dynamic>();
       }
     } catch (error, stackTrace) {
       reportLibSyncError(
@@ -377,8 +382,9 @@ class LibSyncAuthService extends ChangeNotifier {
       }),
     );
     final decoded = jsonDecode(response.body);
-    if (response.statusCode == 200 || response.statusCode == 201) {
-      return decoded as Map<String, dynamic>;
+    if ((response.statusCode == 200 || response.statusCode == 201) &&
+        decoded is Map) {
+      return decoded.cast<String, dynamic>();
     }
     throw Exception(
       _extractErrorMessage(decoded, 'Failed to hold slot. Please try again.'),
@@ -422,8 +428,9 @@ class LibSyncAuthService extends ChangeNotifier {
       body: jsonEncode({'student_ids': studentIds, 'note': note}),
     );
     final decoded = jsonDecode(response.body);
-    if (response.statusCode == 200 || response.statusCode == 201) {
-      return decoded as Map<String, dynamic>;
+    if ((response.statusCode == 200 || response.statusCode == 201) &&
+        decoded is Map) {
+      return decoded.cast<String, dynamic>();
     }
     throw Exception(
       _extractErrorMessage(

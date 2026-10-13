@@ -144,9 +144,9 @@ class FeedService {
   }) async {
     if (!forceRefresh) {
       final cached = await _repo.readJsonMap(cacheKey);
-      final ts = cached?['ts'];
+      final ts = (cached?['ts'] as num?)?.toInt();
       final data = cached?['data'];
-      if (ts is int && data != null) {
+      if (ts != null && data != null) {
         final age = DateTime.now().difference(
           DateTime.fromMillisecondsSinceEpoch(ts),
         );
@@ -462,14 +462,19 @@ class NotificationService {
     try {
       final response = await _client.authenticatedGet(
         url,
-        cacheDuration: CacheDurations.notification,
+        cacheDuration: Duration.zero,
+        bypassCache: true,
       );
       if (response.statusCode == 200) {
         final oldFeed = await _readCachedFeed();
         final oldIds = oldFeed?.items.map((item) => item.id).toSet() ?? {};
 
+        final rawBody = jsonDecode(response.body);
+        if (rawBody is! Map) {
+          return await getRecentNotifications(fromFetch: true);
+        }
         final newFeed = NotificationsFeed.fromJson(
-          jsonDecode(response.body) as Map<String, dynamic>,
+          rawBody.cast<String, dynamic>(),
         );
 
         _inMemoryFeed = newFeed;
@@ -619,8 +624,8 @@ class NotificationService {
   Future<List<FeedItem>?> _readCachedFeedItems() async {
     final cached = await _repo.readJsonMap(_feedCacheKey);
     if (cached == null) return null;
-    final ts = cached['ts'];
-    if (ts is int) {
+    final ts = (cached['ts'] as num?)?.toInt();
+    if (ts != null) {
       final age = DateTime.now().difference(
         DateTime.fromMillisecondsSinceEpoch(ts),
       );

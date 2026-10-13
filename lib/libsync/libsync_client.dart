@@ -38,15 +38,14 @@ class LibSyncApiClient extends http.BaseClient {
       }
       final headers = await store.getJsonMap(_headersCacheKey);
       if (headers != null) {
-        _headersCache.addAll(
-          headers.map((k, v) {
-            final val = v as Map<String, dynamic>;
-            return MapEntry(
-              k,
-              val.map((hk, hv) => MapEntry(hk, hv.toString())),
+        for (final entry in headers.entries) {
+          final val = entry.value;
+          if (val is Map) {
+            _headersCache[entry.key] = val.map(
+              (hk, hv) => MapEntry(hk.toString(), hv.toString()),
             );
-          }),
-        );
+          }
+        }
       }
     } catch (error, stackTrace) {
       reportLibSyncError('Initializing the LibSync cache', error, stackTrace);
@@ -265,7 +264,11 @@ class LibSyncApiClient extends http.BaseClient {
     try {
       final data = await _safeRead(_profileStorageKey);
       if (data == null) return null;
-      return jsonDecode(data) as Map<String, dynamic>;
+      final decoded = jsonDecode(data);
+      if (decoded is Map) {
+        return decoded.cast<String, dynamic>();
+      }
+      return null;
     } catch (_) {
       return null;
     }
@@ -275,8 +278,13 @@ class LibSyncApiClient extends http.BaseClient {
     try {
       final data = await _safeRead(_cookiesStorageKey);
       if (data == null) return {};
-      final Map<String, dynamic> decoded = jsonDecode(data);
-      return decoded.map((key, value) => MapEntry(key, value.toString()));
+      final decoded = jsonDecode(data);
+      if (decoded is Map) {
+        return decoded.map(
+          (key, value) => MapEntry(key.toString(), value.toString()),
+        );
+      }
+      return {};
     } catch (_) {
       return {};
     }
@@ -344,15 +352,16 @@ class LibSyncApiClient extends http.BaseClient {
           final responseCookies = parseResponseCookies(refreshResponse.headers);
           final Map<String, String> cookiesToSave = Map.from(responseCookies);
           try {
-            final body =
-                jsonDecode(refreshResponse.body) as Map<String, dynamic>;
-            final accessVal = body['access'] ?? body['access_token'];
-            final refreshVal = body['refresh'] ?? body['refresh_token'];
-            if (accessVal != null) {
-              cookiesToSave['access'] = accessVal.toString();
-            }
-            if (refreshVal != null) {
-              cookiesToSave['refresh'] = refreshVal.toString();
+            final body = jsonDecode(refreshResponse.body);
+            if (body is Map) {
+              final accessVal = body['access'] ?? body['access_token'];
+              final refreshVal = body['refresh'] ?? body['refresh_token'];
+              if (accessVal != null) {
+                cookiesToSave['access'] = accessVal.toString();
+              }
+              if (refreshVal != null) {
+                cookiesToSave['refresh'] = refreshVal.toString();
+              }
             }
           } catch (error, stackTrace) {
             reportLibSyncError(
@@ -398,14 +407,16 @@ class LibSyncApiClient extends http.BaseClient {
           final responseCookies = parseResponseCookies(loginResponse.headers);
           final Map<String, String> cookiesToSave = Map.from(responseCookies);
           try {
-            final body = jsonDecode(loginResponse.body) as Map<String, dynamic>;
-            final accessVal = body['access'] ?? body['access_token'];
-            final refreshVal = body['refresh'] ?? body['refresh_token'];
-            if (accessVal != null) {
-              cookiesToSave['access'] = accessVal.toString();
-            }
-            if (refreshVal != null) {
-              cookiesToSave['refresh'] = refreshVal.toString();
+            final body = jsonDecode(loginResponse.body);
+            if (body is Map) {
+              final accessVal = body['access'] ?? body['access_token'];
+              final refreshVal = body['refresh'] ?? body['refresh_token'];
+              if (accessVal != null) {
+                cookiesToSave['access'] = accessVal.toString();
+              }
+              if (refreshVal != null) {
+                cookiesToSave['refresh'] = refreshVal.toString();
+              }
             }
           } catch (error, stackTrace) {
             reportLibSyncError('Retrying a LibSync request', error, stackTrace);

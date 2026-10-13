@@ -471,7 +471,7 @@ class _MyAppState extends State<MyApp>
               data['resultCount'] > 0) {
             final results = data['results'] as List<dynamic>;
             if (results.isNotEmpty) {
-              final storeVersion = results[0]['version'] as String;
+              final storeVersion = results[0]['version']?.toString() ?? '';
               final appStoreId = results[0]['trackId']?.toString() ?? '';
               if (storeVersion.compareTo(localVersion) > 0) {
                 final targetId = appStoreId.isEmpty ? '6791423431' : appStoreId;

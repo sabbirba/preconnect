@@ -51,32 +51,37 @@ class _NotificationsPageState extends State<NotificationsPage>
 
       NotificationsFeed? connect;
       if (recentFeedJson != null) {
-        connect = NotificationsFeed.fromJson(
-          jsonDecode(recentFeedJson) as Map<String, dynamic>,
-        );
+        final decoded = jsonDecode(recentFeedJson);
+        if (decoded is Map) {
+          connect = NotificationsFeed.fromJson(decoded.cast<String, dynamic>());
+        }
       }
 
       List<FeedItem> feed = [];
       if (feedJson != null) {
-        final decoded = jsonDecode(feedJson) as Map<String, dynamic>;
-        final rawItems = decoded['items'];
-        if (rawItems is List) {
-          feed = rawItems
-              .whereType<Map>()
-              .map((item) => FeedItem.fromJson(item.cast<String, dynamic>()))
-              .toList();
+        final decoded = jsonDecode(feedJson);
+        if (decoded is Map) {
+          final rawItems = decoded['items'];
+          if (rawItems is List) {
+            feed = rawItems
+                .whereType<Map>()
+                .map((item) => FeedItem.fromJson(item.cast<String, dynamic>()))
+                .toList();
+          }
         }
       }
 
       Set<String> seenFeedIds = {};
       if (seenJson != null) {
-        final decoded = jsonDecode(seenJson) as Map<String, dynamic>;
-        final raw = decoded['ids'];
-        if (raw is List) {
-          seenFeedIds = raw
-              .map((v) => '$v'.trim())
-              .where((v) => v.isNotEmpty)
-              .toSet();
+        final decoded = jsonDecode(seenJson);
+        if (decoded is Map) {
+          final raw = decoded['ids'];
+          if (raw is List) {
+            seenFeedIds = raw
+                .map((v) => '$v'.trim())
+                .where((v) => v.isNotEmpty)
+                .toSet();
+          }
         }
       }
 
@@ -119,6 +124,9 @@ class _NotificationsPageState extends State<NotificationsPage>
   void _onRefreshSignal() {
     if (!mounted) return;
     if (isRefreshingFrom('push_notification') ||
+        isRefreshingFrom('notifications') ||
+        isRefreshingFrom('notices') ||
+        isRefreshingFrom('global_sync') ||
         isRefreshingFrom('refresh') ||
         isRefreshingFrom('cache_cleared')) {
       unawaited(_refresh());

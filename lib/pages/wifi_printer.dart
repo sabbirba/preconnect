@@ -481,9 +481,11 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
           )
           .timeout(const Duration(seconds: 10));
       if (response.statusCode == 200) {
-        final Map<String, dynamic> data =
-            jsonDecode(response.body) as Map<String, dynamic>;
-        return data['status'] == 'online';
+        final decoded = jsonDecode(response.body);
+        if (decoded is Map) {
+          return decoded['status'] == 'online';
+        }
+        return false;
       }
     } catch (_) {}
     return false;
@@ -1765,9 +1767,13 @@ class _LprPrintClient {
                 body: gzippedPayload,
               )
               .timeout(const Duration(minutes: 3));
-          final Map<String, dynamic> data = response.body.isNotEmpty
-              ? (jsonDecode(response.body) as Map<String, dynamic>)
-              : <String, dynamic>{};
+          Map<String, dynamic> data = const <String, dynamic>{};
+          if (response.body.isNotEmpty) {
+            final decoded = jsonDecode(response.body);
+            if (decoded is Map) {
+              data = decoded.cast<String, dynamic>();
+            }
+          }
           if (response.statusCode != 200 || data['success'] == false) {
             final serverErr = data['error']?.toString().trim() ?? '';
             unawaited(

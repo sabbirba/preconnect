@@ -126,12 +126,11 @@ class QuietModeController {
           ) ??
           const <String, dynamic>{};
 
-      final status = (response['status'] as String?)?.trim().isNotEmpty == true
-          ? response['status'] as String
-          : 'stored';
+      final rawStatus = response['status']?.toString().trim() ?? '';
+      final status = rawStatus.isNotEmpty ? rawStatus : 'stored';
       final applied = response['applied'] == true;
-      final message = response['message'] as String?;
-      final permission = response['permission'] as String?;
+      final message = response['message']?.toString();
+      final permission = response['permission']?.toString();
       _enabled = enabled;
       await AppStorage.instance.setBool(_prefsKey, enabled);
       return QuietModeResult(

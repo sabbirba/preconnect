@@ -75,16 +75,20 @@ class _LibSyncPageState extends State<LibSyncPage>
       );
 
       if (yearRaw != null) {
-        _reservationByYear = jsonDecode(yearRaw) as List<dynamic>?;
+        final dec = jsonDecode(yearRaw);
+        if (dec is List) _reservationByYear = dec;
       }
       if (recentRaw != null) {
-        _recentReservations = jsonDecode(recentRaw) as List<dynamic>?;
+        final dec = jsonDecode(recentRaw);
+        if (dec is List) _recentReservations = dec;
       }
       if (quotaRaw != null) {
-        _checkQuota = jsonDecode(quotaRaw) as List<dynamic>?;
+        final dec = jsonDecode(quotaRaw);
+        if (dec is List) _checkQuota = dec;
       }
       if (countRaw != null) {
-        _totalReservationCount = jsonDecode(countRaw) as Map<String, dynamic>?;
+        final dec = jsonDecode(countRaw);
+        if (dec is Map) _totalReservationCount = dec.cast<String, dynamic>();
       }
       if (_reservationByYear != null) {
         _setDefaultChartIndex();
@@ -302,11 +306,13 @@ class _LibSyncPageState extends State<LibSyncPage>
 
       if (authCode != null) {
         if (authCode.startsWith('{')) {
-          final map = jsonDecode(authCode) as Map<String, dynamic>;
-          await LibSyncAuthService.instance.authenticateWithTokens(
-            googleAccessToken: map['access_token'] as String,
-            googleRefreshToken: map['refresh_token'] as String?,
-          );
+          final decoded = jsonDecode(authCode);
+          if (decoded is Map) {
+            await LibSyncAuthService.instance.authenticateWithTokens(
+              googleAccessToken: decoded['access_token']?.toString() ?? '',
+              googleRefreshToken: decoded['refresh_token']?.toString(),
+            );
+          }
         } else {
           await LibSyncAuthService.instance.authenticateWithCode(
             authCode,

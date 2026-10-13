@@ -801,9 +801,10 @@ Future<int> _fetchUnreadCount() async {
     if (response.status != 200) return 0;
     final text = await response.text().toDart;
     final decoded = jsonDecode(text.toDart);
-    if (decoded is Map<String, dynamic>) {
-      final newCount = decoded['new'];
-      if (newCount is num) return newCount.toInt();
+    if (decoded is Map) {
+      final newCount =
+          (decoded['new'] ?? decoded['newCount'] ?? decoded['count']) as num?;
+      if (newCount != null) return newCount.toInt();
     }
   } catch (error, stackTrace) {
     _reportBackgroundError(error, stackTrace);
@@ -1605,11 +1606,18 @@ Future<void> _handleGcmMessage(OnMessageMessage event) async {
     'notification.title',
     'gcm.notification.title',
   ], fallback: 'PreConnect');
-  var body = _firstPayloadText(data, const <String>['description', 'details']);
+  var body = _firstPayloadText(data, const <String>[
+    'description',
+    'details',
+    'content',
+    'text',
+  ]);
   if (body.isEmpty) {
     body = _firstPayloadText(data, const <String>[
       'body',
       'message',
+      'alert',
+      'headline',
       'notification.body',
       'gcm.notification.body',
     ]);
@@ -1885,7 +1893,8 @@ Future<void> _handleLibsyncRequest(Map message) async {
   final String method = '${message['method'] ?? 'GET'}';
   final String url = '${message['url'] ?? ''}';
   final String headersJson = '${message['headers'] ?? '{}'}';
-  final Map headers = jsonDecode(headersJson) as Map;
+  final decodedHeaders = jsonDecode(headersJson);
+  final Map headers = decodedHeaders is Map ? decodedHeaders : const {};
   final String bodyBase64 = '${message['body'] ?? ''}';
 
   try {

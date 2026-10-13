@@ -65,9 +65,9 @@ class DohResolver {
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        if (data is Map<String, dynamic> && data['Answer'] is List) {
+        if (data is Map && data['Answer'] is List) {
           for (final item in data['Answer'] as List) {
-            if (item is Map<String, dynamic>) {
+            if (item is Map) {
               final raw = item['data']?.toString() ?? '';
               final ip = isPreconnect
                   ? parseIpv4Hint(raw)
