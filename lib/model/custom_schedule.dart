@@ -44,17 +44,23 @@ class CustomSchedule {
       title: json['title'] as String? ?? '',
       courseCode: json['courseCode'] as String? ?? '',
       sectionName: json['sectionName'] as String? ?? '',
-      startTime: DateTime.parse(json['startTime'] as String),
+      startTime:
+          DateTime.tryParse(json['startTime']?.toString() ?? '') ??
+          DateTime.now(),
       endTime: json['endTime'] != null
-          ? DateTime.parse(json['endTime'] as String)
+          ? DateTime.tryParse(json['endTime'].toString())
           : null,
       reminderAt: json['reminderAt'] != null
-          ? DateTime.parse(json['reminderAt'] as String)
+          ? DateTime.tryParse(json['reminderAt'].toString())
           : null,
       notes: json['notes'] as String? ?? '',
       isDone: json['isDone'] as bool? ?? false,
-      createdAt: DateTime.parse(json['createdAt'] as String),
-      updatedAt: DateTime.parse(json['updatedAt'] as String),
+      createdAt:
+          DateTime.tryParse(json['createdAt']?.toString() ?? '') ??
+          DateTime.now(),
+      updatedAt:
+          DateTime.tryParse(json['updatedAt']?.toString() ?? '') ??
+          DateTime.now(),
     );
   }
 

@@ -361,9 +361,10 @@ class SeatStatusSchedule {
     final list = json['classSchedules'] as List?;
     final classSchedulesList = list != null
         ? list
+              .whereType<Map>()
               .map(
                 (e) =>
-                    SeatStatusClassSchedule.fromJson(e as Map<String, dynamic>),
+                    SeatStatusClassSchedule.fromJson(e.cast<String, dynamic>()),
               )
               .toList()
         : <SeatStatusClassSchedule>[];

@@ -206,7 +206,8 @@ class SectionSchedule {
     final list = json['classSchedules'] as List?;
     final classSchedulesList = list != null
         ? list
-              .map((e) => ClassSchedule.fromJson(e as Map<String, dynamic>))
+              .whereType<Map>()
+              .map((e) => ClassSchedule.fromJson(e.cast<String, dynamic>()))
               .toList()
         : <ClassSchedule>[];
 

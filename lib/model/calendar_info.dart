@@ -26,7 +26,8 @@ class CalendarFeed {
     final list = json['items'] as List?;
     final itemsList = list != null
         ? list
-              .map((e) => CalendarEntry.fromJson(e as Map<String, dynamic>))
+              .whereType<Map>()
+              .map((e) => CalendarEntry.fromJson(e.cast<String, dynamic>()))
               .toList()
         : <CalendarEntry>[];
 

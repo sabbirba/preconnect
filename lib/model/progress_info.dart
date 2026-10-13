@@ -41,11 +41,11 @@ class ProgressInfo {
     final prerequisiteRaw = payload['coursePrerequisites'];
     final prerequisiteByCode = _buildCoursePrerequisiteMap(prerequisiteRaw);
 
-    final curriculum = curriculumRaw is Map<String, dynamic>
-        ? curriculumRaw
+    final curriculum = curriculumRaw is Map
+        ? curriculumRaw.cast<String, dynamic>()
         : curriculumRaw is List && curriculumRaw.isNotEmpty
-        ? (curriculumRaw.first is Map<String, dynamic>
-              ? curriculumRaw.first as Map<String, dynamic>
+        ? (curriculumRaw.first is Map
+              ? (curriculumRaw.first as Map).cast<String, dynamic>()
               : const <String, dynamic>{})
         : const <String, dynamic>{};
 

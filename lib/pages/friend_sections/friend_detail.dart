@@ -134,8 +134,10 @@ class _FriendDetailPageState extends State<FriendDetailPage> {
     if (jsonString == null || jsonString.isEmpty) return null;
     final parsed = jsonDecode(jsonString);
     final coursesData = parsed is Map ? parsed['courses'] : parsed;
-    return (coursesData as List<dynamic>? ?? [])
-        .map((e) => Course.fromJson(e as Map<String, dynamic>))
+    final list = coursesData is List ? coursesData : null;
+    return list
+        ?.whereType<Map>()
+        .map((e) => Course.fromJson(e.cast<String, dynamic>()))
         .toList();
   }
 

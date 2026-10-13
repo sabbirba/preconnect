@@ -684,250 +684,262 @@ class _CgpaCalculatorPageState extends State<CgpaCalculatorPage> {
       '18',
     ];
 
-    await showAppBottomSheet<void>(
-      context,
-      title: 'Add Planned Course',
-      subtitle: 'Simulate a future or hypothetical course',
-      initialChildSize: 0.75,
-      builder: (sheetContext, textPrimary, textSecondary) {
-        return StatefulBuilder(
-          builder: (dialogContext, setDialogState) {
-            final dragController = bottomSheetScrollController(sheetContext);
-            return ListView(
-              controller: dragController,
-              physics: const ClampingScrollPhysics(),
-              padding: const EdgeInsets.only(bottom: 24),
-              children: [
-                TextField(
-                  controller: codeController,
-                  textCapitalization: TextCapitalization.characters,
-                  style: TextStyle(color: textPrimary),
-                  decoration: InputDecoration(
-                    labelText: 'Course Code',
-                    hintText: 'e.g. CSE421',
-                    labelStyle: TextStyle(color: textSecondary),
-                    hintStyle: TextStyle(
-                      color: textSecondary.withValues(alpha: 0.6),
-                    ),
-                    isDense: true,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(14),
-                      borderSide: BorderSide(
-                        color: textSecondary.withValues(alpha: 0.24),
+    try {
+      await showAppBottomSheet<void>(
+        context,
+        title: 'Add Planned Course',
+        subtitle: 'Simulate a future or hypothetical course',
+        initialChildSize: 0.75,
+        builder: (sheetContext, textPrimary, textSecondary) {
+          return StatefulBuilder(
+            builder: (dialogContext, setDialogState) {
+              final dragController = bottomSheetScrollController(sheetContext);
+              return ListView(
+                controller: dragController,
+                physics: const ClampingScrollPhysics(),
+                padding: const EdgeInsets.only(bottom: 24),
+                children: [
+                  TextField(
+                    controller: codeController,
+                    textCapitalization: TextCapitalization.characters,
+                    style: TextStyle(color: textPrimary),
+                    decoration: InputDecoration(
+                      labelText: 'Course Code',
+                      hintText: 'e.g. CSE421',
+                      labelStyle: TextStyle(color: textSecondary),
+                      hintStyle: TextStyle(
+                        color: textSecondary.withValues(alpha: 0.6),
                       ),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(14),
-                      borderSide: const BorderSide(color: AppPalette.primary),
-                    ),
-                  ),
-                ),
-                const Gap(12),
-                TextField(
-                  controller: titleController,
-                  textCapitalization: TextCapitalization.words,
-                  style: TextStyle(color: textPrimary),
-                  decoration: InputDecoration(
-                    labelText: 'Course Title (Optional)',
-                    hintText: 'e.g. Computer Networks',
-                    labelStyle: TextStyle(color: textSecondary),
-                    hintStyle: TextStyle(
-                      color: textSecondary.withValues(alpha: 0.6),
-                    ),
-                    isDense: true,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(14),
-                      borderSide: BorderSide(
-                        color: textSecondary.withValues(alpha: 0.24),
+                      isDense: true,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14),
                       ),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(14),
-                      borderSide: const BorderSide(color: AppPalette.primary),
-                    ),
-                  ),
-                ),
-                const Gap(16),
-                Text(
-                  'Credits',
-                  style: TextStyle(
-                    color: textPrimary,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const Gap(8),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: creditOptions.map((credit) {
-                    final isSelected = selectedCredit == credit;
-                    return ChoiceChip(
-                      label: Text(credit),
-                      selected: isSelected,
-                      showCheckmark: false,
-                      labelStyle: TextStyle(
-                        color: isSelected ? AppPalette.primary : textPrimary,
-                        fontWeight: FontWeight.w700,
-                      ),
-                      backgroundColor: AppPalette.card(
-                        sheetContext,
-                      ).withValues(alpha: 0.92),
-                      selectedColor: AppPalette.primary.withValues(alpha: 0.14),
-                      side: BorderSide(
-                        color: isSelected
-                            ? AppPalette.primary
-                            : textSecondary.withValues(alpha: 0.24),
-                      ),
-                      onSelected: (_) {
-                        setDialogState(() {
-                          selectedCredit = credit;
-                        });
-                      },
-                    );
-                  }).toList(),
-                ),
-                const Gap(16),
-                Text(
-                  'Expected Grade',
-                  style: TextStyle(
-                    color: textPrimary,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const Gap(8),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: _gradeOptions.take(13).map((grade) {
-                    final isSelected = selectedGrade == grade;
-                    return ChoiceChip(
-                      label: Text(grade),
-                      selected: isSelected,
-                      showCheckmark: false,
-                      labelStyle: TextStyle(
-                        color: isSelected ? AppPalette.primary : textPrimary,
-                        fontWeight: FontWeight.w700,
-                      ),
-                      backgroundColor: AppPalette.card(
-                        sheetContext,
-                      ).withValues(alpha: 0.92),
-                      selectedColor: AppPalette.primary.withValues(alpha: 0.14),
-                      side: BorderSide(
-                        color: isSelected
-                            ? AppPalette.primary
-                            : textSecondary.withValues(alpha: 0.24),
-                      ),
-                      onSelected: (_) {
-                        setDialogState(() {
-                          selectedGrade = grade;
-                        });
-                      },
-                    );
-                  }).toList(),
-                ),
-                const Gap(24),
-                FilledButton(
-                  onPressed: () {
-                    final rawCode = codeController.text.trim();
-                    final code = rawCode.isEmpty
-                        ? 'PLANNED ${_plannedCourses.length + 1}'
-                        : rawCode.toUpperCase();
-                    final title = titleController.text.trim();
-                    setState(() {
-                      _plannedCourses.add(
-                        _PlannedCourseDraft(
-                          code: code,
-                          title: title,
-                          credit: selectedCredit,
-                          grade: selectedGrade,
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        borderSide: BorderSide(
+                          color: textSecondary.withValues(alpha: 0.24),
                         ),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        borderSide: const BorderSide(color: AppPalette.primary),
+                      ),
+                    ),
+                  ),
+                  const Gap(12),
+                  TextField(
+                    controller: titleController,
+                    textCapitalization: TextCapitalization.words,
+                    style: TextStyle(color: textPrimary),
+                    decoration: InputDecoration(
+                      labelText: 'Course Title (Optional)',
+                      hintText: 'e.g. Computer Networks',
+                      labelStyle: TextStyle(color: textSecondary),
+                      hintStyle: TextStyle(
+                        color: textSecondary.withValues(alpha: 0.6),
+                      ),
+                      isDense: true,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        borderSide: BorderSide(
+                          color: textSecondary.withValues(alpha: 0.24),
+                        ),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        borderSide: const BorderSide(color: AppPalette.primary),
+                      ),
+                    ),
+                  ),
+                  const Gap(16),
+                  Text(
+                    'Credits',
+                    style: TextStyle(
+                      color: textPrimary,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const Gap(8),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: creditOptions.map((credit) {
+                      final isSelected = selectedCredit == credit;
+                      return ChoiceChip(
+                        label: Text(credit),
+                        selected: isSelected,
+                        showCheckmark: false,
+                        labelStyle: TextStyle(
+                          color: isSelected ? AppPalette.primary : textPrimary,
+                          fontWeight: FontWeight.w700,
+                        ),
+                        backgroundColor: AppPalette.card(
+                          sheetContext,
+                        ).withValues(alpha: 0.92),
+                        selectedColor: AppPalette.primary.withValues(
+                          alpha: 0.14,
+                        ),
+                        side: BorderSide(
+                          color: isSelected
+                              ? AppPalette.primary
+                              : textSecondary.withValues(alpha: 0.24),
+                        ),
+                        onSelected: (_) {
+                          setDialogState(() {
+                            selectedCredit = credit;
+                          });
+                        },
                       );
-                    });
-                    _saveToStorage();
-                    Navigator.of(sheetContext).pop();
-                    _showCalculatorSnackBar('Added $code to planner');
-                  },
-                  style: FilledButton.styleFrom(
-                    backgroundColor: AppPalette.primary,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
+                    }).toList(),
+                  ),
+                  const Gap(16),
+                  Text(
+                    'Expected Grade',
+                    style: TextStyle(
+                      color: textPrimary,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
-                  child: const Text(
-                    'Add Course',
-                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+                  const Gap(8),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: _gradeOptions.take(13).map((grade) {
+                      final isSelected = selectedGrade == grade;
+                      return ChoiceChip(
+                        label: Text(grade),
+                        selected: isSelected,
+                        showCheckmark: false,
+                        labelStyle: TextStyle(
+                          color: isSelected ? AppPalette.primary : textPrimary,
+                          fontWeight: FontWeight.w700,
+                        ),
+                        backgroundColor: AppPalette.card(
+                          sheetContext,
+                        ).withValues(alpha: 0.92),
+                        selectedColor: AppPalette.primary.withValues(
+                          alpha: 0.14,
+                        ),
+                        side: BorderSide(
+                          color: isSelected
+                              ? AppPalette.primary
+                              : textSecondary.withValues(alpha: 0.24),
+                        ),
+                        onSelected: (_) {
+                          setDialogState(() {
+                            selectedGrade = grade;
+                          });
+                        },
+                      );
+                    }).toList(),
                   ),
-                ),
-                const Gap(16),
-                InkWell(
-                  borderRadius: BorderRadius.circular(14),
-                  onTap: () => openExternalUrl(
-                    sheetContext,
-                    'https://www.bracu.ac.bd/academics/policies-and-procedures',
-                  ),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 14,
-                      vertical: 12,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.transparent,
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(
-                        color: textSecondary.withValues(alpha: 0.24),
+                  const Gap(24),
+                  FilledButton(
+                    onPressed: () {
+                      final rawCode = codeController.text.trim();
+                      final code = rawCode.isEmpty
+                          ? 'PLANNED ${_plannedCourses.length + 1}'
+                          : rawCode.toUpperCase();
+                      final title = titleController.text.trim();
+                      setState(() {
+                        _plannedCourses.add(
+                          _PlannedCourseDraft(
+                            code: code,
+                            title: title,
+                            credit: selectedCredit,
+                            grade: selectedGrade,
+                          ),
+                        );
+                      });
+                      _saveToStorage();
+                      Navigator.of(sheetContext).pop();
+                      _showCalculatorSnackBar('Added $code to planner');
+                    },
+                    style: FilledButton.styleFrom(
+                      backgroundColor: AppPalette.primary,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
                       ),
                     ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Official BRAC University Policies & Procedures:',
-                          style: TextStyle(
-                            color: textPrimary,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        const Gap(8),
-                        Text(
-                          '1. Retake Policy (for courses with an "F" grade):\n"The best of the grades received is counted for the calculation of the CGPA."',
-                          style: TextStyle(
-                            color: textPrimary,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w500,
-                            height: 1.35,
-                          ),
-                        ),
-                        const Gap(8),
-                        Text(
-                          '2. Repeat Policy (for grade improvement):\n"A student may repeat a course once in order to improve the grade, however, s/he must repeat the course within 2 semesters of the initial enrollment on the course. There will not be any cap on the grade of the repeated course and the latest grade earned would be counted for the CGPA calculation."',
-                          style: TextStyle(
-                            color: textPrimary,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w500,
-                            height: 1.35,
-                          ),
-                        ),
-                      ],
+                    child: const Text(
+                      'Add Course',
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ),
-                ),
-              ],
-            );
-          },
-        );
-      },
-    );
+                  const Gap(16),
+                  InkWell(
+                    borderRadius: BorderRadius.circular(14),
+                    onTap: () => openExternalUrl(
+                      sheetContext,
+                      'https://www.bracu.ac.bd/academics/policies-and-procedures',
+                    ),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 12,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.transparent,
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(
+                          color: textSecondary.withValues(alpha: 0.24),
+                        ),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Official BRAC University Policies & Procedures:',
+                            style: TextStyle(
+                              color: textPrimary,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          const Gap(8),
+                          Text(
+                            '1. Retake Policy (for courses with an "F" grade):\n"The best of the grades received is counted for the calculation of the CGPA."',
+                            style: TextStyle(
+                              color: textPrimary,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w500,
+                              height: 1.35,
+                            ),
+                          ),
+                          const Gap(8),
+                          Text(
+                            '2. Repeat Policy (for grade improvement):\n"A student may repeat a course once in order to improve the grade, however, s/he must repeat the course within 2 semesters of the initial enrollment on the course. There will not be any cap on the grade of the repeated course and the latest grade earned would be counted for the CGPA calculation."',
+                            style: TextStyle(
+                              color: textPrimary,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w500,
+                              height: 1.35,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              );
+            },
+          );
+        },
+      );
+    } finally {
+      codeController.dispose();
+      titleController.dispose();
+    }
   }
 
   Widget _buildCompletedCourseCard(

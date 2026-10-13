@@ -173,7 +173,9 @@ class _StudentProfileState extends State<StudentProfile>
     return paymentsJson
         .map<PaymentInfo?>((item) {
           try {
-            return PaymentInfo.fromJson(item as Map<String, dynamic>);
+            return item is Map
+                ? PaymentInfo.fromJson(item.cast<String, dynamic>())
+                : null;
           } catch (_) {
             return null;
           }
@@ -188,7 +190,9 @@ class _StudentProfileState extends State<StudentProfile>
     return attendanceJson
         .map<AttendanceInfo?>((item) {
           try {
-            return AttendanceInfo.fromJson(item as Map<String, dynamic>);
+            return item is Map
+                ? AttendanceInfo.fromJson(item.cast<String, dynamic>())
+                : null;
           } catch (_) {
             return null;
           }

@@ -28,7 +28,10 @@ class FriendSchedule {
   factory FriendSchedule.fromJson(Map<String, dynamic> json) {
     final list = json['courses'] as List?;
     final coursesList = list != null
-        ? list.map((e) => Section.fromJson(e as Map<String, dynamic>)).toList()
+        ? list
+              .whereType<Map>()
+              .map((e) => Section.fromJson(e.cast<String, dynamic>()))
+              .toList()
         : <Section>[];
     final photoFilePath = json['photoFilePath'] as String?;
     final photoUrl =

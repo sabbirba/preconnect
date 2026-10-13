@@ -54,7 +54,8 @@ class FundingStatus {
     final list = json['contributions'] as List?;
     final contributionsList = list != null
         ? list
-              .map((e) => ContributionItem.fromJson(e as Map<String, dynamic>))
+              .whereType<Map>()
+              .map((e) => ContributionItem.fromJson(e.cast<String, dynamic>()))
               .toList()
         : <ContributionItem>[];
 

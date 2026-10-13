@@ -193,9 +193,10 @@ class NotificationsFeed {
     final list = json['items'] as List?;
     final itemsList = list != null
         ? list
+              .whereType<Map>()
               .map(
                 (e) => RecentConnectNotification.fromJson(
-                  e as Map<String, dynamic>,
+                  e.cast<String, dynamic>(),
                 ),
               )
               .toList()

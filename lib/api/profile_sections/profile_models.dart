@@ -70,8 +70,12 @@ class PaymentInfo {
       paymentStatus: json['paymentStatus'] as String? ?? '',
       payslipNumber: json['payslipNumber'] as String? ?? '',
       paymentType: json['paymentType'] as String? ?? '',
-      requestDate: DateTime.parse(json['requestDate'] as String),
-      dueDate: DateTime.parse(json['dueDate'] as String),
+      requestDate:
+          DateTime.tryParse(json['requestDate']?.toString() ?? '') ??
+          DateTime.fromMillisecondsSinceEpoch(0),
+      dueDate:
+          DateTime.tryParse(json['dueDate']?.toString() ?? '') ??
+          DateTime.fromMillisecondsSinceEpoch(0),
       totalAmount: (json['totalAmount'] as num?)?.toDouble() ?? 0,
       semesterSessionId: json['semesterSessionId'] as int? ?? 0,
     );
