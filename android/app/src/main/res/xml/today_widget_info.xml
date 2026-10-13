@@ -9,7 +9,7 @@
     android:initialLayout="@layout/today_widget"
     android:previewLayout="@layout/today_widget"
     android:previewImage="@mipmap/ic_launcher"
-    android:widgetCategory="home_screen"
+    android:widgetCategory="home_screen|keyguard"
     android:resizeMode="vertical"
     android:updatePeriodMillis="0"
     tools:targetApi="31" />

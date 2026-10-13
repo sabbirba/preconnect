@@ -5,8 +5,18 @@ Future<void> syncTodayWidgetInBackground(
   Uri? uri, {
   bool forceRefresh = false,
 }) async {
-  final action = uri?.host;
-  if (action != 'refresh' && action != 'sync' && uri?.path != 'refresh') return;
+  if (uri != null && uri.toString().isNotEmpty) {
+    final host = uri.host.toLowerCase();
+    final path = uri.path.toLowerCase();
+    final isKnownAction =
+        host == 'refresh' ||
+        host == 'sync' ||
+        path == 'refresh' ||
+        path == '/refresh';
+    if (!isKnownAction && (host.isNotEmpty || path.isNotEmpty)) {
+      return;
+    }
+  }
 
   try {
     await AppStorage.initialize();

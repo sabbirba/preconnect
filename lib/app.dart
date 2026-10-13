@@ -310,6 +310,11 @@ class _MyAppState extends State<MyApp>
         }
         await launchUrl(Uri.parse(url), mode: LaunchMode.inAppBrowserView);
       },
+      openNotifications: () {
+        AppNavigator.key.currentState?.push(
+          MaterialPageRoute(builder: (_) => const NotificationsPage()),
+        );
+      },
     );
   }
 

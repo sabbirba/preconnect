@@ -1671,7 +1671,10 @@ Future<void> _handleGcmMessage(OnMessageMessage event) async {
 
   final courseCode = _firstPayloadText(data, const <String>['courseCode']);
   final sectionName = _firstPayloadText(data, const <String>['sectionName']);
-  if (body.isEmpty && courseCode.isNotEmpty) {
+  if (body.isEmpty && title.isNotEmpty && title != 'PreConnect') {
+    body = title;
+    title = 'PreConnect';
+  } else if (body.isEmpty && courseCode.isNotEmpty) {
     final section = sectionName.isEmpty ? '' : ' Section $sectionName';
     body = 'Seat update available for $courseCode$section.';
   }

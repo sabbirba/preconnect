@@ -43,13 +43,16 @@ class FCMService {
   static bool _apnsAvailable = true;
   void Function()? _openCaptiveWifi;
   Future<void> Function(String url)? _openUrl;
+  void Function()? _openNotifications;
 
   void configureNavigation({
     required void Function() openCaptiveWifi,
     required Future<void> Function(String url) openUrl,
+    void Function()? openNotifications,
   }) {
     _openCaptiveWifi = openCaptiveWifi;
     _openUrl = openUrl;
+    _openNotifications = openNotifications;
   }
 
   bool get isSupported {
@@ -62,6 +65,26 @@ class FCMService {
   }
 
   static bool _isLocalNotifInitialized = false;
+
+  @pragma('vm:entry-point')
+  static void _onBackgroundNotificationResponse(NotificationResponse response) {
+    final payload = response.payload;
+    if (payload != null && payload.isNotEmpty) {
+      if (payload == 'captive_wifi') {
+        _instance._openCaptiveWifi?.call();
+        return;
+      }
+      try {
+        final Map<String, dynamic> data =
+            jsonDecode(payload) as Map<String, dynamic>;
+        _instance._handleNotificationTapAction(data);
+      } catch (error) {
+        unawaited(
+          AppLog.write('Background notification response failed: $error'),
+        );
+      }
+    }
+  }
 
   static Future<void> ensureLocalNotificationsInitialized() async {
     if (_isLocalNotifInitialized || kIsWeb) return;
@@ -108,7 +131,32 @@ class FCMService {
           }
         }
       },
+      onDidReceiveBackgroundNotificationResponse:
+          _onBackgroundNotificationResponse,
     );
+
+    final launchDetails = await _localNotifications
+        .getNotificationAppLaunchDetails();
+    if (launchDetails?.didNotificationLaunchApp ?? false) {
+      final response = launchDetails?.notificationResponse;
+      if (response != null &&
+          response.payload != null &&
+          response.payload!.isNotEmpty) {
+        if (response.payload == 'captive_wifi') {
+          _instance._openCaptiveWifi?.call();
+        } else {
+          try {
+            final Map<String, dynamic> data =
+                jsonDecode(response.payload!) as Map<String, dynamic>;
+            _instance._handleNotificationTapAction(data);
+          } catch (error) {
+            unawaited(
+              AppLog.write('Notification launch payload decode failed: $error'),
+            );
+          }
+        }
+      }
+    }
 
     if (defaultTargetPlatform == TargetPlatform.android) {
       const AndroidNotificationChannel channel = AndroidNotificationChannel(
@@ -150,7 +198,11 @@ class FCMService {
     await AppStorage.initialize();
     await ensureLocalNotificationsInitialized();
     await _handleBackgroundDataSync(message.data);
-    _handleIncomingMessage(message);
+    if (message.notification == null) {
+      _handleIncomingMessage(message);
+    } else {
+      RefreshBus.instance.notify(reason: 'push_notification');
+    }
     unawaited(NotificationService().getFeedItems(forceRefresh: true));
     unawaited(NotificationService().fetchRecentNotifications());
   }
@@ -895,81 +947,7 @@ class FCMService {
   }
 
   Future<void> _setupLocalNotifications() async {
-    const AndroidInitializationSettings initializationSettingsAndroid =
-        AndroidInitializationSettings('status_icon');
-
-    const DarwinInitializationSettings initializationSettingsDarwin =
-        DarwinInitializationSettings(
-          requestAlertPermission: false,
-          requestBadgePermission: false,
-          requestSoundPermission: false,
-        );
-
-    const LinuxInitializationSettings initializationSettingsLinux =
-        LinuxInitializationSettings(defaultActionName: 'Open notification');
-
-    const InitializationSettings initializationSettings =
-        InitializationSettings(
-          android: initializationSettingsAndroid,
-          iOS: initializationSettingsDarwin,
-          macOS: initializationSettingsDarwin,
-          linux: initializationSettingsLinux,
-        );
-
-    await _localNotifications.initialize(
-      settings: initializationSettings,
-      onDidReceiveNotificationResponse: (NotificationResponse response) {
-        final payload = response.payload;
-        if (payload != null && payload.isNotEmpty) {
-          if (payload == 'captive_wifi') {
-            _openCaptiveWifi?.call();
-            return;
-          }
-          try {
-            final Map<String, dynamic> data =
-                jsonDecode(payload) as Map<String, dynamic>;
-            _handleNotificationTapAction(data);
-          } catch (error) {
-            unawaited(
-              AppLog.write('Notification payload decode failed: $error'),
-            );
-          }
-        }
-      },
-    );
-
-    if (defaultTargetPlatform == TargetPlatform.android) {
-      const AndroidNotificationChannel channel = AndroidNotificationChannel(
-        'high_importance_channel',
-        'High Importance Notifications',
-        description: 'This channel is used for important notifications.',
-        importance: Importance.max,
-      );
-
-      await _localNotifications
-          .resolvePlatformSpecificImplementation<
-            AndroidFlutterLocalNotificationsPlugin
-          >()
-          ?.createNotificationChannel(channel);
-
-      await _localNotifications
-          .resolvePlatformSpecificImplementation<
-            AndroidFlutterLocalNotificationsPlugin
-          >()
-          ?.requestNotificationsPermission();
-    } else if (defaultTargetPlatform == TargetPlatform.iOS) {
-      await _localNotifications
-          .resolvePlatformSpecificImplementation<
-            IOSFlutterLocalNotificationsPlugin
-          >()
-          ?.requestPermissions(alert: true, badge: true, sound: true);
-    } else if (defaultTargetPlatform == TargetPlatform.macOS) {
-      await _localNotifications
-          .resolvePlatformSpecificImplementation<
-            MacOSFlutterLocalNotificationsPlugin
-          >()
-          ?.requestPermissions(alert: true, badge: true, sound: true);
-    }
+    await ensureLocalNotificationsInitialized();
   }
 
   Future<void> showLocalNotificationDirect({
@@ -979,6 +957,7 @@ class FCMService {
     Map<String, dynamic> data = const {},
   }) async {
     if (kIsWeb) return;
+    await ensureLocalNotificationsInitialized();
     final category =
         (data['category'] ?? data['module'] ?? data['source'] ?? '')
             .toString()
@@ -1039,20 +1018,31 @@ class FCMService {
           'high_importance_channel',
           'High Importance Notifications',
           importance: Importance.max,
-          priority: Priority.high,
+          priority: Priority.max,
           icon: 'status_icon',
+          playSound: true,
+          enableVibration: true,
+          channelShowBadge: true,
+          visibility: NotificationVisibility.public,
+          category: AndroidNotificationCategory.event,
           styleInformation: styleInformation,
         ),
         iOS: DarwinNotificationDetails(
           presentAlert: true,
           presentBadge: true,
           presentSound: true,
+          presentBanner: true,
+          presentList: true,
+          interruptionLevel: InterruptionLevel.timeSensitive,
           attachments: darwinAttachments,
         ),
         macOS: DarwinNotificationDetails(
           presentAlert: true,
           presentBadge: true,
           presentSound: true,
+          presentBanner: true,
+          presentList: true,
+          interruptionLevel: InterruptionLevel.timeSensitive,
           attachments: darwinAttachments,
         ),
       ),
@@ -1067,6 +1057,10 @@ class FCMService {
     final action = data['payload'] ?? data['action'];
     if (action == 'captive_wifi') {
       _openCaptiveWifi?.call();
+      return;
+    }
+    if (action == 'notifications') {
+      _openNotifications?.call();
       return;
     }
     var url = data['url'] as String?;
@@ -1100,6 +1094,8 @@ class FCMService {
       } catch (error) {
         unawaited(AppLog.write('Notification action failed: $error'));
       }
+    } else {
+      _openNotifications?.call();
     }
   }
 
