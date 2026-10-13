@@ -21,11 +21,14 @@ class BrowserLogin {
         : baseUri.replace(
             queryParameters: {...baseUri.queryParameters, 'kc_idp_hint': idp},
           );
-    final opened = await launchUrl(
+    var opened = await launchUrl(
       authUri,
       mode: LaunchMode.inAppBrowserView,
       webOnlyWindowName: '_self',
     );
+    if (!opened) {
+      opened = await launchUrl(authUri, mode: LaunchMode.externalApplication);
+    }
     if (!opened) {
       throw StateError('Unable to open sign in.');
     }

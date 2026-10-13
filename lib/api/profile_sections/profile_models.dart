@@ -23,14 +23,14 @@ class AttendanceInfo {
 
   factory AttendanceInfo.fromJson(Map<String, dynamic> json) {
     return AttendanceInfo(
-      courseSectionId: json['courseSectionId'] as int? ?? 0,
-      studentPortfolioId: json['studentPortfolioId'] as int? ?? 0,
+      courseSectionId: (json['courseSectionId'] as num?)?.toInt() ?? 0,
+      studentPortfolioId: (json['studentPortfolioId'] as num?)?.toInt() ?? 0,
       courseName: json['courseName'] as String? ?? '',
       courseCode: json['courseCode'] as String? ?? '',
-      attend: json['attend'] as int? ?? 0,
-      missed: json['missed'] as int? ?? 0,
-      remaining: json['remaining'] as int? ?? 0,
-      totalClasses: json['totalClasses'] as int? ?? 0,
+      attend: (json['attend'] as num?)?.toInt() ?? 0,
+      missed: (json['missed'] as num?)?.toInt() ?? 0,
+      remaining: (json['remaining'] as num?)?.toInt() ?? 0,
+      totalClasses: (json['totalClasses'] as num?)?.toInt() ?? 0,
     );
   }
 
@@ -77,7 +77,7 @@ class PaymentInfo {
           DateTime.tryParse(json['dueDate']?.toString() ?? '') ??
           DateTime.fromMillisecondsSinceEpoch(0),
       totalAmount: (json['totalAmount'] as num?)?.toDouble() ?? 0,
-      semesterSessionId: json['semesterSessionId'] as int? ?? 0,
+      semesterSessionId: (json['semesterSessionId'] as num?)?.toInt() ?? 0,
     );
   }
 

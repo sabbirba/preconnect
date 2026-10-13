@@ -39,7 +39,7 @@ class RecentConnectNotification {
 
   factory RecentConnectNotification.fromJson(Map<String, dynamic> json) {
     return RecentConnectNotification(
-      id: json['id'] as int? ?? 0,
+      id: (json['id'] as num?)?.toInt() ?? 0,
       title: _trimString(json['title'] as String?),
       module: _trimString(json['module'] as String?),
       link: _trimNullableString(json['link'] as String?),
@@ -203,7 +203,10 @@ class NotificationsFeed {
         : <RecentConnectNotification>[];
 
     return NotificationsFeed(
-      newCount: json['new'] as int? ?? json['newCount'] as int? ?? 0,
+      newCount:
+          (json['new'] as num?)?.toInt() ??
+          (json['newCount'] as num?)?.toInt() ??
+          0,
       items: itemsList,
     );
   }
@@ -247,7 +250,7 @@ class ConnectNotificationDetail {
 
   factory ConnectNotificationDetail.fromJson(Map<String, dynamic> json) {
     return ConnectNotificationDetail(
-      id: json['id'] as int? ?? 0,
+      id: (json['id'] as num?)?.toInt() ?? 0,
       title: _trimString(json['title'] as String?),
       module: _trimString(json['module'] as String?),
       link: _trimNullableString(json['link'] as String?),

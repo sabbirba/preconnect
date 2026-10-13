@@ -35,12 +35,14 @@ class _SpaceAvailabilityPageState extends State<SpaceAvailabilityPage> {
           'libsync_space_avail_${_selectedLibrary}_${_capacity}_$dateStr';
       final cached = AppStorage.instance.getStringSync(key);
       if (cached != null) {
-        final decoded = jsonDecode(cached) as Map<String, dynamic>;
-        final timestamp = decoded['timestamp'] as int? ?? 0;
-        final now = DateTime.now().millisecondsSinceEpoch;
-        if (now - timestamp < 30000) {
-          _availabilityData = decoded['data'] as List<dynamic>?;
-          return timestamp;
+        final decoded = jsonDecode(cached);
+        if (decoded is Map) {
+          final timestamp = (decoded['timestamp'] as num?)?.toInt() ?? 0;
+          final now = DateTime.now().millisecondsSinceEpoch;
+          if (now - timestamp < 30000) {
+            _availabilityData = decoded['data'] as List<dynamic>?;
+            return timestamp;
+          }
         }
       }
       _availabilityData = null;
@@ -173,11 +175,13 @@ class _SpaceAvailabilityPageState extends State<SpaceAvailabilityPage> {
       try {
         final cached = AppStorage.instance.getStringSync(key);
         if (cached != null) {
-          final decoded = jsonDecode(cached) as Map<String, dynamic>;
-          final timestamp = decoded['timestamp'] as int? ?? 0;
-          final now = DateTime.now().millisecondsSinceEpoch;
-          if (now - timestamp < 30000) {
-            continue;
+          final decoded = jsonDecode(cached);
+          if (decoded is Map) {
+            final timestamp = (decoded['timestamp'] as num?)?.toInt() ?? 0;
+            final now = DateTime.now().millisecondsSinceEpoch;
+            if (now - timestamp < 30000) {
+              continue;
+            }
           }
         }
       } catch (error, stackTrace) {
@@ -257,8 +261,14 @@ class _SpaceAvailabilityPageState extends State<SpaceAvailabilityPage> {
   ) async {
     final spaceNo = space['room_no']?.toString() ?? 'Space';
     final spaceCat = space['room_cat']?.toString() ?? 'Study Space';
-    final spaceId = space['room_id'] as int? ?? 12;
-    final slotId = slotData['slot_id'] as int? ?? 7;
+    final spaceId =
+        (space['room_id'] as num?)?.toInt() ??
+        int.tryParse(space['room_id']?.toString() ?? '') ??
+        12;
+    final slotId =
+        (slotData['slot_id'] as num?)?.toInt() ??
+        int.tryParse(slotData['slot_id']?.toString() ?? '') ??
+        7;
     final start = slotData['start_time']?.toString() ?? '';
     final end = slotData['end_time']?.toString() ?? '';
     final timeStr = "${_formatTime(start)} - ${_formatTime(end)}";

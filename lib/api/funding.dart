@@ -22,8 +22,8 @@ class ContributionItem {
     return ContributionItem(
       name: json['name'] as String? ?? 'Anonymous',
       picture: json['picture'] as String?,
-      amount: json['amount'] as int? ?? 0,
-      ts: json['ts'] as int? ?? 0,
+      amount: (json['amount'] as num?)?.toInt() ?? 0,
+      ts: (json['ts'] as num?)?.toInt() ?? 0,
     );
   }
 
@@ -60,9 +60,9 @@ class FundingStatus {
         : <ContributionItem>[];
 
     return FundingStatus(
-      totalRaised: json['totalRaised'] as int? ?? 0,
-      goal: json['goal'] as int? ?? 0,
-      contributorsCount: json['contributorsCount'] as int? ?? 0,
+      totalRaised: (json['totalRaised'] as num?)?.toInt() ?? 0,
+      goal: (json['goal'] as num?)?.toInt() ?? 0,
+      contributorsCount: (json['contributorsCount'] as num?)?.toInt() ?? 0,
       contributions: contributionsList,
     );
   }

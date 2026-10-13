@@ -490,8 +490,8 @@ class _MyAppState extends State<MyApp>
       }
 
       final info = await StoreActions.checkForUpdate();
-      final availability = info['updateAvailability'] as int?;
-      final installStatus = info['installStatus'] as int?;
+      final availability = (info['updateAvailability'] as num?)?.toInt();
+      final installStatus = (info['installStatus'] as num?)?.toInt();
 
       if (installStatus == StoreUpdateStatus.downloaded ||
           availability == StoreUpdateStatus.inProgress) {

@@ -132,22 +132,12 @@ class ProgressInfo {
                       : _toDouble(course['cgpa']),
                   repeated: (course['repeated'] ?? false) == true,
                   retaken: (course['retaken'] ?? false) == true,
-                  year: course['year'] is int
-                      ? course['year'] as int
-                      : int.tryParse('${course['year'] ?? ''}'),
+                  year: _toInt(course['year']),
                   semester: course['semester']?.toString().trim(),
-                  sectionId: course['sectionId'] is int
-                      ? course['sectionId'] as int
-                      : int.tryParse('${course['sectionId'] ?? ''}'),
-                  parentCourseId: course['parentCourseId'] is int
-                      ? course['parentCourseId'] as int
-                      : int.tryParse('${course['parentCourseId'] ?? ''}'),
-                  parentSectionId: course['parentSectionId'] is int
-                      ? course['parentSectionId'] as int
-                      : int.tryParse('${course['parentSectionId'] ?? ''}'),
-                  semesterSessionId: course['semesterSessionId'] is int
-                      ? course['semesterSessionId'] as int
-                      : int.tryParse('${course['semesterSessionId'] ?? ''}'),
+                  sectionId: _toInt(course['sectionId']),
+                  parentCourseId: _toInt(course['parentCourseId']),
+                  parentSectionId: _toInt(course['parentSectionId']),
+                  semesterSessionId: _toInt(course['semesterSessionId']),
                 );
               })
               .where((c) => c.code.isNotEmpty)
@@ -195,6 +185,12 @@ class ProgressInfo {
     if (value == null) return 0;
     if (value is num) return value.toDouble();
     return double.tryParse(value.toString()) ?? 0;
+  }
+
+  static int? _toInt(dynamic value) {
+    if (value == null) return null;
+    if (value is num) return value.toInt();
+    return int.tryParse(value.toString());
   }
 
   Map<String, double> get completedCreditByCode {
@@ -423,7 +419,7 @@ class ProgressSummary {
       totalCredit: (json['totalCredit'] as num?)?.toDouble() ?? 0.0,
       completedCredit: (json['completedCredit'] as num?)?.toDouble() ?? 0.0,
       completionPercent: (json['completionPercent'] as num?)?.toDouble() ?? 0.0,
-      remainingCourses: json['remainingCourses'] as int? ?? 0,
+      remainingCourses: (json['remainingCourses'] as num?)?.toInt() ?? 0,
     );
   }
 

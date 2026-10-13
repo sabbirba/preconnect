@@ -552,10 +552,10 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
       );
 
       if (response.statusCode != 200) return;
-      final map = jsonDecode(response.body) as Map<String, dynamic>;
-      final found = map['found'] as bool? ?? false;
-      if (!found) return;
-      final data = map['data'];
+      final decoded = jsonDecode(response.body);
+      if (decoded is! Map) return;
+      if (decoded['found'] != true) return;
+      final data = decoded['data'];
       if (data is! List) return;
 
       String normCourse(String code) => code.trim().toUpperCase();

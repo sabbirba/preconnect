@@ -75,6 +75,7 @@ class AdvisingForegroundService : Service() {
             .setSmallIcon(R.drawable.status_icon)
             .setContentIntent(pendingIntent)
             .setOngoing(true)
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setCategory(NotificationCompat.CATEGORY_SERVICE)
             .build()
@@ -89,6 +90,7 @@ class AdvisingForegroundService : Service() {
             ).apply {
                 description = "Keeps Advising Helper active in background"
                 setShowBadge(false)
+                lockscreenVisibility = Notification.VISIBILITY_PUBLIC
             }
             val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
             manager.createNotificationChannel(channel)

@@ -75,9 +75,12 @@ class FCMService {
         return;
       }
       try {
-        final Map<String, dynamic> data =
-            jsonDecode(payload) as Map<String, dynamic>;
-        _instance._handleNotificationTapAction(data);
+        final decoded = jsonDecode(payload);
+        if (decoded is Map) {
+          _instance._handleNotificationTapAction(
+            Map<String, dynamic>.from(decoded),
+          );
+        }
       } catch (error) {
         unawaited(
           AppLog.write('Background notification response failed: $error'),
@@ -121,9 +124,12 @@ class FCMService {
             return;
           }
           try {
-            final Map<String, dynamic> data =
-                jsonDecode(payload) as Map<String, dynamic>;
-            _instance._handleNotificationTapAction(data);
+            final decoded = jsonDecode(payload);
+            if (decoded is Map) {
+              _instance._handleNotificationTapAction(
+                Map<String, dynamic>.from(decoded),
+              );
+            }
           } catch (error) {
             unawaited(
               AppLog.write('Notification payload decode failed: $error'),
@@ -146,9 +152,12 @@ class FCMService {
           _instance._openCaptiveWifi?.call();
         } else {
           try {
-            final Map<String, dynamic> data =
-                jsonDecode(response.payload!) as Map<String, dynamic>;
-            _instance._handleNotificationTapAction(data);
+            final decoded = jsonDecode(response.payload!);
+            if (decoded is Map) {
+              _instance._handleNotificationTapAction(
+                Map<String, dynamic>.from(decoded),
+              );
+            }
           } catch (error) {
             unawaited(
               AppLog.write('Notification launch payload decode failed: $error'),
@@ -603,10 +612,12 @@ class FCMService {
 
       List<dynamic> currentList = <dynamic>[];
       if (snapshotRes.statusCode == 200) {
-        final map = jsonDecode(snapshotRes.body) as Map<String, dynamic>;
-        final found = map['found'] as bool? ?? false;
-        if (found && map['data'] is List) {
-          currentList = List<dynamic>.from(map['data'] as List);
+        final decoded = jsonDecode(snapshotRes.body);
+        if (decoded is Map) {
+          final found = decoded['found'] == true;
+          if (found && decoded['data'] is List) {
+            currentList = List<dynamic>.from(decoded['data'] as List);
+          }
         }
       }
 
@@ -1144,7 +1155,7 @@ class FCMService {
     if (payload != null && payload.isNotEmpty) {
       try {
         final decoded = jsonDecode(payload);
-        if (decoded is Map<String, dynamic>) {
+        if (decoded is Map) {
           category =
               (decoded['category'] ??
                       decoded['module'] ??

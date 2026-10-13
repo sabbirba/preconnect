@@ -39,7 +39,7 @@ class CustomSchedule {
 
   factory CustomSchedule.fromJson(Map<String, dynamic> json) {
     return CustomSchedule(
-      itemId: json['itemId'] as int? ?? 0,
+      itemId: (json['itemId'] as num?)?.toInt() ?? 0,
       kind: json['kind'] as String? ?? '',
       title: json['title'] as String? ?? '',
       courseCode: json['courseCode'] as String? ?? '',
