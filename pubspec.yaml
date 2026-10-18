@@ -32,8 +32,8 @@ dependencies:
   web: ^1.1.1
   http: ^1.6.0
   flutter_secure_storage: ^11.2.0
-  firebase_core: ^4.15.0
-  firebase_messaging: ^16.7.0
+  firebase_core: ^5.0.0
+  firebase_messaging: ^17.0.0
   flutter_local_notifications: ^23.0.0-dev.4
   flutter_cache_manager: ^3.4.5
   package_info_plus: ^10.2.1
