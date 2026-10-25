@@ -21,7 +21,7 @@ dependencies:
   archive: ^4.5.2
   barcode_widget: ^2.0.4
   flutter_flip_card: ^0.0.6
-  cached_network_image: ^4.0.2
+  cached_network_image: ^4.0.5
   connectivity_plus: ^7.3.2
   url_launcher: ^6.3.2
   app_links: ^7.2.2
