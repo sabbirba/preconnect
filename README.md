@@ -366,6 +366,6 @@ Please see our [trademark guidelines](https://github.com/sabbirba/preconnect/blo
 | `lib/pages`      | Screens, feature sections, and shared presentation widgets                                   |
 | `lib/tools`      | Storage, HTTP, authentication, platform bridges, and common utilities                        |
 | `lib/widgets`    | Shared cross-feature widgets                                                                 |
-| `test`           | Authentication, logout, refresh, storage, schedules, devices, and platform-channel tests     |
+| `test`           | Cache isolation, secure storage, schedule persistence, image races, models, and widget tests     |
 | `tool`           | Extension builds, version synchronization, and publishing utilities                          |
 | `web`            | Web shell, extension entry points, background worker, manifests, and local runtime resources |
