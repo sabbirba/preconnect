@@ -54,15 +54,11 @@ class QuietModeSchedulePlanner {
       final semesterSessionId =
           await resolveCurrentSessionSemesterIdWithRetry();
       final scheduleService = ScheduleService();
-      if (semesterSessionId == null) {
-        return const QuietModeSchedulePlan(
-          windows: <QuietModeScheduleWindow>[],
-          activeNow: false,
-        );
-      }
-      final scheduleJson = await scheduleService.getStudentScheduleForSemester(
-        semesterSessionId: semesterSessionId,
-      );
+      final scheduleJson = semesterSessionId == null
+          ? null
+          : await scheduleService.getStudentScheduleForSemester(
+              semesterSessionId: semesterSessionId,
+            );
 
       final sections = scheduleService.parseStudentSections(
         scheduleJson,
