@@ -264,6 +264,7 @@ void main() {
         expect(find.byType(BottomSheet), findsNothing);
         expect(memoryStore.items.single.days, {'SUNDAY', 'MONDAY'});
         expect(find.text('Edit Days'), findsNothing);
+        expect(find.text('Remove'), findsNothing);
       },
     );
   }
