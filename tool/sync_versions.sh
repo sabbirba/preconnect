@@ -31,6 +31,16 @@ sync_local_properties() {
   fi
 }
 
+sync_platform_versions() {
+  local version_name="${1}"
+  local version_code="${2}"
+  perl -0pi -e "s/\"version\":\\s*\"[^\"]+\"/\"version\": \"${version_name}\"/" "${ROOT_DIR}/web/manifest.json"
+  for project in ios/Runner.xcodeproj/project.pbxproj macos/Runner.xcodeproj/project.pbxproj; do
+    perl -i -pe "s/CURRENT_PROJECT_VERSION = [0-9.]+;/CURRENT_PROJECT_VERSION = ${version_code};/; s/MARKETING_VERSION = [0-9.]+;/MARKETING_VERSION = ${version_name};/" "${ROOT_DIR}/${project}"
+  done
+  sync_local_properties "${version_name}" "${version_code}"
+}
+
 bump_release_version() {
   local version_name version_code max_tag_code base_code new_version_code new_version
   local version_output
@@ -51,9 +61,7 @@ bump_release_version() {
   new_version="${version_name}+${new_version_code}"
 
   perl -i -pe "s/^version:\\s*.*/version: ${new_version}/" "${ROOT_DIR}/pubspec.yaml"
-  perl -0pi -e "s/\"version\":\\s*\"[^\"]+\"/\"version\": \"${version_name}\"/" "${ROOT_DIR}/web/manifest.json"
-
-  sync_local_properties "${version_name}" "${new_version_code}"
+  sync_platform_versions "${version_name}" "${new_version_code}"
 
   printf '%s\n%s\n' "${version_name}" "${new_version_code}"
 }
@@ -68,9 +76,7 @@ apply_version() {
   local new_version="${version_name}+${version_code}"
 
   perl -i -pe "s/^version:\\s*.*/version: ${new_version}/" "${ROOT_DIR}/pubspec.yaml"
-  perl -0pi -e "s/\"version\":\\s*\"[^\"]+\"/\"version\": \"${version_name}\"/" "${ROOT_DIR}/web/manifest.json"
-
-  sync_local_properties "${version_name}" "${version_code}"
+  sync_platform_versions "${version_name}" "${version_code}"
 }
 
 case "${1:-}" in

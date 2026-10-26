@@ -405,10 +405,10 @@
 			baseConfigurationReference = 333000ED22D3DE5D00554162 /* Warnings.xcconfig */;
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 202611000;
 				GENERATE_INFOPLIST_FILE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 12.0;
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 2.1.2;
 				OTHER_CFLAGS = (
 					"$(inherited)",
 					"-Wno-objc-ownership",
@@ -430,10 +430,10 @@
 			baseConfigurationReference = 333000ED22D3DE5D00554162 /* Warnings.xcconfig */;
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 202611000;
 				GENERATE_INFOPLIST_FILE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 12.0;
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 2.1.2;
 				OTHER_CFLAGS = (
 					"$(inherited)",
 					"-Wno-objc-ownership",
@@ -455,10 +455,10 @@
 			baseConfigurationReference = 333000ED22D3DE5D00554162 /* Warnings.xcconfig */;
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 202611000;
 				GENERATE_INFOPLIST_FILE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 12.0;
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 2.1.2;
 				OTHER_CFLAGS = (
 					"$(inherited)",
 					"-Wno-objc-ownership",
