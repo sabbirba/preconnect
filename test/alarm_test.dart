@@ -178,6 +178,12 @@ void main() {
       await tester.runAsync(() => ExtraClassesStore().remove('1|2'));
       RefreshBus.instance.notify(reason: 'extra_classes');
       await tester.pumpAndSettle();
+      expect(
+        tester
+            .widgetList<ScheduleEntryCard>(find.byType(ScheduleEntryCard))
+            .where((card) => card.courseType == 'Extra'),
+        isEmpty,
+      );
       await tester.pumpWidget(const SizedBox.shrink());
     },
   );
