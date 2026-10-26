@@ -17,6 +17,7 @@ import 'package:preconnect/api/repository_cache.dart';
 import 'package:preconnect/api/schedule.dart';
 import 'package:preconnect/api/notification.dart';
 import 'package:preconnect/features/notifications/data/device_registry.dart';
+import 'package:preconnect/features/notifications/data/push_registration.dart';
 import 'package:preconnect/model/section_info.dart';
 import 'package:preconnect/tools/http/http_utils.dart';
 import 'package:preconnect/tools/app_storage.dart';
@@ -40,6 +41,8 @@ class FCMService {
       FlutterLocalNotificationsPlugin();
 
   static String? _cachedToken;
+  PushRegistration? _registration;
+  StreamSubscription<String>? _registrationListener;
   static bool _apnsAvailable = true;
   void Function()? _openCaptiveWifi;
   Future<void> Function(String url)? _openUrl;
@@ -419,6 +422,35 @@ class FCMService {
     }
   }
 
+  Future<String> _firebaseRegistration() {
+    final messaging = FirebaseMessaging.instance;
+    _registrationListener ??= messaging.onRegistered.listen(
+      (id) async {
+        final changed = _cachedToken != null && _cachedToken != id;
+        final wasUnavailable = !_apnsAvailable;
+        _cachedToken = id;
+        _apnsAvailable = true;
+        try {
+          await _sendTokenToBackend(id);
+          if (changed || wasUnavailable) await _subscribeToDefaultTopics();
+        } catch (error) {
+          unawaited(
+            AppLog.write('FCM registration sync failed: ${error.runtimeType}'),
+          );
+        }
+      },
+      onError: (Object error) {
+        unawaited(
+          AppLog.write('FCM registration failed: ${error.runtimeType}'),
+        );
+      },
+    );
+    return (_registration ??= PushRegistration(
+      events: messaging.onRegistered,
+      register: messaging.register,
+    )).get();
+  }
+
   Future<String?> _getToken({bool force = false}) async {
     if (!force && _cachedToken != null) {
       return _cachedToken;
@@ -443,7 +475,7 @@ class FCMService {
         return token;
       } else {
         try {
-          final token = await FirebaseMessaging.instance.getToken();
+          final token = await _firebaseRegistration();
 
           _cachedToken = token;
           return token;
@@ -480,7 +512,7 @@ class FCMService {
           _apnsAvailable = true;
         }
       }
-      final token = await FirebaseMessaging.instance.getToken();
+      final token = await _firebaseRegistration();
 
       _cachedToken = token;
       return token;
@@ -968,15 +1000,6 @@ class FCMService {
     FirebaseMessaging.instance.getInitialMessage().then((message) {
       if (message != null) {
         _handleMessageTap(message);
-      }
-    });
-
-    FirebaseMessaging.instance.onTokenRefresh.listen((token) async {
-      final wasUnavailable = !_apnsAvailable;
-      _apnsAvailable = true;
-      await _sendTokenToBackend(token);
-      if (wasUnavailable) {
-        await _subscribeToDefaultTopics();
       }
     });
 
