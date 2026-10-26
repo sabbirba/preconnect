@@ -260,7 +260,6 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
   Widget _buildSearchField(BuildContext context) {
     return AppSearchField(
       controller: _searchController,
-      hintText: 'Search by anything...',
       query: _searchQuery,
       keySuffix: 'seat',
     );
