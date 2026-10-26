@@ -266,6 +266,7 @@ void main() {
         expect(find.text('Edit Days'), findsNothing);
         expect(find.text('Remove'), findsNothing);
         expect(find.byTooltip('Remove Classes'), findsOneWidget);
+        expect(find.byType(Divider), findsOneWidget);
       },
     );
   }
