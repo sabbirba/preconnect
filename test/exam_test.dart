@@ -55,6 +55,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Midterm'), findsNWidgets(2));
     expect(tester.widget<Text>(find.text('Midterm').first).style?.fontSize, 12);
+    expect(find.text('Final'), findsNWidgets(2));
     expect(find.byType(ExamCard), findsNWidgets(4));
     await tester.pumpWidget(const SizedBox.shrink());
   });
