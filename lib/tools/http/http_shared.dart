@@ -1,14 +1,13 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:http/browser_client.dart';
-import 'package:preconnect/tools/http/http_base.dart';
 
 import 'package:preconnect/tools/http/http_bridge.dart';
 import 'package:preconnect/tools/runtime_stub.dart'
     if (dart.library.js_interop) 'package:preconnect/tools/runtime_web.dart';
 
 http.Client createHttpClient() {
-  return DelegatingHttpClient(_BrowserHttpClient());
+  return _BrowserHttpClient();
 }
 
 class _BrowserHttpClient extends http.BaseClient {
