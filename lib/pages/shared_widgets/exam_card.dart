@@ -53,7 +53,7 @@ class ExamCard extends StatelessWidget {
     return AppCard(
       key: highlightKey,
       isHighlighted: isHighlighted,
-      highlightColor: AppPalette.primary,
+      highlightColor: AppPalette.accent,
       child: Row(
         children: [
           SectionBadge(
