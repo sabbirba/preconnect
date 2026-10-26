@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:flutter_cache_manager/flutter_cache_manager.dart';
+import 'package:preconnect/tools/image_cache.dart';
 import 'package:preconnect/tools/token_storage.dart';
 import 'package:preconnect/tools/preconnect_constants.dart';
 import 'package:preconnect/tools/url_utils.dart';
@@ -36,6 +36,7 @@ class CachedImage extends StatefulWidget {
       precacheImage(
         CachedNetworkImageProvider(
           normalized,
+          cacheManager: AppImageCache.instance,
           headers: const <String, String>{
             'Accept': 'image/avif,image/webp,image/apng,image/*,*/*;q=0.8',
             'User-Agent':
@@ -62,43 +63,22 @@ class _CachedImageState extends State<CachedImage> {
   Map<String, String>? _headers;
   File? _localFile;
   bool _loading = true;
+  int _loadVersion = 0;
 
   @override
   void initState() {
     super.initState();
-    final normalized = normalizeImageUrl(widget.url);
-    final memFile = normalized != null
-        ? (_fileMemoryCache[normalized] ??
-              ProfileImageCache.instance.getFromMemory(normalized))
-        : null;
-    if (memFile != null) {
-      _localFile = memFile;
-      _loading = false;
-    }
     _loadHeaders();
   }
 
   @override
   void didUpdateWidget(CachedImage oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.url != widget.url) {
-      final normalized = normalizeImageUrl(widget.url);
-      final memFile = normalized != null
-          ? (_fileMemoryCache[normalized] ??
-                ProfileImageCache.instance.getFromMemory(normalized))
-          : null;
-      if (memFile != null) {
-        setState(() {
-          _localFile = memFile;
-          _loading = false;
-        });
-      } else {
-        _loadHeaders();
-      }
-    }
+    if (oldWidget.url != widget.url) _loadHeaders();
   }
 
   Future<void> _loadHeaders() async {
+    final version = ++_loadVersion;
     final normalized = normalizeImageUrl(widget.url);
     if (normalized == null) {
       if (mounted) {
@@ -110,16 +90,23 @@ class _CachedImageState extends State<CachedImage> {
       }
       return;
     }
+    setState(() {
+      _headers = null;
+      _localFile =
+          _fileMemoryCache[normalized] ??
+          ProfileImageCache.instance.getFromMemory(normalized);
+      _loading = _localFile == null;
+    });
     final uri = Uri.parse(normalized);
     try {
       final localFile = uri.host == 'connect.bracu.ac.bd'
           ? await ProfileImageCache.instance.getProfileImage(normalized)
-          : (await DefaultCacheManager().getFileFromCache(normalized))?.file;
+          : (await AppImageCache.instance.getFileFromCache(normalized))?.file;
       if (localFile != null &&
           await localFile.exists() &&
           await looksLikeImageFile(localFile)) {
         _fileMemoryCache[normalized] = localFile;
-        if (mounted) {
+        if (mounted && version == _loadVersion) {
           setState(() {
             _localFile = localFile;
             _loading = false;
@@ -148,7 +135,7 @@ class _CachedImageState extends State<CachedImage> {
         headers['X-ID-Token'] = idToken;
       }
     }
-    if (mounted) {
+    if (mounted && version == _loadVersion) {
       setState(() {
         _headers = headers;
         _localFile = null;
@@ -217,11 +204,12 @@ class _CachedImageState extends State<CachedImage> {
 
     return CachedNetworkImage(
       imageUrl: normalized,
+      cacheManager: AppImageCache.instance,
       httpHeaders: _headers,
       width: widget.width,
       height: widget.height,
       fit: widget.fit,
-      alignment: widget.alignment as Alignment,
+      alignment: widget.alignment.resolve(Directionality.of(context)),
       filterQuality: widget.filterQuality,
       memCacheWidth: cacheWidth,
       placeholder: (context, url) =>
