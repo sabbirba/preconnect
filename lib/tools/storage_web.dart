@@ -40,20 +40,16 @@ Future<void> webExtensionStorageSet(String key, String? value) async {
     }
     return;
   }
+  if (value == null) {
+    await webExtensionStorageRemoveKeys([key]);
+    return;
+  }
   try {
-    if (value == null) {
-      web.window.localStorage.removeItem(key);
-    } else {
-      web.window.localStorage.setItem(key, value);
-    }
+    web.window.localStorage.setItem(key, value);
     return;
   } catch (_) {}
   try {
-    if (value == null) {
-      web.window.sessionStorage.removeItem(key);
-    } else {
-      web.window.sessionStorage.setItem(key, value);
-    }
+    web.window.sessionStorage.setItem(key, value);
   } catch (error) {
     throw StateError(
       'Browser storage write failed for "$key" (${error.runtimeType}).',
@@ -102,18 +98,23 @@ Future<Map<String, String>> webExtensionStorageGetAll() async {
     });
     return map;
   }
-  try {
-    for (int i = 0; i < web.window.localStorage.length; i++) {
-      final key = web.window.localStorage.key(i);
-      if (key != null) {
-        final val = web.window.localStorage.getItem(key);
-        if (val != null) map[key] = val;
+  var readable = false;
+  for (final getStorage in [
+    () => web.window.sessionStorage,
+    () => web.window.localStorage,
+  ]) {
+    try {
+      final storage = getStorage();
+      for (var i = 0; i < storage.length; i++) {
+        final key = storage.key(i);
+        if (key != null) {
+          final value = storage.getItem(key);
+          if (value != null) map[key] = value;
+        }
       }
-    }
-  } catch (error) {
-    throw StateError(
-      'Browser storage enumeration failed (${error.runtimeType}).',
-    );
+      readable = true;
+    } catch (_) {}
   }
+  if (!readable) throw StateError('Browser storage enumeration failed.');
   return map;
 }
