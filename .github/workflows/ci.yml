@@ -94,6 +94,10 @@ jobs:
         if: ${{ !cancelled() && steps.dependencies.outcome == 'success' }}
         run: flutter test
 
+      - name: Run Browser Storage Tests
+        if: ${{ !cancelled() && steps.dependencies.outcome == 'success' }}
+        run: flutter test --platform chrome test/storage_web.dart
+
   build-web-extension:
     name: Build Web & Extension
     runs-on: ubuntu-latest
