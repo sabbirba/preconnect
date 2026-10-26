@@ -136,6 +136,12 @@ void main() {
           .toList();
       expect(cards, hasLength(3));
       expect(cards.where((card) => card.sectionName == '01'), hasLength(1));
+      expect(
+        cards
+            .where((card) => card.courseType == 'Extra')
+            .map((card) => card.schedule.startTime),
+        ['08:00', '09:30'],
+      );
       final extra = find.ancestor(
         of: find.byWidgetPredicate(
           (widget) =>
