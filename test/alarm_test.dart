@@ -174,6 +174,7 @@ void main() {
       );
       await tester.pumpAndSettle();
       expect(find.text('10 min before'), findsOneWidget);
+      expect(find.text('5 min before'), findsNWidgets(2));
       await tester.runAsync(() => ExtraClassesStore().remove('1|2'));
       RefreshBus.instance.notify(reason: 'extra_classes');
       await tester.pumpAndSettle();
