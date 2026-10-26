@@ -302,6 +302,7 @@ void main() {
       );
       await tester.pumpAndSettle();
       expect(find.text('EXAMPLE3 Section 01'), findsNothing);
+      expect(find.byTooltip('Add Classes'), findsOneWidget);
       await tester.tap(find.byTooltip('Add Classes'));
       await tester.pumpAndSettle();
       await tester.tap(find.byTooltip('Remove Classes'));
