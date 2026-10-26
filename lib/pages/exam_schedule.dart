@@ -532,7 +532,7 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
                       badge: todayScheduleStatus.badge,
                       title: todayScheduleStatus.title,
                       subtitle: todayScheduleStatus.subtitle,
-                      color: AppPalette.primary,
+                      color: AppPalette.accent,
                     ),
                   ],
                 ),
@@ -542,15 +542,20 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
 
           _highlightScroll.clearHighlightKey();
 
-          if (midExams.isNotEmpty) {
-            children.addAll(
-              midExams.map((section) {
-                final isHighlighted =
-                    highlightedKey == '${section.sectionId}-mid';
-                if (isHighlighted) {
-                  _highlightScroll.markHighlighted(true);
-                }
-                return Padding(
+          for (final (label, exams, isMidterm) in [
+            ('Midterm', midExams, true),
+            ('Final', finalExams, false),
+          ]) {
+            if (exams.isEmpty) continue;
+            for (final section in exams) {
+              final exam = resolved(section);
+              final isHighlighted =
+                  highlightedKey ==
+                  '${section.sectionId}-${isMidterm ? 'mid' : 'final'}';
+              _highlightScroll.markHighlighted(isHighlighted);
+              final pdfUrl = isMidterm ? exam.midPdfUrl : exam.finalPdfUrl;
+              children.add(
+                Padding(
                   padding: const EdgeInsets.only(bottom: 12),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -559,7 +564,11 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
                         children: [
                           Expanded(
                             child: Text(
-                              ExamCard.formatExamDate(midDate(section)),
+                              ExamCard.formatExamDate(
+                                isMidterm
+                                    ? midDate(section)
+                                    : finalDate(section),
+                              ),
                               style: TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w600,
@@ -567,13 +576,12 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
                               ),
                             ),
                           ),
+                          const Gap(8),
                           Text(
-                            'Midterm',
-                            textAlign: TextAlign.right,
+                            label,
                             style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                              color: AppPalette.textPrimary(context),
+                              fontSize: 12,
+                              color: AppPalette.textSecondary(context),
                             ),
                           ),
                         ],
@@ -583,12 +591,11 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
                         color: Colors.transparent,
                         child: InkWell(
                           borderRadius: BorderRadius.circular(18),
-                          onTap: () {
-                            final pdfUrl = resolved(section).midPdfUrl;
-                            if (pdfUrl != null && pdfUrl.isNotEmpty) {
-                              unawaited(openPdfUrl(context, pdfUrl));
-                            }
-                          },
+                          onTap: pdfUrl == null || pdfUrl.isEmpty
+                              ? null
+                              : () {
+                                  unawaited(openPdfUrl(context, pdfUrl));
+                                },
                           child: RepaintBoundary(
                             child: ExamCard(
                               highlightKey: isHighlighted
@@ -597,9 +604,15 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
                               isHighlighted: isHighlighted,
                               courseCode: section.courseCode,
                               sectionName: section.sectionName,
-                              startTime: midStart(section),
-                              endTime: midEnd(section),
-                              roomNumber: midRoom(section),
+                              startTime: isMidterm
+                                  ? midStart(section)
+                                  : finalStart(section),
+                              endTime: isMidterm
+                                  ? midEnd(section)
+                                  : finalEnd(section),
+                              roomNumber: isMidterm
+                                  ? midRoom(section)
+                                  : finalRoom(section),
                               faculties: section.faculties,
                               consumedSeat: section.consumedSeat,
                             ),
@@ -608,80 +621,9 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
                       ),
                     ],
                   ),
-                );
-              }),
-            );
-          }
-
-          if (finalExams.isNotEmpty) {
-            children.addAll(
-              finalExams.map((section) {
-                final isHighlighted =
-                    highlightedKey == '${section.sectionId}-final';
-                if (isHighlighted) {
-                  _highlightScroll.markHighlighted(true);
-                }
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              ExamCard.formatExamDate(finalDate(section)),
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                                color: AppPalette.textPrimary(context),
-                              ),
-                            ),
-                          ),
-                          Text(
-                            'Final',
-                            textAlign: TextAlign.right,
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                              color: AppPalette.textPrimary(context),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const Gap(8),
-                      Material(
-                        color: Colors.transparent,
-                        child: InkWell(
-                          borderRadius: BorderRadius.circular(18),
-                          onTap: () {
-                            final pdfUrl = resolved(section).finalPdfUrl;
-                            if (pdfUrl != null && pdfUrl.isNotEmpty) {
-                              unawaited(openPdfUrl(context, pdfUrl));
-                            }
-                          },
-                          child: RepaintBoundary(
-                            child: ExamCard(
-                              highlightKey: isHighlighted
-                                  ? _highlightScroll.highlightKey
-                                  : null,
-                              isHighlighted: isHighlighted,
-                              courseCode: section.courseCode,
-                              sectionName: section.sectionName,
-                              startTime: finalStart(section),
-                              endTime: finalEnd(section),
-                              roomNumber: finalRoom(section),
-                              faculties: section.faculties,
-                              consumedSeat: section.consumedSeat,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-              }),
-            );
+                ),
+              );
+            }
           }
 
           children.add(const Gap(8));
