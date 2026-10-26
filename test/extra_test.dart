@@ -340,6 +340,7 @@ void main() {
     );
     await tester.pumpAndSettle();
     expect(find.byTooltip('Remove Classes'), findsOneWidget);
+    expect(find.text('Could not load sections.'), findsOneWidget);
     await tester.tap(find.byTooltip('Remove Classes'));
     await tester.pumpAndSettle();
   });
