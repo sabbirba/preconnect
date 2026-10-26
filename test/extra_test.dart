@@ -272,6 +272,7 @@ void main() {
           tester.getCenter(find.byTooltip('Add Classes')).dx,
         );
         expect(section.sectionSchedule.classSchedules, hasLength(2));
+        expect(tester.takeException(), isNull);
       },
     );
   }
