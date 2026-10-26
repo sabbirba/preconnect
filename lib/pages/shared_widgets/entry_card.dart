@@ -15,6 +15,7 @@ class ScheduleEntryCard extends StatelessWidget {
     this.faculties,
     this.consumedSeat,
     this.courseType,
+    this.weekdays = const [],
     this.highlighted = false,
     this.highlightColor = AppPalette.primary,
     this.wrapInCard = true,
@@ -29,6 +30,7 @@ class ScheduleEntryCard extends StatelessWidget {
   final String? faculties;
   final int? consumedSeat;
   final String? courseType;
+  final List<String> weekdays;
   final bool highlighted;
   final Color highlightColor;
   final bool wrapInCard;
@@ -46,6 +48,9 @@ class ScheduleEntryCard extends StatelessWidget {
         ? courseTypeLabel[0].toUpperCase() +
               courseTypeLabel.substring(1).toLowerCase()
         : '';
+    final detailLabel = weekdays.isEmpty
+        ? normalizedCourseType
+        : weekdays.map(formatWeekdayTitle).join(' · ');
     final facultyLabel = (faculties ?? '').trim();
     final consumedLabel = consumedSeat == null ? '' : '($consumedSeat)';
     final roomLabel = (roomNumber ?? '').trim();
@@ -72,9 +77,9 @@ class ScheduleEntryCard extends StatelessWidget {
                           text: courseCode.trim(),
                           style: const TextStyle(fontWeight: FontWeight.w600),
                         ),
-                        if (normalizedCourseType.isNotEmpty)
+                        if (detailLabel.isNotEmpty)
                           TextSpan(
-                            text: ' $normalizedCourseType',
+                            text: ' $detailLabel',
                             style: TextStyle(
                               fontWeight: FontWeight.w600,
                               color: AppPalette.textSecondary(context),
