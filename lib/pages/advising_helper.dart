@@ -788,7 +788,6 @@ class _AdvisingHelperPageState extends State<AdvisingHelperPage> {
               ),
               child: AppSearchField(
                 controller: _searchController,
-                hintText: 'Search course, section or faculty...',
                 query: _searchQuery,
               ),
             ),
