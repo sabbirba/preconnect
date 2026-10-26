@@ -2,6 +2,9 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
 import 'package:preconnect/api/exam_map.dart';
+import 'package:preconnect/api/extra_classes.dart';
+import 'package:preconnect/model/extra_class.dart';
+import 'package:preconnect/pages/extra_classes.dart';
 import 'package:preconnect/api/schedule.dart';
 import 'package:preconnect/model/section_info.dart' as section;
 import 'package:preconnect/pages/shared_widgets/exam_filter.dart';
@@ -64,6 +67,50 @@ class _ClassScheduleState extends State<ClassSchedulePage>
   int _visibleWeekCount = _initialVisibleWeekCount;
   bool _showDoneSections = false;
   HolidayStatus _holidayStatus = HolidayTiming.cachedStatus;
+  List<ExtraClass> _extras = [];
+  String? _extraError;
+
+  Future<void> _loadExtras() async {
+    try {
+      final extras = await ExtraClassesStore().load();
+      if (mounted) {
+        setState(() {
+          _extras = extras;
+          _extraError = null;
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(
+          () => _extraError =
+              'Could not load extra classes. Open Extra Classes to retry.',
+        );
+      }
+    }
+  }
+
+  Future<void> _openExtras() async {
+    final semesterId =
+        _selectedSemesterSessionId ?? await resolveCurrentSessionSemesterId();
+    if (!mounted) return;
+    if (semesterId == null) {
+      showAppSnackBar(
+        context,
+        'Select a semester before adding extra classes.',
+      );
+      return;
+    }
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => ExtraClassesPage(
+          semesterSessionId: semesterId,
+          officialSections: _latestData?.sections ?? const [],
+          isRamadan: _latestData?.isRamadan ?? false,
+        ),
+      ),
+    );
+    if (mounted) await _loadExtras();
+  }
 
   @override
   void initState() {
@@ -74,6 +121,7 @@ class _ClassScheduleState extends State<ClassSchedulePage>
         ? Future<_ScheduleData>.value(initialSyncData)
         : preloadData();
     unawaited(_warmAndBind());
+    unawaited(_loadExtras());
     unawaited(_loadHolidayStatus());
     unawaited(_updateSemesterName());
     ClassSchedulePage.jumpSignal.addListener(_onJumpRequested);
@@ -186,6 +234,13 @@ class _ClassScheduleState extends State<ClassSchedulePage>
 
   void _onRefreshSignal() {
     if (!mounted) return;
+    if (isRefreshingFrom('extra_classes')) {
+      unawaited(_loadExtras());
+      return;
+    }
+    if (isRefreshingFromAny(['auth', 'cache_cleared'])) {
+      unawaited(_loadExtras());
+    }
     if (isRefreshingFrom('class_schedule')) {
       return;
     }
@@ -228,6 +283,7 @@ class _ClassScheduleState extends State<ClassSchedulePage>
     required bool isRamadan,
     required Map<String, ExamScheduleOverride> examOverrides,
     HolidayStatus? holidayStatus,
+    Set<String> extraSectionKeys = const {},
   }) {
     if (sections.isEmpty) {
       return _ScheduleData(
@@ -255,7 +311,11 @@ class _ClassScheduleState extends State<ClassSchedulePage>
         }
         grouped.putIfAbsent(classSchedule.day, () => []);
         grouped[classSchedule.day]!.add(
-          _ScheduleRow.fromSection(section, classSchedule),
+          _ScheduleRow.fromSection(
+            section,
+            classSchedule,
+            isExtra: extraSectionKeys.contains(section.identityKey),
+          ),
         );
 
         if (shouldHighlightCurrentSemester) {
@@ -563,6 +623,11 @@ class _ClassScheduleState extends State<ClassSchedulePage>
       subtitle: subtitleText,
       icon: Icons.schedule_outlined,
       actions: [
+        IconButton(
+          tooltip: 'Extra Classes',
+          onPressed: _openExtras,
+          icon: const Icon(Icons.playlist_add),
+        ),
         if (isCurrentSemester)
           AppSelectChip(
             icon: Icons.history_rounded,
@@ -588,7 +653,32 @@ class _ClassScheduleState extends State<ClassSchedulePage>
             );
           }
 
-          final data = _latestData ?? snapshot.data;
+          final officialData = _latestData ?? snapshot.data;
+          final semesterId = _selectedSemesterSessionId ?? currentSessionId;
+          final officialIds =
+              (officialData?.sections ?? const <section.Section>[])
+                  .map((item) => item.sectionId)
+                  .toSet();
+          final extraSections = _extras
+              .where(
+                (item) =>
+                    item.section.semesterSessionId == semesterId &&
+                    !officialIds.contains(item.section.sectionId),
+              )
+              .map((item) => item.selectedSection)
+              .toList();
+          final data = extraSections.isEmpty
+              ? officialData
+              : _buildScheduleDataFromSectionsStatic(
+                  [...?officialData?.sections, ...extraSections],
+                  shouldHighlightCurrentSemester: isCurrentSemester,
+                  isRamadan: officialData?.isRamadan ?? false,
+                  examOverrides: officialData?.examOverrides ?? const {},
+                  holidayStatus: _holidayStatus,
+                  extraSectionKeys: extraSections
+                      .map((item) => item.identityKey)
+                      .toSet(),
+                );
           if (snapshot.connectionState == ConnectionState.waiting &&
               data == null) {
             return buildRefreshLoadingState(onRefresh: _handleRefresh);
@@ -651,7 +741,13 @@ class _ClassScheduleState extends State<ClassSchedulePage>
             );
           }
 
-          final children = <Widget>[];
+          final children = <Widget>[
+            if (_extraError != null)
+              Text(
+                _extraError!,
+                style: const TextStyle(color: AppPalette.danger),
+              ),
+          ];
           final now = DateTime.now();
           final today = DateTime(now.year, now.month, now.day);
           final todayWeekday = _weekdayNames[now.weekday - 1];
@@ -769,6 +865,7 @@ class _ClassScheduleState extends State<ClassSchedulePage>
               for (final entry in activeSchedules) {
                 final s = entry.schedule;
                 final isScrollTarget =
+                    highlightToken == null &&
                     shouldHighlightCurrentSemester &&
                     scrollSchedule == s &&
                     scrollDateTime != null &&
@@ -798,7 +895,9 @@ class _ClassScheduleState extends State<ClassSchedulePage>
                         roomNumber: entry.roomNumber,
                         faculties: entry.faculties,
                         consumedSeat: entry.consumedSeat,
-                        courseType: entry.courseType.trim(),
+                        courseType: entry.isExtra
+                            ? 'Extra'
+                            : entry.courseType.trim(),
                         highlighted: isHighlighted,
                       ),
                     ),
@@ -936,47 +1035,45 @@ class _RenderedScheduleSection {
 
 class _ScheduleRow {
   const _ScheduleRow({
+    required this.isExtra,
     required this.schedule,
     required this.courseCode,
     required this.sectionName,
     required this.roomNumber,
     required this.faculties,
     required this.consumedSeat,
-    required this.capacity,
     required this.courseType,
-    required this.semesterSessionId,
     required this.startDate,
     required this.endDate,
   });
 
   factory _ScheduleRow.fromSection(
     section.Section value,
-    section.ClassSchedule schedule,
-  ) {
+    section.ClassSchedule schedule, {
+    bool isExtra = false,
+  }) {
     return _ScheduleRow(
+      isExtra: isExtra,
       schedule: schedule,
       courseCode: value.courseCode,
       sectionName: value.sectionName,
       roomNumber: value.roomNumber,
       faculties: value.faculties,
       consumedSeat: value.consumedSeat,
-      capacity: value.capacity,
       courseType: value.courseType,
-      semesterSessionId: value.semesterSessionId,
       startDate: value.sectionSchedule.classStartDate,
       endDate: value.sectionSchedule.classEndDate,
     );
   }
 
   final section.ClassSchedule schedule;
+  final bool isExtra;
   final String courseCode;
   final String sectionName;
   final String? roomNumber;
   final String? faculties;
   final int? consumedSeat;
-  final int? capacity;
   final String courseType;
-  final int semesterSessionId;
   final String startDate;
   final String endDate;
 
