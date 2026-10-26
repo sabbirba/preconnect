@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'package:http/http.dart' as http;
 
 import 'package:preconnect/tools/app_storage.dart';
 import 'package:preconnect/tools/http/http_utils.dart';
@@ -20,6 +21,7 @@ class CdnJsonCache {
     required String cacheKey,
     required T? Function(dynamic decoded) decode,
     bool forceRefresh = false,
+    http.Client? client,
     Duration timeout = const Duration(seconds: 8),
   }) async {
     if (!forceRefresh && _memory.containsKey(cacheKey)) {
@@ -36,6 +38,7 @@ class CdnJsonCache {
             cacheKey: cacheKey,
             decode: decode,
             forceRefresh: true,
+            client: client,
             timeout: timeout,
           ),
         );
@@ -44,7 +47,7 @@ class CdnJsonCache {
     }
 
     final existingFetch = _inFlight[cacheKey];
-    if (!forceRefresh && existingFetch != null) {
+    if (existingFetch != null) {
       return (await existingFetch) as T?;
     }
 
@@ -53,6 +56,7 @@ class CdnJsonCache {
       cacheKey: cacheKey,
       decode: decode,
       timeout: timeout,
+      client: client,
     );
     _inFlight[cacheKey] = fetch;
     try {
@@ -69,9 +73,10 @@ class CdnJsonCache {
     required String cacheKey,
     required T? Function(dynamic decoded) decode,
     required Duration timeout,
+    http.Client? client,
   }) async {
     try {
-      final response = await HttpUtils.client
+      final response = await (client ?? HttpUtils.client)
           .get(Uri.parse(url))
           .timeout(timeout);
       if (response.statusCode == 200) {
