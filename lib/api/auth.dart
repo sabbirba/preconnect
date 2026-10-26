@@ -350,71 +350,27 @@ class AuthService {
     return true;
   }
 
-  bool _isValidJwt(String token) {
+  static DateTime tokenExpiry(String? token) {
     try {
-      final parts = token.split('.');
-      if (parts.length != 3) {
-        return false;
-      }
-
-      for (int i = 0; i < 3; i++) {
-        if (parts[i].isEmpty) {
-          return false;
+      final parts = token?.split('.') ?? const <String>[];
+      if (parts.length == 3 && parts.every((part) => part.isNotEmpty)) {
+        final decoded = parts
+            .map((part) => base64Url.decode(base64Url.normalize(part)))
+            .toList();
+        final payload = jsonDecode(utf8.decode(decoded[1]));
+        final seconds = payload is Map
+            ? int.tryParse('${payload['exp']}')
+            : null;
+        if (seconds != null) {
+          return DateTime.fromMillisecondsSinceEpoch(seconds * 1000);
         }
       }
-
-      try {
-        base64Url.decode(base64Url.normalize(parts[0]));
-      } catch (e) {
-        return false;
-      }
-
-      try {
-        final payloadJson = utf8.decode(
-          base64Url.decode(base64Url.normalize(parts[1])),
-        );
-        final payload = json.decode(payloadJson);
-        if (payload is! Map || !payload.containsKey('exp')) {
-          return false;
-        }
-      } catch (e) {
-        return false;
-      }
-
-      try {
-        base64Url.decode(base64Url.normalize(parts[2]));
-      } catch (e) {
-        return false;
-      }
-      return true;
-    } catch (e) {
-      return false;
-    }
+    } catch (_) {}
+    return DateTime.fromMillisecondsSinceEpoch(0);
   }
 
-  Future<DateTime> getTokenExpiryTime() async {
-    final token = await _storage.read(key: PreConnectStorageKeys.accessToken);
-    if (token == null || token.isEmpty) {
-      return DateTime.fromMillisecondsSinceEpoch(0);
-    }
-    if (!_isValidJwt(token)) {
-      return DateTime.fromMillisecondsSinceEpoch(0);
-    }
-    try {
-      final parts = token.split('.');
-      if (parts.length != 3) return DateTime.fromMillisecondsSinceEpoch(0);
-      final payload = json.decode(
-        utf8.decode(base64Url.decode(base64Url.normalize(parts[1]))),
-      );
-      final exp = payload['exp'];
-      if (exp == null) return DateTime.fromMillisecondsSinceEpoch(0);
-      final seconds = int.tryParse('$exp');
-      if (seconds == null) return DateTime.fromMillisecondsSinceEpoch(0);
-      return DateTime.fromMillisecondsSinceEpoch(seconds * 1000);
-    } catch (e) {
-      return DateTime.fromMillisecondsSinceEpoch(0);
-    }
-  }
+  Future<DateTime> getTokenExpiryTime() async =>
+      tokenExpiry(await _storage.read(key: PreConnectStorageKeys.accessToken));
 
   Future<bool> isTokenExpired() async {
     final expiryTime = await getTokenExpiryTime();
