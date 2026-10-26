@@ -58,5 +58,21 @@ void main() {
     },
   );
 
+  test(
+    'large values survive reinitialization and small replacements',
+    () async {
+      final large = 'x' * (256 * 1024 + 1);
+      await storage.setString('cache', large);
+      final prefs = await SharedPreferences.getInstance();
+      expect(prefs.getString('cache'), '__fscache__:cache');
+      await AppStorage.initialize(cacheDirectory: directory);
+      expect(await storage.getString('cache'), large);
+      await storage.setString('cache', 'small');
+      await AppStorage.initialize(cacheDirectory: directory);
+      expect(await storage.getString('cache'), 'small');
+      expect(await File('${directory.path}/cache.json').exists(), isFalse);
+    },
+  );
+
 
 }
