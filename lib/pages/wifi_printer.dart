@@ -1225,7 +1225,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
           physics: const ClampingScrollPhysics(),
           padding: const EdgeInsets.only(bottom: 24),
           children: [
-            _buildStepItem(
+            buildInstructionStep(
               context,
               stepNumber: '1',
               title: 'Connect to Wi-Fi',
@@ -1233,7 +1233,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
                   'Make sure your device is connected to the Student-WiFi or university network.',
             ),
             const Gap(12),
-            _buildStepItem(
+            buildInstructionStep(
               context,
               stepNumber: '2',
               title: 'Set Student ID',
@@ -1241,7 +1241,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
                   'Ensure your student ID is entered correctly in the printer identity section above.',
             ),
             const Gap(12),
-            _buildStepItem(
+            buildInstructionStep(
               context,
               stepNumber: '3',
               title: 'Choose Documents',
@@ -1249,14 +1249,14 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
                   'Pick the files you want to print. You can select multiple PDF, JPEG, or PNG files.',
             ),
             const Gap(12),
-            _buildStepItem(
+            buildInstructionStep(
               context,
               stepNumber: '4',
               title: 'Send Print Job',
               body: 'Tap the Print button. Files will be sent sequentially.',
             ),
             const Gap(12),
-            _buildStepItem(
+            buildInstructionStep(
               context,
               stepNumber: '5',
               title: 'Release Document',
@@ -1273,7 +1273,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
               ),
             ),
             const Gap(12),
-            _buildStepItem(
+            buildInstructionStep(
               context,
               stepNumber: '•',
               title: 'Connected',
@@ -1281,14 +1281,14 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
                   'The printer is connected and ready. Your print job will be sent instantly.',
             ),
             const Gap(12),
-            _buildStepItem(
+            buildInstructionStep(
               context,
               stepNumber: '•',
               title: 'Not found',
               body: 'No printer found on your network.',
             ),
             const Gap(12),
-            _buildStepItem(
+            buildInstructionStep(
               context,
               stepNumber: '•',
               title: 'Offline',
@@ -1304,7 +1304,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
               ),
             ),
             const Gap(12),
-            _buildStepItem(
+            buildInstructionStep(
               context,
               stepNumber: '•',
               title: 'Copies',
@@ -1312,7 +1312,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
                   'Specify the exact number of page copies to print by tapping the minus/plus buttons or typing directly.',
             ),
             const Gap(12),
-            _buildStepItem(
+            buildInstructionStep(
               context,
               stepNumber: '•',
               title: 'Duplex Mode - One or Both Side',
@@ -1320,7 +1320,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
                   'Toggle between single-sided or double-sided printing to save paper.',
             ),
             const Gap(12),
-            _buildStepItem(
+            buildInstructionStep(
               context,
               stepNumber: '•',
               title: 'Collate Mode',
@@ -1328,7 +1328,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
                   'Sort pages in multi-page documents sequentially instead of grouping identical pages.',
             ),
             const Gap(12),
-            _buildStepItem(
+            buildInstructionStep(
               context,
               stepNumber: '•',
               title: 'Pages Per Sheet',
@@ -1336,7 +1336,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
                   'Choose "1-in-1" (default) for standard layout. Use "2-in-1" or "4-in-1" to fit multiple pages on a single sheet of paper to save page quota.',
             ),
             const Gap(12),
-            _buildStepItem(
+            buildInstructionStep(
               context,
               stepNumber: '•',
               title: 'Fitting Mode',
@@ -1344,7 +1344,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
                   'Select "Fit Paper" (default) for normal margins, "Fit Printable" to shrink to margins, or "Edge-to-Edge" to print borderless full pages.',
             ),
             const Gap(12),
-            _buildStepItem(
+            buildInstructionStep(
               context,
               stepNumber: '•',
               title: 'Stapling & Hole Punching',
@@ -1352,7 +1352,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
                   'Configure staple location or punch hole counts for automatic document binding.',
             ),
             const Gap(12),
-            _buildStepItem(
+            buildInstructionStep(
               context,
               stepNumber: '•',
               title: 'Offset & Slip Sheets',
@@ -1360,7 +1360,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
                   'Toggle "Offset" to shift printed sets sideways for easy separation. Toggle "Slip Sheet" to insert blank separator sheets between print jobs.',
             ),
             const Gap(12),
-            _buildStepItem(
+            buildInstructionStep(
               context,
               stepNumber: '•',
               title: 'Booklet Printing',
@@ -1395,69 +1395,6 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
           ],
         );
       },
-    );
-  }
-
-  Widget _buildStepItem(
-    BuildContext context, {
-    required String stepNumber,
-    required String title,
-    String? body,
-    Widget? bodyWidget,
-  }) {
-    final textPrimary = AppPalette.textPrimary(context);
-    final textSecondary = AppPalette.textSecondary(context);
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.only(top: 2),
-          child: Container(
-            width: 20,
-            height: 20,
-            decoration: BoxDecoration(
-              color: AppPalette.primary.withValues(alpha: 0.12),
-              shape: BoxShape.circle,
-            ),
-            alignment: Alignment.center,
-            child: Text(
-              stepNumber,
-              style: const TextStyle(
-                color: AppPalette.primary,
-                fontSize: 10,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-          ),
-        ),
-        const Gap(12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                title,
-                style: TextStyle(
-                  color: textPrimary,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              const Gap(2),
-              bodyWidget ??
-                  Text(
-                    body ?? '',
-                    style: TextStyle(
-                      color: textSecondary,
-                      fontSize: 12,
-                      height: 1.4,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-            ],
-          ),
-        ),
-      ],
     );
   }
 }
