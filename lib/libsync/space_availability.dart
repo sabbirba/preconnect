@@ -227,13 +227,10 @@ class _SpaceAvailabilityPageState extends State<SpaceAvailabilityPage> {
   }
 
   Future<void> _selectDate(BuildContext context) async {
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
     final picked = await showAppDatePicker(
       context,
       initialDate: _selectedDate,
-      firstDate: today,
-      lastDate: today.add(const Duration(days: 10)),
+      dayCount: 10,
     );
     if (picked != null && picked != _selectedDate) {
       setState(() {

@@ -702,12 +702,14 @@ Future<T?> showAppSelectDropdown<T>(
 Future<DateTime?> showAppDatePicker(
   BuildContext context, {
   required DateTime initialDate,
-  required DateTime firstDate,
-  required DateTime lastDate,
+  required int dayCount,
 }) async {
   final now = DateTime.now();
   final today = DateTime(now.year, now.month, now.day);
-  final dates = List.generate(10, (index) => today.add(Duration(days: index)));
+  final dates = List.generate(
+    dayCount,
+    (index) => DateTime(today.year, today.month, today.day + index),
+  );
 
   return await showAppBottomSheet<DateTime>(
     context,
