@@ -383,56 +383,63 @@ class _SpaceAvailabilityPageState extends State<SpaceAvailabilityPage> {
           physics: const ClampingScrollPhysics(),
           padding: const EdgeInsets.only(bottom: 24),
           children: [
-            _buildStepItem(
+            buildInstructionStep(
               context,
+              compact: true,
               stepNumber: '1',
               title: 'Set Booking Settings',
               body:
                   'Choose your reservation date and capacity counter at the top of the availability screen.',
             ),
             const Gap(12),
-            _buildStepItem(
+            buildInstructionStep(
               context,
+              compact: true,
               stepNumber: '2',
               title: 'Select Space Category',
               body:
                   'Filter by room types like Discussion Room, Silent Zone, or Reading Area based on your study needs.',
             ),
             const Gap(12),
-            _buildStepItem(
+            buildInstructionStep(
               context,
+              compact: true,
               stepNumber: '3',
               title: 'Pick a Time Slot',
               body:
                   'Tap on an available green slot in the room cards. You can reserve individual 30-minute intervals.',
             ),
             const Gap(12),
-            _buildStepItem(
+            buildInstructionStep(
               context,
+              compact: true,
               stepNumber: '4',
               title: 'Provide Member IDs',
               body:
                   'For group bookings, enter and verify your teammates\' student IDs to confirm the reservation.',
             ),
             const Gap(12),
-            _buildStepItem(
+            buildInstructionStep(
               context,
+              compact: true,
               stepNumber: '5',
               title: 'Review Booking',
               body:
                   'Once confirmed, your booking details and status will appear under the active bookings view.',
             ),
             const Gap(12),
-            _buildStepItem(
+            buildInstructionStep(
               context,
+              compact: true,
               stepNumber: '6',
               title: 'Check In on Campus',
               body:
                   'When you arrive at the library, tap the Check In button on your active reservation card. Ensure you are connected to the campus network.',
             ),
             const Gap(12),
-            _buildStepItem(
+            buildInstructionStep(
               context,
+              compact: true,
               stepNumber: '7',
               title: 'Cancel Booking',
               body:
@@ -441,66 +448,6 @@ class _SpaceAvailabilityPageState extends State<SpaceAvailabilityPage> {
           ],
         );
       },
-    );
-  }
-
-  Widget _buildStepItem(
-    BuildContext context, {
-    required String stepNumber,
-    required String title,
-    required String body,
-  }) {
-    final textPrimary = AppPalette.textPrimary(context);
-    final textSecondary = AppPalette.textSecondary(context);
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.only(top: 2),
-          child: Container(
-            width: 20,
-            height: 20,
-            decoration: BoxDecoration(
-              color: AppPalette.primary.withValues(alpha: 0.12),
-              shape: BoxShape.circle,
-            ),
-            alignment: Alignment.center,
-            child: Text(
-              stepNumber,
-              style: const TextStyle(
-                color: AppPalette.primary,
-                fontSize: 10,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-          ),
-        ),
-        const Gap(12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                title,
-                style: TextStyle(
-                  color: textPrimary,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              const Gap(4),
-              Text(
-                body,
-                style: TextStyle(
-                  color: textSecondary,
-                  fontSize: 11,
-                  height: 1.4,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
     );
   }
 
