@@ -136,5 +136,18 @@ void main() {
     },
   );
 
+  test(
+    'directory migration preserves files and does not replace existing data',
+    () async {
+      final legacy = await Directory('${directory.path}/legacy').create();
+      await File('${legacy.path}/cached.json').writeAsString('saved');
+      final target = Directory('${directory.path}/persistent/support');
+      await AppPaths.migrateDirectory(legacy, target);
+      expect(await File('${target.path}/cached.json').readAsString(), 'saved');
+      await AppPaths.migrateDirectory(legacy, target);
+      expect(await File('${target.path}/cached.json').readAsString(), 'saved');
+    },
+  );
+
 
 }
