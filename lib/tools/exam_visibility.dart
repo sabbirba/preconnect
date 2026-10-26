@@ -3,6 +3,18 @@ import 'package:preconnect/tools/time_utils.dart';
 class ExamVisibility {
   ExamVisibility._();
 
+  static bool isWithinReminderWindow(
+    DateTime start, {
+    DateTime? end,
+    DateTime? now,
+  }) {
+    final current = (now ?? DateTime.now()).toLocal();
+    final exam = start.toLocal();
+    final firstDay = DateTime(exam.year, exam.month, exam.day - 3);
+    return !current.isBefore(firstDay) &&
+        !(end ?? start).toLocal().isBefore(current);
+  }
+
   static bool isUpcomingOrOngoingDateTime(
     DateTime? examDateTime, {
     DateTime? now,
