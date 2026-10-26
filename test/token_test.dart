@@ -142,5 +142,17 @@ void main() {
     },
   );
 
-
+  test('JWT expiry parsing rejects malformed values and preserves expiry', () {
+    String encode(Object value) =>
+        base64Url.encode(utf8.encode(jsonEncode(value)));
+    final valid =
+        '${encode({'alg': 'synthetic'})}.${encode({'exp': 1900000000})}.${encode('signature')}';
+    expect(
+      AuthService.tokenExpiry(valid).millisecondsSinceEpoch,
+      1900000000000,
+    );
+    for (final token in [null, '', 'invalid', 'a.b.c', '...']) {
+      expect(AuthService.tokenExpiry(token).millisecondsSinceEpoch, 0);
+    }
+  });
 }
