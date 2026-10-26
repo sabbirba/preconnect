@@ -74,5 +74,19 @@ void main() {
     },
   );
 
+  test('failed file writes preserve the last persisted value', () async {
+    await storage.setString('cache', 'previous');
+    await Directory('${directory.path}/cache.json').create();
+    await expectLater(
+      storage.setString('cache', 'x' * (256 * 1024 + 1)),
+      throwsA(isA<FileSystemException>()),
+    );
+    expect(await storage.getString('cache'), 'previous');
+    final prefs = await SharedPreferences.getInstance();
+    expect(prefs.getString('cache'), 'previous');
+    await AppStorage.initialize(cacheDirectory: directory);
+    expect(await storage.getString('cache'), 'previous');
+  });
+
 
 }
