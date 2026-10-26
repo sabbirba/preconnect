@@ -216,6 +216,13 @@ void main() {
         expect(find.byTooltip('Add Classes'), findsNWidgets(2));
         expect(find.byTooltip('Export Combined Routine'), findsNothing);
         expect(find.text('Available Sections'), findsNothing);
+        expect(
+          tester
+              .widget<AppPageScaffold>(find.byType(AppPageScaffold))
+              .actions
+              .last,
+          isA<AppRefreshButton>(),
+        );
         final search = tester.getRect(find.byType(AppSearchField));
         final card = tester.getRect(find.byType(AppCard).first);
         expect(card.left, search.left);
