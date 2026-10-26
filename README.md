@@ -58,6 +58,7 @@ A Flutter app for BRAC University students with SSO login and Connect API integr
 - **Real-time Course Registration & Seat Tracking**: Live seat status proxy, section details, exam maps, and prerequisite viewer.
 - **Library & DSpace Companion**: LibSync study space availability & room reservation, plus DSpace academic repository browser.
 - **Campus Utilities & Automation**: Automated Captive Wi-Fi login, campus wireless printing support, free computer lab status, and shuttle bus routes.
+- **Personal Extra Classes**: Open Extra Classes from Schedules to add or remove other sections in one tap. Extras also appear in Alarms. Selections stay on this device and do not change Connect enrolment or exam schedules.
 - **Social & Friend Sync**: QR-based friend schedule sharing & comparison.
 - **Smart Notifications**: Push seat-status alerts via FCM, class alarms, and exam reminders.
 - **Offline-First & Fast**: Cache-first architecture ensuring seamless offline access.
