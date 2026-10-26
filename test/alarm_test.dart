@@ -143,6 +143,10 @@ void main() {
         ['08:00', '09:30'],
       );
       expect(cards.where((card) => card.sectionName == '03'), isEmpty);
+      expect(
+        find.textContaining('EXAM101', findRichText: true),
+        findsOneWidget,
+      );
       final extra = find.ancestor(
         of: find.byWidgetPredicate(
           (widget) =>
