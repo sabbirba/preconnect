@@ -14,6 +14,7 @@ Entries are written for students, not developers — plain language, no commit h
 - Show 30 days in the custom planner date picker and 7 days in LibSync booking.
 - Improve saved schedules, secure credential handling, and recovery from temporary connection or storage failures.
 - Improve browser cache refresh, camera access for scanning, and notification registration.
+- Update dependencies and build tools across supported platforms.
 
 ## [2.1.1] — 2026-10-07
 
