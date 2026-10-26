@@ -2,3 +2,4 @@ Add or remove extra classes in one tap.
 Combine matching times with joined weekdays.
 Clearer exam colors and more consistent spacing.
 Plan up to 30 days ahead and book LibSync up to 7 days ahead.
+Improve saved schedules, sign-in recovery, browser refresh, scanning, and notifications.
