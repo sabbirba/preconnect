@@ -100,5 +100,22 @@ void main() {
     expect(directory.listSync(), isEmpty);
   });
 
+  test('rejected preference writes do not become visible reads', () async {
+    final backend = RejectingPreferences();
+    SharedPreferencesStorePlatform.instance = backend;
+    SharedPreferences.resetStatic();
+    await AppStorage.initialize(cacheDirectory: directory);
+    backend.reject = true;
+    await expectLater(
+      storage.setString('setting', 'unsaved'),
+      throwsStateError,
+    );
+    expect(await storage.getString('setting'), isNull);
+    expect(storage.getStringSync('setting'), isNull);
+    backend.reject = false;
+    await storage.setString('setting', 'saved');
+    expect(await storage.getString('setting'), 'saved');
+  });
+
 
 }
