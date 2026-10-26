@@ -89,6 +89,7 @@ void main() {
         saved.selectedSection.sectionSchedule.classSchedules.single.day,
         'SUNDAY',
       );
+      expect(saved.section.sectionSchedule.classSchedules, hasLength(2));
       await store.save(ExtraClass(section: saved.section, days: {'MONDAY'}));
       expect((await store.load()).single.days, {'MONDAY'});
     },
