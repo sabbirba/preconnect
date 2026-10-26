@@ -317,6 +317,7 @@ void main() {
       await tester.tap(find.byTooltip('Remove Classes'));
       await tester.pumpAndSettle();
       expect(memoryStore.items, isEmpty);
+      expect(find.byType(Divider), findsNothing);
     },
   );
 
