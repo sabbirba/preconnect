@@ -196,7 +196,9 @@ GEM
     pp (0.6.4)
       prettyprint
     prettyprint (0.2.1)
-    prism (1.9.0)
+    prism (2.0.0)
+    prism (2.0.0-arm64-darwin)
+    prism (2.0.0-x86_64-linux-gnu)
     pstore (0.2.1)
     public_suffix (7.0.5)
     rake (13.4.2)
