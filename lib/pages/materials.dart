@@ -325,10 +325,7 @@ class _MaterialsPageState extends State<MaterialsPage> {
           padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
           child: Column(
             children: [
-              AppSearchField(
-                controller: _searchController,
-                hintText: 'Search...',
-              ),
+              AppSearchField(controller: _searchController),
               const Gap(12),
               _buildBody(),
               if (selectedSrc == null)
