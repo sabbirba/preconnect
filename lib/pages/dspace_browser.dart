@@ -1201,10 +1201,7 @@ class _DSpaceBrowserPageState extends State<DSpaceBrowserPage> {
           padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
           child: Column(
             children: [
-              AppSearchField(
-                controller: _searchController,
-                hintText: 'Search...',
-              ),
+              AppSearchField(controller: _searchController),
               const Gap(12),
               if (_selectedCategory != null) _buildActiveFilterBar(context),
               if (_selectedCategory != null && !_hasActiveFilters)
