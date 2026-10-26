@@ -67,5 +67,17 @@ void main() {
     expect(secureValues['access_token'], 'synthetic_access');
   });
 
+  test('failed secure writes cannot mark a session as saved', () async {
+    failedMethod = 'write';
+    await expectLater(
+      TokenStorage().write(key: 'access_token', value: 'synthetic_access'),
+      throwsA(isA<TokenPersistenceException>()),
+    );
+    expect(
+      await AppStorage.instance.getBool('cached_has_auth_session'),
+      isNull,
+    );
+  });
+
 
 }
