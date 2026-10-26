@@ -167,7 +167,7 @@ Please also review the community and safety guidance in [CODE_OF_CONDUCT.md](COD
 | Firefox Extension | Stable | Built with the Chrome extension and published through store promotion automation.     |
 | Web               | Beta   | Flutter web app built in CI and packaged as a release artifact.                       |
 | iOS               | Beta   | CI builds are enabled, but signing/export depends on Apple certificates/profiles.     |
-| macOS             | Beta   | CI builds and packages a DMG artifact from release workflow.                          |
+| macOS             | Beta   | CI packages DMG and PKG artifacts when the matching Apple signing configuration is available.                          |
 
 ### Contributor Systems
 
