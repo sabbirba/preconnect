@@ -306,6 +306,7 @@ void main() {
       await tester.tap(find.byTooltip('Add Classes'));
       await tester.pumpAndSettle();
       expect(find.byType(BottomSheet), findsNothing);
+      expect(memoryStore.items.single.days, {'SUNDAY', 'MONDAY'});
       await tester.tap(find.byTooltip('Remove Classes'));
       await tester.pumpAndSettle();
     },
