@@ -349,10 +349,10 @@ packages:
     dependency: "direct main"
     description:
       name: firebase_messaging
-      sha256: "0d58c6508c66a94370e7fac1cd3940ce2ad1728260c410fd67f92ca1fa1cca96"
+      sha256: e19c73b369ae83f4580a0676597f9ac3a0cd91e1b18be69ea16299c153dd9310
       url: "https://pub.dev"
     source: hosted
-    version: "17.0.0"
+    version: "17.0.1"
   firebase_messaging_platform_interface:
     dependency: transitive
     description:
