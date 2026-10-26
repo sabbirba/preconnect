@@ -48,5 +48,44 @@ void main() {
     expect(requests, 1);
   });
 
+  test(
+    'GET caches distinguish authentication and preserve bypass requests',
+    () async {
+      var requests = 0;
+      final client = ApiClient.testing(
+        MockClient((request) async {
+          requests++;
+          return http.Response(
+            request.headers['Authorization'] ?? 'public',
+            200,
+          );
+        }),
+      );
+      const url = 'https://example.test/data';
+      expect(
+        (await client.publicGet(
+          url,
+          headers: {'Authorization': 'synthetic_first'},
+        )).body,
+        'synthetic_first',
+      );
+      expect(
+        (await client.publicGet(
+          url,
+          headers: {'Authorization': 'synthetic_second'},
+        )).body,
+        'synthetic_second',
+      );
+      await client.publicGet(
+        url,
+        headers: {'Authorization': 'synthetic_first'},
+      );
+      expect(requests, 2);
+      await client.authenticatedGet(url);
+      await client.authenticatedGet(url, bypassCache: true);
+      expect(requests, 4);
+    },
+  );
+
 
 }
