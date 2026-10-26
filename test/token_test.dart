@@ -95,5 +95,52 @@ void main() {
     expect(secureValues['access_token'], 'synthetic_access');
   });
 
+  test(
+    'LibSync credentials stay out of preferences and retries use new tokens',
+    () async {
+      var gets = 0;
+      final client = LibSyncApiClient(
+        client: MockClient((request) async {
+          if (request.method == 'POST') {
+            return http.Response(
+              jsonEncode({
+                'access': 'synthetic_new',
+                'refresh': 'synthetic_refresh',
+              }),
+              200,
+            );
+          }
+          gets++;
+          if (gets == 1) return http.Response('expired', 401);
+          expect(request.headers['Authorization'], 'Bearer synthetic_new');
+          return http.Response(
+            '{}',
+            200,
+            headers: {'set-cookie': 'csrftoken=synthetic_cookie; Secure'},
+          );
+        }),
+      );
+      await client.saveCookies({
+        'access': 'synthetic_old',
+        'refresh': 'synthetic_refresh',
+      });
+      expect(await AppStorage.instance.getString('libsync_cookies'), isNull);
+      expect(
+        await client
+            .get(Uri.parse('https://libsync.bracu.ac.bd/api/test/'))
+            .then((response) => response.statusCode),
+        200,
+      );
+      expect(gets, 2);
+      expect(
+        await AppStorage.instance.getString('libsync_headers_cache'),
+        isNot(contains('synthetic_cookie')),
+      );
+      await client.clearAuthData();
+      expect(secureValues['libsync_cookies'], isNull);
+      client.close();
+    },
+  );
+
 
 }
