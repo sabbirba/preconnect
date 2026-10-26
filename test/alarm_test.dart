@@ -147,6 +147,12 @@ void main() {
         find.textContaining('EXAM101', findRichText: true),
         findsOneWidget,
       );
+      expect(
+        tester
+            .widgetList<AppCard>(find.byType(AppCard))
+            .where((card) => card.isHighlighted),
+        isEmpty,
+      );
       final extra = find.ancestor(
         of: find.byWidgetPredicate(
           (widget) =>
