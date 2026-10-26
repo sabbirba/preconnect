@@ -32,6 +32,14 @@ void main() {
         isTrue,
       );
     }
+    expect(
+      ExamVisibility.isWithinReminderWindow(
+        exam,
+        end: end,
+        now: end.add(const Duration(seconds: 1)),
+      ),
+      isFalse,
+    );
   });
 
   test(
