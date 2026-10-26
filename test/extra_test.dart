@@ -215,6 +215,7 @@ void main() {
         expect(find.byType(ScheduleEntryCard), findsNWidgets(matching ? 2 : 4));
         expect(find.byTooltip('Add Classes'), findsNWidgets(2));
         expect(find.byTooltip('Export Combined Routine'), findsNothing);
+        expect(find.text('Available Sections'), findsNothing);
         final search = tester.getRect(find.byType(AppSearchField));
         final card = tester.getRect(find.byType(AppCard).first);
         expect(card.left, search.left);
