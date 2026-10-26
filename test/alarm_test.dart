@@ -142,6 +142,7 @@ void main() {
             .map((card) => card.schedule.startTime),
         ['08:00', '09:30'],
       );
+      expect(cards.where((card) => card.sectionName == '03'), isEmpty);
       final extra = find.ancestor(
         of: find.byWidgetPredicate(
           (widget) =>
