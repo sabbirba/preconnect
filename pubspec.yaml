@@ -30,7 +30,7 @@ dependencies:
   share_plus: ^13.3.0
   local_auth: ^3.0.2
   chrome_extension: ^0.4.0
-  web: ^1.1.1
+  web: ^1.1.2
   http: ^1.6.0
   flutter_secure_storage: ^11.2.0
   firebase_core: ^5.1.0
