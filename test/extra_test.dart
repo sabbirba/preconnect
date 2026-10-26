@@ -262,6 +262,7 @@ void main() {
         await tester.tap(find.byTooltip('Add Classes').first);
         await tester.pumpAndSettle();
         expect(find.byType(BottomSheet), findsNothing);
+        expect(memoryStore.items.single.days, {'SUNDAY', 'MONDAY'});
       },
     );
   }
