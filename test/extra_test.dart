@@ -437,6 +437,10 @@ void main() {
         containsAll(['EXAMPLE1', 'EXAMPLE2']),
       );
       expect(cards.where((card) => card.highlighted), hasLength(1));
+      expect(
+        find.textContaining(RegExp('clash|conflict', caseSensitive: false)),
+        findsNothing,
+      );
       await tester.pumpWidget(const SizedBox.shrink());
     },
   );
