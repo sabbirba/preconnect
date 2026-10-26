@@ -87,5 +87,26 @@ void main() {
     },
   );
 
+  test('invalidated in-flight requests cannot repopulate the cache', () async {
+    final oldResponse = Completer<http.Response>();
+    var requests = 0;
+    final client = ApiClient.testing(
+      MockClient((_) {
+        requests++;
+        return requests == 1
+            ? oldResponse.future
+            : Future.value(http.Response('fresh', 200));
+      }),
+    );
+    final old = client.publicGet('https://example.test/data');
+    await Future<void>.delayed(Duration.zero);
+    client.clearTransientCaches();
+    expect((await client.publicGet('https://example.test/data')).body, 'fresh');
+    oldResponse.complete(http.Response('old', 200));
+    await old;
+    expect((await client.publicGet('https://example.test/data')).body, 'fresh');
+    expect(requests, 2);
+  });
+
 
 }
