@@ -555,7 +555,6 @@ class _WishlistPageState extends State<WishlistPage> {
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
           child: AppSearchField(
             controller: _searchController,
-            hintText: 'Search course code or name...',
             query: _searchQuery,
           ),
         ),
