@@ -281,7 +281,7 @@ jobs:
           fetch-depth: 1
 
       - name: Set Up Ruby
-        uses: ruby/setup-ruby@v1.334.0
+        uses: ruby/setup-ruby@v1.335.0
         with:
           ruby-version: "3.3"
           bundler-cache: true
