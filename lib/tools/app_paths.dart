@@ -1,20 +1,50 @@
 import 'dart:io';
+import 'paths_stub.dart'
+    if (dart.library.io) 'package:path_provider/path_provider.dart';
 
 class AppPaths {
   AppPaths._();
 
   static Future<Directory> supportDirectory() {
-    return _ensureDirectory(_platformDataRoot('support'));
+    return _persistentDirectory('support');
   }
 
   static Future<Directory> documentsDirectory() {
-    return _ensureDirectory(_platformDataRoot('documents'));
+    return _persistentDirectory('documents');
   }
 
   static Future<Directory> temporaryDirectory() {
     return _ensureDirectory(
       Directory('${Directory.systemTemp.path}/PreConnect'),
     );
+  }
+
+  static Future<Directory> _persistentDirectory(String bucket) async {
+    final legacy = _platformDataRoot(bucket);
+    if (!Platform.isAndroid && !Platform.isIOS) {
+      return _ensureDirectory(legacy);
+    }
+    final root = await getApplicationSupportDirectory();
+    return migrateDirectory(
+      legacy,
+      Directory('${root.path}/PreConnect/$bucket'),
+    );
+  }
+
+  static Future<Directory> migrateDirectory(
+    Directory legacy,
+    Directory target,
+  ) async {
+    if (await legacy.exists() && !await target.exists()) {
+      await target.parent.create(recursive: true);
+      try {
+        return await legacy.rename(target.path);
+      } on FileSystemException {
+        if (await target.exists()) return target;
+        rethrow;
+      }
+    }
+    return _ensureDirectory(target);
   }
 
   static Future<Directory> _ensureDirectory(Directory directory) async {
