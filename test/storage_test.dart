@@ -88,5 +88,17 @@ void main() {
     expect(await storage.getString('cache'), 'previous');
   });
 
+  test('remove and clear delete persisted large values', () async {
+    await storage.setString('first', 'x' * (256 * 1024 + 1));
+    await storage.setString('second', 'y' * (256 * 1024 + 1));
+    await storage.remove('first');
+    expect(await storage.getString('first'), isNull);
+    expect(await File('${directory.path}/first.json').exists(), isFalse);
+    await storage.clear();
+    await AppStorage.initialize(cacheDirectory: directory);
+    expect(await storage.getString('second'), isNull);
+    expect(directory.listSync(), isEmpty);
+  });
+
 
 }
