@@ -236,6 +236,10 @@ void main() {
         await tester.pumpAndSettle();
         expect(find.text('Extra Classes Help'), findsOneWidget);
         expect(find.text('Overlapping Classes'), findsOneWidget);
+        expect(
+          find.textContaining('both classes stay in your routine'),
+          findsOneWidget,
+        );
         await tester.scrollUntilVisible(
           find.text('Local Routine'),
           180,
