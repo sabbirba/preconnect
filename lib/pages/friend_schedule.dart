@@ -582,7 +582,6 @@ class _FriendSchedulePageState extends State<FriendSchedulePage>
           if (decodedSchedules.isNotEmpty) ...[
             AppSearchField(
               controller: _searchController,
-              hintText: 'Search',
               query: _searchQuery,
               borderRadius: 14,
               contentPadding: const EdgeInsets.symmetric(
