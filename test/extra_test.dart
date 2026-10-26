@@ -309,6 +309,7 @@ void main() {
       expect(memoryStore.items.single.days, {'SUNDAY', 'MONDAY'});
       expect(find.text('Edit Days'), findsNothing);
       expect(find.text('Remove'), findsNothing);
+      expect(find.byType(AppSelectChip), findsNothing);
       await tester.tap(find.byTooltip('Remove Classes'));
       await tester.pumpAndSettle();
     },
