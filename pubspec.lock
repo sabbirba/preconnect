@@ -365,10 +365,10 @@ packages:
     dependency: transitive
     description:
       name: firebase_messaging_web
-      sha256: "5fd41f7174eb47617c5820974e0db8b7b624e964e2dda620193345ae33e649a8"
+      sha256: "593d73330500896d9dd81680ee6207c69ad80f258712beb6de2e32dc14a9cb26"
       url: "https://pub.dev"
     source: hosted
-    version: "4.3.0"
+    version: "4.3.1"
   fixnum:
     dependency: transitive
     description:
