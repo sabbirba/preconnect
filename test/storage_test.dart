@@ -117,5 +117,24 @@ void main() {
     expect(await storage.getString('setting'), 'saved');
   });
 
+  test(
+    'overlapping writes and cleanup preserve their invocation order',
+    () async {
+      await Future.wait([
+        storage.setString('cache', 'x' * (256 * 1024 + 1)),
+        storage.setString('cache', 'latest'),
+      ]);
+      await AppStorage.initialize(cacheDirectory: directory);
+      expect(await storage.getString('cache'), 'latest');
+      await Future.wait([
+        storage.setString('cache', 'y' * (256 * 1024 + 1)),
+        storage.clear(),
+      ]);
+      await AppStorage.initialize(cacheDirectory: directory);
+      expect(await storage.getString('cache'), isNull);
+      expect(directory.listSync(), isEmpty);
+    },
+  );
+
 
 }
