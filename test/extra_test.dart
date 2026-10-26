@@ -436,6 +436,7 @@ void main() {
         cards.map((card) => card.courseCode),
         containsAll(['EXAMPLE1', 'EXAMPLE2']),
       );
+      expect(cards.where((card) => card.highlighted), hasLength(1));
       await tester.pumpWidget(const SizedBox.shrink());
     },
   );
