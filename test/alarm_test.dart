@@ -153,6 +153,13 @@ void main() {
             .where((card) => card.isHighlighted),
         isEmpty,
       );
+      expect(
+        tester
+            .state<ScrollableState>(find.byType(Scrollable).first)
+            .position
+            .pixels,
+        0,
+      );
       final extra = find.ancestor(
         of: find.byWidgetPredicate(
           (widget) =>
