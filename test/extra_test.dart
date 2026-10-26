@@ -226,6 +226,7 @@ void main() {
         final search = tester.getRect(find.byType(AppSearchField));
         final card = tester.getRect(find.byType(AppCard).first);
         expect(card.left, search.left);
+        expect(card.top - search.bottom, 12);
         await tester.tap(find.byTooltip('Help'));
         await tester.pumpAndSettle();
         await tester.scrollUntilVisible(
