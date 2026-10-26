@@ -228,6 +228,10 @@ void main() {
         expect(card.left, search.left);
         expect(card.top - search.bottom, 12);
         expect(find.byType(Divider), findsNothing);
+        expect(
+          tester.getCenter(find.byTooltip('Help')).dx,
+          lessThan(tester.getCenter(find.byTooltip('Refresh')).dx),
+        );
         await tester.tap(find.byTooltip('Help'));
         await tester.pumpAndSettle();
         await tester.scrollUntilVisible(
