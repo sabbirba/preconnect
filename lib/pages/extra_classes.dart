@@ -288,6 +288,10 @@ class _ExtraClassesState extends State<ExtraClassesPage> {
       title: 'Extra Classes',
       subtitle: 'Personal Routine',
       actions: [
+        AppRefreshButton(
+          isLoading: _catalogueLoading,
+          onPressed: () => _loadCatalogue(forceRefresh: true),
+        ),
         IconButton(
           tooltip: 'Help',
           onPressed: _showHelp,
@@ -301,10 +305,6 @@ class _ExtraClassesState extends State<ExtraClassesPage> {
             Icons.help_outline_rounded,
             color: AppPalette.primary,
           ),
-        ),
-        AppRefreshButton(
-          isLoading: _catalogueLoading,
-          onPressed: () => _loadCatalogue(forceRefresh: true),
         ),
       ],
       body: _loading

@@ -220,7 +220,7 @@ void main() {
           tester
               .widget<AppPageScaffold>(find.byType(AppPageScaffold))
               .actions
-              .last,
+              .first,
           isA<AppRefreshButton>(),
         );
         final search = tester.getRect(find.byType(AppSearchField));
@@ -230,7 +230,7 @@ void main() {
         expect(find.byType(Divider), findsNothing);
         expect(
           tester.getCenter(find.byTooltip('Help')).dx,
-          lessThan(tester.getCenter(find.byTooltip('Refresh')).dx),
+          greaterThan(tester.getCenter(find.byTooltip('Refresh')).dx),
         );
         await tester.tap(find.byTooltip('Help'));
         await tester.pumpAndSettle();
