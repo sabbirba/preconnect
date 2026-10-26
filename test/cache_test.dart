@@ -131,5 +131,27 @@ void main() {
     },
   );
 
-
+  test('overlapping custom schedule creation preserves both items', () async {
+    final service = CustomSchedulesService();
+    final now = DateTime.now().add(const Duration(days: 1));
+    final items = await Future.wait([
+      service.createItem(
+        kind: 'event',
+        title: 'Example One',
+        startTime: now,
+        endTime: now.add(const Duration(hours: 1)),
+      ),
+      service.createItem(
+        kind: 'event',
+        title: 'Example Two',
+        startTime: now,
+        endTime: now.add(const Duration(hours: 2)),
+      ),
+    ]);
+    expect(items.map((item) => item.itemId).toSet(), hasLength(2));
+    expect(await service.getCachedItems(), hasLength(2));
+    final plan = await QuietModeSchedulePlanner().buildPlan();
+    expect(plan.windows, hasLength(1));
+    expect(plan.windows.single.endAt, now.add(const Duration(hours: 2)));
+  });
 }
