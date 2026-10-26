@@ -5,6 +5,10 @@ Entries are written for students, not developers — plain language, no commit h
 
 ## [Unreleased]
 
+## [2.1.2] — 2026-10-26
+
+- Add or remove extra sections from a personal routine in one tap without changing Connect enrolment.
+
 ## [2.1.1] — 2026-10-07
 
 - Library LibSync: Seamless library room reservation with direct deep link authentication and streamlined Google sign-in.
