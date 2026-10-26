@@ -173,6 +173,7 @@ void main() {
         find.descendant(of: extra, matching: find.byIcon(Icons.add)),
       );
       await tester.pumpAndSettle();
+      expect(find.text('10 min before'), findsOneWidget);
       await tester.runAsync(() => ExtraClassesStore().remove('1|2'));
       RefreshBus.instance.notify(reason: 'extra_classes');
       await tester.pumpAndSettle();
