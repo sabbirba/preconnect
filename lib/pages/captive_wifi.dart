@@ -1030,7 +1030,7 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
               ),
             ),
             const Gap(12),
-            _buildStepItem(
+            buildInstructionStep(
               context,
               stepNumber: '1',
               title: 'Connect to Wi-Fi',
@@ -1038,7 +1038,7 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
                   'Ensure your device Wi-Fi is turned on and connected to the Student-WiFi network.',
             ),
             const Gap(12),
-            _buildStepItem(
+            buildInstructionStep(
               context,
               stepNumber: '2',
               title: 'Enter Credentials',
@@ -1046,7 +1046,7 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
                   'Provide your campus Student ID and Portal password correctly in the input fields.',
             ),
             const Gap(12),
-            _buildStepItem(
+            buildInstructionStep(
               context,
               stepNumber: '3',
               title: 'Connect Session',
@@ -1054,7 +1054,7 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
                   'Tap the Connect button. PreConnect will automatically configure parameters and authenticate with the campus gateway.',
             ),
             const Gap(12),
-            _buildStepItem(
+            buildInstructionStep(
               context,
               stepNumber: '4',
               title: 'Auto Extend Session',
@@ -1062,7 +1062,7 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
                   'Enable Auto Extend to allow PreConnect to run in the background and keep your connectivity active.',
             ),
             const Gap(12),
-            _buildStepItem(
+            buildInstructionStep(
               context,
               stepNumber: '5',
               title: 'Disconnect',
@@ -1227,67 +1227,6 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
             fontSize: 12,
             height: 1.35,
             fontWeight: FontWeight.w500,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildStepItem(
-    BuildContext context, {
-    required String stepNumber,
-    required String title,
-    required String body,
-  }) {
-    final textPrimary = AppPalette.textPrimary(context);
-    final textSecondary = AppPalette.textSecondary(context);
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.only(top: 2),
-          child: Container(
-            width: 20,
-            height: 20,
-            decoration: BoxDecoration(
-              color: AppPalette.primary.withValues(alpha: 0.12),
-              shape: BoxShape.circle,
-            ),
-            alignment: Alignment.center,
-            child: Text(
-              stepNumber,
-              style: const TextStyle(
-                color: AppPalette.primary,
-                fontSize: 10,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-          ),
-        ),
-        const Gap(12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                title,
-                style: TextStyle(
-                  color: textPrimary,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              const Gap(2),
-              Text(
-                body,
-                style: TextStyle(
-                  color: textSecondary,
-                  fontSize: 12,
-                  height: 1.4,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ],
           ),
         ),
       ],
