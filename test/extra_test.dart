@@ -267,6 +267,10 @@ void main() {
         expect(find.text('Remove'), findsNothing);
         expect(find.byTooltip('Remove Classes'), findsOneWidget);
         expect(find.byType(Divider), findsOneWidget);
+        expect(
+          tester.getCenter(find.byTooltip('Remove Classes')).dx,
+          tester.getCenter(find.byTooltip('Add Classes')).dx,
+        );
       },
     );
   }
