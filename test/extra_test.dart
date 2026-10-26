@@ -344,6 +344,7 @@ void main() {
     await tester.tap(find.byTooltip('Remove Classes'));
     await tester.pumpAndSettle();
     expect(memoryStore.items, isEmpty);
+    expect(find.byType(BottomSheet), findsNothing);
   });
 
   testWidgets('exam cards reuse the existing green accent in both themes', (
