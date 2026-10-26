@@ -280,7 +280,7 @@ class SeatStatusDetailsResponse {
       consumedSeat: _toInt(json['consumedSeat']),
       semesterSessionId: _toInt(json['semesterSessionId']),
       parentSectionId: _toNullableInt(json['parentSectionId']),
-      faculty: _facultyFromJson(json['faculties'] ?? json['faculty']),
+      faculty: SectionFaculty.tryParse(json['faculties'] ?? json['faculty']),
       faculties: _facultyLabel(json['faculties'] ?? json['faculty']),
       roomName: _toString(json['roomName']),
       roomNumber: _toString(json['roomNumber']),
@@ -471,25 +471,6 @@ String _facultyLabel(dynamic value) {
   }
   final text = _toString(value);
   return text.toUpperCase() == 'NULL' ? '' : text;
-}
-
-SectionFaculty? _facultyFromJson(dynamic value) {
-  if (value == null) return null;
-  if (value is Map) {
-    return SectionFaculty.fromJson(value.cast<String, dynamic>());
-  }
-  if (value is String) {
-    final trimmed = value.trim();
-    if (trimmed.isEmpty || trimmed.toUpperCase() == 'TBA') return null;
-    return SectionFaculty(
-      id: trimmed,
-      staffName: trimmed,
-      shortName: trimmed,
-      email: '',
-      imgUrl: null,
-    );
-  }
-  return null;
 }
 
 String? _toNullableString(dynamic value) {

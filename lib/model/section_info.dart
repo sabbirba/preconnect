@@ -23,6 +23,25 @@ class SectionFaculty {
   @override
   int get hashCode => id.hashCode;
 
+  static SectionFaculty? tryParse(dynamic value) {
+    if (value == null) return null;
+    if (value is Map) {
+      return SectionFaculty.fromJson(value.cast<String, dynamic>());
+    }
+    if (value is String) {
+      final trimmed = value.trim();
+      if (trimmed.isEmpty || trimmed.toUpperCase() == 'TBA') return null;
+      return SectionFaculty(
+        id: trimmed,
+        staffName: trimmed,
+        shortName: trimmed,
+        email: '',
+        imgUrl: null,
+      );
+    }
+    return null;
+  }
+
   factory SectionFaculty.fromJson(Map<String, dynamic> json) {
     final shortName = (json['shortName'] ?? '').toString().trim();
     final staffName = (json['staffName'] ?? json['name'] ?? shortName)
@@ -121,7 +140,7 @@ class Section {
       sectionSchedule: SectionSchedule.fromJson(
         _scheduleMapFromJson(json['sectionSchedule']),
       ),
-      faculty: _facultyFromJson(json['faculties'] ?? json['faculty']),
+      faculty: SectionFaculty.tryParse(json['faculties'] ?? json['faculty']),
       faculties: _facultyLabel(json['faculties'] ?? json['faculty']),
       roomName: _stringValue(json, 'roomName'),
       roomNumber: _stringValue(json, 'roomNumber'),
@@ -320,25 +339,6 @@ int? _nullableIntValue(Map<String, dynamic> json, String key) {
   if (value is int) return value;
   if (value is num) return value.toInt();
   return int.tryParse(value.toString());
-}
-
-SectionFaculty? _facultyFromJson(dynamic value) {
-  if (value == null) return null;
-  if (value is Map) {
-    return SectionFaculty.fromJson(value.cast<String, dynamic>());
-  }
-  if (value is String) {
-    final trimmed = value.trim();
-    if (trimmed.isEmpty || trimmed.toUpperCase() == 'TBA') return null;
-    return SectionFaculty(
-      id: trimmed,
-      staffName: trimmed,
-      shortName: trimmed,
-      email: '',
-      imgUrl: null,
-    );
-  }
-  return null;
 }
 
 String _facultyLabel(dynamic value) {
