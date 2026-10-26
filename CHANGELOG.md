@@ -9,6 +9,7 @@ Entries are written for students, not developers — plain language, no commit h
 
 - Add or remove extra sections from a personal routine in one tap without changing Connect enrolment.
 - Combine matching class times with joined weekdays and make schedule cards, spacing, and actions more consistent.
+- Distinguish exams with the existing green accent and compact Midterm and Final labels.
 
 ## [2.1.1] — 2026-10-07
 
