@@ -53,6 +53,13 @@ void main() {
         ),
         isTrue,
       );
+      expect(
+        ExamVisibility.isWithinReminderWindow(
+          exam,
+          now: DateTime(2030, 12, 29, 23, 59),
+        ),
+        isFalse,
+      );
     },
   );
 
