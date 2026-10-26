@@ -441,6 +441,7 @@ void main() {
         find.textContaining(RegExp('clash|conflict', caseSensitive: false)),
         findsNothing,
       );
+      expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox.shrink());
     },
   );
