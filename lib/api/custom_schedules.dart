@@ -8,6 +8,17 @@ class CustomSchedulesService {
 
   final RepositoryCache _repo = RepositoryCache.instance;
 
+  Future<void> _pending = Future<void>.value();
+
+  Future<T> _mutate<T>(Future<T> Function() operation) {
+    final result = _pending.then((_) => operation());
+    _pending = result.then<void>(
+      (_) {},
+      onError: (Object error, StackTrace stack) {},
+    );
+    return result;
+  }
+
   static const String cacheKey = 'custom_schedules_v1';
 
   Future<void> clearCache() async {
@@ -31,7 +42,7 @@ class CustomSchedulesService {
 
     final updatedItems = List<CustomSchedule>.from(items);
     for (final overdue in overdueItems) {
-      final updated = await _markItemDone(overdue);
+      final updated = await updateItem(itemId: overdue.itemId, isDone: true);
       for (var i = 0; i < updatedItems.length; i++) {
         if (updatedItems[i].itemId == updated.itemId) {
           updatedItems[i] = updated;
@@ -41,7 +52,6 @@ class CustomSchedulesService {
     }
 
     updatedItems.sort(_compareItems);
-    await _writeCache(updatedItems);
     return updatedItems;
   }
 
@@ -55,7 +65,7 @@ class CustomSchedulesService {
     String sectionName = '',
     String notes = '',
     bool isDone = false,
-  }) async {
+  }) => _mutate(() async {
     final now = DateTime.now().toUtc();
     final item = CustomSchedule(
       itemId: await _nextItemId(),
@@ -73,7 +83,7 @@ class CustomSchedulesService {
     );
     await _upsertCacheItem(item);
     return item;
-  }
+  });
 
   Future<CustomSchedule> updateItem({
     required int itemId,
@@ -88,7 +98,7 @@ class CustomSchedulesService {
     String? sectionName,
     String? notes,
     bool? isDone,
-  }) async {
+  }) => _mutate(() async {
     final current = await _readCachedItems() ?? const <CustomSchedule>[];
     final index = current.indexWhere((item) => item.itemId == itemId);
     if (index < 0) {
@@ -112,24 +122,14 @@ class CustomSchedulesService {
 
     await _upsertCacheItem(updated);
     return updated;
-  }
+  });
 
-  Future<CustomSchedule> _markItemDone(CustomSchedule item) async {
-    try {
-      return await updateItem(itemId: item.itemId, isDone: true);
-    } catch (_) {
-      final updated = item.copyWith(isDone: true);
-      await _upsertCacheItem(updated);
-      return updated;
-    }
-  }
-
-  Future<void> deleteItem(int itemId) async {
+  Future<void> deleteItem(int itemId) => _mutate(() async {
     final cached = await _readCachedItems();
     if (cached == null) return;
     final updated = cached.where((item) => item.itemId != itemId).toList();
     await _writeCache(updated);
-  }
+  });
 
   Future<int> _nextItemId() async {
     final current = await _readCachedItems();
@@ -156,14 +156,11 @@ class CustomSchedulesService {
     }
   }
 
-  Future<void> _writeCache(List<CustomSchedule> items) async {
-    try {
-      await _repo.writeJson(cacheKey, <String, dynamic>{
+  Future<void> _writeCache(List<CustomSchedule> items) =>
+      _repo.writeJson(cacheKey, <String, dynamic>{
         'ts': DateTime.now().millisecondsSinceEpoch,
         'items': items.map((item) => item.toJson()).toList(growable: false),
       });
-    } catch (_) {}
-  }
 
   Future<void> _upsertCacheItem(CustomSchedule item) async {
     final current = await _readCachedItems();
@@ -176,17 +173,7 @@ class CustomSchedulesService {
         if (existing.itemId != item.itemId) existing,
       item,
     ];
-    next.sort((a, b) {
-      final doneCompare = a.isDone == b.isDone
-          ? 0
-          : a.isDone
-          ? 1
-          : -1;
-      if (doneCompare != 0) return doneCompare;
-      final dueCompare = a.startTime.compareTo(b.startTime);
-      if (dueCompare != 0) return dueCompare;
-      return b.createdAt.compareTo(a.createdAt);
-    });
+    next.sort(_compareItems);
     await _writeCache(next);
   }
 
