@@ -30,7 +30,15 @@ bool usesBrowserConnectSession({
 class ApiClient {
   static final ApiClient _instance = ApiClient._internal();
   factory ApiClient() => _instance;
-  ApiClient._internal();
+  ApiClient._internal() : _http = HttpUtils.client, _refresh = null;
+  ApiClient.testing(
+    this._http, {
+    Future<TokenRefreshStatus> Function()? refresh,
+  }) : _refresh = refresh;
+
+  final http.Client _http;
+  final Future<TokenRefreshStatus> Function()? _refresh;
+  int _cacheRevision = 0;
 
   final TokenStorage _storage = TokenStorage.instance;
   final Map<String, Future<http.Response>> _inFlightRequests =
@@ -45,6 +53,8 @@ class ApiClient {
   DateTime? _cachedAccessTokenAt;
 
   void clearTransientCaches() {
+    _cacheRevision++;
+    _inFlightRequests.clear();
     _cachedResponses.clear();
     _cachedAccessToken = null;
     _cachedAccessTokenAt = null;
@@ -109,25 +119,13 @@ class ApiClient {
   }
 
   Future<void> _refreshTokensWithRetry() async {
-    try {
-      TokenRefreshStatus? status;
-      for (var attempt = 0; attempt < 3; attempt++) {
-        final s = await AuthService().refreshTokenStatus();
-        if (s != TokenRefreshStatus.retryableFailure) {
-          status = s;
-          break;
-        }
-        if (attempt < 2) {
-          await Future<void>.delayed(
-            Duration(milliseconds: 200 * (attempt + 1)),
-          );
-        }
-      }
-      if (status == TokenRefreshStatus.invalidSession) {
-        throw const SessionExpiredException();
-      }
-    } catch (_) {
+    final status =
+        await (_refresh?.call() ?? AuthService().refreshTokenStatus());
+    if (status == TokenRefreshStatus.invalidSession) {
       throw const SessionExpiredException();
+    }
+    if (status != TokenRefreshStatus.refreshed) {
+      throw const SessionRefreshException();
     }
   }
 
@@ -137,73 +135,14 @@ class ApiClient {
     Set<int> acceptedStatusCodes = const <int>{200},
     Duration cacheDuration = _defaultGetCacheTtl,
     bool bypassCache = false,
-  }) async {
-    final usesBrowserSession = usesBrowserConnectSession(
-      url: url,
-      isWeb: kIsWeb,
-      runtimeAvailable: isChromeRuntimeAvailable(),
-    );
-    final token = await getAccessToken();
-    if ((token == null || token.isEmpty) && !usesBrowserSession) {
-      throw const UnauthenticatedException();
-    }
-    final headers = await _authHeaders(token, method: 'GET', url: url);
-    if (additionalHeaders.isNotEmpty) {
-      headers.addAll(additionalHeaders);
-    }
-
-    final response = await _sendSharedRequest(
-      'GET',
-      url,
-      headers: headers,
-      cacheDuration: cacheDuration,
-      bypassCache: bypassCache,
-    );
-    if (acceptedStatusCodes.contains(response.statusCode)) {
-      return response;
-    }
-
-    if (response.statusCode == 401) {
-      if (usesBrowserSession) {
-        throw ApiException(response.statusCode, response.body);
-      }
-      await _refreshTokensWithRetry();
-
-      final newToken = await getAccessToken();
-      if (newToken == null || newToken.isEmpty) {
-        throw const SessionExpiredException();
-      }
-      final retryHeaders = await _authHeaders(
-        newToken,
-        method: 'GET',
-        url: url,
-      );
-      if (additionalHeaders.isNotEmpty) {
-        retryHeaders.addAll(additionalHeaders);
-      }
-
-      final retryResponse = await _sendSharedRequest(
-        'GET',
-        url,
-        headers: retryHeaders,
-        cacheDuration: cacheDuration,
-        bypassCache: bypassCache,
-      );
-      if (acceptedStatusCodes.contains(retryResponse.statusCode)) {
-        return retryResponse;
-      }
-      if (retryResponse.statusCode == 401) {
-        throw const SessionExpiredException();
-      }
-      if (retryResponse.statusCode >= 500) {
-        throw ApiException(retryResponse.statusCode, retryResponse.body);
-      }
-
-      throw ApiException(retryResponse.statusCode, retryResponse.body);
-    }
-
-    throw ApiException(response.statusCode, response.body);
-  }
+  }) => authenticatedRequest(
+    'GET',
+    url,
+    additionalHeaders: additionalHeaders,
+    acceptedStatusCodes: acceptedStatusCodes,
+    cacheDuration: cacheDuration,
+    bypassCache: bypassCache,
+  );
 
   Future<http.Response> authenticatedRequest(
     String method,
@@ -212,17 +151,10 @@ class ApiClient {
     Map<String, String> additionalHeaders = const <String, String>{},
     Set<int> acceptedStatusCodes = const <int>{200},
     Duration cacheDuration = _defaultGetCacheTtl,
+    bool bypassCache = false,
   }) async {
     final normalizedMethod = method.trim().toUpperCase();
 
-    if (normalizedMethod == 'GET') {
-      return authenticatedGet(
-        url,
-        additionalHeaders: additionalHeaders,
-        acceptedStatusCodes: acceptedStatusCodes,
-        cacheDuration: cacheDuration,
-      );
-    }
     final usesBrowserSession = usesBrowserConnectSession(
       url: url,
       isWeb: kIsWeb,
@@ -242,12 +174,13 @@ class ApiClient {
       headers.addAll(additionalHeaders);
     }
 
-    final response = await _sendAuthenticatedRequest(
+    final response = await _sendSharedRequest(
       normalizedMethod,
       url,
       headers: headers,
       body: body,
       cacheDuration: cacheDuration,
+      bypassCache: bypassCache,
     );
     if (acceptedStatusCodes.contains(response.statusCode)) {
       return response;
@@ -277,12 +210,13 @@ class ApiClient {
       if (additionalHeaders.isNotEmpty) {
         retryHeaders.addAll(additionalHeaders);
       }
-      final retryResponse = await _sendAuthenticatedRequest(
+      final retryResponse = await _sendSharedRequest(
         normalizedMethod,
         url,
         headers: retryHeaders,
         body: body,
         cacheDuration: cacheDuration,
+        bypassCache: bypassCache,
       );
       if (acceptedStatusCodes.contains(retryResponse.statusCode)) {
         return retryResponse;
@@ -373,22 +307,6 @@ class ApiClient {
     return headers;
   }
 
-  Future<http.Response> _sendAuthenticatedRequest(
-    String method,
-    String url, {
-    required Map<String, String> headers,
-    required String body,
-    Duration cacheDuration = Duration.zero,
-  }) {
-    return _sendSharedRequest(
-      method,
-      url,
-      headers: headers,
-      body: body,
-      cacheDuration: cacheDuration,
-    );
-  }
-
   Future<http.Response> _sendSharedRequest(
     String method,
     String url, {
@@ -407,13 +325,19 @@ class ApiClient {
       );
     }
 
-    final isPreconnectUrl = url.contains('api.preconnect.app');
+    final isPreconnectUrl = Uri.tryParse(url)?.host == 'api.preconnect.app';
+    final revision = _cacheRevision;
     final finalHeaders = Map<String, String>.from(headers);
     String? cachedEtag;
     String? cachedBody;
 
     final usePersistentValidation =
-        isPreconnectUrl && cacheDuration > Duration.zero;
+        isPreconnectUrl &&
+        cacheDuration > Duration.zero &&
+        !headers.keys.any(
+          (key) =>
+              const {'authorization', 'x-id-token'}.contains(key.toLowerCase()),
+        );
 
     if (usePersistentValidation) {
       final etagKey = 'etag_$url';
@@ -475,7 +399,7 @@ class ApiClient {
           );
         } else if (response.statusCode == 200) {
           final etag = response.headers['etag'] ?? response.headers['ETag'];
-          if (isValidHttpEtag(etag)) {
+          if (revision == _cacheRevision && isValidHttpEtag(etag)) {
             if (response.body.length < 10 * 1024 * 1024) {
               unawaited(AppStorage.instance.setString('etag_$url', etag!));
               unawaited(
@@ -486,7 +410,9 @@ class ApiClient {
         }
       }
 
-      if (cacheDuration > Duration.zero && response.statusCode == 200) {
+      if (revision == _cacheRevision &&
+          cacheDuration > Duration.zero &&
+          response.statusCode == 200) {
         _cachedResponses[inFlightKey] = _CachedHttpResponse(
           response: response,
           expiresAt: DateTime.now().add(cacheDuration),
@@ -511,7 +437,9 @@ class ApiClient {
       }
       rethrow;
     } finally {
-      _inFlightRequests.remove(inFlightKey);
+      if (identical(_inFlightRequests[inFlightKey], request)) {
+        _inFlightRequests.remove(inFlightKey);
+      }
     }
   }
 
@@ -535,23 +463,23 @@ class ApiClient {
         : headers;
     switch (method) {
       case 'GET':
-        return HttpUtils.client
+        return _http
             .get(uri, headers: sanitizedHeaders)
             .timeout(_requestTimeout);
       case 'POST':
-        return HttpUtils.client
+        return _http
             .post(uri, headers: sanitizedHeaders, body: body)
             .timeout(_requestTimeout);
       case 'PUT':
-        return HttpUtils.client
+        return _http
             .put(uri, headers: sanitizedHeaders, body: body)
             .timeout(_requestTimeout);
       case 'PATCH':
-        return HttpUtils.client
+        return _http
             .patch(uri, headers: sanitizedHeaders, body: body)
             .timeout(_requestTimeout);
       case 'DELETE':
-        return HttpUtils.client
+        return _http
             .delete(
               uri,
               headers: sanitizedHeaders,
@@ -569,7 +497,6 @@ class ApiClient {
     required Map<String, String> headers,
     required String body,
   }) {
-    if (method == 'GET') return 'GET:$url';
     final headerKey =
         headers.entries
             .map((entry) => MapEntry(entry.key.toLowerCase(), entry.value))
@@ -607,6 +534,11 @@ class UnauthenticatedException extends PreConnectException {
 
 class SessionExpiredException extends PreConnectException {
   const SessionExpiredException() : super('Session expired');
+}
+
+class SessionRefreshException extends PreConnectException {
+  const SessionRefreshException()
+    : super('Session refresh is temporarily unavailable');
 }
 
 class ApiException extends PreConnectException {
