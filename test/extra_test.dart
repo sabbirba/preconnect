@@ -310,6 +310,10 @@ void main() {
       expect(find.text('Edit Days'), findsNothing);
       expect(find.text('Remove'), findsNothing);
       expect(find.byType(AppSelectChip), findsNothing);
+      expect(
+        find.textContaining(RegExp('clash|conflict', caseSensitive: false)),
+        findsNothing,
+      );
       await tester.tap(find.byTooltip('Remove Classes'));
       await tester.pumpAndSettle();
     },
