@@ -155,7 +155,6 @@ class _AllCoursesPageState extends State<AllCoursesPage> {
       children: [
         AppSearchField(
           controller: _searchController,
-          hintText: 'Search by course code or title',
           query: query,
           keySuffix: 'all-courses',
         ),
