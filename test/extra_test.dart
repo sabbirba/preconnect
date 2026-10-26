@@ -92,6 +92,7 @@ void main() {
       expect(saved.section.sectionSchedule.classSchedules, hasLength(2));
       expect(saved.selectedSection.sectionSchedule.midExamDate, isNull);
       expect(saved.section.sectionSchedule.midExamDate, isNull);
+      expect(saved.section.studentPortfolioId, 0);
       await store.save(ExtraClass(section: saved.section, days: {'MONDAY'}));
       expect((await store.load()).single.days, {'MONDAY'});
     },
