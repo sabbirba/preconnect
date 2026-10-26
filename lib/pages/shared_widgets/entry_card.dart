@@ -55,99 +55,95 @@ class ScheduleEntryCard extends StatelessWidget {
     final consumedLabel = consumedSeat == null ? '' : '($consumedSeat)';
     final roomLabel = (roomNumber ?? '').trim();
 
-    final content = LayoutBuilder(
-      builder: (context, constraints) {
-        return Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            SectionBadge(
-              label: formatSectionBadge(sectionName),
-              color: AppPalette.primary,
-            ),
-            const Gap(12),
-            Expanded(
-              flex: 7,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text.rich(
+    final content = Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        SectionBadge(
+          label: formatSectionBadge(sectionName),
+          color: AppPalette.primary,
+        ),
+        const Gap(12),
+        Expanded(
+          flex: 7,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text.rich(
+                TextSpan(
+                  children: [
                     TextSpan(
-                      children: [
-                        TextSpan(
-                          text: courseCode.trim(),
-                          style: const TextStyle(fontWeight: FontWeight.w600),
-                        ),
-                        if (detailLabel.isNotEmpty)
-                          TextSpan(
-                            text: ' $detailLabel',
-                            style: TextStyle(
-                              fontWeight: FontWeight.w600,
-                              color: AppPalette.textSecondary(context),
-                            ),
-                          ),
-                      ],
+                      text: courseCode.trim(),
+                      style: const TextStyle(fontWeight: FontWeight.w600),
                     ),
-                  ),
-                  const Gap(4),
-                  Text(
-                    formatTimeRange(adjusted.startTime, adjusted.endTime),
-                    style: TextStyle(
-                      color: AppPalette.textPrimary(context),
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const Gap(12),
-            Expanded(
-              flex: 4,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text(
-                    roomLabel,
-                    textAlign: TextAlign.right,
-                    style: TextStyle(
-                      color: AppPalette.textPrimary(context),
-                      fontSize: 14,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  if (facultyLabel.isNotEmpty || consumedLabel.isNotEmpty) ...[
-                    const Gap(2),
-                    Text.rich(
+                    if (detailLabel.isNotEmpty)
                       TextSpan(
-                        children: [
-                          if (facultyLabel.isNotEmpty)
-                            TextSpan(
-                              text: facultyLabel,
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w700,
-                                color: AppPalette.textPrimary(context),
-                              ),
-                            ),
-                          if (consumedLabel.isNotEmpty)
-                            TextSpan(
-                              text:
-                                  '${facultyLabel.isEmpty ? '' : ' '}$consumedLabel',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: AppPalette.textSecondary(context),
-                              ),
-                            ),
-                        ],
+                        text: ' $detailLabel',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          color: AppPalette.textSecondary(context),
+                        ),
                       ),
-                      textAlign: TextAlign.right,
-                    ),
                   ],
-                ],
+                ),
               ),
-            ),
-          ],
-        );
-      },
+              const Gap(4),
+              Text(
+                formatTimeRange(adjusted.startTime, adjusted.endTime),
+                style: TextStyle(
+                  color: AppPalette.textPrimary(context),
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+        ),
+        const Gap(12),
+        Expanded(
+          flex: 4,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                roomLabel,
+                textAlign: TextAlign.right,
+                style: TextStyle(
+                  color: AppPalette.textPrimary(context),
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              if (facultyLabel.isNotEmpty || consumedLabel.isNotEmpty) ...[
+                const Gap(2),
+                Text.rich(
+                  TextSpan(
+                    children: [
+                      if (facultyLabel.isNotEmpty)
+                        TextSpan(
+                          text: facultyLabel,
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: AppPalette.textPrimary(context),
+                          ),
+                        ),
+                      if (consumedLabel.isNotEmpty)
+                        TextSpan(
+                          text:
+                              '${facultyLabel.isEmpty ? '' : ' '}$consumedLabel',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: AppPalette.textSecondary(context),
+                          ),
+                        ),
+                    ],
+                  ),
+                  textAlign: TextAlign.right,
+                ),
+              ],
+            ],
+          ),
+        ),
+      ],
     );
 
     if (!wrapInCard) {
