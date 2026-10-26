@@ -227,6 +227,7 @@ void main() {
         final card = tester.getRect(find.byType(AppCard).first);
         expect(card.left, search.left);
         expect(card.top - search.bottom, 12);
+        expect(find.byType(Divider), findsNothing);
         await tester.tap(find.byTooltip('Help'));
         await tester.pumpAndSettle();
         await tester.scrollUntilVisible(
