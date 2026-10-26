@@ -27,11 +27,7 @@ class JsonSnapshotStore {
   static Future<void> write({
     required String key,
     required Map<String, dynamic> value,
-  }) async {
-    try {
-      await AppStorage.instance.setString(key, jsonEncode(value));
-    } catch (_) {}
-  }
+  }) => AppStorage.instance.setString(key, jsonEncode(value));
 
   static Future<List<Section>?> readSections() async {
     return read<List<Section>>(
@@ -52,17 +48,15 @@ class JsonSnapshotStore {
     List<Section> sections, {
     bool? isRamadan,
   }) async {
-    try {
-      final existing = await read<Map<String, dynamic>>(
-        key: StorageKeys.alarmsSnapshot,
-        decode: (decoded) => decoded,
-      );
-      final next = existing ?? <String, dynamic>{};
-      next['sections'] = sections.map((s) => s.toJson()).toList();
-      if (isRamadan != null) {
-        next['isRamadan'] = isRamadan;
-      }
-      await write(key: StorageKeys.alarmsSnapshot, value: next);
-    } catch (_) {}
+    final existing = await read<Map<String, dynamic>>(
+      key: StorageKeys.alarmsSnapshot,
+      decode: (decoded) => decoded,
+    );
+    final next = existing ?? <String, dynamic>{};
+    next['sections'] = sections.map((s) => s.toJson()).toList();
+    if (isRamadan != null) {
+      next['isRamadan'] = isRamadan;
+    }
+    await write(key: StorageKeys.alarmsSnapshot, value: next);
   }
 }
