@@ -199,7 +199,7 @@ GEM
     prism (2.0.0)
     prism (2.0.0-arm64-darwin)
     prism (2.0.0-x86_64-linux-gnu)
-    pstore (0.2.1)
+    pstore (0.3.0)
     public_suffix (7.0.5)
     rake (13.4.2)
     rbs (4.2.0)
