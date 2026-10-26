@@ -61,6 +61,7 @@ void main() {
       final pending = registration.get();
       events.addError(StateError('registration failed'));
       await expectLater(pending, throwsStateError);
+      expect(events.hasListener, isFalse);
       await events.close();
     },
   );
