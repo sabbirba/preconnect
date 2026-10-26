@@ -436,3 +436,67 @@ InputDecoration appInputDecoration(
     counterText: counterText,
   );
 }
+
+Widget buildInstructionStep(
+  BuildContext context, {
+  required String stepNumber,
+  required String title,
+  String? body,
+  Widget? bodyWidget,
+  bool compact = false,
+}) {
+  final textPrimary = AppPalette.textPrimary(context);
+  final textSecondary = AppPalette.textSecondary(context);
+  return Row(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Padding(
+        padding: const EdgeInsets.only(top: 2),
+        child: Container(
+          width: 20,
+          height: 20,
+          decoration: BoxDecoration(
+            color: AppPalette.primary.withValues(alpha: 0.12),
+            shape: BoxShape.circle,
+          ),
+          alignment: Alignment.center,
+          child: Text(
+            stepNumber,
+            style: const TextStyle(
+              color: AppPalette.primary,
+              fontSize: 10,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ),
+      ),
+      const Gap(12),
+      Expanded(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              title,
+              style: TextStyle(
+                color: textPrimary,
+                fontSize: compact ? 13 : 14,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            Gap(compact ? 4 : 2),
+            bodyWidget ??
+                Text(
+                  body ?? '',
+                  style: TextStyle(
+                    color: textSecondary,
+                    fontSize: compact ? 11 : 12,
+                    height: 1.4,
+                    fontWeight: compact ? null : FontWeight.w500,
+                  ),
+                ),
+          ],
+        ),
+      ),
+    ],
+  );
+}
