@@ -2,7 +2,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
-import 'package:flutter_cache_manager/flutter_cache_manager.dart';
+import 'package:preconnect/tools/image_cache.dart';
 import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/api/notification.dart';
 import 'package:preconnect/pages/ui_kit.dart';
@@ -161,7 +161,7 @@ void _prewarmImages(List<String> urls) {
   for (final url in urls) {
     if (url.trim().isNotEmpty) {
       unawaited(
-        DefaultCacheManager()
+        AppImageCache.instance
             .getSingleFile(url.trim())
             .then((_) {}, onError: (_) {}),
       );
