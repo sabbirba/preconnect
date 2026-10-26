@@ -7,6 +7,9 @@ import 'package:gap/gap.dart';
 import 'package:preconnect/tools/calendar_event.dart';
 import 'package:intl/intl.dart';
 import 'package:preconnect/api/exam_map.dart';
+import 'package:preconnect/api/extra_classes.dart';
+import 'package:preconnect/model/extra_class.dart';
+import 'package:preconnect/tools/exam_visibility.dart';
 import 'package:preconnect/api/schedule.dart';
 import 'package:preconnect/api/custom_schedules.dart';
 import 'package:preconnect/model/section_info.dart';
@@ -59,6 +62,29 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
   List<Section>? _courseOptionsForSections;
   List<CustomSchedulesCourseOption>? _courseOptionsCache;
 
+  List<ExtraClass> _extras = [];
+  int? _extraSemesterId;
+  String? _extraError;
+
+  Future<void> _loadExtras() async {
+    try {
+      final extras = await ExtraClassesStore().load();
+      final semesterId = await resolveCurrentSessionSemesterId();
+      if (!mounted) return;
+      setState(() {
+        _extras = extras;
+        _extraSemesterId = semesterId;
+        _extraError = null;
+      });
+    } catch (_) {
+      if (mounted) {
+        setState(
+          () => _extraError = 'Could not load extra classes. Refresh to retry.',
+        );
+      }
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -72,6 +98,7 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
     cache.addListener(_onCacheUpdated);
     bindRefreshBus(_onRefreshSignal);
     unawaited(_warmAndBind());
+    unawaited(_loadExtras());
   }
 
   @override
@@ -94,12 +121,9 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
   }
 
   void _onRefreshSignal() {
-    if (!mounted) return;
-    if (isRefreshingFrom('alarms')) {
-      return;
-    }
-    if (isRefreshingFrom('cache_cleared')) {
-      unawaited(_handleRefresh(notify: false));
+    if (!mounted || isRefreshingFrom('alarms')) return;
+    if (isRefreshingFrom('extra_classes')) {
+      unawaited(_loadExtras());
       return;
     }
     unawaited(_handleRefresh(notify: false));
@@ -317,7 +341,11 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
     for (final exam in exams) {
       final startTime = exam.dateTime;
       final endTime = exam.endDateTime ?? startTime;
-      if (!endTime.isBefore(now)) {
+      if (ExamVisibility.isWithinReminderWindow(
+        startTime,
+        end: endTime,
+        now: now,
+      )) {
         final effectiveTime = startTime.isAfter(now) ? startTime : now;
         if (nextExamTime == null || effectiveTime.isBefore(nextExamTime)) {
           nextExamTime = effectiveTime;
@@ -330,6 +358,8 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
   }
 
   Future<void> _handleRefresh({bool notify = true}) async {
+    await _loadExtras();
+    if (!mounted) return;
     if (!await ensureOnline(context, notify: notify)) {
       return;
     }
@@ -351,8 +381,9 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
     List<String> days,
     String startTime,
     String courseCode,
-    int minutesBefore,
-  ) async {
+    int minutesBefore, {
+    required String alarmKey,
+  }) async {
     if (kIsWeb) {
       if (!context.mounted) return;
       showAppSnackBar(context, 'Alarm setup is not available on web.');
@@ -404,7 +435,7 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
         if (addedAny) {
           if (!context.mounted) return;
           showAppSnackBar(context, 'Reminders added to Apple Reminders.');
-          await AppStorage.instance.setBool('alarm_done_$courseCode', true);
+          await AppStorage.instance.setBool('alarm_done_$alarmKey', true);
           if (mounted) setState(() {});
           RefreshBus.instance.notify(reason: 'alarms');
         } else {
@@ -448,7 +479,7 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
       }
       if (!context.mounted) return;
       showAppSnackBar(context, 'Alarm opened in Clock app.');
-      await AppStorage.instance.setBool('alarm_done_$courseCode', true);
+      await AppStorage.instance.setBool('alarm_done_$alarmKey', true);
       if (mounted) setState(() {});
       RefreshBus.instance.notify(reason: 'alarms');
     } catch (_) {
@@ -773,11 +804,52 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
               data == null) {
             return buildRefreshLoadingState(onRefresh: _handleRefresh);
           }
-          final sections = data?.sections ?? const <Section>[];
+          final official = data?.sections ?? const <Section>[];
+          final officialIds = official
+              .map((section) => section.sectionId)
+              .toSet();
+          final semesterId =
+              _extraSemesterId ?? official.firstOrNull?.semesterSessionId;
+          final sections = [...official];
+          final selectedExtras = _extras
+              .where(
+                (extra) =>
+                    extra.section.semesterSessionId == semesterId &&
+                    !officialIds.contains(extra.section.sectionId),
+              )
+              .map((extra) => extra.selectedSection)
+              .toList();
+          for (final selected in selectedExtras) {
+            final groups = <(Object, Object), List<ClassSchedule>>{};
+            for (final meeting in selected.sectionSchedule.classSchedules) {
+              groups
+                  .putIfAbsent((
+                    AppTime.parseTime(meeting.startTime) ?? meeting.startTime,
+                    AppTime.parseTime(meeting.endTime) ?? meeting.endTime,
+                  ), () => [])
+                  .add(meeting);
+            }
+            for (final meetings in groups.values) {
+              sections.add(
+                Section.fromJson({
+                  ...selected.toJson(),
+                  'sectionSchedule': {
+                    ...selected.sectionSchedule.toJson(),
+                    'classSchedules': meetings
+                        .map((meeting) => meeting.toJson())
+                        .toList(),
+                  },
+                }),
+              );
+            }
+          }
           final exams = data?.examEntries ?? const <_ExamAlarmEntry>[];
           final custom = data?.customSchedules ?? const <CustomSchedule>[];
           final isRamadan = data?.isRamadan ?? false;
-          final courseOptions = _courseOptionsFor(sections);
+          final courseOptions = _courseOptionsFor([
+            ...official,
+            ...selectedExtras,
+          ]);
           final advisingInfo = data?.advisingInfo;
           final advisingActive = _isAdvisingActive(advisingInfo);
 
@@ -806,7 +878,9 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
           final filteredSections = sections.where((section) {
             final isDone = CourseSectionExamFilter.isFinishedAfterFinalExam(
               section: section,
-              overrides: data?.examOverrides ?? const {},
+              overrides: officialIds.contains(section.sectionId)
+                  ? data?.examOverrides ?? const {}
+                  : const {},
             );
             return _showDoneAlarms ? isDone : !isDone;
           }).toList();
@@ -815,6 +889,12 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
               filteredCustom.isEmpty &&
               filteredSections.isEmpty &&
               filteredExams.isEmpty) {
+            if (_extraError != null) {
+              return buildRefreshErrorState(
+                onRefresh: _handleRefresh,
+                error: _extraError,
+              );
+            }
             if (!_showDoneAlarms &&
                 sections.isEmpty &&
                 exams.isEmpty &&
@@ -1582,8 +1662,12 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
             if (schedules.isEmpty) return const SizedBox.shrink();
 
             final courseCode = section.courseCode;
-            _minutesBefore.putIfAbsent(courseCode, () => 5);
             final schedule = schedules.first;
+            final isExtra = !officialIds.contains(section.sectionId);
+            final alarmKey = isExtra
+                ? 'extra_${section.semesterSessionId}_${section.sectionId}_${schedule.startTime}_${schedule.endTime}'
+                : courseCode;
+            _minutesBefore.putIfAbsent(alarmKey, () => 5);
 
             return Padding(
               padding: const EdgeInsets.only(bottom: 12),
@@ -1599,7 +1683,7 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
                       roomNumber: section.roomNumber,
                       faculties: section.faculties,
                       consumedSeat: section.consumedSeat,
-                      courseType: section.courseType,
+                      courseType: isExtra ? 'Extra' : section.courseType,
                       wrapInCard: false,
                     ),
                     const Gap(12),
@@ -1653,9 +1737,9 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
                           InkWell(
                             onTap: () {
                               setState(() {
-                                if (_minutesBefore[courseCode]! > 5) {
-                                  _minutesBefore[courseCode] =
-                                      _minutesBefore[courseCode]! - 5;
+                                if (_minutesBefore[alarmKey]! > 5) {
+                                  _minutesBefore[alarmKey] =
+                                      _minutesBefore[alarmKey]! - 5;
                                 }
                               });
                             },
@@ -1678,7 +1762,7 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
                           Expanded(
                             child: Center(
                               child: Text(
-                                '${_minutesBefore[courseCode]} min before',
+                                '${_minutesBefore[alarmKey]} min before',
                                 style: TextStyle(
                                   fontWeight: FontWeight.w600,
                                   color: AppPalette.textPrimary(context),
@@ -1689,8 +1773,8 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
                           InkWell(
                             onTap: () {
                               setState(() {
-                                _minutesBefore[courseCode] =
-                                    _minutesBefore[courseCode]! + 5;
+                                _minutesBefore[alarmKey] =
+                                    _minutesBefore[alarmKey]! + 5;
                               });
                             },
                             borderRadius: BorderRadius.circular(10),
@@ -1716,7 +1800,7 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
                     (() {
                       final isDone =
                           AppStorage.instance.getBoolSync(
-                            'alarm_done_$courseCode',
+                            'alarm_done_$alarmKey',
                           ) ==
                           true;
                       return SizedBox(
@@ -1735,7 +1819,7 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
                                     confirmColor: AppPalette.danger,
                                     onConfirm: () async {
                                       await AppStorage.instance.remove(
-                                        'alarm_done_$courseCode',
+                                        'alarm_done_$alarmKey',
                                       );
                                     },
                                   );
@@ -1760,8 +1844,11 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
                                   context,
                                   days,
                                   startTime,
-                                  courseCode,
-                                  _minutesBefore[courseCode]!,
+                                  isExtra
+                                      ? '$courseCode Section ${section.sectionName}'
+                                      : courseCode,
+                                  _minutesBefore[alarmKey]!,
+                                  alarmKey: alarmKey,
                                 );
                               }
                             }
@@ -1798,7 +1885,14 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
           return AppRefreshList(
             onRefresh: _handleRefresh,
             controller: _scrollController,
-            children: children,
+            children: [
+              if (_extraError != null)
+                Text(
+                  _extraError!,
+                  style: const TextStyle(color: AppPalette.danger),
+                ),
+              ...children,
+            ],
           );
         },
       ),
