@@ -1,8 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
-import 'package:flutter/foundation.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:preconnect/tools/token_storage.dart';
 import 'package:http/http.dart' as http;
 import 'libsync_config.dart';
 import 'client_creator.dart';
@@ -11,12 +10,10 @@ import 'package:preconnect/api/preferences_store.dart';
 import 'error_reporter.dart';
 
 class LibSyncApiClient extends http.BaseClient {
-  LibSyncApiClient() : _inner = createLibSyncClient();
+  LibSyncApiClient({http.Client? client})
+    : _inner = client ?? createLibSyncClient();
 
   final http.Client _inner;
-  static const _secureStorage = FlutterSecureStorage(
-    mOptions: MacOsOptions(usesDataProtectionKeychain: kReleaseMode),
-  );
   static const String _cookiesStorageKey = 'libsync_cookies';
   static const String _googleRefreshTokenKey = 'libsync_google_refresh_token';
   static const String _profileStorageKey = 'libsync_profile';
@@ -41,11 +38,12 @@ class LibSyncApiClient extends http.BaseClient {
         for (final entry in headers.entries) {
           final val = entry.value;
           if (val is Map) {
-            _headersCache[entry.key] = val.map(
-              (hk, hv) => MapEntry(hk.toString(), hv.toString()),
+            _headersCache[entry.key] = _cacheHeaders(
+              val.map((hk, hv) => MapEntry(hk.toString(), hv.toString())),
             );
           }
         }
+        await store.setJson(_headersCacheKey, _headersCache);
       }
     } catch (error, stackTrace) {
       reportLibSyncError('Initializing the LibSync cache', error, stackTrace);
@@ -84,18 +82,17 @@ class LibSyncApiClient extends http.BaseClient {
     if (response.statusCode == 401 || response.statusCode == 403) {
       final refreshed = await _attemptTokenRefresh();
       if (refreshed) {
+        await response.stream.drain<void>();
         final newRequest = _cloneRequest(request);
         final newCookies = await getStoredCookies();
         if (newCookies.isNotEmpty) {
           newRequest.headers['Cookie'] = _buildCookieHeaderString(newCookies);
           final csrf = newCookies['csrftoken'];
-          if (csrf != null && !newRequest.headers.containsKey('X-CSRFToken')) {
+          if (csrf != null) {
             newRequest.headers['X-CSRFToken'] = csrf;
           }
           final access = newCookies['access'];
-          if (access != null &&
-              access.isNotEmpty &&
-              !newRequest.headers.containsKey('Authorization')) {
+          if (access != null && access.isNotEmpty) {
             newRequest.headers['Authorization'] = 'Bearer $access';
           }
         }
@@ -173,7 +170,7 @@ class LibSyncApiClient extends http.BaseClient {
     if (isGet && response.statusCode == 200) {
       final bytes = await response.stream.toBytes();
       _bodyCache[urlKey] = utf8.decode(bytes);
-      _headersCache[urlKey] = response.headers;
+      _headersCache[urlKey] = _cacheHeaders(response.headers);
       final store = AppPreferencesStore();
       await store.setJson(_bodyCacheKey, _bodyCache);
       await store.setJson(_headersCacheKey, _headersCache);
@@ -192,46 +189,22 @@ class LibSyncApiClient extends http.BaseClient {
     return response;
   }
 
-  Future<void> _safeWrite(String key, String value) async {
-    final store = AppPreferencesStore();
-    await store.setString(key, value);
-    if (kIsWeb) return;
-    try {
-      await _secureStorage.write(key: key, value: value);
-    } catch (error, stackTrace) {
-      reportLibSyncError('Writing LibSync secure storage', error, stackTrace);
-    }
-  }
+  Map<String, String> _cacheHeaders(Map<String, String> headers) =>
+      Map<String, String>.from(headers)..removeWhere(
+        (key, _) => const {
+          'set-cookie',
+          'cookie',
+          'authorization',
+        }.contains(key.toLowerCase()),
+      );
 
-  Future<String?> _safeRead(String key) async {
-    final store = AppPreferencesStore();
-    final localVal = await store.getString(key);
-    if (localVal != null && localVal.isNotEmpty) {
-      return localVal;
-    }
-    if (kIsWeb) return null;
-    try {
-      return await _secureStorage.read(key: key);
-    } catch (_) {
-      return null;
-    }
-  }
+  Future<void> _safeWrite(String key, String value) =>
+      TokenStorage.instance.write(key: key, value: value);
 
-  Future<void> _safeDelete(String key) async {
-    if (!kIsWeb) {
-      try {
-        await _secureStorage.delete(key: key);
-      } catch (error, stackTrace) {
-        reportLibSyncError(
-          'Deleting LibSync secure storage',
-          error,
-          stackTrace,
-        );
-      }
-    }
-    final store = AppPreferencesStore();
-    await store.remove(key);
-  }
+  Future<String?> _safeRead(String key) => TokenStorage.instance.read(key: key);
+
+  Future<void> _safeDelete(String key) =>
+      TokenStorage.instance.write(key: key, value: null);
 
   Future<void> storeGoogleRefreshToken(String token) async {
     await _safeWrite(_googleRefreshTokenKey, token);
@@ -269,7 +242,7 @@ class LibSyncApiClient extends http.BaseClient {
         return decoded.cast<String, dynamic>();
       }
       return null;
-    } catch (_) {
+    } on FormatException {
       return null;
     }
   }
@@ -285,7 +258,7 @@ class LibSyncApiClient extends http.BaseClient {
         );
       }
       return {};
-    } catch (_) {
+    } on FormatException {
       return {};
     }
   }
