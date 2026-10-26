@@ -54,6 +54,7 @@ void main() {
     await tester.pumpWidget(const MaterialApp(home: ExamSchedule()));
     await tester.pumpAndSettle();
     expect(find.text('Midterm'), findsNWidgets(2));
+    expect(tester.widget<Text>(find.text('Midterm').first).style?.fontSize, 12);
     expect(find.byType(ExamCard), findsNWidgets(4));
     await tester.pumpWidget(const SizedBox.shrink());
   });
