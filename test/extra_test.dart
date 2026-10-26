@@ -85,6 +85,10 @@ void main() {
       await AppStorage.initialize(cacheDirectory: directory);
       final saved = (await store.load()).single;
       expect(saved.days, {'SUNDAY'});
+      expect(
+        saved.selectedSection.sectionSchedule.classSchedules.single.day,
+        'SUNDAY',
+      );
       await store.save(ExtraClass(section: saved.section, days: {'MONDAY'}));
       expect((await store.load()).single.days, {'MONDAY'});
     },
