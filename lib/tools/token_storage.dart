@@ -33,9 +33,9 @@ class TokenPersistenceException implements Exception {
 }
 
 class TokenStorage {
-  TokenStorage._();
+  TokenStorage();
 
-  static final TokenStorage instance = TokenStorage._();
+  static final TokenStorage instance = TokenStorage();
   static const String _cachedHasSessionKey =
       PreConnectStorageKeys.cachedHasAuthSession;
 
@@ -44,6 +44,12 @@ class TokenStorage {
     PreConnectStorageKeys.refreshToken,
     PreConnectStorageKeys.idToken,
     'wifi_captive_password',
+    'wifi_captive_session_token',
+    'wifi_captive_psession_id',
+    'libsync_cookies',
+    'libsync_google_refresh_token',
+    'libsync_profile',
+    PreConnectStorageKeys.pkceVerifier,
   };
 
   static const _secureStorage = FlutterSecureStorage(
@@ -197,8 +203,9 @@ class TokenStorage {
       if (value == null || value.isEmpty) return null;
       return value;
     } catch (e) {
-      unawaited(AppLog.write('SecureStorage Read Error ($key): $e'));
-      return null;
+      throw TokenPersistenceException(
+        'Failed to read secure storage for "$key" (${e.runtimeType}).',
+      );
     }
   }
 
@@ -210,14 +217,14 @@ class TokenStorage {
         await _secureStorage.write(key: key, value: value);
       }
     } catch (e) {
-      unawaited(AppLog.write('SecureStorage Write Error ($key): $e'));
+      throw TokenPersistenceException(
+        'Failed to persist secure storage for "$key" (${e.runtimeType}).',
+      );
     }
   }
 
   Future<void> _removeLegacyValue(String key) async {
-    try {
-      await AppStorage.instance.remove(key);
-    } catch (_) {}
+    await AppStorage.instance.remove(key);
   }
 }
 
