@@ -79,5 +79,21 @@ void main() {
     );
   });
 
+  test('secure read and delete failures are surfaced', () async {
+    final storage = TokenStorage();
+    await storage.write(key: 'access_token', value: 'synthetic_access');
+    failedMethod = 'read';
+    await expectLater(
+      storage.read(key: 'access_token'),
+      throwsA(isA<TokenPersistenceException>()),
+    );
+    failedMethod = 'delete';
+    await expectLater(
+      storage.deleteAll(),
+      throwsA(isA<TokenPersistenceException>()),
+    );
+    expect(secureValues['access_token'], 'synthetic_access');
+  });
+
 
 }
