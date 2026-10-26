@@ -305,7 +305,6 @@ class _FreeLabsPageState extends State<FreeLabsPage> {
                   padding: const EdgeInsets.fromLTRB(20, 8, 20, 10),
                   child: AppSearchField(
                     controller: _searchController,
-                    hintText: 'Search rooms or programs...',
                     query: _searchQuery,
                     keySuffix: 'free-labs',
                   ),
@@ -423,7 +422,6 @@ class _FreeLabsPageState extends State<FreeLabsPage> {
                 padding: const EdgeInsets.fromLTRB(20, 8, 20, 10),
                 child: AppSearchField(
                   controller: _searchController,
-                  hintText: 'Search rooms or programs...',
                   query: _searchQuery,
                   keySuffix: 'free-labs',
                 ),
