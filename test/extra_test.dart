@@ -255,6 +255,10 @@ void main() {
         await tester.tap(find.byIcon(Icons.close_rounded));
         await tester.pumpAndSettle();
 
+        expect(
+          find.textContaining('Sunday · Monday', findRichText: true),
+          matching ? findsNWidgets(2) : findsNothing,
+        );
         await tester.tap(find.byTooltip('Add Classes').first);
         await tester.pumpAndSettle();
       },
