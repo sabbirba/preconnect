@@ -62,7 +62,7 @@ GEM
       net-http (~> 0.5)
     faraday-retry (2.4.0)
       faraday (~> 2.0)
-    fastimage (2.4.1)
+    fastimage (2.4.3)
     fastlane (2.241.1)
       CFPropertyList (>= 2.3, < 5.0.0)
       abbrev (~> 0.1)
