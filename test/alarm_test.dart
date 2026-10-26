@@ -184,6 +184,7 @@ void main() {
             .where((card) => card.courseType == 'Extra'),
         isEmpty,
       );
+      expect(find.byType(ScheduleEntryCard), findsOneWidget);
       await tester.pumpWidget(const SizedBox.shrink());
     },
   );
