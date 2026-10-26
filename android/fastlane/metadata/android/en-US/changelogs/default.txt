@@ -1,1 +1,2 @@
 Add or remove extra classes in one tap.
+Combine matching times with joined weekdays.
