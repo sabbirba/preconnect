@@ -42,6 +42,7 @@ void main() {
       expect(events.hasListener, isFalse);
       fail = false;
       expect(await registration.get(), 'new_example_fid');
+      expect(events.hasListener, isFalse);
       await events.close();
     },
   );
