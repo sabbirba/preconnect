@@ -108,5 +108,28 @@ void main() {
     expect(requests, 2);
   });
 
+  test(
+    'temporary refresh failures keep the session distinct from revocation',
+    () async {
+      for (final status in [
+        TokenRefreshStatus.retryableFailure,
+        TokenRefreshStatus.invalidSession,
+      ]) {
+        final client = ApiClient.testing(
+          MockClient((_) async => http.Response('unauthorized', 401)),
+          refresh: () async => status,
+        );
+        await expectLater(
+          client.authenticatedGet('https://example.test/data'),
+          throwsA(
+            status == TokenRefreshStatus.invalidSession
+                ? isA<SessionExpiredException>()
+                : isA<SessionRefreshException>(),
+          ),
+        );
+      }
+    },
+  );
+
 
 }
