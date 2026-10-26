@@ -135,6 +135,7 @@ void main() {
           .widgetList<ScheduleEntryCard>(find.byType(ScheduleEntryCard))
           .toList();
       expect(cards, hasLength(3));
+      expect(cards.where((card) => card.sectionName == '01'), hasLength(1));
       final extra = find.ancestor(
         of: find.byWidgetPredicate(
           (widget) =>
