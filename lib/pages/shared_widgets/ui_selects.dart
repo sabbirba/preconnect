@@ -258,7 +258,7 @@ class AppSearchField extends StatelessWidget {
   const AppSearchField({
     super.key,
     required this.controller,
-    required this.hintText,
+    this.hintText = 'Search',
     this.query = '',
     this.onClear,
     this.autofocus = false,
