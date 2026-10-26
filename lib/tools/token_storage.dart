@@ -790,6 +790,9 @@ class ProfileImageCache {
   final CacheManager _cacheManager = CacheManager(
     Config(
       _cacheKey,
+      repo: kIsWeb
+          ? NonStoringObjectProvider()
+          : JsonCacheInfoRepository(databaseName: _cacheKey),
       stalePeriod: const Duration(days: 90),
       maxNrOfCacheObjects: 50,
     ),
