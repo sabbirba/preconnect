@@ -343,6 +343,7 @@ void main() {
     expect(find.text('Could not load sections.'), findsOneWidget);
     await tester.tap(find.byTooltip('Remove Classes'));
     await tester.pumpAndSettle();
+    expect(memoryStore.items, isEmpty);
   });
 
   testWidgets('exam cards reuse the existing green accent in both themes', (
