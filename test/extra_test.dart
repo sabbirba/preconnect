@@ -235,6 +235,7 @@ void main() {
         await tester.tap(find.byTooltip('Help'));
         await tester.pumpAndSettle();
         expect(find.text('Extra Classes Help'), findsOneWidget);
+        expect(find.text('Overlapping Classes'), findsOneWidget);
         await tester.scrollUntilVisible(
           find.text('Local Routine'),
           180,
