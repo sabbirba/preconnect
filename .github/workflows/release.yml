@@ -784,7 +784,7 @@ jobs:
           defaults write com.apple.dt.Xcode-CLT IDEBuildOperationMaxNumberOfConcurrentCompileJobs 4
 
       - name: Set Up Ruby
-        uses: ruby/setup-ruby@v1.334.0
+        uses: ruby/setup-ruby@v1.335.0
         with:
           ruby-version: "3.3"
           bundler-cache: true
