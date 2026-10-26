@@ -21,6 +21,7 @@ void main() {
         'example_fid',
       ]);
       expect(calls, 1);
+      expect(events.hasListener, isFalse);
       await events.close();
     },
   );
