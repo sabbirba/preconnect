@@ -149,5 +149,23 @@ void main() {
     },
   );
 
-
+  test('native image cache persists file metadata as JSON', () async {
+    const channel = MethodChannel('plugins.flutter.io/path_provider');
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(channel, (_) async => directory.path);
+    addTearDown(() {
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(channel, null);
+    });
+    final cache = AppImageCache.instance;
+    await cache.putFile(
+      'https://example.test/image.png',
+      Uint8List.fromList([1, 2, 3]),
+      fileExtension: 'png',
+    );
+    await cache.dispose();
+    final metadata = File('${directory.path}/libCachedImageData.json');
+    final entries = jsonDecode(await metadata.readAsString()) as List;
+    expect(entries.single['url'], 'https://example.test/image.png');
+  });
 }
