@@ -8,6 +8,7 @@ Entries are written for students, not developers — plain language, no commit h
 ## [2.1.2] — 2026-10-26
 
 - Add or remove extra sections from a personal routine in one tap without changing Connect enrolment.
+- Combine matching class times with joined weekdays and make schedule cards, spacing, and actions more consistent.
 
 ## [2.1.1] — 2026-10-07
 
