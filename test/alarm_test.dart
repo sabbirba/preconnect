@@ -185,6 +185,7 @@ void main() {
         isEmpty,
       );
       expect(find.byType(ScheduleEntryCard), findsOneWidget);
+      expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox.shrink());
     },
   );
