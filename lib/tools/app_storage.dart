@@ -19,8 +19,12 @@ class AppStorage {
   static final Map<String, String> _webCache = {};
   static final Map<String, String> _memCache = {};
   static Directory? _cacheDir;
+  static Future<void> _pending = Future<void>.value();
 
-  static Future<void> initialize() async {
+  static Future<void> initialize({Directory? cacheDirectory}) async {
+    await _pending;
+    _memCache.clear();
+    _webCache.clear();
     if (kIsWeb) {
       try {
         final all = await webExtensionStorageGetAll();
@@ -30,7 +34,11 @@ class AppStorage {
     }
     try {
       _prefs = await SharedPreferences.getInstance();
-      await _initCacheDir();
+      if (cacheDirectory != null) {
+        _cacheDir = cacheDirectory;
+      } else {
+        await _initCacheDir();
+      }
       await _migrateLargeEntries();
     } catch (_) {}
   }
@@ -58,8 +66,7 @@ class AppStorage {
           final val = prefs.getString(key);
           if (val == null || val.startsWith(_kFileCacheMarker)) continue;
           if (val.length > _kLargeValueThreshold) {
-            await _writeToFile(key, val);
-            await prefs.setString(key, '$_kFileCacheMarker$key');
+            await instance.setString(key, val);
           }
         } catch (_) {}
       }
@@ -79,34 +86,35 @@ class AppStorage {
   }
 
   static Future<void> _writeToFile(String key, String value) async {
-    try {
-      if (_cacheDir == null || !_cacheDir!.existsSync()) {
-        await _initCacheDir();
-      }
-      final file = _fileForKey(key);
-      if (file == null) return;
-      final bytes = utf8.encode(value);
-      final compressed = gzip.encode(bytes);
-      await file.writeAsBytes(compressed, flush: true);
-    } catch (e) {
-      unawaited(AppLog.write('AppStorage Write Error ($key): $e'));
+    if (_cacheDir == null || !_cacheDir!.existsSync()) {
+      await _initCacheDir();
     }
+    final file = _fileForKey(key);
+    if (file == null) throw StateError('Cache directory is unavailable.');
+    final staging = await file.parent.createTemp('.cache_');
+    try {
+      final temporary = File('${staging.path}/value');
+      await temporary.writeAsBytes(
+        gzip.encode(utf8.encode(value)),
+        flush: true,
+      );
+      await temporary.rename(file.path);
+    } finally {
+      await staging.delete(recursive: true);
+    }
+  }
+
+  static String _decodeFileBytes(List<int> bytes) {
+    final compressed =
+        bytes.length >= 2 && bytes[0] == 0x1f && bytes[1] == 0x8b;
+    return utf8.decode(compressed ? gzip.decode(bytes) : bytes);
   }
 
   static Future<String?> _readFromFile(String key) async {
     try {
       final file = _fileForKey(key);
       if (file == null || !file.existsSync()) return null;
-      final bytes = await file.readAsBytes();
-      if (bytes.length >= 2 && bytes[0] == 0x1f && bytes[1] == 0x8b) {
-        try {
-          final decompressed = gzip.decode(bytes);
-          return utf8.decode(decompressed);
-        } catch (_) {
-          return null;
-        }
-      }
-      return utf8.decode(bytes);
+      return _decodeFileBytes(await file.readAsBytes());
     } catch (e) {
       unawaited(AppLog.write('AppStorage Read Error ($key): $e'));
       return null;
@@ -117,28 +125,15 @@ class AppStorage {
     try {
       final file = _fileForKey(key);
       if (file == null || !file.existsSync()) return null;
-      final bytes = file.readAsBytesSync();
-      if (bytes.length >= 2 && bytes[0] == 0x1f && bytes[1] == 0x8b) {
-        try {
-          final decompressed = gzip.decode(bytes);
-          return utf8.decode(decompressed);
-        } catch (_) {
-          return null;
-        }
-      }
-      return utf8.decode(bytes);
+      return _decodeFileBytes(file.readAsBytesSync());
     } catch (_) {
       return null;
     }
   }
 
   static Future<void> _deleteFile(String key) async {
-    try {
-      final file = _fileForKey(key);
-      if (file != null && file.existsSync()) {
-        await file.delete();
-      }
-    } catch (_) {}
+    final file = _fileForKey(key);
+    if (file != null && file.existsSync()) await file.delete();
   }
 
   Future<String?> getString(String key) async {
@@ -156,30 +151,48 @@ class AppStorage {
     return raw;
   }
 
-  Future<void> setString(String key, String value) async {
-    _memCache[key] = value;
-    if (kIsWeb) {
-      _webCache[key] = value;
+  static Future<void> _persist(Future<void> Function() operation) {
+    final result = _pending.then((_) async {
       try {
-        await webExtensionStorageSet(key, value);
-      } catch (e) {
-        unawaited(AppLog.write('AppStorage setString Error ($key): $e'));
+        await operation();
+      } catch (_) {
+        await _prefs?.reload();
+        rethrow;
       }
-      return;
-    }
+    });
+    _pending = result.then(
+      (_) {},
+      onError: (Object error, StackTrace stack) {},
+    );
+    return result;
+  }
+
+  Future<void> setString(String key, String value) => _persist(() async {
     try {
-      final prefs = await _getInstance();
-      if (value.length > _kLargeValueThreshold) {
-        await _writeToFile(key, value);
-        await prefs.setString(key, '$_kFileCacheMarker$key');
+      if (kIsWeb) {
+        await webExtensionStorageSet(key, value);
+        _webCache[key] = value;
       } else {
-        await _deleteFile(key);
-        await prefs.setString(key, value);
+        final prefs = await _getInstance();
+        if (value.length > _kLargeValueThreshold) {
+          await _writeToFile(key, value);
+          if (prefs.getString(key) != '$_kFileCacheMarker$key' &&
+              !await prefs.setString(key, '$_kFileCacheMarker$key')) {
+            throw StateError('Cache marker could not be persisted.');
+          }
+        } else {
+          if (!await prefs.setString(key, value)) {
+            throw StateError('Setting could not be persisted.');
+          }
+          await _deleteFile(key);
+        }
       }
+      _memCache[key] = value;
     } catch (e) {
       unawaited(AppLog.write('AppStorage setString Error ($key): $e'));
+      rethrow;
     }
-  }
+  });
 
   Future<bool?> getBool(String key) async {
     final raw = await getString(key);
@@ -227,56 +240,49 @@ class AppStorage {
     }
   }
 
-  Future<void> remove(String key) async {
-    _memCache.remove(key);
-    if (kIsWeb) {
-      _webCache.remove(key);
-      try {
+  Future<void> remove(String key) => _persist(() async {
+    try {
+      if (kIsWeb) {
         await webExtensionStorageSet(key, null);
-      } catch (e) {
-        unawaited(AppLog.write('AppStorage remove Error ($key): $e'));
-      }
-      return;
-    }
-    try {
-      final prefs = await _getInstance();
-      await _deleteFile(key);
-      await prefs.remove(key);
-    } catch (e) {
-      unawaited(AppLog.write('AppStorage remove Error ($key): $e'));
-    }
-  }
-
-  Future<void> clear() async {
-    _memCache.clear();
-    if (kIsWeb) {
-      final keys = _webCache.keys.toList();
-      _webCache.clear();
-      try {
-        await webExtensionStorageRemoveKeys(keys);
-      } catch (e) {
-        unawaited(AppLog.write('AppStorage clear Error: $e'));
-      }
-      return;
-    }
-    try {
-      final prefs = await _getInstance();
-      final keys = prefs.getKeys().toList();
-      for (final key in keys) {
+        _webCache.remove(key);
+      } else {
+        final prefs = await _getInstance();
+        if (!await prefs.remove(key)) {
+          throw StateError('Setting could not be removed.');
+        }
         await _deleteFile(key);
       }
-      await prefs.clear();
-      final cacheDir = _cacheDir;
-      if (cacheDir != null && cacheDir.existsSync()) {
-        for (final entity in cacheDir.listSync()) {
-          entity.deleteSync(recursive: true);
+      _memCache.remove(key);
+    } catch (e) {
+      unawaited(AppLog.write('AppStorage remove Error ($key): $e'));
+      rethrow;
+    }
+  });
+
+  Future<void> clear() => _persist(() async {
+    try {
+      if (kIsWeb) {
+        await webExtensionStorageRemoveKeys(_webCache.keys.toList());
+        _webCache.clear();
+      } else {
+        final prefs = await _getInstance();
+        if (!await prefs.clear()) {
+          throw StateError('Settings could not be cleared.');
+        }
+        _memCache.clear();
+        final cacheDir = _cacheDir;
+        if (cacheDir != null && cacheDir.existsSync()) {
+          for (final entity in cacheDir.listSync()) {
+            await entity.delete(recursive: true);
+          }
         }
       }
-      await _initCacheDir();
+      _memCache.clear();
     } catch (e) {
       unawaited(AppLog.write('AppStorage clear Error: $e'));
+      rethrow;
     }
-  }
+  });
 
   String? getStringSync(String key) {
     if (kIsWeb) return _webCache[key];
