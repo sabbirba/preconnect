@@ -367,6 +367,10 @@ void main() {
         tester.widget<AppCard>(find.byType(AppCard)).highlightColor,
         AppPalette.accent,
       );
+      expect(
+        tester.widget<SectionBadge>(find.byType(SectionBadge)).color,
+        AppPalette.accent,
+      );
     }
   });
 
