@@ -11,6 +11,7 @@ Entries are written for students, not developers — plain language, no commit h
 - Combine matching class times with joined weekdays and make schedule cards, spacing, and actions more consistent.
 - Distinguish exams with the existing green accent and compact Midterm and Final labels.
 - Include extra classes in Alarms and focus on exams only from three days before their date.
+- Show 30 days in the custom planner date picker and 7 days in LibSync booking.
 
 ## [2.1.1] — 2026-10-07
 
