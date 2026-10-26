@@ -58,7 +58,7 @@ class ExamCard extends StatelessWidget {
         children: [
           SectionBadge(
             label: formatSectionBadge(sectionName),
-            color: AppPalette.primary,
+            color: AppPalette.accent,
           ),
           const Gap(12),
           Expanded(
