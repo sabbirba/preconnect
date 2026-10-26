@@ -234,6 +234,7 @@ void main() {
         );
         await tester.tap(find.byTooltip('Help'));
         await tester.pumpAndSettle();
+        expect(find.text('Extra Classes Help'), findsOneWidget);
         await tester.scrollUntilVisible(
           find.text('Local Routine'),
           180,
