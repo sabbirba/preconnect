@@ -371,6 +371,7 @@ void main() {
         tester.widget<SectionBadge>(find.byType(SectionBadge)).color,
         AppPalette.accent,
       );
+      expect(AppPalette.accent, isNot(AppPalette.primary));
     }
   });
 
