@@ -1,4 +1,4 @@
-FROM alpine:3.20 AS downloader
+FROM alpine:3.24 AS downloader
 
 ARG GITHUB_REPO
 
