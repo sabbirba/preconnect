@@ -305,6 +305,7 @@ void main() {
       expect(find.byTooltip('Add Classes'), findsOneWidget);
       await tester.tap(find.byTooltip('Add Classes'));
       await tester.pumpAndSettle();
+      expect(find.byType(BottomSheet), findsNothing);
       await tester.tap(find.byTooltip('Remove Classes'));
       await tester.pumpAndSettle();
     },
