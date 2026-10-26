@@ -265,6 +265,7 @@ void main() {
         expect(memoryStore.items.single.days, {'SUNDAY', 'MONDAY'});
         expect(find.text('Edit Days'), findsNothing);
         expect(find.text('Remove'), findsNothing);
+        expect(find.byTooltip('Remove Classes'), findsOneWidget);
       },
     );
   }
