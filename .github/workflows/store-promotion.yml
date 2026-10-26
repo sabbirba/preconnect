@@ -43,7 +43,7 @@ jobs:
 
       - name: Set Up Ruby
         if: steps.play_auth.outputs.enabled == 'true'
-        uses: ruby/setup-ruby@v1.334.0
+        uses: ruby/setup-ruby@v1.335.0
         with:
           ruby-version: "3.3"
           bundler-cache: true
