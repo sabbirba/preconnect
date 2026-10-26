@@ -271,6 +271,7 @@ void main() {
           tester.getCenter(find.byTooltip('Remove Classes')).dx,
           tester.getCenter(find.byTooltip('Add Classes')).dx,
         );
+        expect(section.sectionSchedule.classSchedules, hasLength(2));
       },
     );
   }
