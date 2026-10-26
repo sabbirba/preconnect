@@ -10,10 +10,14 @@ import 'package:preconnect/api/preferences_store.dart';
 import 'error_reporter.dart';
 
 class LibSyncApiClient extends http.BaseClient {
-  LibSyncApiClient({http.Client? client})
-    : _inner = client ?? createLibSyncClient();
+  LibSyncApiClient({
+    http.Client? client,
+    this.requestTimeout = LibSyncConfig.requestTimeout,
+  }) : _inner = client ?? createLibSyncClient();
 
   final http.Client _inner;
+  final Duration requestTimeout;
+  static const storageTimeout = Duration(seconds: 15);
   static const String _cookiesStorageKey = 'libsync_cookies';
   static const String _googleRefreshTokenKey = 'libsync_google_refresh_token';
   static const String _profileStorageKey = 'libsync_profile';
@@ -52,7 +56,10 @@ class LibSyncApiClient extends http.BaseClient {
   }
 
   @override
-  Future<http.StreamedResponse> send(http.BaseRequest request) async {
+  Future<http.StreamedResponse> send(http.BaseRequest request) =>
+      _send(request).timeout(requestTimeout);
+
+  Future<http.StreamedResponse> _send(http.BaseRequest request) async {
     await _ensureCacheLoaded();
 
     _injectBrowserHeaders(request.headers);
@@ -138,7 +145,7 @@ class LibSyncApiClient extends http.BaseClient {
 
     http.StreamedResponse response;
     try {
-      response = await _inner.send(request);
+      response = await _inner.send(request).timeout(requestTimeout);
     } catch (e) {
       if (isGet && !isMedia && _bodyCache.containsKey(urlKey)) {
         final cachedBody = _bodyCache[urlKey]!;
@@ -167,26 +174,24 @@ class LibSyncApiClient extends http.BaseClient {
       await saveCookies(responseCookies);
     }
 
+    final bytes = await response.stream.toBytes().timeout(requestTimeout);
     if (isGet && response.statusCode == 200) {
-      final bytes = await response.stream.toBytes();
       _bodyCache[urlKey] = utf8.decode(bytes);
       _headersCache[urlKey] = _cacheHeaders(response.headers);
       final store = AppPreferencesStore();
       await store.setJson(_bodyCacheKey, _bodyCache);
       await store.setJson(_headersCacheKey, _headersCache);
-      return http.StreamedResponse(
-        Stream.value(bytes),
-        200,
-        contentLength: bytes.length,
-        request: request,
-        headers: response.headers,
-        isRedirect: response.isRedirect,
-        persistentConnection: response.persistentConnection,
-        reasonPhrase: response.reasonPhrase,
-      );
     }
-
-    return response;
+    return http.StreamedResponse(
+      Stream.value(bytes),
+      response.statusCode,
+      contentLength: bytes.length,
+      request: request,
+      headers: response.headers,
+      isRedirect: response.isRedirect,
+      persistentConnection: response.persistentConnection,
+      reasonPhrase: response.reasonPhrase,
+    );
   }
 
   Map<String, String> _cacheHeaders(Map<String, String> headers) =>
@@ -198,13 +203,16 @@ class LibSyncApiClient extends http.BaseClient {
         }.contains(key.toLowerCase()),
       );
 
-  Future<void> _safeWrite(String key, String value) =>
-      TokenStorage.instance.write(key: key, value: value);
+  Future<void> _safeWrite(String key, String value) => TokenStorage.instance
+      .write(key: key, value: value)
+      .timeout(storageTimeout);
 
-  Future<String?> _safeRead(String key) => TokenStorage.instance.read(key: key);
+  Future<String?> _safeRead(String key) =>
+      TokenStorage.instance.read(key: key).timeout(storageTimeout);
 
-  Future<void> _safeDelete(String key) =>
-      TokenStorage.instance.write(key: key, value: null);
+  Future<void> _safeDelete(String key) => TokenStorage.instance
+      .write(key: key, value: null)
+      .timeout(storageTimeout);
 
   Future<void> storeGoogleRefreshToken(String token) async {
     await _safeWrite(_googleRefreshTokenKey, token);

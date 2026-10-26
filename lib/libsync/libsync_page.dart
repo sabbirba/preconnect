@@ -290,7 +290,11 @@ class _LibSyncPageState extends State<LibSyncPage>
     try {
       if (!kIsWeb) {
         final oauthUrl = LibSyncConfig.buildOAuthUrl();
-        await launchUrl(oauthUrl, mode: LaunchMode.externalApplication);
+        final launched = await launchUrl(
+          oauthUrl,
+          mode: LaunchMode.externalApplication,
+        );
+        if (!launched) throw Exception('Could not open the sign-in browser.');
         return;
       }
 
@@ -321,6 +325,9 @@ class _LibSyncPageState extends State<LibSyncPage>
         }
       }
     } catch (_) {
+      LibSyncAuthService.instance.failAuthentication(
+        'Could not open or complete sign-in. Please try again.',
+      );
     } finally {
       if (mounted) {
         setState(() {

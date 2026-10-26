@@ -64,3 +64,39 @@ List<dynamic> parseAvailabilityResponse(int statusCode, String body) {
   }
   throw const AvailabilityException(AvailabilityException.defaultMessage);
 }
+
+void validateAvailabilityRequest({
+  required String startDate,
+  required String endDate,
+  required String startTime,
+  required String endTime,
+  required int capacity,
+  required String library,
+}) {
+  DateTime? date(String value) {
+    if (!RegExp(r'^\d{4}-\d{2}-\d{2}$').hasMatch(value)) return null;
+    final parsed = DateTime.tryParse(value);
+    return parsed != null && parsed.toIso8601String().startsWith(value)
+        ? parsed
+        : null;
+  }
+
+  final start = date(startDate);
+  final end = date(endDate);
+  final time = RegExp(r'^(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d$');
+  if (start == null ||
+      end == null ||
+      end.isBefore(start) ||
+      !time.hasMatch(startTime) ||
+      !time.hasMatch(endTime) ||
+      (startDate == endDate && startTime.compareTo(endTime) >= 0) ||
+      capacity < 1 ||
+      capacity > 9 ||
+      library.trim().isEmpty ||
+      library == 'undefined' ||
+      library == 'null') {
+    throw const AvailabilityException(
+      'Choose a valid date, time, library, and capacity.',
+    );
+  }
+}

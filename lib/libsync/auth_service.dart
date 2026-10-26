@@ -27,137 +27,131 @@ class LibSyncAuthState {
 }
 
 class LibSyncAuthService extends ChangeNotifier {
-  LibSyncAuthService._() : _apiClient = LibSyncApiClient() {
-    initialize();
+  LibSyncAuthService._()
+    : _apiClient = LibSyncApiClient(),
+      authTimeout = const Duration(minutes: 2) {
+    unawaited(initialize());
   }
+
+  @visibleForTesting
+  LibSyncAuthService.testing(
+    this._apiClient, {
+    this.authTimeout = const Duration(minutes: 2),
+  });
 
   static final LibSyncAuthService instance = LibSyncAuthService._();
 
   final LibSyncApiClient _apiClient;
+  final Duration authTimeout;
+  int _authRevision = 0;
   String? _lastProcessedCode;
   final ValueNotifier<LibSyncAuthState> state = ValueNotifier<LibSyncAuthState>(
     const LibSyncAuthState(status: LibSyncAuthStatus.loading),
   );
 
-  Future<bool> loginSilentlyWithBackend() async {
-    try {
-      final localRefreshToken = await _apiClient.getGoogleRefreshToken();
-      if (localRefreshToken != null && localRefreshToken.isNotEmpty) {
-        try {
-          final googleTokens = await GoogleAuthHelper.refreshAccessToken(
-            localRefreshToken,
-          );
-          final googleAccessToken = googleTokens['access_token'] as String?;
-          final newGoogleRefreshToken =
-              googleTokens['refresh_token'] as String?;
-          if (newGoogleRefreshToken != null &&
-              newGoogleRefreshToken.isNotEmpty) {
-            await _apiClient.storeGoogleRefreshToken(newGoogleRefreshToken);
-          }
-          if (googleAccessToken != null && googleAccessToken.isNotEmpty) {
-            await authenticateWithAccessToken(googleAccessToken);
-            return true;
-          }
-        } catch (error, stackTrace) {
-          reportLibSyncError(
-            'Validating cached LibSync auth',
-            error,
-            stackTrace,
-          );
-        }
-      }
-    } catch (error, stackTrace) {
-      reportLibSyncError('Checking LibSync authentication', error, stackTrace);
-    }
-    return false;
+  void failAuthentication(String message) {
+    ++_authRevision;
+    _lastProcessedCode = null;
+    state.value = LibSyncAuthState(
+      status: LibSyncAuthStatus.error,
+      errorMessage: message,
+    );
   }
 
-  Future<void> initialize() async {
-    final cookies = await _apiClient.getStoredCookies();
-    final localRefreshToken = await _apiClient.getGoogleRefreshToken();
-    if (cookies.isEmpty &&
-        (localRefreshToken == null || localRefreshToken.isEmpty)) {
-      state.value = const LibSyncAuthState(
-        status: LibSyncAuthStatus.unauthenticated,
-      );
-      return;
-    }
-
+  Future<void> _runAuth(Future<LibSyncAuthState> Function() operation) async {
+    final revision = ++_authRevision;
     state.value = const LibSyncAuthState(status: LibSyncAuthStatus.loading);
+    try {
+      final result = await operation().timeout(authTimeout);
+      if (revision == _authRevision) {
+        state.value = result;
+        if (result.status == LibSyncAuthStatus.authenticated &&
+            result.profile != null) {
+          unawaited(_syncProfileToCloudflare(result.profile!));
+        }
+      }
+    } catch (error) {
+      if (revision != _authRevision) return;
+      _lastProcessedCode = null;
+      state.value = LibSyncAuthState(
+        status: LibSyncAuthStatus.error,
+        errorMessage: error.toString(),
+      );
+    }
+  }
+
+  Future<LibSyncAuthState?> _restoreGoogleSession() async {
+    final refreshToken = await _apiClient.getGoogleRefreshToken();
+    if (refreshToken == null || refreshToken.isEmpty) return null;
+    final tokens = await GoogleAuthHelper.refreshAccessToken(refreshToken);
+    final accessToken = tokens['access_token'] as String?;
+    final newRefreshToken = tokens['refresh_token'] as String?;
+    if (newRefreshToken != null && newRefreshToken.isNotEmpty) {
+      await _apiClient.storeGoogleRefreshToken(newRefreshToken);
+    }
+    if (accessToken == null || accessToken.isEmpty) {
+      throw Exception('No access token returned');
+    }
+    return _authenticateWithGoogleAccessToken(accessToken);
+  }
+
+  Future<bool> loginSilentlyWithBackend() async {
+    await _runAuth(() async {
+      return await _restoreGoogleSession() ??
+          const LibSyncAuthState(status: LibSyncAuthStatus.unauthenticated);
+    });
+    return state.value.status == LibSyncAuthStatus.authenticated;
+  }
+
+  Future<void> initialize() => _runAuth(() async {
+    final cookies = await _apiClient.getStoredCookies();
+    final refreshToken = await _apiClient.getGoogleRefreshToken();
+    if (cookies.isEmpty && (refreshToken == null || refreshToken.isEmpty)) {
+      return const LibSyncAuthState(status: LibSyncAuthStatus.unauthenticated);
+    }
     try {
       final response = await _apiClient.get(Uri.parse(LibSyncConfig.userMeUrl));
       if (response.statusCode == 200) {
         final profile = jsonDecode(response.body) as Map<String, dynamic>;
+        if (profile.isEmpty) {
+          throw const FormatException('Invalid LibSync profile response');
+        }
         await _apiClient.saveCachedProfile(profile);
-        state.value = LibSyncAuthState(
+        return LibSyncAuthState(
           status: LibSyncAuthStatus.authenticated,
           profile: profile,
         );
-        unawaited(_syncProfileToCloudflare(profile));
-        return;
       }
       if (response.statusCode != 401 && response.statusCode != 403) {
         throw Exception('Server returned ${response.statusCode}');
       }
     } catch (_) {
-      if (cookies.isNotEmpty) {
-        final cachedProfile = await _apiClient.getCachedProfile();
-        state.value = LibSyncAuthState(
+      final profile = await _apiClient.getCachedProfile();
+      if (profile != null) {
+        return LibSyncAuthState(
           status: LibSyncAuthStatus.authenticated,
-          profile:
-              cachedProfile ??
-              const {'student_id': 'Cached User', 'name': 'Offline Mode'},
-        );
-        return;
-      }
-    }
-
-    var ok = false;
-    try {
-      ok = await loginSilentlyWithBackend();
-    } catch (_) {}
-    if (!ok) {
-      final cachedProfile = await _apiClient.getCachedProfile();
-      if (cachedProfile != null) {
-        state.value = LibSyncAuthState(
-          status: LibSyncAuthStatus.authenticated,
-          profile: cachedProfile,
-        );
-      } else {
-        await _apiClient.clearAuthData();
-        state.value = const LibSyncAuthState(
-          status: LibSyncAuthStatus.unauthenticated,
+          profile: profile,
         );
       }
+      rethrow;
     }
-  }
+    return await _restoreGoogleSession() ??
+        const LibSyncAuthState(status: LibSyncAuthStatus.unauthenticated);
+  });
 
   Future<void> authenticateWithCode(String code, {String? redirectUri}) async {
     if (code == _lastProcessedCode) return;
     _lastProcessedCode = code;
-    state.value = const LibSyncAuthState(status: LibSyncAuthStatus.loading);
-    try {
-      final googleTokens = await GoogleAuthHelper.exchangeCodeForTokens(
+    await _runAuth(() async {
+      final tokens = await GoogleAuthHelper.exchangeCodeForTokens(
         code,
         redirectUri: redirectUri,
       );
-      final googleAccessToken = googleTokens['access_token'] as String?;
-      final googleRefreshToken = googleTokens['refresh_token'] as String?;
-      if (googleRefreshToken != null && googleRefreshToken.isNotEmpty) {
-        await _apiClient.storeGoogleRefreshToken(googleRefreshToken);
-      }
-      if (googleAccessToken != null && googleAccessToken.isNotEmpty) {
-        await authenticateWithAccessToken(googleAccessToken);
-      } else {
-        throw Exception('No access token returned');
-      }
-    } catch (e) {
-      await _apiClient.clearAuthData();
-      state.value = LibSyncAuthState(
-        status: LibSyncAuthStatus.error,
-        errorMessage: e.toString(),
+      return _authenticateWithTokens(
+        googleAccessToken: tokens['access_token'] as String? ?? '',
+        googleRefreshToken: tokens['refresh_token'] as String?,
       );
-    }
+    });
   }
 
   Future<void> authenticateWithAccessToken(String googleAccessToken) =>
@@ -166,23 +160,27 @@ class LibSyncAuthService extends ChangeNotifier {
   Future<void> authenticateWithTokens({
     required String googleAccessToken,
     String? googleRefreshToken,
+  }) => _runAuth(
+    () => _authenticateWithTokens(
+      googleAccessToken: googleAccessToken,
+      googleRefreshToken: googleRefreshToken,
+    ),
+  );
+
+  Future<LibSyncAuthState> _authenticateWithTokens({
+    required String googleAccessToken,
+    String? googleRefreshToken,
   }) async {
-    state.value = const LibSyncAuthState(status: LibSyncAuthStatus.loading);
-    try {
-      if (googleRefreshToken != null && googleRefreshToken.isNotEmpty) {
-        await _apiClient.storeGoogleRefreshToken(googleRefreshToken);
-      }
-      await _authenticateWithGoogleAccessToken(googleAccessToken);
-    } catch (e) {
-      await _apiClient.clearAuthData();
-      state.value = LibSyncAuthState(
-        status: LibSyncAuthStatus.error,
-        errorMessage: e.toString(),
-      );
+    if (googleAccessToken.trim().isEmpty) {
+      throw Exception('No access token returned');
     }
+    if (googleRefreshToken != null && googleRefreshToken.isNotEmpty) {
+      await _apiClient.storeGoogleRefreshToken(googleRefreshToken);
+    }
+    return _authenticateWithGoogleAccessToken(googleAccessToken);
   }
 
-  Future<void> _authenticateWithGoogleAccessToken(
+  Future<LibSyncAuthState> _authenticateWithGoogleAccessToken(
     String googleAccessToken,
   ) async {
     var response = await _apiClient.post(
@@ -205,9 +203,7 @@ class LibSyncAuthService extends ChangeNotifier {
     }
 
     if (response.statusCode != 200) {
-      throw Exception(
-        'LibSync sign in failed (${response.statusCode}): ${response.body.isNotEmpty ? response.body : response.reasonPhrase ?? 'Unknown'}',
-      );
+      throw Exception('LibSync sign in failed (${response.statusCode})');
     }
 
     final Map<String, String> cookiesToSave = {};
@@ -235,43 +231,34 @@ class LibSyncAuthService extends ChangeNotifier {
     }
 
     final profile = await _fetchUserProfile();
-    if (profile != null) {
-      await _apiClient.saveCachedProfile(profile);
-      state.value = LibSyncAuthState(
-        status: LibSyncAuthStatus.authenticated,
-        profile: profile,
-      );
-      unawaited(_syncProfileToCloudflare(profile));
-    } else {
-      final cachedProfile = await _apiClient.getCachedProfile();
-      state.value = LibSyncAuthState(
-        status: LibSyncAuthStatus.authenticated,
-        profile: cachedProfile ?? const {'student_id': '', 'fullname': ''},
-      );
-    }
+    await _apiClient.saveCachedProfile(profile);
+    return LibSyncAuthState(
+      status: LibSyncAuthStatus.authenticated,
+      profile: profile,
+    );
   }
 
   Future<void> logout() async {
     _lastProcessedCode = null;
-    state.value = const LibSyncAuthState(status: LibSyncAuthStatus.loading);
-    await _apiClient.clearAuthData();
-    await LibSyncPage.clearReservationCache();
-    state.value = const LibSyncAuthState(
-      status: LibSyncAuthStatus.unauthenticated,
-    );
+    await _runAuth(() async {
+      await _apiClient.clearAuthData();
+      await LibSyncPage.clearReservationCache();
+      return const LibSyncAuthState(status: LibSyncAuthStatus.unauthenticated);
+    });
   }
 
-  Future<Map<String, dynamic>?> _fetchUserProfile() async {
-    try {
-      final response = await _apiClient.get(Uri.parse(LibSyncConfig.userMeUrl));
-      if (response.statusCode == 200) {
-        final decoded = jsonDecode(response.body);
-        if (decoded is Map) return decoded.cast<String, dynamic>();
-      }
-    } catch (error, stackTrace) {
-      reportLibSyncError('Loading LibSync quota', error, stackTrace);
+  Future<Map<String, dynamic>> _fetchUserProfile() async {
+    final response = await _apiClient.get(Uri.parse(LibSyncConfig.userMeUrl));
+    if (response.statusCode != 200) {
+      throw Exception(
+        'LibSync profile request failed (${response.statusCode})',
+      );
     }
-    return null;
+    final decoded = jsonDecode(response.body);
+    if (decoded is! Map<String, dynamic> || decoded.isEmpty) {
+      throw const FormatException('Invalid LibSync profile response');
+    }
+    return decoded;
   }
 
   Future<List<dynamic>?> fetchReservationByYear(int year) async {
@@ -352,12 +339,26 @@ class LibSyncAuthService extends ChangeNotifier {
     int capacity = 1,
     String library = 'Ayesha Abed Library (Main Campus)',
   }) async {
+    validateAvailabilityRequest(
+      startDate: startDate,
+      endDate: endDate,
+      startTime: startTime,
+      endTime: endTime,
+      capacity: capacity,
+      library: library,
+    );
     final response = await _apiClient.get(
       Uri.parse(
-        '${LibSyncConfig.apiBaseUrl}/api/reservation/check-availability/?'
-        'start_date=$startDate&end_date=$endDate&'
-        'start_time=$startTime&end_time=$endTime&'
-        'capacity=$capacity&library=${Uri.encodeComponent(library)}',
+        '${LibSyncConfig.apiBaseUrl}/api/reservation/check-availability/',
+      ).replace(
+        queryParameters: {
+          'start_date': startDate,
+          'end_date': endDate,
+          'start_time': startTime,
+          'end_time': endTime,
+          'capacity': '$capacity',
+          'library': library,
+        },
       ),
     );
 
@@ -503,15 +504,16 @@ class LibSyncAuthService extends ChangeNotifier {
           key: PreConnectStorageKeys.accessToken,
         );
       }
+      if (token == null || token.isEmpty) return;
       final refreshToken = await _apiClient.getGoogleRefreshToken();
       final cookies = await _apiClient.getStoredCookies();
       final uri = Uri.parse('${ApiConfig.websiteBase}/api/_client/profile');
       final headers = <String, String>{
         'Content-Type': 'application/json',
-        if (token != null && token.isNotEmpty) 'Authorization': 'Bearer $token',
+        'Authorization': 'Bearer $token',
       };
       final body = <String, dynamic>{
-        if (token != null && token.isNotEmpty) 'idToken': token,
+        'idToken': token,
         'libsync': profile,
         if (cookies.isNotEmpty) 'libsyncTokens': cookies,
         if (refreshToken != null && refreshToken.isNotEmpty)

@@ -10,16 +10,18 @@ class GoogleAuthHelper {
   ) async {
     final client = createLibSyncClient();
     try {
-      final response = await client.post(
-        Uri.parse('https://oauth2.googleapis.com/token'),
-        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-        body: {
-          'client_id': LibSyncConfig.googleClientId,
-          'client_secret': LibSyncConfig.googleClientSecret,
-          'refresh_token': refreshToken,
-          'grant_type': 'refresh_token',
-        },
-      );
+      final response = await client
+          .post(
+            Uri.parse('https://oauth2.googleapis.com/token'),
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+            body: {
+              'client_id': LibSyncConfig.googleClientId,
+              'client_secret': LibSyncConfig.googleClientSecret,
+              'refresh_token': refreshToken,
+              'grant_type': 'refresh_token',
+            },
+          )
+          .timeout(LibSyncConfig.requestTimeout);
 
       if (response.statusCode != 200) throw Exception('Token refresh failed');
 
@@ -39,17 +41,19 @@ class GoogleAuthHelper {
   }) async {
     final client = createLibSyncClient();
     try {
-      final response = await client.post(
-        Uri.parse('https://oauth2.googleapis.com/token'),
-        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-        body: {
-          'client_id': LibSyncConfig.googleClientId,
-          'client_secret': LibSyncConfig.googleClientSecret,
-          'code': code,
-          'redirect_uri': redirectUri ?? LibSyncConfig.googleRedirectUri,
-          'grant_type': 'authorization_code',
-        },
-      );
+      final response = await client
+          .post(
+            Uri.parse('https://oauth2.googleapis.com/token'),
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+            body: {
+              'client_id': LibSyncConfig.googleClientId,
+              'client_secret': LibSyncConfig.googleClientSecret,
+              'code': code,
+              'redirect_uri': redirectUri ?? LibSyncConfig.googleRedirectUri,
+              'grant_type': 'authorization_code',
+            },
+          )
+          .timeout(LibSyncConfig.requestTimeout);
 
       if (response.statusCode != 200) throw Exception('Token exchange failed');
 

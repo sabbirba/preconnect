@@ -3,6 +3,8 @@ import 'dart:convert';
 class LibSyncConfig {
   LibSyncConfig._();
 
+  static const requestTimeout = Duration(seconds: 60);
+
   static const String apiBaseUrl = 'https://libsync.bracu.ac.bd';
   static const String authSocialGoogleUrl =
       '$apiBaseUrl/api/user/auth/social/google/';

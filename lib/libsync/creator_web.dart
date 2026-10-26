@@ -8,6 +8,7 @@ import 'package:preconnect/tools/runtime_stub.dart'
 import 'package:preconnect/tools/extension_bridge.dart';
 
 import 'package:preconnect/libsync/libsync_client.dart';
+import 'libsync_config.dart';
 
 class ExtensionHttpClient extends http.BaseClient {
   @override
@@ -68,7 +69,7 @@ class ExtensionHttpClient extends http.BaseClient {
           );
         }
       });
-      timeoutTimer = Timer(const Duration(seconds: 30), () {
+      timeoutTimer = Timer(LibSyncConfig.requestTimeout, () {
         subscription?.cancel();
         if (!completer.isCompleted) {
           completer.completeError(

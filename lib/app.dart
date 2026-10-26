@@ -355,6 +355,13 @@ class _MyAppState extends State<MyApp>
 
     if (!isValidScheme || !isMatchingHost || !isCallbackPath) return;
 
+    if (uri.queryParameters.containsKey('error')) {
+      LibSyncAuthService.instance.failAuthentication(
+        'Sign-in was cancelled or could not be completed. Please try again.',
+      );
+      return;
+    }
+
     final token = uri.queryParameters['google_access_token'];
     final refresh = uri.queryParameters['google_refresh_token'];
     final code = uri.queryParameters['code'];
