@@ -142,4 +142,4 @@ Use the repository skill at `.agents/skills/contributor/SKILL.md` for feature id
 
 ## MCP
 
-The repository uses the official Dart and Flutter MCP server provided by the installed Dart SDK. Project adapters are committed for Codex, Claude Code, and VS Code/Copilot. Restart the agent or editor after cloning, trust the repository when requested, and verify the `dart` server with the client's MCP status command.
+The repository uses the official Dart and Flutter MCP server provided by the installed Dart SDK. Project adapters are committed for Claude Code and VS Code/Copilot. Restart the agent or editor after cloning, trust the repository when requested, and verify the `dart` server with the client's MCP status command.

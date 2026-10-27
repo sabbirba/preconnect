@@ -56,7 +56,7 @@ This will add the detached custom dependencies under `vendor/`.
 
 ## Agent Tooling
 
-Dart 3.9 and newer include the official Dart and Flutter MCP server. This repository enables it for Codex, Claude Code, and VS Code/Copilot through committed project configuration.
+Dart 3.9 and newer include the official Dart and Flutter MCP server. This repository enables it for Claude Code and VS Code/Copilot through committed project configuration.
 
 ```bash
 dart mcp-server --version
