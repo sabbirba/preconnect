@@ -3,7 +3,7 @@
   "name": "PreConnect",
   "short_name": "PreConnect",
   "description": "PreConnect as a browser extension for BRACU students.",
-  "version": "2.1.2",
+  "version": "2.1.3",
   "action": {
     "default_title": "Open PreConnect",
     "default_icon": {
