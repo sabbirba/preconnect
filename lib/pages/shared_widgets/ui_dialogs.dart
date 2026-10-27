@@ -9,6 +9,8 @@ Future<T?> showAppBottomSheet<T>(
   double initialChildSize = 0.80,
   bool draggable = true,
   bool isScrollControlled = true,
+  bool showClose = true,
+  bool dismissible = true,
   required Widget Function(
     BuildContext sheetContext,
     Color textPrimary,
@@ -23,6 +25,7 @@ Future<T?> showAppBottomSheet<T>(
     initialChildSize: initialChildSize,
     draggable: draggable,
     isScrollControlled: isScrollControlled,
+    dismissible: dismissible,
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
     ),
@@ -42,16 +45,17 @@ Future<T?> showAppBottomSheet<T>(
                   : MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Center(
-                  child: Container(
-                    width: 36,
-                    height: 3,
-                    decoration: BoxDecoration(
-                      color: textSecondary.withValues(alpha: 0.28),
-                      borderRadius: BorderRadius.circular(999),
+                if (dismissible)
+                  Center(
+                    child: Container(
+                      width: 36,
+                      height: 3,
+                      decoration: BoxDecoration(
+                        color: textSecondary.withValues(alpha: 0.28),
+                        borderRadius: BorderRadius.circular(999),
+                      ),
                     ),
                   ),
-                ),
                 const Gap(6),
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.center,
@@ -107,15 +111,16 @@ Future<T?> showAppBottomSheet<T>(
                     ),
                     const Gap(8),
                     if (actions.isNotEmpty) ...[...actions, const Gap(6)],
-                    IconButton(
-                      onPressed: () => Navigator.of(sheetContext).maybePop(),
-                      icon: const Icon(Icons.close_rounded, size: 20),
-                      style: IconButton.styleFrom(
-                        padding: EdgeInsets.zero,
-                        minimumSize: const Size(36, 36),
-                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    if (showClose)
+                      IconButton(
+                        onPressed: () => Navigator.of(sheetContext).maybePop(),
+                        icon: const Icon(Icons.close_rounded, size: 20),
+                        style: IconButton.styleFrom(
+                          padding: EdgeInsets.zero,
+                          minimumSize: const Size(36, 36),
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        ),
                       ),
-                    ),
                   ],
                 ),
                 const Gap(4),
@@ -153,6 +158,7 @@ Future<T?> showAppCustomBottomSheet<T>({
   double minChildSize = 0.12,
   double maxChildSize = 0.96,
   bool closeOnMinExtent = true,
+  bool dismissible = true,
 }) {
   return showModalBottomSheet<T>(
     context: context,
@@ -160,7 +166,8 @@ Future<T?> showAppCustomBottomSheet<T>({
     isScrollControlled: isScrollControlled,
     useSafeArea: useSafeArea,
     useRootNavigator: useRootNavigator,
-    enableDrag: !draggable || !isScrollControlled,
+    isDismissible: dismissible,
+    enableDrag: dismissible && (!draggable || !isScrollControlled),
     clipBehavior: clipBehavior ?? Clip.antiAlias,
     shape:
         shape ??
@@ -204,11 +211,11 @@ Future<T?> showAppCustomBottomSheet<T>({
               final initialSize = initialChildSize.clamp(minSize, maxSize);
               return DraggableScrollableSheet(
                 initialChildSize: initialSize,
-                minChildSize: minSize,
-                maxChildSize: maxSize,
+                minChildSize: dismissible ? minSize : initialSize,
+                maxChildSize: dismissible ? maxSize : initialSize,
                 expand: false,
                 snap: true,
-                shouldCloseOnMinExtent: closeOnMinExtent,
+                shouldCloseOnMinExtent: closeOnMinExtent && dismissible,
                 builder: (context, scrollController) {
                   return _BottomSheetControllerScope(
                     controller: scrollController,
@@ -228,7 +235,7 @@ Future<T?> showAppCustomBottomSheet<T>({
 
       return AnnotatedRegion<SystemUiOverlayStyle>(
         value: overlayStyle,
-        child: sheetBody,
+        child: PopScope(canPop: dismissible, child: sheetBody),
       );
     },
   );

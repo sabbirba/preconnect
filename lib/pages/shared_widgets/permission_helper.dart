@@ -6,6 +6,7 @@ import 'package:gap/gap.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:preconnect/api/fcm.dart';
 import 'package:preconnect/pages/ui_kit.dart';
+import 'package:preconnect/tools/app_storage.dart';
 
 class PermissionRequirement {
   final Permission permission;
@@ -15,7 +16,6 @@ class PermissionRequirement {
   final bool androidOnly;
   final bool iosOnly;
   final int? minAndroidSdk;
-  final bool isOptional;
 
   const PermissionRequirement({
     required this.permission,
@@ -25,7 +25,6 @@ class PermissionRequirement {
     this.androidOnly = false,
     this.iosOnly = false,
     this.minAndroidSdk,
-    this.isOptional = false,
   });
 }
 
@@ -65,8 +64,7 @@ class AppPermissionHelper {
       reason: 'Keep Schedule Timing Precise.',
       icon: Icons.alarm_rounded,
       androidOnly: true,
-      minAndroidSdk: 33,
-      isOptional: true,
+      minAndroidSdk: 31,
     ),
     PermissionRequirement(
       permission: Permission.accessNotificationPolicy,
@@ -74,7 +72,6 @@ class AppPermissionHelper {
       reason: 'Automate Quiet Mode Schedule.',
       icon: Icons.do_not_disturb_on_rounded,
       androidOnly: true,
-      isOptional: true,
     ),
     PermissionRequirement(
       permission: Permission.notification,
@@ -88,15 +85,19 @@ class AppPermissionHelper {
       reason: 'Add Reminders to Apple Reminders.',
       icon: Icons.notifications_active_rounded,
       iosOnly: true,
-      isOptional: true,
     ),
   ];
 
-  static Future<void> checkAndRequestOnStartup(BuildContext context) async {
-    if (!context.mounted) return;
+  static const String _promptSeenKey = 'permissions_prompt_seen';
+
+  static bool get isSupported =>
+      !kIsWeb &&
+      (defaultTargetPlatform == TargetPlatform.android ||
+          defaultTargetPlatform == TargetPlatform.iOS);
+
+  static Future<List<PermissionRequirement>> _applicable() async {
     final isAndroid = defaultTargetPlatform == TargetPlatform.android;
     final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
-    if (!isAndroid && !isIOS) return;
 
     int androidSdk = 0;
     if (isAndroid) {
@@ -106,51 +107,73 @@ class AppPermissionHelper {
       } catch (_) {}
     }
 
-    if (isIOS) {
+    return [
+      for (final req in list)
+        if (!(req.androidOnly && !isAndroid) &&
+            !(req.iosOnly && !isIOS) &&
+            !(req.minAndroidSdk != null &&
+                isAndroid &&
+                androidSdk < req.minAndroidSdk!))
+          req,
+    ];
+  }
+
+  static Future<void> checkAndRequestOnStartup(BuildContext context) async {
+    if (!context.mounted || !isSupported) return;
+
+    if (defaultTargetPlatform == TargetPlatform.iOS) {
       await _requestIosPermissionsSilently();
     }
 
-    final requiredPending = <PermissionRequirement>[];
-    final allPending = <PermissionRequirement>[];
-    for (final req in list) {
-      if (req.androidOnly && defaultTargetPlatform != TargetPlatform.android) {
-        continue;
-      }
-      if (req.iosOnly && defaultTargetPlatform != TargetPlatform.iOS) {
-        continue;
-      }
-      if (req.minAndroidSdk != null &&
-          defaultTargetPlatform == TargetPlatform.android &&
-          androidSdk < req.minAndroidSdk!) {
-        continue;
-      }
-
+    final pending = <PermissionRequirement>[];
+    for (final req in await _applicable()) {
       final status = await req.permission.status;
-      final isOk = status.isGranted || status.isLimited;
-
-      if (!isOk) {
-        allPending.add(req);
-        if (!req.isOptional) {
-          requiredPending.add(req);
-        }
-      }
+      if (!(status.isGranted || status.isLimited)) pending.add(req);
     }
 
-    if (requiredPending.isEmpty) return;
+    if (pending.isEmpty) return;
+    if (await AppStorage.instance.getString(_promptSeenKey) != null) return;
 
     if (!context.mounted) return;
 
     await showAppBottomSheet<void>(
       context,
-      title: 'Permissions Required',
+      title: 'Permissions',
       subtitle:
-          'PreConnect needs the following permissions to function properly. Please grant them to continue.',
+          'Allow what you need now. You can change these anytime in Settings.',
       initialChildSize: 0.52,
+      showClose: false,
+      dismissible: false,
       builder: (sheetContext, textPrimary, textSecondary) {
-        return _AppPermissionBottomSheetContent(requirements: allPending);
+        return _AppPermissionBottomSheetContent(requirements: pending);
       },
     );
 
+    await AppStorage.instance.setString(_promptSeenKey, 'true');
+    _initNotificationsIfGranted();
+  }
+
+  static Future<void> showSheet(BuildContext context) async {
+    if (!isSupported) return;
+    final requirements = await _applicable();
+    if (!context.mounted) return;
+
+    await showAppBottomSheet<void>(
+      context,
+      title: 'Permissions',
+      subtitle: 'Review what PreConnect can access.',
+      initialChildSize: 0.7,
+      showClose: false,
+      dismissible: false,
+      builder: (sheetContext, textPrimary, textSecondary) {
+        return _AppPermissionBottomSheetContent(requirements: requirements);
+      },
+    );
+
+    _initNotificationsIfGranted();
+  }
+
+  static void _initNotificationsIfGranted() {
     Permission.notification.status.then((status) {
       if (status.isGranted || status.isLimited) {
         unawaited(FCMService.instance.init());
@@ -269,7 +292,7 @@ class _AppPermissionBottomSheetContentState
             padding: const EdgeInsets.only(top: 4),
             child: AppActionButton(
               label: 'Continue',
-              onPressed: () => Navigator.of(context).maybePop(),
+              onPressed: () => Navigator.of(context).pop(),
             ),
           );
         }

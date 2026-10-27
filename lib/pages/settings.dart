@@ -6,6 +6,7 @@ import 'package:preconnect/pages/captive_wifi.dart';
 import 'package:preconnect/pages/device_diagnostics.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/pages/shared_widgets/export_sheet.dart';
+import 'package:preconnect/pages/shared_widgets/permission_helper.dart';
 import 'package:preconnect/tools/quiet_controller.dart';
 import 'package:preconnect/tools/token_storage.dart';
 import 'package:preconnect/features/schedule/application/today_widget.dart';
@@ -411,6 +412,16 @@ class _SettingsPageState extends State<SettingsPage>
             ),
           ),
 
+          if (AppPermissionHelper.isSupported) ...[
+            const Gap(_sectionGap),
+            ActionBannerCard(
+              icon: Icons.verified_user_rounded,
+              title: 'Permissions',
+              subtitle: 'Review what PreConnect can access',
+              showTrailingIcon: true,
+              onTap: () => AppPermissionHelper.showSheet(context),
+            ),
+          ],
           if (!kIsWeb && TodayWidget.isSupported) ...[
             const Gap(_sectionGap),
             ActionBannerCard(
