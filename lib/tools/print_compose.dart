@@ -121,13 +121,11 @@ class PrintComposer {
     if (ranged == null) {
       throw const PrintComposeException('Page range is not valid');
     }
-    final selected = <int>[
+    final printable = <int>[
       for (final index in ranged)
         if (!pages[index].blank) index,
     ];
-    if (selected.isEmpty) {
-      throw const PrintComposeException('No pages left to print');
-    }
+    final selected = printable.isEmpty ? ranged : printable;
 
     final untouched =
         perSheet == 1 &&
