@@ -72,6 +72,20 @@ internal object WifiTileController {
         return Tap.STARTED
     }
 
+    fun autoLogin(context: Context): Boolean {
+        if (phase != Phase.IDLE) return false
+        val cm = connectivity(context) ?: return false
+        val wifi = wifiNetwork(cm) ?: return false
+        val caps = cm.getNetworkCapabilities(wifi) ?: return false
+        val ssid = ssidOf(caps)
+        if (ssid != null && !ssid.equals(CAMPUS_SSID, ignoreCase = true)) return false
+        if (isOnline(caps)) return false
+        val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        if (!prefs.getBoolean(READY_KEY, false)) return false
+        start(context, cm, wifi, prefs, Phase.LOGGING_IN)
+        return true
+    }
+
     private fun start(
         context: Context,
         cm: ConnectivityManager,

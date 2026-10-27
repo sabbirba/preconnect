@@ -16,9 +16,10 @@ class WifiReceiver : BroadcastReceiver() {
             return
         }
 
+        val started = WifiTileController.autoLogin(context)
         val prefs = context.getSharedPreferences("preconnect.network_assist", Context.MODE_PRIVATE)
         prefs.edit {
-            putBoolean("wifi_post_connection_pending", true)
+            putBoolean("wifi_post_connection_pending", !started)
             putLong("wifi_post_connection_at", System.currentTimeMillis())
 
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
