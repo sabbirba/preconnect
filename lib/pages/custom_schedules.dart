@@ -705,25 +705,13 @@ class _CustomSchedulesPageState extends State<CustomSchedulesPage>
               (entry) => _MyDayGroup(
                 date: entry.key,
                 items: List<CustomSchedule>.from(entry.value)
-                  ..sort(_compareMyItems),
+                  ..sort(CustomSchedule.compare),
               ),
             )
             .toList()
           ..sort((a, b) => a.date.compareTo(b.date));
 
     return groups;
-  }
-
-  int _compareMyItems(CustomSchedule a, CustomSchedule b) {
-    final doneCompare = a.isDone == b.isDone
-        ? 0
-        : a.isDone
-        ? 1
-        : -1;
-    if (doneCompare != 0) return doneCompare;
-    final dueCompare = a.startTime.compareTo(b.startTime);
-    if (dueCompare != 0) return dueCompare;
-    return b.createdAt.compareTo(a.createdAt);
   }
 }
 

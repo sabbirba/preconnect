@@ -21,7 +21,7 @@ Future<bool> openPdfUrl(
       final length = await file.length();
       if (length > 4) {
         final header = await file.openRead(0, 1024).first;
-        if (_isPdfHeader(header)) {
+        if (looksLikePdf(header)) {
           final opened = await _openPdfNativelyOrFallback(file.path);
           if (opened) return true;
         } else {
@@ -70,7 +70,7 @@ Future<bool> openPdfUrl(
       if (response != null &&
           response.statusCode == 200 &&
           response.bodyBytes.isNotEmpty &&
-          _isPdfHeader(response.bodyBytes)) {
+          looksLikePdf(response.bodyBytes)) {
         final headerName = _extractFilenameFromHeaders(response.headers);
         final finalFileName = headerName != null && headerName.isNotEmpty
             ? _sanitizeFileName(headerName)
@@ -91,20 +91,6 @@ Future<bool> openPdfUrl(
     failureMessage: failureMessage,
     mobilePreferredMode: LaunchMode.inAppBrowserView,
   );
-}
-
-bool _isPdfHeader(List<int> bytes) {
-  if (bytes.length < 4) return false;
-  final limit = bytes.length < 1024 ? bytes.length - 3 : 1021;
-  for (var i = 0; i < limit; i++) {
-    if (bytes[i] == 0x25 &&
-        bytes[i + 1] == 0x50 &&
-        bytes[i + 2] == 0x44 &&
-        bytes[i + 3] == 0x46) {
-      return true;
-    }
-  }
-  return false;
 }
 
 String _resolveOriginalFileName(String url) {

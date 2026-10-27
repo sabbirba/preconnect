@@ -389,7 +389,7 @@ extension _HomeDashboardView on _HomeDashboardState {
                                         CrossAxisAlignment.center,
                                     children: [
                                       const Expanded(
-                                        child: _SectionTitle(
+                                        child: AppSectionTitle(
                                           title: 'Quick Access',
                                         ),
                                       ),

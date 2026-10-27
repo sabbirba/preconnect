@@ -1,3 +1,5 @@
+import 'package:intl/intl.dart';
+
 String formatCredit(double value) {
   if (value % 1 == 0) return value.toStringAsFixed(0);
   return value.toStringAsFixed(1);
@@ -128,4 +130,32 @@ String roomsForDays(String roomStr, Iterable<String> days) {
     if (room.isNotEmpty && !rooms.contains(room)) rooms.add(room);
   }
   return rooms.isEmpty ? roomStr.trim() : rooms.join(', ');
+}
+
+String normalizeCourseCode(String code) => code.trim().toUpperCase();
+
+String normalizeSectionName(String section) {
+  final raw = section.trim();
+  if (raw.isEmpty) return '';
+  final parsed = int.tryParse(raw);
+  if (parsed != null) return parsed.toString();
+  return raw.toUpperCase();
+}
+
+bool looksLikePdf(List<int> bytes) {
+  if (bytes.length < 4) return false;
+  final limit = bytes.length < 1024 ? bytes.length - 3 : 1021;
+  for (var i = 0; i < limit; i++) {
+    if (bytes[i] == 0x25 &&
+        bytes[i + 1] == 0x50 &&
+        bytes[i + 2] == 0x44 &&
+        bytes[i + 3] == 0x46) {
+      return true;
+    }
+  }
+  return false;
+}
+
+String formatAmount(num amount) {
+  return NumberFormat.decimalPattern('en_IN').format(amount.round());
 }

@@ -10,6 +10,7 @@ import 'package:preconnect/api/profile.dart';
 import 'package:preconnect/tools/app_log.dart';
 import 'package:preconnect/tools/app_paths.dart';
 import 'package:preconnect/tools/app_storage.dart';
+import 'package:preconnect/tools/string_utils.dart';
 
 class GradeSheetFile {
   const GradeSheetFile({required this.file});
@@ -29,7 +30,7 @@ class GradeSheetService {
     if (!forceRefresh && file != null && await file.exists()) {
       try {
         final bytes = await file.readAsBytes();
-        if (_looksLikePdf(bytes)) return bytes;
+        if (looksLikePdf(bytes)) return bytes;
       } catch (_) {}
     }
 
@@ -109,7 +110,7 @@ class GradeSheetService {
   }
 
   Uint8List? _extractPdfBytes(Uint8List rawBytes, String rawBody) {
-    if (_looksLikePdf(rawBytes)) {
+    if (looksLikePdf(rawBytes)) {
       return rawBytes;
     }
 
@@ -121,26 +122,12 @@ class GradeSheetService {
 
     try {
       final decoded = base64Decode(normalized);
-      if (_looksLikePdf(decoded)) {
+      if (looksLikePdf(decoded)) {
         return Uint8List.fromList(decoded);
       }
     } catch (_) {}
 
     return null;
-  }
-
-  bool _looksLikePdf(List<int> bytes) {
-    if (bytes.length < 4) return false;
-    final limit = bytes.length < 1024 ? bytes.length - 3 : 1021;
-    for (var i = 0; i < limit; i++) {
-      if (bytes[i] == 0x25 &&
-          bytes[i + 1] == 0x50 &&
-          bytes[i + 2] == 0x44 &&
-          bytes[i + 3] == 0x46) {
-        return true;
-      }
-    }
-    return false;
   }
 
   String _normalizeBase64Payload(String value) {

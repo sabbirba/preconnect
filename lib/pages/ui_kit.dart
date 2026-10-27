@@ -27,6 +27,7 @@ import 'package:http/http.dart' as http;
 import 'package:share_plus/share_plus.dart';
 import 'package:preconnect/pages/home_tab.dart';
 import 'package:preconnect/model/section_info.dart';
+import 'package:preconnect/tools/string_utils.dart';
 
 export 'package:preconnect/tools/web_shared.dart';
 
@@ -696,12 +697,10 @@ PopupMenuItem<T> compactPopupMenuItem<T>({
 const String kPreConnectDiscordUrl = 'https://discord.gg/HwrgeFrvaz';
 const String kPreConnectRepositoryUrl =
     'https://github.com/sabbirba/preconnect';
-const String kPreConnectIssuesUrl = '$kPreConnectRepositoryUrl/issues';
 const String kPreConnectMaterialsIssueUrl =
     '$kPreConnectRepositoryUrl/issues/new?template=materials.yml';
 const String kPreConnectWebsiteUrl = 'https://preconnect.app';
 const String kPreConnectApiUrl = 'https://api.preconnect.app';
-const String kPreConnectMailUrl = 'mailto:mail@preconnect.app';
 const String kPreConnectEmail = 'mail@preconnect.app';
 
 class PreConnectDiscordIcon extends StatelessWidget {

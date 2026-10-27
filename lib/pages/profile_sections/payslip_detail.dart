@@ -5,6 +5,7 @@ import 'package:gap/gap.dart';
 import 'package:preconnect/api/profile.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/file_open.dart';
+import 'package:preconnect/tools/string_utils.dart';
 
 class PayslipDetailSheet extends StatefulWidget {
   const PayslipDetailSheet({
@@ -640,15 +641,4 @@ class _DetailRow extends StatelessWidget {
   }
 }
 
-String _formatAmount(double amount) {
-  final s = amount.toStringAsFixed(0);
-  final buf = StringBuffer();
-  final len = s.length;
-  for (int i = 0; i < len; i++) {
-    if (i > 0 && (len - i) % 3 == 0) {
-      buf.write(',');
-    }
-    buf.write(s[i]);
-  }
-  return buf.toString();
-}
+String _formatAmount(double amount) => formatAmount(amount);

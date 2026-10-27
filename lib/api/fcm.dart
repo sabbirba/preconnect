@@ -30,6 +30,7 @@ import 'package:preconnect/tools/push_stub.dart'
 import 'package:preconnect/tools/runtime_stub.dart'
     if (dart.library.js_interop) 'package:preconnect/tools/runtime_web.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:preconnect/tools/string_utils.dart';
 
 class FCMService {
   FCMService._internal();
@@ -682,24 +683,17 @@ class FCMService {
         }
       }
 
-      String normCourse(String code) => code.trim().toUpperCase();
-      String normSection(String sec) {
-        final raw = sec.trim();
-        if (raw.isEmpty) return '';
-        final parsed = int.tryParse(raw);
-        if (parsed != null) return parsed.toString();
-        return raw.toUpperCase();
-      }
-
-      final targetCourse = normCourse(courseCode);
-      final targetSection = normSection(sectionName);
+      final targetCourse = normalizeCourseCode(courseCode);
+      final targetSection = normalizeSectionName(sectionName);
 
       if (subscribe) {
         bool exists = false;
         for (final item in currentList) {
           if (item is Map) {
-            final c = normCourse(item['courseCode']?.toString() ?? '');
-            final s = normSection(item['sectionName']?.toString() ?? '');
+            final c = normalizeCourseCode(item['courseCode']?.toString() ?? '');
+            final s = normalizeSectionName(
+              item['sectionName']?.toString() ?? '',
+            );
             if (c == targetCourse && s == targetSection) {
               exists = true;
               break;
@@ -716,8 +710,8 @@ class FCMService {
       } else {
         currentList.removeWhere((dynamic item) {
           if (item is! Map) return false;
-          final c = normCourse(item['courseCode']?.toString() ?? '');
-          final s = normSection(item['sectionName']?.toString() ?? '');
+          final c = normalizeCourseCode(item['courseCode']?.toString() ?? '');
+          final s = normalizeSectionName(item['sectionName']?.toString() ?? '');
           return c == targetCourse && s == targetSection;
         });
       }
@@ -1256,20 +1250,6 @@ class FCMService {
           interruptionLevel: InterruptionLevel.timeSensitive,
         ),
       ),
-    );
-  }
-
-  Future<void> showNotification({
-    required int id,
-    required String title,
-    required String body,
-    String? payload,
-  }) async {
-    await showNotificationStatic(
-      id: id,
-      title: title,
-      body: body,
-      payload: payload,
     );
   }
 }

@@ -10,14 +10,11 @@ class WebExtensionApiConfig {
       '${ApiConfig.connectOrigin}/student/profile/overview';
 
   static String authUrlWithPkce(String codeChallenge) {
-    final encodedChallenge = Uri.encodeQueryComponent(codeChallenge);
-    return '$authEndpoint'
-        '?client_id=$clientId'
-        '&redirect_uri=${Uri.encodeQueryComponent(redirectUri)}'
-        '&response_type=code'
-        '&response_mode=query'
-        '&scope=openid offline_access'
-        '&code_challenge=$encodedChallenge'
-        '&code_challenge_method=S256';
+    return ApiConfig.pkceAuthUrl(
+      endpoint: authEndpoint,
+      clientId: clientId,
+      redirectUri: redirectUri,
+      codeChallenge: codeChallenge,
+    );
   }
 }

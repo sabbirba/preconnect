@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
-import 'package:intl/intl.dart';
 import 'package:preconnect/api/profile.dart';
 import 'package:preconnect/pages/profile_sections/payslip_detail.dart';
 import 'package:preconnect/pages/ui_kit.dart';
+import 'package:preconnect/tools/string_utils.dart';
 
 class PaymentList extends StatefulWidget {
   const PaymentList({super.key, required this.payments});
@@ -268,8 +268,4 @@ String _formatPaymentType(String raw) {
       .join(' ');
 }
 
-String _formatAmount(double amount) {
-  final formatter = NumberFormat.decimalPattern('en_IN');
-  final rounded = amount.round();
-  return '${formatter.format(rounded)} Taka';
-}
+String _formatAmount(double amount) => '${formatAmount(amount)} Taka';

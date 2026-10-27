@@ -138,10 +138,10 @@ class Section {
       capacity: _intValue(json, 'capacity'),
       consumedSeat: _intValue(json, 'consumedSeat'),
       sectionSchedule: SectionSchedule.fromJson(
-        _scheduleMapFromJson(json['sectionSchedule']),
+        scheduleMapFromJson(json['sectionSchedule']),
       ),
       faculty: SectionFaculty.tryParse(json['faculties'] ?? json['faculty']),
-      faculties: _facultyLabel(json['faculties'] ?? json['faculty']),
+      faculties: facultyLabel(json['faculties'] ?? json['faculty']),
       roomName: _stringValue(json, 'roomName'),
       roomNumber: _stringValue(json, 'roomNumber'),
       prerequisiteCourses: json['prerequisiteCourses']?.toString(),
@@ -301,7 +301,7 @@ class ClassSchedule {
   }
 }
 
-dynamic _jsonValue(dynamic value) {
+dynamic jsonValue(dynamic value) {
   if (value is String) {
     final trimmed = value.trim();
     if (trimmed.isEmpty) return const <String, dynamic>{};
@@ -314,8 +314,8 @@ dynamic _jsonValue(dynamic value) {
   return value;
 }
 
-Map<String, dynamic> _scheduleMapFromJson(dynamic value) {
-  final parsed = _jsonValue(value);
+Map<String, dynamic> scheduleMapFromJson(dynamic value) {
+  final parsed = jsonValue(value);
   if (parsed is Map) {
     return parsed.cast<String, dynamic>();
   }
@@ -341,7 +341,7 @@ int? _nullableIntValue(Map<String, dynamic> json, String key) {
   return int.tryParse(value.toString());
 }
 
-String _facultyLabel(dynamic value) {
+String facultyLabel(dynamic value) {
   if (value is Map) {
     final map = value.cast<String, dynamic>();
     final shortName = '${map['shortName'] ?? ''}'.trim();

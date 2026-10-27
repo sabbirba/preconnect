@@ -5,6 +5,7 @@ import 'package:preconnect/pages/home_tab.dart';
 import 'package:preconnect/api/funding.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/polling_timer.dart';
+import 'package:preconnect/tools/string_utils.dart';
 
 class StudentOverviewCard extends StatelessWidget {
   const StudentOverviewCard({
@@ -294,18 +295,7 @@ class _SupportButtonState extends State<_SupportButton> {
     }
   }
 
-  String _formatAmount(int amount) {
-    final str = amount.toString();
-    if (str.length <= 3) return str;
-    final buffer = StringBuffer();
-    for (int i = 0; i < str.length; i++) {
-      if (i > 0 && (str.length - i) % 3 == 0) {
-        buffer.write(',');
-      }
-      buffer.writeCharCode(str.codeUnitAt(i));
-    }
-    return buffer.toString();
-  }
+  String _formatAmount(int amount) => formatAmount(amount);
 
   String _labelText() {
     final options = _currentOptions();

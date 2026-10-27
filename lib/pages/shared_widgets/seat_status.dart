@@ -557,25 +557,20 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
       final data = decoded['data'];
       if (data is! List) return;
 
-      String normCourse(String code) => code.trim().toUpperCase();
-      String normSection(String sec) {
-        final raw = sec.trim();
-        if (raw.isEmpty) return '';
-        final parsed = int.tryParse(raw);
-        if (parsed != null) return parsed.toString();
-        return raw.toUpperCase();
-      }
-
       final backendSectionIds = <String>{};
       for (final item in data) {
         if (item is! Map) continue;
-        final courseCode = normCourse(item['courseCode']?.toString() ?? '');
-        final sectionName = normSection(item['sectionName']?.toString() ?? '');
+        final courseCode = normalizeCourseCode(
+          item['courseCode']?.toString() ?? '',
+        );
+        final sectionName = normalizeSectionName(
+          item['sectionName']?.toString() ?? '',
+        );
         if (courseCode.isEmpty || sectionName.isEmpty) continue;
 
         for (final detail in details.values) {
-          if (normCourse(detail.courseCode) == courseCode &&
-              normSection(detail.sectionName) == sectionName) {
+          if (normalizeCourseCode(detail.courseCode) == courseCode &&
+              normalizeSectionName(detail.sectionName) == sectionName) {
             backendSectionIds.add(detail.sectionId.toString());
           }
         }

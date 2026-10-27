@@ -3,7 +3,8 @@ import 'dart:convert';
 import 'dart:isolate';
 import 'package:preconnect/api/api_client.dart';
 import 'package:preconnect/api/api_config.dart';
-import 'package:preconnect/model/section_info.dart' show SectionFaculty;
+import 'package:preconnect/model/section_info.dart'
+    show SectionFaculty, facultyLabel, scheduleMapFromJson;
 import 'package:preconnect/model/seat_timetable.dart';
 import 'package:flutter/foundation.dart';
 import 'package:preconnect/api/repository_cache.dart';
@@ -257,7 +258,7 @@ class SeatStatusDetailsResponse {
   final List<SeatStatusClassSchedule> labSchedules;
 
   factory SeatStatusDetailsResponse.fromJson(Map<String, dynamic> json) {
-    final scheduleJson = _sectionScheduleMapFromJson(json['sectionSchedule']);
+    final scheduleJson = scheduleMapFromJson(json['sectionSchedule']);
     final rawLabSchedules = json['labSchedules'];
     final labSchedules = rawLabSchedules is List
         ? rawLabSchedules
@@ -281,7 +282,7 @@ class SeatStatusDetailsResponse {
       semesterSessionId: _toInt(json['semesterSessionId']),
       parentSectionId: _toNullableInt(json['parentSectionId']),
       faculty: SectionFaculty.tryParse(json['faculties'] ?? json['faculty']),
-      faculties: _facultyLabel(json['faculties'] ?? json['faculty']),
+      faculties: facultyLabel(json['faculties'] ?? json['faculty']),
       roomName: _toString(json['roomName']),
       roomNumber: _toString(json['roomNumber']),
       courseType: _toString(json['courseType']),
@@ -439,38 +440,6 @@ int? _toNullableInt(dynamic value) {
 String _toString(dynamic value) {
   if (value == null) return '';
   return '$value'.trim();
-}
-
-Map<String, dynamic> _sectionScheduleMapFromJson(dynamic value) {
-  final parsed = _jsonValue(value);
-  if (parsed is Map) {
-    return parsed.cast<String, dynamic>();
-  }
-  return const <String, dynamic>{};
-}
-
-dynamic _jsonValue(dynamic value) {
-  if (value is String) {
-    final trimmed = value.trim();
-    if (trimmed.isEmpty) return const <String, dynamic>{};
-    try {
-      return jsonDecode(trimmed);
-    } catch (_) {
-      return value;
-    }
-  }
-  return value;
-}
-
-String _facultyLabel(dynamic value) {
-  if (value is Map) {
-    final map = value.cast<String, dynamic>();
-    final shortName = _toString(map['shortName']);
-    if (shortName.isNotEmpty) return shortName;
-    return _toString(map['staffName'] ?? map['name']);
-  }
-  final text = _toString(value);
-  return text.toUpperCase() == 'NULL' ? '' : text;
 }
 
 String? _toNullableString(dynamic value) {

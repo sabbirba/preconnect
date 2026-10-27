@@ -277,3 +277,19 @@ NotificationBodyParts splitNotificationBodyParts(String cleaned) {
 String displayLinkLabel(String url) {
   return _normalizeUrlCandidate(url);
 }
+
+String notificationModuleLabel(String raw) {
+  final cleaned = raw.trim().toLowerCase();
+  switch (cleaned) {
+    case 'fin':
+      return 'Finance';
+    case 'adv':
+      return 'Advising';
+    case 'reg':
+      return 'Registration';
+    case 'exc':
+      return 'Exam & Course';
+    default:
+      return cleaned.isEmpty ? 'General' : cleaned.toUpperCase();
+  }
+}

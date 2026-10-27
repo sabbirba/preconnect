@@ -252,24 +252,8 @@ class _ConnectNotificationDetailPanelState
     );
   }
 
-  String _moduleLabel(String raw) {
-    final cleaned = raw.trim().toLowerCase();
-    switch (cleaned) {
-      case 'fin':
-        return 'Finance';
-      case 'adv':
-        return 'Advising';
-      case 'reg':
-        return 'Registration';
-      case 'exc':
-        return 'Exam & Course';
-      default:
-        return cleaned.isEmpty ? 'General' : cleaned.toUpperCase();
-    }
-  }
-
   String _detailMeta(ConnectNotificationDetail detail) {
-    final module = _moduleLabel(detail.module);
+    final module = notificationModuleLabel(detail.module);
     final createdOn = detail.createdOn;
     if (createdOn == null) return module;
     final fullTime = DateFormat(

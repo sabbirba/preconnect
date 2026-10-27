@@ -16,6 +16,7 @@ import 'package:preconnect/pages/shared_widgets/faculty_sheet.dart';
 import 'package:preconnect/pages/shared_widgets/seat_filters.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/app_storage.dart';
+import 'package:preconnect/pages/shared_widgets/seat_blocks.dart';
 
 enum _ReplacementQueueAction { higher, lower, remove }
 
@@ -1347,14 +1348,18 @@ class _AdvisingSeatStatusCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final textPrimary = AppPalette.textPrimary(context);
     final textSecondary = AppPalette.textSecondary(context);
-    final theoryLabel = _titleCaseText(courseType);
+    final theoryLabel = seatTitleCase(courseType);
     final courseHeader = '$courseCode - $sectionName';
     final facultyName = faculty?.staffName.trim() ?? '';
     final facultyEmail = faculty?.email.trim() ?? '';
-    final classLines = _scheduleLines(classSchedule);
-    final labLines = _scheduleLines(labSchedule);
-    final hasMidExam = _hasExam(midExamDate, midExamStartTime, midExamEndTime);
-    final hasFinalExam = _hasExam(
+    final classLines = seatScheduleLines(classSchedule);
+    final labLines = seatScheduleLines(labSchedule);
+    final hasMidExam = hasExamSchedule(
+      midExamDate,
+      midExamStartTime,
+      midExamEndTime,
+    );
+    final hasFinalExam = hasExamSchedule(
       finalExamDate,
       finalExamStartTime,
       finalExamEndTime,
@@ -1500,15 +1505,15 @@ class _AdvisingSeatStatusCard extends StatelessWidget {
           ),
           if (classLines.isNotEmpty) ...[
             const Gap(12),
-            _SeatScheduleBlock(title: 'Class', lines: classLines),
+            SeatScheduleBlock(title: 'Class', lines: classLines),
           ],
           if (labLines.isNotEmpty) ...[
             const Gap(12),
-            _SeatScheduleBlock(title: 'Lab', lines: labLines),
+            SeatScheduleBlock(title: 'Lab', lines: labLines),
           ],
           if (room.trim().isNotEmpty || labRoom.trim().isNotEmpty) ...[
             const Gap(12),
-            _RoomBlock(
+            SeatRoomBlock(
               theoryLabel: theoryLabel,
               theoryRoom: room,
               labRoom: labRoom,
@@ -1519,7 +1524,7 @@ class _AdvisingSeatStatusCard extends StatelessWidget {
             Row(
               children: [
                 Expanded(
-                  child: _ExamBlock(
+                  child: SeatExamBlock(
                     label: 'Mid',
                     date: midExamDate,
                     start: midExamStartTime,
@@ -1530,7 +1535,7 @@ class _AdvisingSeatStatusCard extends StatelessWidget {
                 ),
                 const Gap(16),
                 Expanded(
-                  child: _ExamBlock(
+                  child: SeatExamBlock(
                     label: 'Final',
                     date: finalExamDate,
                     start: finalExamStartTime,
@@ -1549,21 +1554,21 @@ class _AdvisingSeatStatusCard extends StatelessWidget {
             Row(
               children: [
                 Expanded(
-                  child: _SeatMetric(
+                  child: SeatMetric(
                     value: remaining,
                     label: 'Remaining',
                     color: remaining <= 0 ? AppPalette.danger : textPrimary,
                   ),
                 ),
                 Expanded(
-                  child: _SeatMetric(
+                  child: SeatMetric(
                     value: consumed,
                     label: 'Booked',
                     color: textPrimary,
                   ),
                 ),
                 Expanded(
-                  child: _SeatMetric(
+                  child: SeatMetric(
                     value: total,
                     label: 'Total',
                     color: textPrimary,
@@ -1606,251 +1611,6 @@ class _AdvisingSeatStatusCard extends StatelessWidget {
         onTap: onTap,
         child: card,
       ),
-    );
-  }
-
-  bool _hasExam(String? date, String? start, String? end) {
-    return (date ?? '').trim().isNotEmpty ||
-        (start ?? '').trim().isNotEmpty ||
-        (end ?? '').trim().isNotEmpty;
-  }
-
-  String _titleCaseText(String input) {
-    final trimmed = input.trim();
-    if (trimmed.isEmpty) return '';
-    return trimmed
-        .split(RegExp(r'\s+'))
-        .map(
-          (word) => word.isEmpty
-              ? ''
-              : '${word[0].toUpperCase()}${word.substring(1).toLowerCase()}',
-        )
-        .join(' ');
-  }
-
-  List<String> _scheduleLines(List<SeatStatusClassSchedule> schedules) {
-    if (schedules.isEmpty) return const <String>[];
-    final lines = schedules.map((entry) {
-      final day = formatWeekdayTitle(entry.day);
-      final time = formatTimeRange(entry.startTime, entry.endTime);
-      return '$day $time'.trim();
-    }).toList();
-    return lines.where((line) => line.trim().isNotEmpty).toList();
-  }
-}
-
-class _RoomBlock extends StatelessWidget {
-  const _RoomBlock({
-    required this.theoryLabel,
-    required this.theoryRoom,
-    required this.labRoom,
-  });
-
-  final String theoryLabel;
-  final String theoryRoom;
-  final String labRoom;
-
-  @override
-  Widget build(BuildContext context) {
-    final lines = <InlineSpan>[];
-    if (theoryRoom.trim().isNotEmpty) {
-      lines.add(
-        TextSpan(
-          text: '${theoryLabel.isEmpty ? 'Room' : theoryLabel}: ',
-          style: TextStyle(
-            color: AppPalette.textSecondary(context),
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-      );
-      lines.add(
-        TextSpan(
-          text: theoryRoom.trim(),
-          style: TextStyle(
-            color: AppPalette.textPrimary(context),
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-      );
-    }
-    if (theoryRoom.trim().isNotEmpty && labRoom.trim().isNotEmpty) {
-      lines.add(const TextSpan(text: '\n'));
-    }
-    if (labRoom.trim().isNotEmpty) {
-      lines.add(
-        TextSpan(
-          text: 'Lab: ',
-          style: TextStyle(
-            color: AppPalette.textSecondary(context),
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-      );
-      lines.add(
-        TextSpan(
-          text: labRoom.trim(),
-          style: TextStyle(
-            color: AppPalette.textPrimary(context),
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-      );
-    }
-    if (lines.isEmpty) return const SizedBox.shrink();
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Room:',
-          style: TextStyle(
-            color: AppPalette.textSecondary(context),
-            fontSize: 12,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-        const Gap(3),
-        RichText(
-          text: TextSpan(
-            style: TextStyle(
-              fontSize: 14,
-              height: 1.25,
-              color: AppPalette.textPrimary(context),
-              fontWeight: FontWeight.w700,
-            ),
-            children: lines,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _SeatScheduleBlock extends StatelessWidget {
-  const _SeatScheduleBlock({required this.title, required this.lines});
-
-  final String title;
-  final List<String> lines;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          '$title:',
-          style: TextStyle(
-            color: AppPalette.textSecondary(context),
-            fontSize: 12,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-        const Gap(3),
-        for (final line in lines)
-          Text(
-            line,
-            style: TextStyle(
-              color: AppPalette.textPrimary(context),
-              fontSize: 14,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-      ],
-    );
-  }
-}
-
-class _SeatMetric extends StatelessWidget {
-  const _SeatMetric({
-    required this.value,
-    required this.label,
-    required this.color,
-  });
-
-  final int value;
-  final String label;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Text(
-          '$value',
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            fontSize: 22,
-            fontWeight: FontWeight.w700,
-            color: color,
-          ),
-        ),
-        const Gap(3),
-        Text(
-          label,
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            color: AppPalette.textSecondary(context),
-            fontSize: 11.5,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _ExamBlock extends StatelessWidget {
-  const _ExamBlock({
-    required this.label,
-    required this.date,
-    required this.start,
-    required this.end,
-    required this.textPrimary,
-    required this.textSecondary,
-  });
-
-  final String label;
-  final String? date;
-  final String? start;
-  final String? end;
-  final Color textPrimary;
-  final Color textSecondary;
-
-  @override
-  Widget build(BuildContext context) {
-    final dateLabel = formatDate(date);
-    final timeLabel = formatTimeRange(start, end);
-    final hasDate = dateLabel.isNotEmpty;
-    final hasTime = timeLabel.isNotEmpty;
-    if (!hasDate && !hasTime) return const SizedBox.shrink();
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          '$label:',
-          style: TextStyle(
-            color: textSecondary,
-            fontSize: 12,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-        const Gap(3),
-        if (hasDate)
-          Text(
-            dateLabel,
-            style: TextStyle(
-              color: textPrimary,
-              fontSize: 12.5,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        if (hasDate && hasTime) const Gap(1),
-        if (hasTime)
-          Text(
-            timeLabel,
-            style: TextStyle(color: textSecondary, fontSize: 11.5),
-          ),
-      ],
     );
   }
 }

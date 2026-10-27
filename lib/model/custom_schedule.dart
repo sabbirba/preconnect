@@ -1,4 +1,16 @@
 class CustomSchedule {
+  static int compare(CustomSchedule a, CustomSchedule b) {
+    final doneCompare = a.isDone == b.isDone
+        ? 0
+        : a.isDone
+        ? 1
+        : -1;
+    if (doneCompare != 0) return doneCompare;
+    final dueCompare = a.startTime.compareTo(b.startTime);
+    if (dueCompare != 0) return dueCompare;
+    return b.createdAt.compareTo(a.createdAt);
+  }
+
   const CustomSchedule({
     required this.itemId,
     required this.kind,
@@ -113,11 +125,4 @@ class CustomSchedule {
   }
 
   bool get isOverdue => !isDone && startTime.isBefore(DateTime.now());
-
-  bool get isDueSoon {
-    if (isDone) return false;
-    final now = DateTime.now();
-    return !startTime.isBefore(now) &&
-        startTime.difference(now) <= const Duration(days: 2);
-  }
 }

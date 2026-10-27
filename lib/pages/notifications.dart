@@ -10,6 +10,7 @@ import 'package:preconnect/pages/notifications_sections/list_widgets.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/preload_cache.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
+import 'package:preconnect/pages/notifications_sections/text_formatter.dart';
 
 class NotificationsPage extends StatefulWidget {
   const NotificationsPage({super.key});
@@ -446,7 +447,7 @@ class _NotificationsPageState extends State<NotificationsPage>
         (item) => NotificationListItem(
           id: 'connect_${item.id}',
           title: item.title,
-          module: _moduleLabel(item.module),
+          module: notificationModuleLabel(item.module),
           createdOn: item.createdOn,
           connectItem: item,
           details: '',
@@ -508,21 +509,5 @@ class _NotificationsPageState extends State<NotificationsPage>
   String _dateLabel(DateTime date) {
     if (date.year == 1970) return '';
     return formatLongDate(date);
-  }
-
-  String _moduleLabel(String raw) {
-    final cleaned = raw.trim().toLowerCase();
-    switch (cleaned) {
-      case 'fin':
-        return 'Finance';
-      case 'adv':
-        return 'Advising';
-      case 'reg':
-        return 'Registration';
-      case 'exc':
-        return 'Exam & Course';
-      default:
-        return cleaned.isEmpty ? 'General' : cleaned.toUpperCase();
-    }
   }
 }

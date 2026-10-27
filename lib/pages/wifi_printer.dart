@@ -19,6 +19,7 @@ import 'package:preconnect/tools/print_compose.dart';
 import 'package:preconnect/tools/print_layout.dart';
 import 'package:preconnect/tools/storage_keys.dart';
 import 'package:preconnect/tools/app_log.dart';
+import 'package:preconnect/tools/string_utils.dart';
 
 part 'printer_sections/printer_models.dart';
 
@@ -725,8 +726,6 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
     if (file.pageCount != null) {
       return file.pageCount == 1 ? '1 Page' : '${file.pageCount} Pages';
     }
-    if (_isJpegFile(file.name)) return '1 Page';
-    if (_isPngFile(file.name)) return '1 Page';
     return '1 Page';
   }
 
@@ -2449,18 +2448,6 @@ class _PrintTicket {
   }
 
   String get postScriptPreamble => '%!PS-Adobe-3.0';
-
-  bool get hasAdvancedFinishingOptions {
-    return staple != 'Off' ||
-        punch != 'Off' ||
-        booklet == 'On' ||
-        pagesPerSheet != '1-in-1' ||
-        fittingMode != 'Fit on Paper' ||
-        jobOffset == 'On' ||
-        slipSheet == 'On' ||
-        duplexMode != 'OFF' ||
-        collateMode == 'ON';
-  }
 }
 
 class _LprAckReader {
@@ -2553,16 +2540,7 @@ List<int> _ascii(String value) {
 }
 
 bool _isPdfFile(String fileName, Uint8List bytes) {
-  final lower = fileName.toLowerCase();
-  if (lower.endsWith('.pdf')) return true;
-  if (bytes.length >= 4 &&
-      bytes[0] == 0x25 &&
-      bytes[1] == 0x50 &&
-      bytes[2] == 0x44 &&
-      bytes[3] == 0x46) {
-    return true;
-  }
-  return false;
+  return fileName.toLowerCase().endsWith('.pdf') || looksLikePdf(bytes);
 }
 
 bool _isJpegFile(String fileName) {

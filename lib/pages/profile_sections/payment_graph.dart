@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
-import 'package:intl/intl.dart';
 import 'package:preconnect/api/profile.dart';
 import 'package:preconnect/pages/ui_kit.dart';
+import 'package:preconnect/tools/string_utils.dart';
 
 class PaymentGraph extends StatelessWidget {
   const PaymentGraph({super.key, required this.payments, this.shortCode});
@@ -79,9 +79,7 @@ class PaymentGraph extends StatelessWidget {
   }
 
   static String _formatAmountStatic(double amount) {
-    final formatter = NumberFormat.decimalPattern('en_IN');
-    final rounded = amount.round();
-    return '${formatter.format(rounded)} Taka';
+    return '${formatAmount(amount)} Taka';
   }
 }
 

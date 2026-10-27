@@ -349,24 +349,6 @@ class _TopBar extends StatelessWidget {
   }
 }
 
-class _SectionTitle extends StatelessWidget {
-  const _SectionTitle({required this.title});
-
-  final String title;
-
-  @override
-  Widget build(BuildContext context) {
-    return Text(
-      title,
-      style: TextStyle(
-        fontSize: 16,
-        fontWeight: FontWeight.w600,
-        color: AppPalette.textPrimary(context),
-      ),
-    );
-  }
-}
-
 typedef _ScheduleTile = AppScheduleTile;
 
 class _RamadanHeroTime extends StatelessWidget {

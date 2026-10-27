@@ -51,7 +51,7 @@ class CustomSchedulesService {
       }
     }
 
-    updatedItems.sort(_compareItems);
+    updatedItems.sort(CustomSchedule.compare);
     return updatedItems;
   }
 
@@ -173,19 +173,7 @@ class CustomSchedulesService {
         if (existing.itemId != item.itemId) existing,
       item,
     ];
-    next.sort(_compareItems);
+    next.sort(CustomSchedule.compare);
     await _writeCache(next);
-  }
-
-  int _compareItems(CustomSchedule a, CustomSchedule b) {
-    final doneCompare = a.isDone == b.isDone
-        ? 0
-        : a.isDone
-        ? 1
-        : -1;
-    if (doneCompare != 0) return doneCompare;
-    final dueCompare = a.startTime.compareTo(b.startTime);
-    if (dueCompare != 0) return dueCompare;
-    return b.createdAt.compareTo(a.createdAt);
   }
 }
