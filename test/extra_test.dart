@@ -115,6 +115,40 @@ void main() {
     },
   );
 
+  test('sectionsFor returns only saved days for the semester', () async {
+    await store.save(ExtraClass(section: sampleSection(7), days: {'monday'}));
+    await store.save(
+      ExtraClass(section: sampleSection(8, semester: 2), days: {'sunday'}),
+    );
+    await store.save(ExtraClass(section: sampleSection(9), days: {'sunday'}));
+
+    final sections = await store.sectionsFor(1, [sampleSection(9)]);
+
+    expect(sections.map((section) => section.sectionId), [7]);
+    expect(
+      sections.single.sectionSchedule.classSchedules.map((item) => item.day),
+      ['MONDAY'],
+    );
+  });
+
+  test('each saved day carries the room for that day', () async {
+    final combined = Section.fromJson({
+      ...sampleSection(7).toJson(),
+      'roomNumber': 'SUN 8:00AM: A-1; MON 9:30AM: B-2',
+    });
+    await store.save(ExtraClass(section: combined, days: {'sunday', 'monday'}));
+
+    final sections = await store.sectionsFor(1, const []);
+
+    expect(
+      {
+        for (final section in sections)
+          section.sectionSchedule.classSchedules.single.day: section.roomNumber,
+      },
+      {'SUNDAY': 'A-1', 'MONDAY': 'B-2'},
+    );
+  });
+
   test('invalid selections cannot replace saved classes', () async {
     await store.save(ExtraClass(section: sampleSection(1), days: {'SUNDAY'}));
     for (final days in [

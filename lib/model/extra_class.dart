@@ -1,4 +1,5 @@
 import 'package:preconnect/model/section_info.dart';
+import 'package:preconnect/tools/string_utils.dart';
 
 class ExtraClass {
   ExtraClass({required this.section, required Set<String> days})
@@ -16,6 +17,17 @@ class ExtraClass {
       ),
     ),
   );
+
+  List<Section> get meetingSections => selectedSection
+      .sectionSchedule
+      .classSchedules
+      .map(
+        (meeting) => Section.fromJson({
+          ..._sectionJson([meeting]),
+          'roomNumber': roomForDay(section.roomNumber, meeting.day),
+        }),
+      )
+      .toList();
 
   Map<String, dynamic> _sectionJson(Iterable<ClassSchedule> meetings) => {
     ...section.toJson(),

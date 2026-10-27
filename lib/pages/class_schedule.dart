@@ -665,7 +665,7 @@ class _ClassScheduleState extends State<ClassSchedulePage>
                     item.section.semesterSessionId == semesterId &&
                     !officialIds.contains(item.section.sectionId),
               )
-              .map((item) => item.selectedSection)
+              .expand((item) => item.meetingSections)
               .toList();
           final data = extraSections.isEmpty
               ? officialData

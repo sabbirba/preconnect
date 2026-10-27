@@ -14,6 +14,7 @@ import 'package:preconnect/pages/shared_widgets/entry_card.dart';
 import 'package:preconnect/pages/shared_widgets/scroll_helper.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/app_storage.dart';
+import 'package:preconnect/tools/string_utils.dart';
 import 'package:preconnect/tools/ramadan.dart';
 import 'package:preconnect/tools/time_utils.dart';
 
@@ -653,10 +654,10 @@ class _FreeLabsPageState extends State<FreeLabsPage> {
     required List<SeatStatusClassSchedule> schedules,
     required String day,
   }) {
-    final parsedRoom = _parseRoomForDay(roomNumber, day);
+    final parsedRoom = roomForDay(roomNumber, day);
     final normalizedRoomNumber = parsedRoom.trim();
     if (normalizedRoomNumber.isEmpty || schedules.isEmpty) return;
-    final parsedRoomName = _parseRoomForDay(roomName, day);
+    final parsedRoomName = roomForDay(roomName, day);
     final room = grouped.putIfAbsent(
       normalizedRoomNumber,
       () => _RoomSeed(
@@ -1092,41 +1093,6 @@ class _FreeLabsPageState extends State<FreeLabsPage> {
     if (suffix.endsWith('T')) return 'Theater Room';
     if (suffix.endsWith('C')) return 'Class Room';
     return 'Room';
-  }
-
-  String _parseRoomForDay(String roomStr, String day) {
-    final raw = roomStr.trim();
-    if (raw.isEmpty) return '';
-    if (!raw.contains(';') && !raw.contains(':')) {
-      return raw;
-    }
-
-    final dayUpper = day.toUpperCase();
-    final abbr = switch (dayUpper) {
-      final s when s.startsWith('MON') => 'MON',
-      final s when s.startsWith('TUE') => 'TUE',
-      final s when s.startsWith('WED') => 'WED',
-      final s when s.startsWith('THU') => 'THU',
-      final s when s.startsWith('FRI') => 'FRI',
-      final s when s.startsWith('SAT') => 'SAT',
-      final s when s.startsWith('SUN') => 'SUN',
-      _ => '',
-    };
-
-    if (abbr.isEmpty) return raw;
-
-    final parts = raw.split(';');
-    for (final part in parts) {
-      final trimmedPart = part.trim();
-      if (trimmedPart.toUpperCase().contains(abbr)) {
-        final colonIndex = trimmedPart.lastIndexOf(':');
-        if (colonIndex != -1) {
-          return trimmedPart.substring(colonIndex + 1).trim();
-        }
-      }
-    }
-
-    return '';
   }
 }
 

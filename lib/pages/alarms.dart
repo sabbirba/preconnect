@@ -833,6 +833,10 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
               sections.add(
                 Section.fromJson({
                   ...selected.toJson(),
+                  'roomNumber': roomsForDays(
+                    selected.roomNumber,
+                    meetings.map((meeting) => meeting.day),
+                  ),
                   'sectionSchedule': {
                     ...selected.sectionSchedule.toJson(),
                     'classSchedules': meetings

@@ -7,7 +7,9 @@ import 'package:flutter/services.dart';
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
 import 'package:flutter/rendering.dart';
+import 'package:preconnect/api/extra_classes.dart';
 import 'package:preconnect/api/profile.dart';
+import 'package:preconnect/model/section_info.dart';
 import 'package:preconnect/api/schedule.dart';
 import 'package:archive/archive.dart';
 import 'package:preconnect/pages/ui_kit.dart';
@@ -172,8 +174,19 @@ class _ShareSchedulePageState extends State<ShareSchedulePage>
         return;
       }
 
+      final sections = ScheduleService().parseStudentSections(
+        jsonString,
+        semesterSessionId: semesterSessionId,
+      );
+      final extraSections = await ExtraClassesStore()
+          .sectionsFor(semesterSessionId, sections)
+          .catchError((_) => const <Section>[]);
+      final extraJson = jsonEncode(
+        extraSections.map((section) => section.toJson()).toList(),
+      );
+
       final fingerprint = _fastHash(
-        'v$_qrPayloadVersion|$studentId|$fullName|$photoFilePath|$currentSemester|$jsonString',
+        'v$_qrPayloadVersion|$studentId|$fullName|$photoFilePath|$currentSemester|$jsonString|$extraJson',
       );
       if (!forceRefresh &&
           cachedBase64 != null &&
@@ -182,12 +195,10 @@ class _ShareSchedulePageState extends State<ShareSchedulePage>
         return;
       }
 
-      final sections = ScheduleService().parseStudentSections(
-        jsonString,
-        semesterSessionId: semesterSessionId,
-      );
-
-      final courses = sections.map((section) => section.toJson()).toList();
+      final courses = [
+        ...sections,
+        ...extraSections,
+      ].map((section) => section.toJson()).toList();
 
       final finalJson = {
         "name": fullName,

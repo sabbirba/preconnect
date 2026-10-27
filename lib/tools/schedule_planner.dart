@@ -1,5 +1,6 @@
 import 'package:preconnect/api/custom_schedules.dart';
 import 'package:preconnect/api/exam_map.dart';
+import 'package:preconnect/api/extra_classes.dart';
 import 'package:preconnect/api/schedule.dart';
 import 'package:preconnect/model/custom_schedule.dart';
 import 'package:preconnect/model/section_info.dart' as section;
@@ -65,15 +66,28 @@ class QuietModeSchedulePlanner {
         semesterSessionId: semesterSessionId,
       );
 
+      final extraSections = semesterSessionId == null
+          ? const <section.Section>[]
+          : await ExtraClassesStore()
+                .sectionsFor(semesterSessionId, sections)
+                .catchError((_) => const <section.Section>[]);
+
+      if (sections.isNotEmpty || extraSections.isNotEmpty) {
+        final isRamadan = await RamadanTiming.isRamadan();
+        rawWindows.addAll(
+          _buildClassWindows(
+            [...sections, ...extraSections],
+            isRamadan: isRamadan,
+            now: now,
+          ),
+        );
+      }
+
       if (sections.isNotEmpty) {
         final examService = ExamScheduleService();
         final overrides = await examService.getOverridesForSections(
           sections,
           forcedSemesterSessionId: semesterSessionId,
-        );
-        final isRamadan = await RamadanTiming.isRamadan();
-        rawWindows.addAll(
-          _buildClassWindows(sections, isRamadan: isRamadan, now: now),
         );
         rawWindows.addAll(
           _buildExamWindows(sections, overrides: overrides, now: now),

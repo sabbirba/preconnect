@@ -6,6 +6,7 @@ import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/api/auth.dart';
 import 'package:preconnect/api/schedule.dart';
 import 'package:preconnect/api/exam_map.dart';
+import 'package:preconnect/api/extra_classes.dart';
 import 'package:preconnect/model/friend_schedule.dart';
 import 'package:preconnect/model/section_info.dart' as section;
 import 'package:preconnect/pages/friend_sections/compare_schedules.dart';
@@ -135,10 +136,21 @@ class _FriendDetailPageState extends State<FriendDetailPage> {
     final parsed = jsonDecode(jsonString);
     final coursesData = parsed is Map ? parsed['courses'] : parsed;
     final list = coursesData is List ? coursesData : null;
-    return list
+    final courses = list
         ?.whereType<Map>()
         .map((e) => Course.fromJson(e.cast<String, dynamic>()))
         .toList();
+    if (courses == null) return null;
+    final extras = await ExtraClassesStore()
+        .sectionsFor(
+          semesterSessionId,
+          section.parseSectionsFromScheduleJson(jsonString),
+        )
+        .catchError((_) => const <section.Section>[]);
+    return [
+      ...courses,
+      ...extras.map((item) => Course.fromJson(item.toJson())),
+    ];
   }
 
   Future<void> _openCompare() async {

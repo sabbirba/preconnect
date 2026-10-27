@@ -11,6 +11,7 @@ import 'package:preconnect/api/auth.dart';
 import 'package:preconnect/api/exam_map.dart';
 import 'package:preconnect/api/profile.dart';
 import 'package:preconnect/api/custom_schedules.dart';
+import 'package:preconnect/api/extra_classes.dart';
 import 'package:preconnect/api/schedule.dart';
 import 'package:preconnect/pages/class_schedule.dart';
 import 'package:preconnect/pages/exam_schedule.dart';
@@ -575,8 +576,10 @@ class _HomeData {
     required this.cardVisibility,
     this.scheduleJson,
     this.advisingInfo,
+    this.extraSections = const <section.Section>[],
   });
 
+  final List<section.Section> extraSections;
   final Map<String, String?>? profile;
   final List<_ScheduleEntry> entries;
   final String? photoUrl;
@@ -615,6 +618,7 @@ class _HomeData {
       cardVisibility: cardVisibility ?? this.cardVisibility,
       scheduleJson: scheduleJson,
       advisingInfo: advisingInfo ?? this.advisingInfo,
+      extraSections: extraSections,
     );
   }
 
@@ -623,6 +627,7 @@ class _HomeData {
       'profile': profile,
       'photoUrl': photoUrl,
       'scheduleJson': scheduleJson,
+      'extraSections': extraSections.map((item) => item.toJson()).toList(),
       'personalSchedules': personalSchedules
           .map((item) => item.toJson())
           .toList(),
@@ -667,6 +672,16 @@ class _HomeData {
         : null;
     final scheduleJson = json['scheduleJson']?.toString();
     final sections = section.parseSectionsFromScheduleJson(scheduleJson);
+    final extraJson = json['extraSections'];
+    final extraSections = extraJson is List
+        ? extraJson
+              .whereType<Map>()
+              .map(
+                (item) =>
+                    section.Section.fromJson(Map<String, dynamic>.from(item)),
+              )
+              .toList(growable: false)
+        : const <section.Section>[];
     final personalSchedulesJson = json['personalSchedules'];
     final personalSchedules = personalSchedulesJson is List
         ? personalSchedulesJson
@@ -726,7 +741,7 @@ class _HomeData {
       }
     }
     final entries = _ScheduleEntry.buildEntries(
-      sections: sections,
+      sections: [...sections, ...extraSections],
       overrides: examOverrides,
       isRamadan: ramadan.isRamadan,
     );
@@ -747,6 +762,7 @@ class _HomeData {
       cardVisibility: cardVisibility,
       scheduleJson: scheduleJson,
       advisingInfo: advisingInfo,
+      extraSections: extraSections,
     );
     return data.hasProfileIdentity ? data : null;
   }

@@ -455,8 +455,13 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
       if (examOverridesFuture != null) {
         examOverrides = await examOverridesFuture;
       }
+      final extraSections = currentSessionSemesterId == null || !needsSchedule
+          ? const <section.Section>[]
+          : await ExtraClassesStore()
+                .sectionsFor(currentSessionSemesterId, sections)
+                .catchError((_) => const <section.Section>[]);
       final entries = _ScheduleEntry.buildEntries(
-        sections: sections,
+        sections: [...sections, ...extraSections],
         overrides: examOverrides,
         isRamadan: isRamadan,
       );
@@ -474,6 +479,7 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
         cardVisibility: cardVisibility,
         scheduleJson: scheduleJson,
         advisingInfo: advisingInfo,
+        extraSections: extraSections,
       );
       return await _withCurrentVisibility(data).catchError((_) => data);
     } catch (error) {

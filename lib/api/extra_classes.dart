@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:preconnect/model/extra_class.dart';
+import 'package:preconnect/model/section_info.dart';
 import 'package:preconnect/tools/app_storage.dart';
 import 'package:preconnect/tools/time_utils.dart';
 
@@ -15,6 +16,21 @@ class ExtraClassesStore {
         .map(
           (item) => ExtraClass.fromJson(Map<String, dynamic>.from(item as Map)),
         )
+        .toList();
+  }
+
+  Future<List<Section>> sectionsFor(
+    int semesterSessionId,
+    Iterable<Section> official,
+  ) async {
+    final officialIds = official.map((section) => section.sectionId).toSet();
+    return (await load())
+        .where(
+          (item) =>
+              item.section.semesterSessionId == semesterSessionId &&
+              !officialIds.contains(item.section.sectionId),
+        )
+        .expand((item) => item.meetingSections)
         .toList();
   }
 

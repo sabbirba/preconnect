@@ -85,3 +85,47 @@ class ExamSorting {
     return a.compareTo(b);
   }
 }
+
+String roomForDay(String roomStr, String day) {
+  final raw = roomStr.trim();
+  if (raw.isEmpty) return '';
+  if (!raw.contains(';') && !raw.contains(':')) {
+    return raw;
+  }
+
+  final dayUpper = day.toUpperCase();
+  final abbr = switch (dayUpper) {
+    final s when s.startsWith('MON') => 'MON',
+    final s when s.startsWith('TUE') => 'TUE',
+    final s when s.startsWith('WED') => 'WED',
+    final s when s.startsWith('THU') => 'THU',
+    final s when s.startsWith('FRI') => 'FRI',
+    final s when s.startsWith('SAT') => 'SAT',
+    final s when s.startsWith('SUN') => 'SUN',
+    _ => '',
+  };
+
+  if (abbr.isEmpty) return raw;
+
+  final parts = raw.split(';');
+  for (final part in parts) {
+    final trimmedPart = part.trim();
+    if (trimmedPart.toUpperCase().contains(abbr)) {
+      final colonIndex = trimmedPart.lastIndexOf(':');
+      if (colonIndex != -1) {
+        return trimmedPart.substring(colonIndex + 1).trim();
+      }
+    }
+  }
+
+  return '';
+}
+
+String roomsForDays(String roomStr, Iterable<String> days) {
+  final rooms = <String>[];
+  for (final day in days) {
+    final room = roomForDay(roomStr, day);
+    if (room.isNotEmpty && !rooms.contains(room)) rooms.add(room);
+  }
+  return rooms.isEmpty ? roomStr.trim() : rooms.join(', ');
+}
