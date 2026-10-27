@@ -241,14 +241,6 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          if (_loadError != null) ...[
-            Text(_loadError!),
-            TextButton(
-              onPressed: _refreshDetailsFromApi,
-              child: const Text('Retry'),
-            ),
-          ] else if (_cards.isEmpty && !_isInitialLoading)
-            const Text('No sections available for this semester.'),
           _buildSearchField(context),
           const Gap(12),
           _buildFilterActions(context),
@@ -508,16 +500,11 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
           ? await _service.fetchRealtimeSections()
           : await _service.fetchArchiveSections(archive);
       if (!mounted || generation != _requestGeneration) return;
-      _loadError = null;
       _applyDetailsUpdate(details);
       if (archive.isEmpty) unawaited(_syncWatchlistPins(details));
     } catch (error) {
       if (!mounted || generation != _requestGeneration) return;
       unawaited(AppLog.write('Seat status load failed: $error'));
-      _loadError =
-          error is ApiException && error.statusCode == 404 && archive.isNotEmpty
-          ? 'This semester is not available right now. Try another one.'
-          : 'Could not load seat status. Check your connection and retry.';
     } finally {
       if (mounted && generation == _requestGeneration) {
         _updateSeatStatusState(() {

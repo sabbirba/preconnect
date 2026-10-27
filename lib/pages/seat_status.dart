@@ -86,7 +86,6 @@ class _SeatStatusPageState extends State<SeatStatusPage>
   List<String> _archiveSemesters = [];
   String _selectedArchive = '';
   int _requestGeneration = 0;
-  String? _loadError;
   bool _isInitialLoading = true;
   String _searchQuery = '';
   bool _isDetailsRefreshing = false;
@@ -144,7 +143,6 @@ class _SeatStatusPageState extends State<SeatStatusPage>
       _requestGeneration++;
       _isDetailsRefreshing = false;
       _isInitialLoading = true;
-      _loadError = null;
       _cards.clear();
       _visibleCards.clear();
     });
