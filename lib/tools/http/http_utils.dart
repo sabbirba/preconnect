@@ -1,4 +1,5 @@
 import 'package:http/http.dart' as http;
+import 'package:preconnect/tools/print_layout.dart';
 
 import 'http_client.dart';
 
@@ -66,11 +67,20 @@ class HttpUtils {
     required String jobOffset,
     required String slipSheet,
     required String booklet,
+    bool layoutBaked = false,
   }) {
     final language = isPostScript ? 'POSTSCRIPT' : 'PDF';
     final duplex = duplexMode.trim().toUpperCase();
     final collate = collateMode.trim().toUpperCase();
-    final useDuplex = duplex != 'OFF';
+    final bookletOn = booklet == 'On';
+    final useDuplex = duplex != 'OFF' || (layoutBaked && bookletOn);
+    final shortEdge = layoutBaked
+        ? PrintLayout.needsShortEdgeBinding(
+            PrintLayout.pagesPerSheetOf(pagesPerSheet),
+            booklet: bookletOn,
+          )
+        : pagesPerSheet == '2-in-1';
+    final printerLayout = !layoutBaked;
     return [
       '\x1B%-12345X@PJL\r\n',
       '@PJL RESET\r\n',
@@ -91,8 +101,11 @@ class HttpUtils {
       '@PJL SET PERSONALITY = AUTO\r\n',
       '@PJL SET DUPLEX = ${useDuplex ? 'ON' : 'OFF'}\r\n',
       if (useDuplex)
-        '@PJL SET BINDING = ${pagesPerSheet == '2-in-1' ? 'SHORTEDGE' : 'LONGEDGE'}\r\n',
-      if (pagesPerSheet == '2-in-1') ...[
+        '@PJL SET BINDING = ${shortEdge ? 'SHORTEDGE' : 'LONGEDGE'}\r\n',
+      if (layoutBaked) ...[
+        '@PJL SET MULTIPAGE = OFF\r\n',
+        '@PJL SET NUP = OFF\r\n',
+      ] else if (pagesPerSheet == '2-in-1') ...[
         '@PJL SET MULTIPAGE = 2\r\n',
         '@PJL SET NUP = 2\r\n',
       ] else if (pagesPerSheet == '4-in-1') ...[
@@ -102,7 +115,9 @@ class HttpUtils {
         '@PJL SET MULTIPAGE = OFF\r\n',
         '@PJL SET NUP = OFF\r\n',
       ],
-      if (fittingMode == 'Fit on Paper') ...[
+      if (!printerLayout)
+        '@PJL SET ZOOM = OFF\r\n'
+      else if (fittingMode == 'Fit on Paper') ...[
         '@PJL SET FITTOPAGESIZE = ON\r\n',
         '@PJL SET FITOPRINTABLE = OFF\r\n',
         '@PJL SET EDGETOEDGE = OFF\r\n',
@@ -140,8 +155,8 @@ class HttpUtils {
         '@PJL SET SLIPSHEET = ON\r\n'
       else
         '@PJL SET SLIPSHEET = OFF\r\n',
-      if (booklet == 'On') ...[
-        '@PJL SET MULTIPAGE = BOOKLET\r\n',
+      if (bookletOn) ...[
+        if (printerLayout) '@PJL SET MULTIPAGE = BOOKLET\r\n',
         '@PJL SET FOLD = SADDLE\r\n',
         '@PJL SET STAPLE = SADDLESTITCH\r\n',
         '@PJL SET OUTBIN = BOOKLET\r\n',

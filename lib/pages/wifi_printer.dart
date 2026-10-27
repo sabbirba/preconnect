@@ -15,6 +15,8 @@ import 'package:preconnect/pages/card_section.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/app_storage.dart';
 import 'package:preconnect/tools/http/http_utils.dart';
+import 'package:preconnect/tools/print_compose.dart';
+import 'package:preconnect/tools/print_layout.dart';
 import 'package:preconnect/tools/storage_keys.dart';
 import 'package:preconnect/tools/app_log.dart';
 
@@ -284,6 +286,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
   String _jobOffset = 'Off';
   String _slipSheet = 'Off';
   String _booklet = 'Off';
+  String _pageRange = '';
   String _printerHost = '';
   List<_PrintHistoryEntry> _history = const <_PrintHistoryEntry>[];
   int _copies = 1;
@@ -665,8 +668,9 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
         if (bytes.isNotEmpty) {
           final selected = _SelectedFile(name: file.name.trim(), bytes: bytes);
           if (_isPdfFile(selected.name, bytes)) {
-            final pdfInfo = await _readPdfInfo(bytes);
-            selected.pageCount = pdfInfo.pageCount;
+            selected.pageCount =
+                await PrintComposer.pageCount(bytes) ??
+                (await _readPdfInfo(bytes)).pageCount;
           } else if (_isJpegFile(selected.name) || _isPngFile(selected.name)) {
             selected.pageCount = 1;
           }
@@ -750,6 +754,115 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
     }
   }
 
+  Future<ComposedPrint?> _composeLayout(Uint8List bytes) {
+    return PrintComposer.compose(
+      bytes,
+      PrintComposeOptions(
+        pagesPerSheet: _pagesPerSheet,
+        fittingMode: _fittingMode,
+        booklet: _booklet == 'On',
+        pageRange: _pageRange,
+      ),
+    );
+  }
+
+  final Expando<Map<String, _PreparedPrint>> _preparedCache = Expando();
+
+  Future<_PreparedPrint> _prepare(_SelectedFile file) async {
+    final isImage = _isJpegFile(file.name) || _isPngFile(file.name);
+    if (!isImage && !_isPdfFile(file.name, file.bytes)) {
+      return _PreparedPrint(
+        bytes: file.bytes,
+        fileName: file.name,
+        baked: false,
+        previewable: false,
+      );
+    }
+    final key = '$_pagesPerSheet|$_fittingMode|$_booklet|$_pageRange';
+    final cached = _preparedCache[file]?[key];
+    if (cached != null) return cached;
+    final source = isImage
+        ? await PrintComposer.imagePdf(file.bytes)
+        : file.bytes;
+    final composed = await _composeLayout(source);
+    final prepared = _PreparedPrint(
+      bytes: composed?.bytes ?? source,
+      fileName: isImage ? '${_basePrintName(file.name)}.pdf' : file.name,
+      baked: composed != null,
+      previewable: true,
+    );
+    _preparedCache[file] = {key: prepared};
+    return prepared;
+  }
+
+  Future<void> _editPageRange() async {
+    final value = await showAppBottomSheet<String>(
+      context,
+      title: 'Pages',
+      initialChildSize: 0.40,
+      builder: (sheetContext, textPrimary, textSecondary) =>
+          _PageRangeSheet(initial: _pageRange),
+    );
+    if (value == null || !mounted) return;
+    setState(() => _pageRange = value);
+  }
+
+  Future<void> _showPreviewSheet(List<Uint8List> documents) {
+    return showAppCustomBottomSheet<void>(
+      context: context,
+      backgroundColor: AppPalette.card(context),
+      initialChildSize: 0.92,
+      builder: (sheetContext) {
+        return SafeArea(
+          top: false,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(18, 6, 18, 10),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Center(
+                  child: Container(
+                    width: 36,
+                    height: 3,
+                    decoration: BoxDecoration(
+                      color: AppPalette.textSecondary(
+                        sheetContext,
+                      ).withValues(alpha: 0.28),
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                  ),
+                ),
+                const Gap(12),
+                Expanded(child: _PrintPreviewSheet(documents: documents)),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _previewFile(_SelectedFile file) async {
+    if (_busy || kIsWeb) return;
+    setState(() => _busy = true);
+    final documents = <Uint8List>[];
+    final failures = <String>[];
+    try {
+      try {
+        final prepared = await _prepare(file);
+        if (prepared.previewable) documents.add(prepared.bytes);
+      } on PrintComposeException catch (error) {
+        failures.add('${file.name}: ${error.message}');
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+    if (!mounted) return;
+    if (failures.isNotEmpty) showAppSnackBar(context, failures.join('\n'));
+    if (documents.isEmpty) return;
+    await _showPreviewSheet(documents);
+  }
+
   Future<void> _sendToPrinter() async {
     if (_busy) return;
     final host = _printerHost.trim();
@@ -799,12 +912,16 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
         final file = _selectedFiles[i];
         if (!mounted) return;
         try {
+          final prepared = await _prepare(file);
+          if (!mounted) return;
           await client.sendFile(
-            bytes: file.bytes,
-            fileName: file.name,
+            bytes: prepared.bytes,
+            fileName: prepared.fileName,
             user: user,
             clientName: clientName,
-            preferences: preferences,
+            preferences: prepared.baked
+                ? preferences.withBakedLayout()
+                : preferences,
           );
           if (!mounted) return;
           const statusLabel = 'Sent';
@@ -838,7 +955,23 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
               '${file.name}: ${_sanitizePrinterMessage(error.message)}',
             );
           }
-        } catch (_) {
+        } on PrintComposeException catch (error) {
+          if (!mounted) return;
+          await _addHistory(
+            _PrintHistoryEntry(
+              fileName: file.name,
+              printerHost: host,
+              copies: copies,
+              status: 'Failed',
+              message: error.message,
+              createdAt: DateTime.now(),
+            ),
+          );
+          if (mounted) {
+            showAppSnackBar(context, '${file.name}: ${error.message}');
+          }
+        } catch (error) {
+          unawaited(AppLog.write('Print failed for ${file.name}: $error'));
           if (!mounted) return;
           await _addHistory(
             _PrintHistoryEntry(
@@ -980,6 +1113,9 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
                         '${_formatFileSizeMb(_selectedFiles[i].bytes)} • ${_fileKindLabelFor(_selectedFiles[i])}',
                     isEmpty: false,
                     onTap: null,
+                    onPreview: !_busy
+                        ? () => _previewFile(_selectedFiles[i])
+                        : null,
                     onClear: !_busy ? () => _clearFileAt(i) : null,
                     borderRadius: 16,
                   ),
@@ -1011,6 +1147,8 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
                 jobOffset: _jobOffset,
                 slipSheet: _slipSheet,
                 booklet: _booklet,
+                pageRange: _pageRange,
+                onPageRangeTap: _editPageRange,
                 onPagesPerSheetChanged: (value) {
                   setState(() {
                     _pagesPerSheet = value;
@@ -1333,7 +1471,23 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
               stepNumber: '•',
               title: 'Pages Per Sheet',
               body:
-                  'Choose "1-in-1" (default) for standard layout. Use "2-in-1" or "4-in-1" to fit multiple pages on a single sheet of paper to save page quota.',
+                  'Tap the layout button to cycle "1-in-1" (default), "2-in-1", "4-in-1" and "Booklet". Multiple pages are placed on one A4 sheet to save page quota.',
+            ),
+            const Gap(12),
+            buildInstructionStep(
+              context,
+              stepNumber: '•',
+              title: 'Pages',
+              body:
+                  'Print only part of a document, for example 1-5, 8, 11-13. Blank pages are skipped automatically.',
+            ),
+            const Gap(12),
+            buildInstructionStep(
+              context,
+              stepNumber: '•',
+              title: 'Preview',
+              body:
+                  'Tap the eye on a file to see exactly how it will print before you send it.',
             ),
             const Gap(12),
             buildInstructionStep(
@@ -1375,7 +1529,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
                   children: [
                     const TextSpan(
                       text:
-                          'Enable "Booklet" to auto-impose document pages, fold them down the center, and saddle-stitch them like a booklet/pamphlet.\n',
+                          'Choose "Booklet" on the layout button to arrange pages for folding down the center like a pamphlet. Two-sided printing is used automatically.\n',
                     ),
                     TextSpan(
                       text: 'Note: ',
@@ -1386,7 +1540,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
                     ),
                     const TextSpan(
                       text:
-                          'Total pages should be a multiple of 4 for ideal saddle stitching.',
+                          'Missing pages at the end are left blank so the fold lines up.',
                     ),
                   ],
                 ),
@@ -1449,6 +1603,7 @@ class _PrinterFileCard extends StatelessWidget {
     required this.subtitle,
     required this.isEmpty,
     this.onTap,
+    this.onPreview,
     this.onClear,
     this.emptyAction,
     this.borderRadius = 14,
@@ -1458,9 +1613,30 @@ class _PrinterFileCard extends StatelessWidget {
   final String subtitle;
   final bool isEmpty;
   final VoidCallback? onTap;
+  final VoidCallback? onPreview;
   final VoidCallback? onClear;
   final Widget? emptyAction;
   final double borderRadius;
+
+  Widget _actionIcon(
+    BuildContext context,
+    IconData icon,
+    String tooltip,
+    VoidCallback onPressed,
+  ) {
+    return IconButton(
+      onPressed: onPressed,
+      icon: Icon(icon),
+      tooltip: tooltip,
+      color: AppPalette.textSecondary(context),
+      iconSize: 20,
+      style: IconButton.styleFrom(
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      ),
+      constraints: const BoxConstraints.tightFor(width: 28, height: 36),
+      padding: EdgeInsets.zero,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -1498,16 +1674,17 @@ class _PrinterFileCard extends StatelessWidget {
           const Gap(8),
           if (isEmpty && emptyAction != null)
             emptyAction!
-          else if (onClear != null)
-            IconButton(
-              onPressed: onClear,
-              icon: const Icon(Icons.close_rounded),
-              tooltip: 'Clear file',
-              color: AppPalette.textSecondary(context),
-              iconSize: 20,
-              constraints: const BoxConstraints.tightFor(width: 36, height: 36),
-              padding: EdgeInsets.zero,
-            ),
+          else ...[
+            if (onPreview != null)
+              _actionIcon(
+                context,
+                Icons.visibility_outlined,
+                'Preview',
+                onPreview!,
+              ),
+            if (onClear != null)
+              _actionIcon(context, Icons.close_rounded, 'Clear file', onClear!),
+          ],
         ],
       ),
     );
@@ -1577,8 +1754,6 @@ class _LprPrintClient {
           ..._ascii(preferences.postScriptPreamble),
           ...bytes,
         ]);
-      } else if (_isJpegFile(fileName)) {
-        sendBytes = _wrapJpegInPdf(bytes);
       } else {
         sendBytes = bytes;
       }
@@ -1617,6 +1792,7 @@ class _LprPrintClient {
         jobOffset: preferences.jobOffset,
         slipSheet: preferences.slipSheet,
         booklet: preferences.booklet,
+        layoutBaked: preferences.layoutBaked,
       );
       final payload = _buildPjlPayload(bytes: sendBytes, prefix: pjlPrefix);
 
@@ -1976,6 +2152,7 @@ class _PrinterLayoutPreferencesPanel extends StatelessWidget {
     required this.jobOffset,
     required this.slipSheet,
     required this.booklet,
+    required this.pageRange,
     required this.onPagesPerSheetChanged,
     required this.onFittingModeChanged,
     required this.onStapleChanged,
@@ -1983,8 +2160,11 @@ class _PrinterLayoutPreferencesPanel extends StatelessWidget {
     required this.onJobOffsetChanged,
     required this.onSlipSheetChanged,
     required this.onBookletChanged,
+    required this.onPageRangeTap,
   });
 
+  final String pageRange;
+  final VoidCallback onPageRangeTap;
   final String pagesPerSheet;
   final String fittingMode;
   final String staple;
@@ -2021,21 +2201,30 @@ class _PrinterLayoutPreferencesPanel extends StatelessWidget {
                     padding: EdgeInsets.symmetric(horizontal: gap / 2),
                     child: AppActionButton(
                       onPressed: () {
-                        final nextVal = pagesPerSheet == '1-in-1'
-                            ? '2-in-1'
-                            : (pagesPerSheet == '2-in-1' ? '4-in-1' : '1-in-1');
-                        onPagesPerSheetChanged(nextVal);
+                        if (booklet == 'On') {
+                          onBookletChanged('Off');
+                          onPagesPerSheetChanged('1-in-1');
+                        } else if (pagesPerSheet == '4-in-1') {
+                          onPagesPerSheetChanged('1-in-1');
+                          onBookletChanged('On');
+                        } else {
+                          onPagesPerSheetChanged(
+                            pagesPerSheet == '1-in-1' ? '2-in-1' : '4-in-1',
+                          );
+                        }
                       },
                       outlined: true,
-                      backgroundColor: pagesPerSheet != '1-in-1'
+                      backgroundColor:
+                          pagesPerSheet != '1-in-1' || booklet == 'On'
                           ? AppPalette.primary.withValues(alpha: 0.12)
                           : Colors.transparent,
-                      foregroundColor: pagesPerSheet != '1-in-1'
+                      foregroundColor:
+                          pagesPerSheet != '1-in-1' || booklet == 'On'
                           ? AppPalette.primary
                           : AppPalette.textPrimary(context),
                       borderRadius: 12,
                       padding: buttonPadding,
-                      label: pagesPerSheet,
+                      label: booklet == 'On' ? 'Booklet' : pagesPerSheet,
                       fontSize: toggleFont,
                     ),
                   ),
@@ -2179,24 +2368,30 @@ class _PrinterLayoutPreferencesPanel extends StatelessWidget {
                     ),
                   ),
                 ),
-                Gap(gap),
+              ],
+            ),
+            Gap(gap),
+            Row(
+              children: [
                 Expanded(
                   child: Padding(
                     padding: EdgeInsets.symmetric(horizontal: gap / 2),
                     child: AppActionButton(
-                      onPressed: () {
-                        onBookletChanged(booklet == 'On' ? 'Off' : 'On');
-                      },
+                      onPressed: onPageRangeTap,
                       outlined: true,
-                      backgroundColor: booklet == 'On'
+                      backgroundColor: pageRange.isNotEmpty
                           ? AppPalette.primary.withValues(alpha: 0.12)
                           : Colors.transparent,
-                      foregroundColor: booklet == 'On'
+                      foregroundColor: pageRange.isNotEmpty
                           ? AppPalette.primary
                           : AppPalette.textPrimary(context),
                       borderRadius: 12,
                       padding: buttonPadding,
-                      label: 'Booklet',
+                      label: pageRange.isEmpty
+                          ? 'Pages'
+                          : (pageRange.length > 16
+                                ? '${pageRange.substring(0, 15)}…'
+                                : pageRange),
                       fontSize: toggleFont,
                     ),
                   ),
@@ -2222,6 +2417,7 @@ class _PrintTicket {
     required this.jobOffset,
     required this.slipSheet,
     required this.booklet,
+    this.layoutBaked = false,
   });
 
   final int copies;
@@ -2234,6 +2430,23 @@ class _PrintTicket {
   final String jobOffset;
   final String slipSheet;
   final String booklet;
+  final bool layoutBaked;
+
+  _PrintTicket withBakedLayout() {
+    return _PrintTicket(
+      copies: copies,
+      duplexMode: duplexMode,
+      collateMode: collateMode,
+      pagesPerSheet: pagesPerSheet,
+      fittingMode: fittingMode,
+      staple: staple,
+      punch: punch,
+      jobOffset: jobOffset,
+      slipSheet: slipSheet,
+      booklet: booklet,
+      layoutBaked: true,
+    );
+  }
 
   String get postScriptPreamble => '%!PS-Adobe-3.0';
 
@@ -2376,67 +2589,244 @@ bool _looksLikePostScript(String fileName, Uint8List bytes) {
   return false;
 }
 
-Uint8List _wrapJpegInPdf(Uint8List jpegBytes) {
-  int width = 595;
-  int height = 842;
+class _PageRangeSheet extends StatefulWidget {
+  const _PageRangeSheet({required this.initial});
 
-  if (jpegBytes.length > 4) {
-    for (int i = 0; i < jpegBytes.length - 8; i++) {
-      if (jpegBytes[i] == 0xFF &&
-          (jpegBytes[i + 1] == 0xC0 || jpegBytes[i + 1] == 0xC2)) {
-        height = (jpegBytes[i + 5] << 8) + jpegBytes[i + 6];
-        width = (jpegBytes[i + 7] << 8) + jpegBytes[i + 8];
-        break;
-      }
+  final String initial;
+
+  @override
+  State<_PageRangeSheet> createState() => _PageRangeSheetState();
+}
+
+class _PageRangeSheetState extends State<_PageRangeSheet> {
+  late final TextEditingController _controller = TextEditingController(
+    text: widget.initial,
+  );
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _apply() {
+    final text = _controller.text.trim();
+    if (text.isNotEmpty && PrintLayout.parsePageRange(text, 1 << 20) == null) {
+      return;
+    }
+    Navigator.of(context).pop(text);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      controller: bottomSheetScrollController(context),
+      physics: const ClampingScrollPhysics(),
+      padding: const EdgeInsets.only(bottom: 24),
+      children: [
+        TextField(
+          controller: _controller,
+          autofocus: true,
+          textInputAction: TextInputAction.done,
+          onSubmitted: (_) => _apply(),
+          inputFormatters: [
+            FilteringTextInputFormatter.allow(RegExp(r'[0-9,\-\s]')),
+          ],
+          style: TextStyle(
+            color: AppPalette.textPrimary(context),
+            fontFamily: 'Outfit',
+          ),
+          decoration: appInputDecoration(
+            context,
+            hintText: '1-5, 8, 11-13',
+            borderRadius: 14,
+          ),
+        ),
+        const Gap(16),
+        Row(
+          children: [
+            Expanded(
+              child: AppActionButton(
+                onPressed: () => Navigator.of(context).pop(''),
+                label: 'All',
+                outlined: true,
+              ),
+            ),
+            const Gap(12),
+            Expanded(
+              child: AppActionButton(
+                onPressed: _apply,
+                label: 'Apply',
+                outlined: false,
+              ),
+            ),
+          ],
+        ),
+        const Gap(16),
+      ],
+    );
+  }
+}
+
+class _PrintPreviewSheet extends StatefulWidget {
+  const _PrintPreviewSheet({required this.documents});
+
+  final List<Uint8List> documents;
+
+  @override
+  State<_PrintPreviewSheet> createState() => _PrintPreviewSheetState();
+}
+
+class _PrintPreviewSheetState extends State<_PrintPreviewSheet> {
+  final List<Uint8List> _pages = <Uint8List>[];
+  final PageController _controller = PageController();
+  StreamSubscription<Uint8List>? _subscription;
+  int _current = 0;
+  bool _failed = false;
+  bool _zoomed = false;
+  final TransformationController _zoom = TransformationController();
+  Offset _tapAt = Offset.zero;
+
+  void _toggleZoom() {
+    if (_zoomed) {
+      setState(() => _zoomed = false);
+      return;
+    }
+    const scale = 2.5;
+    _zoom.value = Matrix4.identity()
+      ..translateByDouble(
+        -_tapAt.dx * (scale - 1),
+        -_tapAt.dy * (scale - 1),
+        0,
+        1,
+      )
+      ..scaleByDouble(scale, scale, 1, 1);
+    setState(() => _zoomed = true);
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _subscription = _allPages().listen(
+      (page) {
+        if (!mounted) return;
+        setState(() => _pages.add(page));
+      },
+      onError: (Object error) {
+        unawaited(AppLog.write('Print preview failed: $error'));
+        if (!mounted) return;
+        setState(() => _failed = true);
+      },
+    );
+  }
+
+  void _goTo(int index) {
+    unawaited(
+      _controller.animateToPage(
+        index,
+        duration: const Duration(milliseconds: 250),
+        curve: Curves.easeOut,
+      ),
+    );
+  }
+
+  Stream<Uint8List> _allPages() async* {
+    for (final document in widget.documents) {
+      yield* PrintComposer.previewPages(document);
     }
   }
 
-  const obj1 = '1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n';
-  const obj2 = '2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n';
-  const obj3 =
-      '3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Contents 4 0 R /Resources << /XObject << /Im1 5 0 R >> >> >>\nendobj\n';
-  const obj4Stream = 'q 595 0 0 842 0 0 cm /Im1 Do Q\n';
-  final obj4 =
-      '4 0 obj\n<< /Length ${obj4Stream.length} >>\nstream\n${obj4Stream}endstream\nendobj\n';
+  @override
+  void dispose() {
+    unawaited(_subscription?.cancel());
+    _controller.dispose();
+    _zoom.dispose();
+    super.dispose();
+  }
 
-  final header = ascii.encode('%PDF-1.4\n');
-  final b1 = ascii.encode(obj1);
-  final b2 = ascii.encode(obj2);
-  final b3 = ascii.encode(obj3);
-  final b4 = ascii.encode(obj4);
-
-  final obj5Header = ascii.encode(
-    '5 0 obj\n<< /Type /XObject /Subtype /Image /Width $width /Height $height /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${jpegBytes.length} >>\nstream\n',
-  );
-  final obj5Footer = ascii.encode('\nendstream\nendobj\n');
-
-  final offset1 = header.length;
-  final offset2 = offset1 + b1.length;
-  final offset3 = offset2 + b2.length;
-  final offset4 = offset3 + b3.length;
-  final offset5 = offset4 + b4.length;
-  final startXref =
-      offset5 + obj5Header.length + jpegBytes.length + obj5Footer.length;
-
-  final xrefStr =
-      'xref\n0 6\n0000000000 65535 f \n'
-      '${offset1.toString().padLeft(10, '0')} 00000 n \n'
-      '${offset2.toString().padLeft(10, '0')} 00000 n \n'
-      '${offset3.toString().padLeft(10, '0')} 00000 n \n'
-      '${offset4.toString().padLeft(10, '0')} 00000 n \n'
-      '${offset5.toString().padLeft(10, '0')} 00000 n \n'
-      'trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n$startXref\n%%EOF\n';
-
-  final builder = BytesBuilder(copy: false)
-    ..add(header)
-    ..add(b1)
-    ..add(b2)
-    ..add(b3)
-    ..add(b4)
-    ..add(obj5Header)
-    ..add(jpegBytes)
-    ..add(obj5Footer)
-    ..add(ascii.encode(xrefStr));
-
-  return builder.takeBytes();
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Expanded(
+          child: _pages.isEmpty
+              ? Center(
+                  child: _failed ? null : const CircularProgressIndicator(),
+                )
+              : PageView.builder(
+                  controller: _controller,
+                  physics: _zoomed
+                      ? const NeverScrollableScrollPhysics()
+                      : null,
+                  itemCount: _pages.length,
+                  onPageChanged: (index) => setState(() {
+                    _current = index;
+                    _zoomed = false;
+                  }),
+                  itemBuilder: (context, index) {
+                    final page = Center(
+                      child: ColoredBox(
+                        color: Colors.white,
+                        child: Image.memory(
+                          _pages[index],
+                          fit: BoxFit.contain,
+                          gaplessPlayback: true,
+                        ),
+                      ),
+                    );
+                    return GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onDoubleTapDown: (details) =>
+                          _tapAt = details.localPosition,
+                      onDoubleTap: _toggleZoom,
+                      child: _zoomed
+                          ? InteractiveViewer(
+                              transformationController: _zoom,
+                              minScale: 1,
+                              maxScale: 5,
+                              child: page,
+                            )
+                          : page,
+                    );
+                  },
+                ),
+        ),
+        const Gap(8),
+        if (_pages.isNotEmpty)
+          Row(
+            children: [
+              Expanded(
+                child: AppActionButton(
+                  onPressed: _current > 0 ? () => _goTo(_current - 1) : null,
+                  icon: Icons.chevron_left_rounded,
+                  label: 'Previous',
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 14),
+                child: Text(
+                  '${_current + 1} / ${_pages.length}',
+                  style: TextStyle(color: AppPalette.textSecondary(context)),
+                ),
+              ),
+              Expanded(
+                child: AppActionButton(
+                  onPressed: _current < _pages.length - 1
+                      ? () => _goTo(_current + 1)
+                      : null,
+                  icon: Icons.chevron_right_rounded,
+                  label: 'Next',
+                ),
+              ),
+            ],
+          ),
+        const Gap(12),
+        AppActionButton(
+          onPressed: () => Navigator.of(context).pop(),
+          label: 'Close',
+        ),
+      ],
+    );
+  }
 }

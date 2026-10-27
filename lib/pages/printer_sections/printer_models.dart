@@ -107,3 +107,17 @@ class _PrintHistoryEntry {
     };
   }
 }
+
+class _PreparedPrint {
+  const _PreparedPrint({
+    required this.bytes,
+    required this.fileName,
+    required this.baked,
+    required this.previewable,
+  });
+
+  final Uint8List bytes;
+  final String fileName;
+  final bool baked;
+  final bool previewable;
+}
