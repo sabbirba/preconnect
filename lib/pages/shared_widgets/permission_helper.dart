@@ -291,7 +291,7 @@ class _AppPermissionBottomSheetContentState
           return Padding(
             padding: const EdgeInsets.only(top: 4),
             child: AppActionButton(
-              label: 'Continue',
+              label: 'Skip',
               onPressed: () => Navigator.of(context).pop(),
             ),
           );
