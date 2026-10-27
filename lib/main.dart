@@ -16,9 +16,20 @@ import 'app.dart';
 
 import 'tools/app_log.dart';
 import 'tools/app_storage.dart';
+import 'tools/token_storage.dart';
+import 'tools/wifi_tile.dart';
 
 import 'package:preconnect/tools/runtime_stub.dart'
     if (dart.library.js_interop) 'package:preconnect/tools/runtime_web.dart';
+
+@pragma('vm:entry-point')
+Future<void> homeWidgetBackground(Uri? uri) async {
+  if (WifiTile.handles(uri)) {
+    await WifiTile.run(uri!);
+    return;
+  }
+  await syncTodayWidgetInBackground(uri);
+}
 
 Future<void> main() async {
   final oldDebugPrint = debugPrint;
@@ -68,10 +79,12 @@ Future<void> main() async {
         );
       }
 
+      unawaited(CaptiveLoginStore.instance.publishTileReady());
+
       if (TodayWidget.isSupported) {
         await TodayWidget.initialize();
         unawaited(
-          HomeWidget.registerInteractivityCallback(syncTodayWidgetInBackground),
+          HomeWidget.registerInteractivityCallback(homeWidgetBackground),
         );
       }
 

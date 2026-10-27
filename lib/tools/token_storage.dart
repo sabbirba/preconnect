@@ -15,6 +15,7 @@ import 'package:local_auth/local_auth.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:home_widget/home_widget.dart';
 import 'package:preconnect/tools/app_log.dart';
 import 'package:preconnect/tools/app_storage.dart';
 import 'package:preconnect/tools/preconnect_constants.dart';
@@ -264,6 +265,19 @@ class CaptiveLoginStore {
 
   Future<void> save({required String password}) async {
     await _storage.write(key: _passwordKey, value: password);
+    await publishTileReady();
+  }
+
+  static const String tileReadyKey = 'wifi_tile_ready';
+
+  Future<void> publishTileReady() async {
+    if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) return;
+    try {
+      final saved = (await read()) != null;
+      await HomeWidget.saveWidgetData<bool>(tileReadyKey, saved);
+    } catch (error) {
+      unawaited(AppLog.write('Wi-Fi tile flag failed: $error'));
+    }
   }
 
   Future<void> saveAutoExtendEnabled(bool enabled) async {
@@ -348,6 +362,7 @@ class CaptiveLoginStore {
     await _storage.write(key: _psessionIdKey, value: null);
     await _storage.write(key: _validPeriodKey, value: null);
     await _storage.write(key: _remainTimeKey, value: null);
+    await publishTileReady();
   }
 }
 

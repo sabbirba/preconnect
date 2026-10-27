@@ -163,7 +163,8 @@ class MainActivity : FlutterFragmentActivity() {
                 !launchAction.isNullOrBlank() &&
                     (
                         launchAction == ConnectivityManager.ACTION_CAPTIVE_PORTAL_SIGN_IN ||
-                            launchAction == "android.net.conn.CAPTIVE_PORTAL"
+                            launchAction == "android.net.conn.CAPTIVE_PORTAL" ||
+                            launchAction == "android.service.quicksettings.action.QS_TILE_PREFERENCES"
                     ) -> "captive_wifi"
 
                 else -> null

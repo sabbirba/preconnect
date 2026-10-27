@@ -64,6 +64,10 @@
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
             <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE_PREFERENCES" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+            <intent-filter>
                 <action android:name="android.net.ConnectivityManager.ACTION_CAPTIVE_PORTAL_SIGN_IN" />
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
@@ -172,7 +176,7 @@
 
         <receiver
             android:name="es.antonborri.home_widget.HomeWidgetBackgroundReceiver"
-            android:exported="true">
+            android:exported="false">
             <intent-filter>
                 <action android:name="es.antonborri.home_widget.action.BACKGROUND" />
             </intent-filter>
