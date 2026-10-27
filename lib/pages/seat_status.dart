@@ -21,6 +21,7 @@ import 'package:preconnect/pages/shared_widgets/faculty_sheet.dart';
 import 'package:preconnect/pages/shared_widgets/seat_filters.dart';
 import 'package:preconnect/tools/string_utils.dart';
 import 'package:preconnect/pages/shared_widgets/seat_blocks.dart';
+import 'package:preconnect/tools/app_log.dart';
 part 'shared_widgets/seat_status.dart';
 
 String seatStatusFacultySummaryLabel(section.SectionFaculty? faculty) {

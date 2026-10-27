@@ -511,10 +511,13 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
       _loadError = null;
       _applyDetailsUpdate(details);
       if (archive.isEmpty) unawaited(_syncWatchlistPins(details));
-    } catch (_) {
+    } catch (error) {
       if (!mounted || generation != _requestGeneration) return;
+      unawaited(AppLog.write('Seat status load failed: $error'));
       _loadError =
-          'Could not load seat status. Check your connection and retry.';
+          error is ApiException && error.statusCode == 404 && archive.isNotEmpty
+          ? 'This semester is not available right now. Try another one.'
+          : 'Could not load seat status. Check your connection and retry.';
     } finally {
       if (mounted && generation == _requestGeneration) {
         _updateSeatStatusState(() {
