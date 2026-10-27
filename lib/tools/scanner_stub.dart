@@ -16,8 +16,6 @@ class BarcodeCapture {
   final List<Barcode> barcodes;
 }
 
-class MobileScannerException implements Exception {}
-
 class MobileScannerPlatform {
   static final MobileScannerPlatform instance = MobileScannerPlatform();
 

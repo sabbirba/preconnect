@@ -545,9 +545,6 @@ class ApiException extends PreConnectException {
   const ApiException(this.statusCode, [super.message]);
   final int statusCode;
 
-  bool get isNotFound => statusCode == 404;
-  bool get isServerError => statusCode >= 500;
-
   @override
   String toString() =>
       'ApiException($statusCode${message != null ? ': $message' : ''})';

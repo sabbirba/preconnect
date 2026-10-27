@@ -4,7 +4,6 @@ abstract final class PlatformChannels {
   static const androidNetworkAssistEvents = 'preconnect/network_assist_events';
   static const iosNetworkAssist = 'preconnect/ios_network_assist';
   static const quietMode = 'preconnect/quiet_mode';
-  static const nativePrint = 'preconnect/native_print';
   static const backgroundPermission = 'preconnect/background_permission';
   static const calendar = 'preconnect/calendar';
   static const file = 'preconnect/file';

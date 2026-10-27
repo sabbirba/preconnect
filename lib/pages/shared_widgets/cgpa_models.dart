@@ -222,8 +222,6 @@ class _ExpectedResult {
   String get currentCgpaLabel => currentCgpa.toStringAsFixed(3);
   String get expectedCgpaLabel => expectedCgpa.toStringAsFixed(3);
   String get roundUpCgpaLabel => expectedCgpa.toStringAsFixed(2);
-  String get selectedGpaLabel =>
-      selectedCredits <= 0 ? '--' : selectedGpa.toStringAsFixed(3);
 }
 
 class _GradeGuideRow {

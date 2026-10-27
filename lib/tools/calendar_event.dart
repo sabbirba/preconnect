@@ -28,14 +28,6 @@ class Event {
   final Recurrence? recurrence;
 }
 
-class Add2Calendar {
-  Add2Calendar._();
-
-  static Future<bool> addEvent2Cal(Event event) async {
-    return Add2Reminder.addReminder(event);
-  }
-}
-
 class Add2Reminder {
   Add2Reminder._();
 

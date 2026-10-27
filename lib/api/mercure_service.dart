@@ -20,8 +20,6 @@ class MercureService {
   bool _isConnecting = false;
   Timer? _reconnectTimer;
 
-  bool get isConnected => _isConnected;
-
   Future<void> connect() async {
     if (_isConnected || _isConnecting) return;
     _isConnecting = true;

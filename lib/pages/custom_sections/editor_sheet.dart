@@ -646,16 +646,3 @@ Future<CustomSchedulesDraft?> showCustomSchedulesEditorSheet(
   liveTitle.dispose();
   return result;
 }
-
-IconData personalSchedulesKindIcon(String kind) {
-  switch (kind) {
-    case 'quiz':
-      return Icons.quiz_outlined;
-    case 'assignment':
-      return Icons.assignment_outlined;
-    case 'reminder':
-      return Icons.alarm_outlined;
-    default:
-      return Icons.event_available_outlined;
-  }
-}

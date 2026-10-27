@@ -43,15 +43,11 @@ class StorageKeys {
   static const String emergencyContactName = 'emergencyContactName';
   static const String themeMode = 'themeMode';
   static const String homeTab = 'home_tab';
-  static const String firstAppUseAt = 'first_app_use_at';
   static const String studentSchedule = 'student_schedule_v1';
   static const String qrBase64 = 'qr_base64';
   static const String qrHash = 'qr_hash';
   static const String qrPayloadVersion = 'qr_payload_version';
-  static const String examScheduleSnapshot = 'exam_schedule_snapshot_v1';
   static const String alarmsSnapshot = 'alarms_snapshot_v1';
-  static const String wifiCaptiveLastResponseLog =
-      'wifi_captive_last_response_log';
   static const String portfolios = 'portfolios';
   static const String paymentPortfolios = 'payment_portfolios';
   static const String examMapIndex = 'exammap_index_v1';

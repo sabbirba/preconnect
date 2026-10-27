@@ -1019,17 +1019,6 @@ class PayslipItem {
     );
   }
 
-  String get formattedType {
-    return paymentType
-        .replaceAll('_', ' ')
-        .toLowerCase()
-        .split(' ')
-        .map(
-          (w) => w.isNotEmpty ? '${w[0].toUpperCase()}${w.substring(1)}' : '',
-        )
-        .join(' ');
-  }
-
   bool get isPaid => paymentStatus.toUpperCase() == 'PAID';
 }
 

@@ -95,14 +95,6 @@ class LibSyncAuthService extends ChangeNotifier {
     return _authenticateWithGoogleAccessToken(accessToken);
   }
 
-  Future<bool> loginSilentlyWithBackend() async {
-    await _runAuth(() async {
-      return await _restoreGoogleSession() ??
-          const LibSyncAuthState(status: LibSyncAuthStatus.unauthenticated);
-    });
-    return state.value.status == LibSyncAuthStatus.authenticated;
-  }
-
   Future<void> initialize() => _runAuth(() async {
     final cookies = await _apiClient.getStoredCookies();
     final refreshToken = await _apiClient.getGoogleRefreshToken();

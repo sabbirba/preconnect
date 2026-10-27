@@ -640,11 +640,6 @@ class AdvisingAutoEngine extends ChangeNotifier {
     notifyListeners();
   }
 
-  void clearActivityLogs() {
-    activityLogs.clear();
-    notifyListeners();
-  }
-
   void reset({bool keepQueue = false}) {
     _runGeneration++;
     isRunning = false;

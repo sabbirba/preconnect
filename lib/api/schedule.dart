@@ -8,7 +8,6 @@ import 'package:preconnect/api/repository_cache.dart';
 import 'package:preconnect/tools/ramadan.dart';
 import 'package:preconnect/tools/snapshot_store.dart';
 import 'package:preconnect/model/section_info.dart' as section;
-import 'package:preconnect/model/advising_phase.dart';
 import 'package:preconnect/tools/app_log.dart';
 import 'package:preconnect/tools/cache_durations.dart';
 import 'package:preconnect/tools/storage_keys.dart';
@@ -78,8 +77,6 @@ class ScheduleService {
       'student_semester_sessions_v1';
   static const String _semesterSessionsFetchedAtKey =
       'student_semester_sessions_v1_fetched_at';
-  static const String _advisingPhaseCachePrefix =
-      'student_advising_phase_sections_v1';
   static const String _labSectionsCachePrefix = 'student_lab_sections_v1';
 
   final Map<bool, Future<List<SemesterSessionItem>>> _sessionsFetchInFlight =
@@ -194,23 +191,6 @@ class ScheduleService {
       logLabel: 'Lab Sections $phaseQueryValue',
       forceRefresh: forceRefresh,
       allowCachedFallback: false,
-    );
-  }
-
-  Future<List<section.Section>> fetchStudentCoursesForPhase(
-    AdvisingPhase phase, {
-    bool forceRefresh = false,
-  }) async {
-    final id = await _requirePortfolioId(forceRefresh: forceRefresh);
-    final url =
-        '${ApiConfig.connectApiBase}'
-        '${ApiConfig.studentCoursesForPhasePath(id, phase)}';
-    final cacheKey = '${_advisingPhaseCachePrefix}_${id}_${phase.name}';
-    return _fetchSectionList(
-      url: url,
-      cacheKey: cacheKey,
-      logLabel: 'Advising ${phase.queryValue}',
-      forceRefresh: forceRefresh,
     );
   }
 

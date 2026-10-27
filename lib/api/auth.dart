@@ -40,8 +40,6 @@ class AuthService {
   static const Duration _bootstrapGracePeriod = Duration(seconds: 10);
 
   static bool _isLoggingOut = false;
-  static bool get isLoggingOut => _isLoggingOut;
-
   Future<void> logout({
     bool instant = false,
     bool force = false,

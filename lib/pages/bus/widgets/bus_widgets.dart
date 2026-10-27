@@ -201,8 +201,6 @@ class BusFleetMarker {
   final double longitude;
 
   bool get hasPosition => latitude != 0 && longitude != 0;
-  double get speedValue => double.tryParse(speed) ?? 0;
-
   Map<String, dynamic> toJson() => <String, dynamic>{
     'code': code,
     'title': title,
