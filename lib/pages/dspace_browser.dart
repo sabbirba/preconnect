@@ -1139,8 +1139,9 @@ class _DSpaceBrowserPageState extends State<DSpaceBrowserPage> {
       canGoBack: true,
       onBack: () {
         if (!_handleInternalBack()) {
-          if (Navigator.of(context).canPop()) {
-            Navigator.of(context).pop();
+          final navigator = Navigator.of(context, rootNavigator: true);
+          if (navigator.canPop()) {
+            navigator.pop();
           } else {
             HomeTabRegistry.setActive(HomeTab.dashboard);
           }
