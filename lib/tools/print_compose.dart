@@ -3,10 +3,10 @@ import 'dart:math' as math;
 import 'dart:ui' as ui;
 
 import 'package:flutter/foundation.dart';
-import 'package:image/image.dart' as img;
-import 'package:pdf/pdf.dart';
-import 'package:pdf/widgets.dart' as pw;
 import 'package:preconnect/tools/app_log.dart';
+import 'package:preconnect/tools/jpeg_encoder.dart';
+import 'package:preconnect/tools/pdf_pages.dart';
+import 'package:preconnect/tools/photo_print.dart';
 import 'package:preconnect/tools/print_layout.dart';
 import 'package:printing/printing.dart';
 
@@ -81,18 +81,7 @@ class PrintComposer {
 
   static Future<Uint8List> imagePdf(Uint8List image) async {
     try {
-      final jpeg = await compute(printableImageJpeg, image);
-      final document = pw.Document();
-      final provider = pw.MemoryImage(jpeg);
-      document.addPage(
-        pw.Page(
-          pageFormat: PdfPageFormat.a4,
-          margin: pw.EdgeInsets.zero,
-          build: (_) =>
-              pw.Center(child: pw.Image(provider, fit: pw.BoxFit.contain)),
-        ),
-      );
-      return await document.save();
+      return jpegPagesPdf([await printablePhoto(image)]);
     } on PrintComposeException {
       rethrow;
     } catch (error) {
@@ -147,9 +136,9 @@ class PrintComposer {
 
     final sheetDpi = PrintLayout.sheetDpiFor(sides.length);
     final quality = PrintLayout.jpegQualityFor(sides.length);
-    final jpegs = <Uint8List>[];
+    final sheets = <JpegPage>[];
     for (var sideIndex = 0; sideIndex < sides.length; sideIndex++) {
-      jpegs.add(
+      sheets.add(
         await _renderSide(
           pdf,
           pages,
@@ -163,10 +152,7 @@ class PrintComposer {
       );
       onProgress?.call((sideIndex + 1) / sides.length);
     }
-    return ComposedPrint(
-      bytes: await _assemble(jpegs),
-      sheetSides: jpegs.length,
-    );
+    return ComposedPrint(bytes: _assemble(sheets), sheetSides: sheets.length);
   }
 
   static Future<Uint8List?> firstPage(Uint8List pdf) async {
@@ -219,7 +205,7 @@ class PrintComposer {
     return true;
   }
 
-  static Future<Uint8List> _renderSide(
+  static Future<JpegPage> _renderSide(
     Uint8List pdf,
     List<_PageInfo> pages,
     List<int> selected,
@@ -307,26 +293,14 @@ class PrintComposer {
     final data = await sheet.toByteData(format: ui.ImageByteFormat.rawRgba);
     sheet.dispose();
     picture.dispose();
-    return compute(
-      _encodeJpeg,
-      _SheetPixels(width, height, data!.buffer.asUint8List(), quality),
+    final jpeg = await compute(
+      encodeJpegPixels,
+      JpegPixels(width, height, data!.buffer.asUint8List(), quality),
     );
+    return JpegPage(jpeg, width, height);
   }
 
-  static Future<Uint8List> _assemble(List<Uint8List> jpegs) async {
-    final document = pw.Document(compress: true);
-    for (final jpeg in jpegs) {
-      final image = pw.MemoryImage(jpeg);
-      document.addPage(
-        pw.Page(
-          pageFormat: PdfPageFormat.a4,
-          margin: pw.EdgeInsets.zero,
-          build: (_) => pw.Image(image, fit: pw.BoxFit.fill),
-        ),
-      );
-    }
-    return document.save();
-  }
+  static Uint8List _assemble(List<JpegPage> sheets) => jpegPagesPdf(sheets);
 }
 
 class _PageInfo {
@@ -339,53 +313,4 @@ class _PageInfo {
   final double width;
   final double height;
   final bool blank;
-}
-
-class _SheetPixels {
-  const _SheetPixels(this.width, this.height, this.rgba, this.quality);
-
-  final int width;
-  final int height;
-  final Uint8List rgba;
-  final int quality;
-}
-
-Uint8List _encodeJpeg(_SheetPixels sheet) {
-  final rgb = Uint8List(sheet.width * sheet.height * 3);
-  for (var i = 0, o = 0; i < sheet.rgba.length; i += 4, o += 3) {
-    rgb[o] = sheet.rgba[i];
-    rgb[o + 1] = sheet.rgba[i + 1];
-    rgb[o + 2] = sheet.rgba[i + 2];
-  }
-  final image = img.Image.fromBytes(
-    width: sheet.width,
-    height: sheet.height,
-    bytes: rgb.buffer,
-    numChannels: 3,
-  );
-  return Uint8List.fromList(img.encodeJpg(image, quality: sheet.quality));
-}
-
-Uint8List printableImageJpeg(Uint8List bytes) {
-  final decoded = img.decodeImage(bytes);
-  if (decoded == null) {
-    throw const PrintComposeException('This image could not be read');
-  }
-  var image = img.bakeOrientation(decoded);
-  if (image.hasAlpha) {
-    final flat = img.Image(
-      width: image.width,
-      height: image.height,
-      numChannels: 3,
-    )..clear(img.ColorRgb8(255, 255, 255));
-    img.compositeImage(flat, image);
-    image = flat;
-  }
-  if (image.width > image.height) {
-    image = img.copyRotate(image, angle: 90);
-  }
-  if (image.width > 2480) {
-    image = img.copyResize(image, width: 2480);
-  }
-  return Uint8List.fromList(img.encodeJpg(image, quality: 90));
 }

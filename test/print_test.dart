@@ -3,6 +3,7 @@ import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:image/image.dart' as img;
+import 'package:preconnect/tools/photo_print.dart';
 import 'package:preconnect/tools/print_compose.dart';
 import 'package:preconnect/tools/http/http_utils.dart';
 import 'package:preconnect/tools/print_layout.dart';
@@ -209,15 +210,15 @@ void main() {
       return Uint8List.fromList(img.encodePng(image));
     }
 
-    test('landscape photo is turned upright and flattened to RGB', () {
-      final jpeg = printableImageJpeg(png(400, 300));
+    test('landscape photo is turned upright and flattened to RGB', () async {
+      final jpeg = await printableImageJpeg(png(400, 300));
       final decoded = img.decodeJpg(jpeg)!;
       expect(decoded.height, greaterThan(decoded.width));
     });
 
-    test('transparent pixels turn white instead of black', () {
+    test('transparent pixels turn white instead of black', () async {
       final decoded = img.decodeJpg(
-        printableImageJpeg(png(200, 300, alpha: true)),
+        await printableImageJpeg(png(200, 300, alpha: true)),
       )!;
       final pixel = decoded.getPixel(100, 150);
       expect(pixel.r, greaterThan(240));
@@ -225,9 +226,9 @@ void main() {
       expect(pixel.b, greaterThan(240));
     });
 
-    test('unreadable image fails with a print error', () {
-      expect(
-        () => printableImageJpeg(Uint8List.fromList(utf8.encode('nope'))),
+    test('unreadable image fails with a print error', () async {
+      await expectLater(
+        printableImageJpeg(Uint8List.fromList(utf8.encode('nope'))),
         throwsA(isA<PrintComposeException>()),
       );
     });

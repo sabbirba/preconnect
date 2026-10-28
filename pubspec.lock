@@ -558,7 +558,7 @@ packages:
     source: hosted
     version: "4.1.2"
   image:
-    dependency: "direct main"
+    dependency: "direct dev"
     description:
       name: image
       sha256: "89ed75b2f8231fe676808c5564f9590d728024ded7ac782a7ed8474f1c95b72a"
@@ -902,7 +902,7 @@ packages:
     source: hosted
     version: "2.3.0"
   pdf:
-    dependency: "direct main"
+    dependency: transitive
     description:
       name: pdf
       sha256: "6e40827f370d196e97c6611724d923a3d86c431ce8e2ce1e59edd03a67a1a6e6"
