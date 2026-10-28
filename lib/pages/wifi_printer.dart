@@ -806,7 +806,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
     setState(() => _pageRange = value);
   }
 
-  Future<void> _showPreviewSheet(List<Uint8List> documents) {
+  Future<void> _showPreviewSheet(Future<List<Uint8List>> documents) {
     return showAppCustomBottomSheet<void>(
       context: context,
       backgroundColor: AppPalette.card(context),
@@ -841,25 +841,21 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
     );
   }
 
+  bool _previewOpen = false;
+
+  Future<List<Uint8List>> _previewDocuments(_SelectedFile file) async {
+    final prepared = await _prepare(file);
+    return prepared.previewable ? [prepared.bytes] : const [];
+  }
+
   Future<void> _previewFile(_SelectedFile file) async {
-    if (_busy || kIsWeb) return;
-    setState(() => _busy = true);
-    final documents = <Uint8List>[];
-    final failures = <String>[];
+    if (_previewOpen || kIsWeb) return;
+    _previewOpen = true;
     try {
-      try {
-        final prepared = await _prepare(file);
-        if (prepared.previewable) documents.add(prepared.bytes);
-      } on PrintComposeException catch (error) {
-        failures.add('${file.name}: ${error.message}');
-      }
+      await _showPreviewSheet(_previewDocuments(file));
     } finally {
-      if (mounted) setState(() => _busy = false);
+      _previewOpen = false;
     }
-    if (!mounted) return;
-    if (failures.isNotEmpty) showAppSnackBar(context, failures.join('\n'));
-    if (documents.isEmpty) return;
-    await _showPreviewSheet(documents);
   }
 
   Future<void> _sendToPrinter() async {
@@ -1112,9 +1108,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
                         '${_formatFileSizeMb(_selectedFiles[i].bytes)} • ${_fileKindLabelFor(_selectedFiles[i])}',
                     isEmpty: false,
                     onTap: null,
-                    onPreview: !_busy
-                        ? () => _previewFile(_selectedFiles[i])
-                        : null,
+                    onPreview: () => _previewFile(_selectedFiles[i]),
                     onClear: !_busy ? () => _clearFileAt(i) : null,
                     borderRadius: 16,
                   ),
@@ -2649,7 +2643,7 @@ class _PageRangeSheetState extends State<_PageRangeSheet> {
 class _PrintPreviewSheet extends StatefulWidget {
   const _PrintPreviewSheet({required this.documents});
 
-  final List<Uint8List> documents;
+  final Future<List<Uint8List>> documents;
 
   @override
   State<_PrintPreviewSheet> createState() => _PrintPreviewSheetState();
@@ -2658,11 +2652,10 @@ class _PrintPreviewSheet extends StatefulWidget {
 class _PrintPreviewSheetState extends State<_PrintPreviewSheet> {
   final List<Uint8List> _pages = <Uint8List>[];
   final PageController _controller = PageController();
-  StreamSubscription<Uint8List>? _subscription;
-  int _current = 0;
-  bool _failed = false;
-  bool _zoomed = false;
+  final ValueNotifier<int> _current = ValueNotifier<int>(0);
   final TransformationController _zoom = TransformationController();
+  String? _message;
+  bool _zoomed = false;
   Offset _tapAt = Offset.zero;
 
   void _toggleZoom() {
@@ -2685,41 +2678,73 @@ class _PrintPreviewSheetState extends State<_PrintPreviewSheet> {
   @override
   void initState() {
     super.initState();
-    _subscription = _allPages().listen(
-      (page) {
-        if (!mounted) return;
-        setState(() => _pages.add(page));
-      },
-      onError: (Object error) {
-        unawaited(AppLog.write('Print preview failed: $error'));
-        if (!mounted) return;
-        setState(() => _failed = true);
-      },
-    );
+    unawaited(_load());
+  }
+
+  Future<void> _load() async {
+    try {
+      final documents = await widget.documents;
+      for (final document in documents) {
+        await for (final page in PrintComposer.previewPages(document)) {
+          if (!mounted) return;
+          await precacheImage(MemoryImage(page), context);
+          if (!mounted) return;
+          setState(() => _pages.add(page));
+        }
+      }
+      if (mounted && _pages.isEmpty) {
+        setState(() => _message = 'Nothing to preview');
+      }
+    } on PrintComposeException catch (error) {
+      if (mounted) setState(() => _message = error.message);
+    } catch (error) {
+      unawaited(AppLog.write('Print preview failed: $error'));
+      if (mounted) setState(() => _message = 'Preview is not available');
+    }
   }
 
   void _goTo(int index) {
     unawaited(
       _controller.animateToPage(
         index,
-        duration: const Duration(milliseconds: 250),
-        curve: Curves.easeOut,
+        duration: const Duration(milliseconds: 220),
+        curve: Curves.easeOutCubic,
       ),
     );
   }
 
-  Stream<Uint8List> _allPages() async* {
-    for (final document in widget.documents) {
-      yield* PrintComposer.previewPages(document);
-    }
-  }
-
   @override
   void dispose() {
-    unawaited(_subscription?.cancel());
     _controller.dispose();
+    _current.dispose();
     _zoom.dispose();
     super.dispose();
+  }
+
+  Widget _placeholder(BuildContext context) {
+    return Center(
+      child: AspectRatio(
+        aspectRatio: PrintLayout.a4Width / PrintLayout.a4Height,
+        child: ColoredBox(
+          color: Colors.white,
+          child: Center(
+            child: _message == null
+                ? const SizedBox.square(
+                    dimension: 22,
+                    child: CircularProgressIndicator(strokeWidth: 2.5),
+                  )
+                : Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Text(
+                      _message!,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(color: Colors.black54),
+                    ),
+                  ),
+          ),
+        ),
+      ),
+    );
   }
 
   @override
@@ -2729,27 +2754,28 @@ class _PrintPreviewSheetState extends State<_PrintPreviewSheet> {
       children: [
         Expanded(
           child: _pages.isEmpty
-              ? Center(
-                  child: _failed ? null : const CircularProgressIndicator(),
-                )
+              ? _placeholder(context)
               : PageView.builder(
                   controller: _controller,
                   physics: _zoomed
                       ? const NeverScrollableScrollPhysics()
-                      : null,
+                      : const ClampingScrollPhysics(),
                   itemCount: _pages.length,
-                  onPageChanged: (index) => setState(() {
-                    _current = index;
-                    _zoomed = false;
-                  }),
+                  onPageChanged: (index) {
+                    _current.value = index;
+                    if (_zoomed) setState(() => _zoomed = false);
+                  },
                   itemBuilder: (context, index) {
                     final page = Center(
-                      child: ColoredBox(
-                        color: Colors.white,
-                        child: Image.memory(
-                          _pages[index],
-                          fit: BoxFit.contain,
-                          gaplessPlayback: true,
+                      child: RepaintBoundary(
+                        child: ColoredBox(
+                          color: Colors.white,
+                          child: Image.memory(
+                            _pages[index],
+                            fit: BoxFit.contain,
+                            gaplessPlayback: true,
+                            filterQuality: FilterQuality.medium,
+                          ),
                         ),
                       ),
                     );
@@ -2771,12 +2797,13 @@ class _PrintPreviewSheetState extends State<_PrintPreviewSheet> {
                 ),
         ),
         const Gap(8),
-        if (_pages.isNotEmpty)
-          Row(
+        ValueListenableBuilder<int>(
+          valueListenable: _current,
+          builder: (context, current, _) => Row(
             children: [
               Expanded(
                 child: AppActionButton(
-                  onPressed: _current > 0 ? () => _goTo(_current - 1) : null,
+                  onPressed: current > 0 ? () => _goTo(current - 1) : null,
                   icon: Icons.chevron_left_rounded,
                   label: 'Previous',
                 ),
@@ -2784,14 +2811,14 @@ class _PrintPreviewSheetState extends State<_PrintPreviewSheet> {
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 14),
                 child: Text(
-                  '${_current + 1} / ${_pages.length}',
+                  '${_pages.isEmpty ? 0 : current + 1} / ${_pages.length}',
                   style: TextStyle(color: AppPalette.textSecondary(context)),
                 ),
               ),
               Expanded(
                 child: AppActionButton(
-                  onPressed: _current < _pages.length - 1
-                      ? () => _goTo(_current + 1)
+                  onPressed: current < _pages.length - 1
+                      ? () => _goTo(current + 1)
                       : null,
                   icon: Icons.chevron_right_rounded,
                   label: 'Next',
@@ -2799,6 +2826,7 @@ class _PrintPreviewSheetState extends State<_PrintPreviewSheet> {
               ),
             ],
           ),
+        ),
         const Gap(12),
         AppActionButton(
           onPressed: () => Navigator.of(context).pop(),
