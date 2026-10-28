@@ -1401,170 +1401,142 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
       initialChildSize: 0.75,
       builder: (sheetContext, textPrimary, textSecondary) {
         final dragController = bottomSheetScrollController(sheetContext);
+        Widget heading(String text) => Text(
+          text,
+          style: TextStyle(
+            color: textPrimary,
+            fontSize: 16,
+            fontWeight: FontWeight.w800,
+          ),
+        );
+        Widget step(String number, String title, String body) =>
+            buildInstructionStep(
+              context,
+              stepNumber: number,
+              title: title,
+              body: body,
+            );
         return ListView(
           controller: dragController,
           physics: const ClampingScrollPhysics(),
           padding: const EdgeInsets.only(bottom: 24),
           children: [
-            buildInstructionStep(
-              context,
-              stepNumber: '1',
-              title: 'Connect to Wi-Fi',
-              body:
-                  'Make sure your device is connected to the Student-WiFi or university network.',
+            step(
+              '1',
+              'Connect to the Internet',
+              'On campus Wi-Fi your phone talks to the printer directly. Anywhere else, PreConnect sends the job through its print relay, so an internet connection is enough.',
             ),
             const Gap(12),
-            buildInstructionStep(
-              context,
-              stepNumber: '2',
-              title: 'Check Your ID Card',
-              body:
-                  'Your ID card at the top shows who the job is printed for. If it is missing, open Profile and pull down to refresh, then come back.',
+            step(
+              '2',
+              'Check Your ID Card',
+              'Your ID card at the top shows who the job is printed for. If it is missing, open Profile and pull down to refresh, then come back.',
             ),
             const Gap(12),
-            buildInstructionStep(
-              context,
-              stepNumber: '3',
-              title: 'Choose Documents',
-              body:
-                  'Pick the files you want to print. You can select multiple PDF, JPEG, or PNG files.',
+            step(
+              '3',
+              'Choose Documents',
+              'Pick PDF, JPEG, or PNG files, or tap Blank Page to print one empty sheet. Blank Page replaces any files you already chose.',
             ),
             const Gap(12),
-            buildInstructionStep(
-              context,
-              stepNumber: '4',
-              title: 'Send Print Job',
-              body:
-                  'Tap Print. Files are sent one by one. Print stays off until a file is chosen, your name and student ID are loaded, and the printer is found.',
+            step(
+              '4',
+              'Send Print Job',
+              'Tap Print. Files are sent one by one. Print stays off until a file is chosen, your name and student ID are loaded, and the printer or print relay is found.',
             ),
             const Gap(12),
-            buildInstructionStep(
-              context,
-              stepNumber: '5',
-              title: 'Release Document',
-              body:
-                  'Tap your physical ID card on any campus card-reader printer to release and print the files.',
+            step(
+              '5',
+              'Release Document',
+              'Tap your physical ID card on any campus card-reader printer to release and print the files.',
             ),
             const Gap(16),
-            Text(
-              'Connection Status',
-              style: TextStyle(
-                color: textPrimary,
-                fontSize: 16,
-                fontWeight: FontWeight.w800,
-              ),
+            heading('Connection Status'),
+            const Gap(12),
+            step(
+              '•',
+              'Scanning',
+              'PreConnect is looking for the campus printer and the print relay.',
             ),
             const Gap(12),
-            buildInstructionStep(
-              context,
-              stepNumber: '•',
-              title: 'Connected',
-              body:
-                  'The printer is connected and ready. Your print job will be sent instantly.',
+            step(
+              '•',
+              'Connected',
+              'The campus printer is reachable on your network, or the print relay is online. You can print.',
             ),
             const Gap(12),
-            buildInstructionStep(
-              context,
-              stepNumber: '•',
-              title: 'Not found',
-              body:
-                  'No printer found on your network. Use Print By Email at the bottom of the page instead.',
+            step(
+              '•',
+              'Not found',
+              'Neither the campus printer nor the print relay could be reached. Tap the refresh icon or pull down to scan again, or use Print By Email at the bottom of the page.',
             ),
             const Gap(12),
-            buildInstructionStep(
-              context,
-              stepNumber: '•',
-              title: 'Offline',
-              body: 'Your device has no active internet connection.',
+            step(
+              '•',
+              'Offline',
+              'Your device has no active internet connection.',
             ),
             const Gap(16),
-            Text(
-              'Layout & Print Options',
-              style: TextStyle(
-                color: textPrimary,
-                fontSize: 16,
-                fontWeight: FontWeight.w800,
-              ),
+            heading('Layout & Print Options'),
+            const Gap(12),
+            step(
+              '•',
+              'Copies',
+              'Set the number of copies with the minus and plus buttons, or type it directly.',
             ),
             const Gap(12),
-            buildInstructionStep(
-              context,
-              stepNumber: '•',
-              title: 'Copies',
-              body:
-                  'Specify the exact number of page copies to print by tapping the minus/plus buttons or typing directly.',
+            step(
+              '•',
+              'One Side / Both Side',
+              'Tap to switch between single-sided and double-sided printing. With 2-in-1, double-sided sheets bind on the short edge.',
             ),
             const Gap(12),
-            buildInstructionStep(
-              context,
-              stepNumber: '•',
-              title: 'Duplex Mode - One or Both Side',
-              body:
-                  'Toggle between single-sided or double-sided printing to save paper.',
+            step(
+              '•',
+              'Collate',
+              'With several copies, print each full set in order instead of grouping identical pages.',
             ),
             const Gap(12),
-            buildInstructionStep(
-              context,
-              stepNumber: '•',
-              title: 'Collate Mode',
-              body:
-                  'Sort pages in multi-page documents sequentially instead of grouping identical pages.',
+            step(
+              '•',
+              'Pages Per Sheet',
+              'Tap the layout button to cycle "1-in-1" (default), "2-in-1", "4-in-1" and "Booklet". Pages are placed on one A4 portrait sheet to save page quota. The layout is built on your phone, so the result is the same on any printer.',
             ),
             const Gap(12),
-            buildInstructionStep(
-              context,
-              stepNumber: '•',
-              title: 'Pages Per Sheet',
-              body:
-                  'Tap the layout button to cycle "1-in-1" (default), "2-in-1", "4-in-1" and "Booklet". Pages are placed on one A4 portrait sheet to save page quota. The layout is built on your phone, so the result is the same on any printer.',
+            step(
+              '•',
+              'Pages',
+              'Print only part of a document, for example 1-5, 8, 11-13. Blank pages are skipped automatically. If every page you chose is blank, they are printed as they are.',
             ),
             const Gap(12),
-            buildInstructionStep(
-              context,
-              stepNumber: '•',
-              title: 'Pages',
-              body:
-                  'Print only part of a document, for example 1-5, 8, 11-13. Blank pages are skipped automatically. If every page you chose is blank, they are printed as they are.',
+            step(
+              '•',
+              'Preview',
+              'Tap the eye on a file to see exactly how it will print. Swipe or use Previous and Next to move between sheets, and double-tap to zoom. Preview never sends anything to the printer; only the Print button does.',
             ),
             const Gap(12),
-            buildInstructionStep(
-              context,
-              stepNumber: '•',
-              title: 'Preview',
-              body:
-                  'Tap the eye on a file to see exactly how it will print. Swipe or use Previous and Next to move between sheets, and double-tap to zoom. Preview never sends anything to the printer; only the Print button does.',
+            step(
+              '•',
+              'Photos and PDFs',
+              'JPEG and PNG photos are fitted to an A4 page. Password-protected or damaged PDFs cannot be read; remove the password first.',
             ),
             const Gap(12),
-            buildInstructionStep(
-              context,
-              stepNumber: '•',
-              title: 'Photos and PDFs',
-              body:
-                  'JPEG and PNG photos are fitted to an A4 page. Password-protected or damaged PDFs cannot be read; remove the password first.',
+            step(
+              '•',
+              'Fit Paper / Fit Printable / Edge-to-Edge',
+              'Fit Paper (default) scales the page to the sheet, Fit Printable scales it to the printable area, and Edge-to-Edge turns scaling off. The printer applies this only when your file prints as it is (1-in-1, no page range). With 2-in-1, 4-in-1, Booklet, or a page range, PreConnect fits every page itself and this button does not change the result.',
             ),
             const Gap(12),
-            buildInstructionStep(
-              context,
-              stepNumber: '•',
-              title: 'Fitting Mode',
-              body:
-                  'Select "Fit Paper" (default) for normal margins, "Fit Printable" to shrink to margins, or "Edge-to-Edge" to print borderless full pages.',
+            step(
+              '•',
+              'Finishing',
+              'Tap Finishing to cycle Off, Staple Left, Staple Right, Punch 2 Holes and Punch 3 Holes. One finishing option is used at a time.',
             ),
             const Gap(12),
-            buildInstructionStep(
-              context,
-              stepNumber: '•',
-              title: 'Finishing',
-              body:
-                  'Tap Finishing to cycle Off, Staple Left, Staple Right, Punch 2 Holes and Punch 3 Holes. One finishing option is used at a time.',
-            ),
-            const Gap(12),
-            buildInstructionStep(
-              context,
-              stepNumber: '•',
-              title: 'Separate',
-              body:
-                  'Tap Separate to cycle Off, Offset (shifts each printed set sideways), Slip Sheet (adds a blank sheet between jobs) and both together.',
+            step(
+              '•',
+              'Separate',
+              'Tap Separate to cycle Off, Offset (shifts each printed set sideways), Slip Sheet (adds a blank sheet between jobs) and both together.',
             ),
             const Gap(12),
             buildInstructionStep(
@@ -1598,6 +1570,20 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
                   ],
                 ),
               ),
+            ),
+            const Gap(16),
+            heading('History & Email'),
+            const Gap(12),
+            step(
+              '•',
+              'Print History',
+              'Sent and failed jobs are listed below the Choose and Print buttons (the latest 100). Tap Clear History to remove them.',
+            ),
+            const Gap(12),
+            step(
+              '•',
+              'Print By Email',
+              'Email PDF, DOCX, PPTX, or XLSX files (up to 25 MB total) from your @g.bracu.ac.bd account to campus.printer@g.bracu.ac.bd. Add #duplex to the subject for double-sided printing. Wait 3 to 5 minutes, then tap your ID card at a campus printer. Jobs expire after 4 hours.',
             ),
           ],
         );

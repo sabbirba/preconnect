@@ -1109,7 +1109,7 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
               stepNumber: '•',
               title: 'Tile Messages',
               body:
-                  'The tile shows Connected, Tap to log in, Logging in, Disconnecting, or Open PreConnect when your saved password is missing. Not Student-WiFi means you are on another network.',
+                  'The tile shows Connected, Tap to log in, Logging in, Disconnecting, or Disconnected. Failed, tap to retry means the last attempt did not work. Open PreConnect means your saved password is missing. No Wi-Fi and Not Student-WiFi mean you are not on the Student-WiFi network.',
             ),
             const Gap(20),
             Divider(height: 1, color: textSecondary.withValues(alpha: 0.18)),
