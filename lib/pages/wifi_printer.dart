@@ -16,6 +16,7 @@ import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/app_storage.dart';
 import 'package:preconnect/tools/http/http_utils.dart';
 import 'package:preconnect/tools/print_compose.dart';
+import 'package:preconnect/tools/in_flight.dart';
 import 'package:preconnect/tools/print_layout.dart';
 import 'package:preconnect/tools/print_options.dart';
 import 'package:preconnect/tools/storage_keys.dart';
@@ -756,7 +757,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
   );
 
   final Expando<Map<String, _PreparedPrint>> _preparedCache = Expando();
-  final Expando<Map<String, Future<_PreparedPrint>>> _preparing = Expando();
+  final Expando<InFlight<String, _PreparedPrint>> _preparing = Expando();
   Timer? _warmTimer;
 
   void _warmPrepared() {
@@ -781,12 +782,11 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
     final key = '$_pagesPerSheet|$_fittingMode|$_booklet|$_pageRange';
     final cached = _preparedCache[file]?[key];
     if (cached != null) return SynchronousFuture(cached);
-    final pending = _preparing[file] ??= <String, Future<_PreparedPrint>>{};
-    return pending[key] ??= _prepareNow(
-      file,
+    final options = _composeOptions;
+    return (_preparing[file] ??= InFlight<String, _PreparedPrint>()).run(
       key,
-      _composeOptions,
-    ).whenComplete(() => pending.remove(key));
+      () => _prepareNow(file, key, options),
+    );
   }
 
   Future<_PreparedPrint> _prepareNow(
