@@ -422,6 +422,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
   }
 
   Future<void> _savePrinterPreferences() async {
+    _warmPrepared();
     CampusPrinterPage.invalidateCache();
     await AppStorage.instance.setInt(_copiesKey, _copies);
     await AppStorage.instance.setString(
@@ -443,6 +444,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
 
   @override
   void dispose() {
+    _warmTimer?.cancel();
     _networkStatusSubscription?.cancel().catchError((_) {});
 
     _copiesController.removeListener(_handleCopiesControllerChanged);
@@ -696,6 +698,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
         _selectedFiles = List<_SelectedFile>.from(_selectedFiles)
           ..addAll(nextFiles);
       });
+      _warmPrepared();
     } catch (e) {
       await AppLog.write('Failed to add selected files: $e');
     }
@@ -763,21 +766,52 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
     }
   }
 
-  Future<ComposedPrint?> _composeLayout(Uint8List bytes) {
-    return PrintComposer.compose(
-      bytes,
-      PrintComposeOptions(
-        pagesPerSheet: _pagesPerSheet,
-        fittingMode: _fittingMode,
-        booklet: _booklet == 'On',
-        pageRange: _pageRange,
-      ),
-    );
-  }
+  PrintComposeOptions get _composeOptions => PrintComposeOptions(
+    pagesPerSheet: _pagesPerSheet,
+    fittingMode: _fittingMode,
+    booklet: _booklet == 'On',
+    pageRange: _pageRange,
+  );
 
   final Expando<Map<String, _PreparedPrint>> _preparedCache = Expando();
+  final Expando<Map<String, Future<_PreparedPrint>>> _preparing = Expando();
+  Timer? _warmTimer;
 
-  Future<_PreparedPrint> _prepare(_SelectedFile file) async {
+  void _warmPrepared() {
+    if (kIsWeb) return;
+    _warmTimer?.cancel();
+    _warmTimer = Timer(const Duration(milliseconds: 500), () {
+      if (!mounted || _busy) return;
+      for (final file in _selectedFiles) {
+        unawaited(
+          _prepare(file).then<void>(
+            (_) {},
+            onError: (Object error) {
+              unawaited(AppLog.write('Print warm-up failed: $error'));
+            },
+          ),
+        );
+      }
+    });
+  }
+
+  Future<_PreparedPrint> _prepare(_SelectedFile file) {
+    final key = '$_pagesPerSheet|$_fittingMode|$_booklet|$_pageRange';
+    final cached = _preparedCache[file]?[key];
+    if (cached != null) return SynchronousFuture(cached);
+    final pending = _preparing[file] ??= <String, Future<_PreparedPrint>>{};
+    return pending[key] ??= _prepareNow(
+      file,
+      key,
+      _composeOptions,
+    ).whenComplete(() => pending.remove(key));
+  }
+
+  Future<_PreparedPrint> _prepareNow(
+    _SelectedFile file,
+    String key,
+    PrintComposeOptions options,
+  ) async {
     final isImage = _isJpegFile(file.name) || _isPngFile(file.name);
     if (!isImage && !_isPdfFile(file.name, file.bytes)) {
       return _PreparedPrint(
@@ -787,13 +821,10 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
         previewable: false,
       );
     }
-    final key = '$_pagesPerSheet|$_fittingMode|$_booklet|$_pageRange';
-    final cached = _preparedCache[file]?[key];
-    if (cached != null) return cached;
     final source = isImage
         ? await PrintComposer.imagePdf(file.bytes)
         : file.bytes;
-    final composed = await _composeLayout(source);
+    final composed = await PrintComposer.compose(source, options);
     final prepared = _PreparedPrint(
       bytes: composed?.bytes ?? source,
       fileName: isImage ? '${_basePrintName(file.name)}.pdf' : file.name,
@@ -814,6 +845,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
     );
     if (value == null || !mounted) return;
     setState(() => _pageRange = value);
+    _warmPrepared();
   }
 
   Future<void> _showPreviewSheet(

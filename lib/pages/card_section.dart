@@ -41,19 +41,21 @@ class CardSection extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Gap(4),
-        GestureFlipCard(
-          animationDuration: const Duration(milliseconds: 300),
-          axis: FlipAxis.vertical,
-          frontWidget: _CardFront(
-            displayName: displayName,
-            displayProgram: displayProgram,
-            displayStudentId: displayStudentId,
-            displayBloodGroup: displayBloodGroup,
-            validation: validation,
-            photoUrl: photoUrl,
-            studentIdController: studentIdController,
+        RepaintBoundary(
+          child: GestureFlipCard(
+            animationDuration: const Duration(milliseconds: 300),
+            axis: FlipAxis.vertical,
+            frontWidget: _CardFront(
+              displayName: displayName,
+              displayProgram: displayProgram,
+              displayStudentId: displayStudentId,
+              displayBloodGroup: displayBloodGroup,
+              validation: validation,
+              photoUrl: photoUrl,
+              studentIdController: studentIdController,
+            ),
+            backWidget: _CardBack(displayStudentId: displayStudentId),
           ),
-          backWidget: _CardBack(displayStudentId: displayStudentId),
         ),
       ],
     );

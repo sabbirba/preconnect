@@ -5,6 +5,7 @@ import 'dart:ui' as ui;
 import 'package:flutter/foundation.dart'
     show ValueListenable, TargetPlatform, kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart' show ScrollCacheExtent;
 import 'package:gap/gap.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';

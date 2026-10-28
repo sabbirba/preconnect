@@ -1049,9 +1049,9 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
             buildInstructionStep(
               context,
               stepNumber: '3',
-              title: 'Connect Session',
+              title: 'Save and Connect',
               body:
-                  'Tap the Connect button. PreConnect saves your password on this device, sets up Student-WiFi, and signs in to the campus gateway for you.',
+                  'Tap Save to keep your password on this device. When Student-WiFi asks for a login, a Connect button appears. Tap it and PreConnect sets up Student-WiFi and signs in to the campus gateway for you. Tap Cancel to stop while it is connecting.',
             ),
             const Gap(12),
             buildInstructionStep(
@@ -1067,7 +1067,7 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
               stepNumber: '5',
               title: 'Disconnect',
               body:
-                  'Tap Disconnect to log out of the active captive portal network session immediately.',
+                  'While you are signed in, the Connect button becomes Disconnect. Tap it to log out of the portal session immediately.',
             ),
             const Gap(20),
             Divider(height: 1, color: textSecondary.withValues(alpha: 0.18)),

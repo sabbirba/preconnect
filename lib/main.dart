@@ -31,6 +31,35 @@ Future<void> homeWidgetBackground(Uri? uri) async {
   await syncTodayWidgetInBackground(uri);
 }
 
+Future<void> _initFirebase() async {
+  try {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+    FirebaseMessaging.onBackgroundMessage(FCMService.backgroundHandler);
+  } catch (error, stackTrace) {
+    unawaited(
+      AppLog.write('Firebase initialization failed: $error\n$stackTrace'),
+    );
+  }
+}
+
+Future<void> _initStorage() async {
+  try {
+    await AppStorage.initialize();
+  } catch (error, stackTrace) {
+    unawaited(
+      AppLog.write('AppStorage initialization failed: $error\n$stackTrace'),
+    );
+  }
+}
+
+Future<void> _initWidgets() async {
+  if (!TodayWidget.isSupported) return;
+  await TodayWidget.initialize();
+  unawaited(HomeWidget.registerInteractivityCallback(homeWidgetBackground));
+}
+
 Future<void> main() async {
   final oldDebugPrint = debugPrint;
   debugPrint = (String? message, {int? wrapWidth}) {
@@ -58,35 +87,13 @@ Future<void> main() async {
         return true;
       };
 
-      if (!isChromeRuntimeAvailable()) {
-        try {
-          await Firebase.initializeApp(
-            options: DefaultFirebaseOptions.currentPlatform,
-          );
-          FirebaseMessaging.onBackgroundMessage(FCMService.backgroundHandler);
-        } catch (error, stackTrace) {
-          unawaited(
-            AppLog.write('Firebase initialization failed: $error\n$stackTrace'),
-          );
-        }
-      }
-
-      try {
-        await AppStorage.initialize();
-      } catch (error, stackTrace) {
-        unawaited(
-          AppLog.write('AppStorage initialization failed: $error\n$stackTrace'),
-        );
-      }
+      await Future.wait<void>([
+        if (!isChromeRuntimeAvailable()) _initFirebase(),
+        _initStorage(),
+        _initWidgets(),
+      ]);
 
       unawaited(CaptiveLoginStore.instance.publishTileReady());
-
-      if (TodayWidget.isSupported) {
-        await TodayWidget.initialize();
-        unawaited(
-          HomeWidget.registerInteractivityCallback(homeWidgetBackground),
-        );
-      }
 
       PaintingBinding.instance.imageCache.maximumSize = 200;
       PaintingBinding.instance.imageCache.maximumSizeBytes = 100 << 20;

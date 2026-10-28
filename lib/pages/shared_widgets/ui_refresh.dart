@@ -43,6 +43,8 @@ const EdgeInsets kPageListPadding = EdgeInsets.fromLTRB(14, 8, 14, 28);
   );
 }
 
+const double kListCacheExtent = 600;
+
 class AppRefreshList extends StatefulWidget {
   const AppRefreshList({
     super.key,
@@ -99,6 +101,7 @@ class _AppRefreshListState extends State<AppRefreshList> {
         controller: _controller,
         physics: const AlwaysScrollableScrollPhysics(),
         padding: widget.padding,
+        scrollCacheExtent: const ScrollCacheExtent.pixels(kListCacheExtent),
         children: widget.children,
       ),
     );
@@ -162,6 +165,7 @@ class _AppRefreshListBuilderState extends State<AppRefreshListBuilder> {
         controller: _controller,
         padding: widget.padding,
         physics: const AlwaysScrollableScrollPhysics(),
+        scrollCacheExtent: const ScrollCacheExtent.pixels(kListCacheExtent),
         itemCount: widget.itemCount,
         itemBuilder: widget.itemBuilder,
       ),
