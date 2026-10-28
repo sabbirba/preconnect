@@ -118,6 +118,7 @@ Run the affected platform build after changing native configuration, dependencie
 ## Repository Rules
 
 - Preserve existing user changes and inspect the worktree before editing.
+- Do not write comments in code: no line, block, doc, or commented-out code comments in any language. Remove existing ones when editing a file, and keep only behavior-changing tool directives and required license headers.
 - Keep changes focused and avoid unrelated refactors.
 - Keep one pull request focused on one bug, feature, or maintenance concern.
 - Do not manually bump versions; release automation owns version changes.

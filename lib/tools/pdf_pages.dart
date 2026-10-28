@@ -3,7 +3,6 @@ import 'dart:typed_data';
 
 import 'package:preconnect/tools/print_layout.dart';
 
-/// One A4 page that shows a single JPEG.
 class JpegPage {
   const JpegPage(this.jpeg, this.width, this.height, {this.fill = true});
 
@@ -11,13 +10,9 @@ class JpegPage {
   final int width;
   final int height;
 
-  /// Stretch the picture over the whole page, otherwise fit it inside and
-  /// center it without changing its proportions.
   final bool fill;
 }
 
-/// Writes A4 pages that each hold one JPEG as a plain PDF, with no PDF
-/// library involved.
 Uint8List jpegPagesPdf(List<JpegPage> pages) {
   final out = BytesBuilder(copy: false);
   final offsets = <int>[];

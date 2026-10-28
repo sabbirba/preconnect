@@ -1,23 +1,18 @@
-# ── Suppress R8 "rule does not match anything" INFO noise from deps ──────────
 -ignorewarnings
 
-# ── Kotlin ──────────────────────────────────────────────────────────────────
 -dontwarn kotlin.**
 -dontwarn kotlinx.**
 
-# ── WebView (webview_flutter_android) ───────────────────────────────────────
 -keepclassmembers class * {
     @android.webkit.JavascriptInterface <methods>;
 }
 -dontwarn android.webkit.**
 
-# ── Don't warn for other transient packages ──────────────────────────────────
 -dontwarn io.flutter.**
 -dontwarn com.google.android.gms.**
 -dontwarn com.google.android.play.**
 -keep class com.google.android.play.core.review.** { *; }
 
-# ── R8 Aggressive: Strip all Android Log calls from release ──────────────────
 -assumenosideeffects class android.util.Log {
     public static int v(...);
     public static int d(...);
@@ -28,15 +23,12 @@
     public static java.lang.String getStackTraceString(java.lang.Throwable);
 }
 
-# ── Remove source file names and line numbers from release dex (smaller) ───
 -renamesourcefileattribute ""
 
-# ── Parcelables ───────────────────────────────────────────────────────────────
 -keepclassmembers class * implements android.os.Parcelable {
     public static final android.os.Parcelable$Creator *;
 }
 
-# ── Serializable ──────────────────────────────────────────────────────────────
 -keepclassmembers class * implements java.io.Serializable {
     private static final java.io.ObjectStreamField[] serialPersistentFields;
     private void writeObject(java.io.ObjectOutputStream);
@@ -45,7 +37,6 @@
     java.lang.Object readResolve();
 }
 
-# ── Enum support ──────────────────────────────────────────────────────────────
 -keepclassmembers enum * {
     public static **[] values();
     public static ** valueOf(java.lang.String);

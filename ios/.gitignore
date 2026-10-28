@@ -1,4 +1,3 @@
-# Xcode
 **/dgph
 **/DerivedData/
 **/*.mode1v3
@@ -9,11 +8,9 @@
 **/*.xcuserstate
 **/xcuserdata/
 
-# CocoaPods
 **/Pods/
 **/.symlinks/
 
-# Flutter
 **/.generated/
 **/Flutter/App.framework
 **/Flutter/Flutter.framework
@@ -27,12 +24,10 @@
 **/Flutter/GeneratedPluginRegistrant.*
 Runner/GeneratedPluginRegistrant.*
 
-# Archives
 **/*.ipa
 **/*.dSYM
 **/*.dSYM.zip
 
-# Exceptions
 !default.mode1v3
 !default.mode2v3
 !default.pbxuser

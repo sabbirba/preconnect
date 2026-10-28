@@ -1,11 +1,6 @@
 import 'dart:math' as math;
 import 'dart:typed_data';
 
-/// Baseline JPEG encoder (4:4:4, Huffman tables from ITU-T T.81 Annex K).
-///
-/// Takes straight RGBA pixels (alpha is ignored, so flatten first) and returns
-/// a JFIF file. It exists so the app does not have to ship a general purpose
-/// image library just to write print sheets.
 Uint8List encodeJpeg(
   Uint8List rgba,
   int width,
@@ -315,7 +310,6 @@ class _JpegWriter {
   }
 }
 
-/// Pixels handed to an isolate so a sheet can be encoded off the main thread.
 class JpegPixels {
   const JpegPixels(this.width, this.height, this.rgba, this.quality);
 

@@ -1,4 +1,3 @@
-/// Shares one running task between callers that ask for the same key.
 class InFlight<K, V> {
   final Map<K, Future<V>> _running = <K, Future<V>>{};
 

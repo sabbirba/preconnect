@@ -41,7 +41,6 @@ Future<bool> _decoderAppliesOrientation() => _decoderOrients ??= () async {
   }
 }();
 
-/// EXIF orientation (1-8) of a JPEG, or 1 when there is none.
 int exifOrientation(Uint8List bytes) {
   if (bytes.length < 4 || bytes[0] != 0xFF || bytes[1] != 0xD8) return 1;
   var offset = 2;
@@ -94,8 +93,6 @@ int _tiffOrientation(Uint8List bytes, int tiff, int end) {
   return 1;
 }
 
-/// Matrix that turns raw pixels of a [width] x [height] image upright for
-/// the given EXIF [orientation], as a column-major 4x4 canvas transform.
 Float64List exifTransform(int orientation, double width, double height) {
   final (a, b, c, d, tx, ty) = switch (orientation) {
     2 => (-1.0, 0.0, 0.0, 1.0, width, 0.0),
@@ -108,19 +105,28 @@ Float64List exifTransform(int orientation, double width, double height) {
     _ => (1.0, 0.0, 0.0, 1.0, 0.0, 0.0),
   };
   return Float64List.fromList([
-    a, b, 0, 0, //
-    c, d, 0, 0,
-    0, 0, 1, 0,
-    tx, ty, 0, 1,
+    a,
+    b,
+    0,
+    0,
+    c,
+    d,
+    0,
+    0,
+    0,
+    0,
+    1,
+    0,
+    tx,
+    ty,
+    0,
+    1,
   ]);
 }
 
-/// Decodes a JPEG or PNG, turns it upright, flattens transparency to white,
-/// rotates landscape photos to portrait, limits the width and returns a JPEG.
 Future<Uint8List> printableImageJpeg(Uint8List bytes) async =>
     (await printablePhoto(bytes)).jpeg;
 
-/// Same as [printableImageJpeg], with the picture size so it can become a page.
 Future<JpegPage> printablePhoto(Uint8List bytes) async {
   const unreadable = PrintComposeException('This image could not be read');
   final ui.Image source;

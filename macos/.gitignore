@@ -1,4 +1,3 @@
-# Xcode
 **/dgph
 **/DerivedData/
 **/*.mode1v3
@@ -9,18 +8,15 @@
 **/*.xcuserstate
 **/xcuserdata/
 
-# CocoaPods
 **/Pods/
 **/.symlinks/
 
-# Swift Package Manager (SPM)
 **/.swiftpm/
 **/swiftpm/
 **/Package.resolved
 **/SourcePackages/
 **/.build/
 
-# Flutter
 **/Flutter/ephemeral/
 **/Flutter/Flutter.framework
 **/Flutter/Flutter.podspec
@@ -29,11 +25,9 @@
 **/Podfile.lock
 **/RunnerTests/
 
-# Archives
 **/*.dSYM
 **/*.dSYM.zip
 
-# Exceptions
 !default.mode1v3
 !default.mode2v3
 !default.pbxuser
