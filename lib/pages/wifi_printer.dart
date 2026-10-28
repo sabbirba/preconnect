@@ -2617,16 +2617,11 @@ class _PageRangeSheetState extends State<_PageRangeSheet> {
               child: AppActionButton(
                 onPressed: () => Navigator.of(context).pop(''),
                 label: 'All',
-                outlined: true,
               ),
             ),
             const Gap(12),
             Expanded(
-              child: AppActionButton(
-                onPressed: _apply,
-                label: 'Apply',
-                outlined: false,
-              ),
+              child: AppActionButton(onPressed: _apply, label: 'Apply'),
             ),
           ],
         ),
