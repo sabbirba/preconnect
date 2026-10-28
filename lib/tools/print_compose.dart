@@ -169,6 +169,22 @@ class PrintComposer {
     );
   }
 
+  static Future<Uint8List?> firstPage(Uint8List pdf) async {
+    if (kIsWeb) return null;
+    try {
+      await for (final raster in Printing.raster(
+        pdf,
+        pages: const [0],
+        dpi: _previewDpi,
+      )) {
+        return await raster.toPng();
+      }
+    } catch (error) {
+      unawaited(AppLog.write('Preview first page failed: $error'));
+    }
+    return null;
+  }
+
   static Stream<Uint8List> previewPages(Uint8List pdf) async* {
     await for (final raster in Printing.raster(pdf, dpi: _previewDpi)) {
       yield await raster.toPng();

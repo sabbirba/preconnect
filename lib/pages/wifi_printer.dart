@@ -806,7 +806,11 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
     setState(() => _pageRange = value);
   }
 
-  Future<void> _showPreviewSheet(Future<List<Uint8List>> documents) {
+  Future<void> _showPreviewSheet(
+    Future<List<Uint8List>> documents, {
+    Future<Uint8List?>? firstPage,
+    Uint8List? source,
+  }) {
     return showAppCustomBottomSheet<void>(
       context: context,
       backgroundColor: AppPalette.card(context),
@@ -832,7 +836,13 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
                   ),
                 ),
                 const Gap(12),
-                Expanded(child: _PrintPreviewSheet(documents: documents)),
+                Expanded(
+                  child: _PrintPreviewSheet(
+                    documents: documents,
+                    firstPage: firstPage,
+                    source: source,
+                  ),
+                ),
               ],
             ),
           ),
@@ -848,11 +858,27 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
     return prepared.previewable ? [prepared.bytes] : const [];
   }
 
+  bool get _layoutUntouched =>
+      PrintLayout.pagesPerSheetOf(_pagesPerSheet) == 1 &&
+      _booklet != 'On' &&
+      _pageRange.trim().isEmpty;
+
   Future<void> _previewFile(_SelectedFile file) async {
     if (_previewOpen || kIsWeb) return;
     _previewOpen = true;
     try {
-      await _showPreviewSheet(_previewDocuments(file));
+      final quick =
+          _layoutUntouched &&
+              !_isJpegFile(file.name) &&
+              !_isPngFile(file.name) &&
+              _isPdfFile(file.name, file.bytes)
+          ? PrintComposer.firstPage(file.bytes)
+          : null;
+      await _showPreviewSheet(
+        _previewDocuments(file),
+        firstPage: quick,
+        source: file.bytes,
+      );
     } finally {
       _previewOpen = false;
     }
@@ -2641,9 +2667,15 @@ class _PageRangeSheetState extends State<_PageRangeSheet> {
 }
 
 class _PrintPreviewSheet extends StatefulWidget {
-  const _PrintPreviewSheet({required this.documents});
+  const _PrintPreviewSheet({
+    required this.documents,
+    this.firstPage,
+    this.source,
+  });
 
   final Future<List<Uint8List>> documents;
+  final Future<Uint8List?>? firstPage;
+  final Uint8List? source;
 
   @override
   State<_PrintPreviewSheet> createState() => _PrintPreviewSheetState();
@@ -2681,16 +2713,41 @@ class _PrintPreviewSheetState extends State<_PrintPreviewSheet> {
     unawaited(_load());
   }
 
+  bool _ready = false;
+
+  Future<void> _showEarly(Future<Uint8List?> quick) async {
+    final page = await quick;
+    if (page == null || !mounted || _ready || _pages.isNotEmpty) return;
+    await precacheImage(MemoryImage(page), context);
+    if (!mounted || _ready || _pages.isNotEmpty) return;
+    setState(() => _pages.add(page));
+  }
+
   Future<void> _load() async {
+    final quick = widget.firstPage;
+    if (quick != null) unawaited(_showEarly(quick));
     try {
       final documents = await widget.documents;
+      _ready = true;
+      final untouched =
+          documents.length == 1 && identical(documents.first, widget.source);
+      var skip = 0;
+      if (_pages.isNotEmpty) {
+        if (untouched) {
+          skip = 1;
+        } else if (mounted) {
+          setState(_pages.clear);
+        }
+      }
       for (final document in documents) {
-        await for (final page in PrintComposer.previewPages(document)) {
+        final stream = PrintComposer.previewPages(document);
+        await for (final page in skip > 0 ? stream.skip(skip) : stream) {
           if (!mounted) return;
           await precacheImage(MemoryImage(page), context);
           if (!mounted) return;
           setState(() => _pages.add(page));
         }
+        skip = 0;
       }
       if (mounted && _pages.isEmpty) {
         setState(() => _message = 'Nothing to preview');
