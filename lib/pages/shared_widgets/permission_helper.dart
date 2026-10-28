@@ -125,11 +125,14 @@ class AppPermissionHelper {
       await _requestIosPermissionsSilently();
     }
 
-    final pending = <PermissionRequirement>[];
-    for (final req in await _applicable()) {
-      final status = await req.permission.status;
-      if (!(status.isGranted || status.isLimited)) pending.add(req);
-    }
+    final applicable = await _applicable();
+    final statuses = await Future.wait(
+      applicable.map((req) => req.permission.status),
+    );
+    final pending = <PermissionRequirement>[
+      for (var i = 0; i < applicable.length; i++)
+        if (!(statuses[i].isGranted || statuses[i].isLimited)) applicable[i],
+    ];
 
     if (pending.isEmpty) return;
     if (await AppStorage.instance.getString(_promptSeenKey) != null) return;
@@ -244,12 +247,13 @@ class _AppPermissionBottomSheetContentState
   }
 
   Future<void> _updateStatuses() async {
-    final updatedStatuses = <Permission, PermissionStatus>{};
-
-    for (final req in widget.requirements) {
-      final status = await req.permission.status;
-      updatedStatuses[req.permission] = status;
-    }
+    final statuses = await Future.wait(
+      widget.requirements.map((req) => req.permission.status),
+    );
+    final updatedStatuses = <Permission, PermissionStatus>{
+      for (var i = 0; i < statuses.length; i++)
+        widget.requirements[i].permission: statuses[i],
+    };
 
     if (mounted) {
       setState(() {

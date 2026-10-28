@@ -902,12 +902,8 @@ class FCMService {
     await _initNative();
   }
 
-  Future<void> _initWeb() async {
-    final token = await _getToken();
-    if (token == null) return;
-
-    final topicsToSubscribe = <String>{...PreConnectPushConfig.defaultTopics};
-
+  Future<Set<String>> _topicsToSubscribe() async {
+    final topics = <String>{...PreConnectPushConfig.defaultTopics};
     try {
       final url = Uri.parse('${ApiConfig.realtimeApiBase}/push/topics');
       final response = await HttpUtils.client
@@ -918,24 +914,45 @@ class FCMService {
         if (decoded is List) {
           for (final item in decoded) {
             if (item is String && item.trim().isNotEmpty) {
-              topicsToSubscribe.add(item.trim());
+              topics.add(item.trim());
             }
           }
         }
       }
     } catch (_) {}
+    return topics;
+  }
 
-    for (final topic in topicsToSubscribe) {
-      await _subscribeToTopicWeb(token, topic);
-    }
-
+  Future<Set<String>> _pinnedSeatTopics() async {
     try {
-      final Set<String> pinnedSeats = await CoursePinStore.load(
+      final pinned = await CoursePinStore.load(
         PreConnectPushConfig.seatStatusPinScope,
       );
-      for (String seat in pinnedSeats) {
-        await _subscribeToTopicWeb(token, PreConnectPushConfig.seatTopic(seat));
-      }
+      return {for (final seat in pinned) PreConnectPushConfig.seatTopic(seat)};
+    } catch (error) {
+      unawaited(AppLog.write('FCM pinned seat load failed: $error'));
+      return <String>{};
+    }
+  }
+
+  Future<void> _subscribeAll(
+    Iterable<String> topics,
+    Future<Object?> Function(String topic) subscribe,
+  ) => Future.wait<Object?>(topics.map(subscribe));
+
+  Future<void> _initWeb() async {
+    final token = await _getToken();
+    if (token == null) return;
+
+    try {
+      final (topics, pinned) = await (
+        _topicsToSubscribe(),
+        _pinnedSeatTopics(),
+      ).wait;
+      await _subscribeAll({
+        ...topics,
+        ...pinned,
+      }, (topic) => _subscribeToTopicWeb(token, topic));
     } catch (error) {
       unawaited(AppLog.write('FCM topic restore failed: $error'));
     }
@@ -953,38 +970,14 @@ class FCMService {
 
   Future<void> _subscribeToDefaultTopics() async {
     final token = await _getToken();
-    final topicsToSubscribe = <String>{...PreConnectPushConfig.defaultTopics};
-
-    try {
-      final url = Uri.parse('${ApiConfig.realtimeApiBase}/push/topics');
-      final response = await HttpUtils.client
-          .get(url)
-          .timeout(const Duration(seconds: 3));
-      if (response.statusCode == 200) {
-        final decoded = jsonDecode(response.body);
-        if (decoded is List) {
-          for (final item in decoded) {
-            if (item is String && item.trim().isNotEmpty) {
-              topicsToSubscribe.add(item.trim());
-            }
-          }
-        }
-      }
-    } catch (_) {}
-
-    for (final topic in topicsToSubscribe) {
-      await _subscribeToTopicInternal(topic, cachedToken: token);
-    }
-
-    final Set<String> pinnedSeats = await CoursePinStore.load(
-      PreConnectPushConfig.seatStatusPinScope,
-    );
-    for (final String seat in pinnedSeats) {
-      await _subscribeToTopicInternal(
-        PreConnectPushConfig.seatTopic(seat),
-        cachedToken: token,
-      );
-    }
+    final (topics, pinned) = await (
+      _topicsToSubscribe(),
+      _pinnedSeatTopics(),
+    ).wait;
+    await _subscribeAll({
+      ...topics,
+      ...pinned,
+    }, (topic) => _subscribeToTopicInternal(topic, cachedToken: token));
   }
 
   Future<void> _initNative() async {

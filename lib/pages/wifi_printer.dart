@@ -132,82 +132,63 @@ startxref
     }
   }
 
-  static Future<_CampusPrinterBootstrap> _loadBootstrap() async {
-    final copiesRaw = await AppStorage.instance.getInt('campus_printer_copies');
-    final history = await _loadHistorySnapshot();
-    var isLoggedIn = false;
+  static Future<bool> _isSignedIn() async {
     try {
-      isLoggedIn = await AuthService().isLoggedIn();
+      return await AuthService().isLoggedIn();
     } catch (error) {
       unawaited(AppLog.write('Printer sign-in check failed: $error'));
+      return false;
     }
-    Map<String, String?>? profile;
+  }
+
+  static Future<Map<String, String?>?> _loadProfile() async {
     try {
-      profile = await ProfileService().getProfile();
+      return await ProfileService().getProfile();
     } catch (error) {
       unawaited(AppLog.write('Printer profile load failed: $error'));
+      return null;
     }
-    final studentId =
-        ((profile?['studentId'] ??
-                await AppStorage.instance.getString(StorageKeys.studentId) ??
-                ''))
-            .trim();
-    final fullName =
-        ((profile?['fullName'] ??
-                await AppStorage.instance.getString(StorageKeys.fullName) ??
-                ''))
-            .trim();
-    final shortCode =
-        ((profile?['shortCode'] ??
-                await AppStorage.instance.getString(StorageKeys.shortCode) ??
-                ''))
-            .trim();
-    final currentSemester =
-        ((profile?['currentSemester'] ??
-                await AppStorage.instance.getString(
-                  StorageKeys.currentSemester,
-                ) ??
-                ''))
-            .trim();
-    final hasProfile = isLoggedIn && fullName.isNotEmpty;
-    if (hasProfile) {
-      await AppStorage.instance.setString(StorageKeys.studentId, studentId);
-      await AppStorage.instance.setString(StorageKeys.fullName, fullName);
-      await AppStorage.instance.setString(StorageKeys.shortCode, shortCode);
-      if (currentSemester.isNotEmpty) {
-        await AppStorage.instance.setString(
-          StorageKeys.currentSemester,
-          currentSemester,
-        );
-      }
+  }
+
+  static Future<_CampusPrinterBootstrap> _loadBootstrap() async {
+    final storage = AppStorage.instance;
+    final (copiesRaw, history, profile, isLoggedIn, saved) = await (
+      storage.getInt('campus_printer_copies'),
+      _loadHistorySnapshot(),
+      _loadProfile(),
+      _isSignedIn(),
+      Future.wait<String?>([
+        storage.getString(StorageKeys.studentId),
+        storage.getString(StorageKeys.fullName),
+        storage.getString(StorageKeys.shortCode),
+        storage.getString(StorageKeys.currentSemester),
+        storage.getString(duplexKey),
+        storage.getString(collateKey),
+        storage.getString('campus_printer_nup'),
+        storage.getString('campus_printer_fit'),
+        storage.getString('campus_printer_staple'),
+        storage.getString('campus_printer_punch'),
+        storage.getString('campus_printer_joboffset'),
+        storage.getString('campus_printer_slipsheet'),
+        storage.getString('campus_printer_booklet'),
+      ]),
+    ).wait;
+    String identity(String key, String? stored) =>
+        (profile?[key] ?? stored ?? '').trim();
+    final studentId = identity('studentId', saved[0]);
+    final fullName = identity('fullName', saved[1]);
+    final shortCode = identity('shortCode', saved[2]);
+    final currentSemester = identity('currentSemester', saved[3]);
+    if (isLoggedIn && fullName.isNotEmpty) {
+      await Future.wait<void>([
+        storage.setString(StorageKeys.studentId, studentId),
+        storage.setString(StorageKeys.fullName, fullName),
+        storage.setString(StorageKeys.shortCode, shortCode),
+        if (currentSemester.isNotEmpty)
+          storage.setString(StorageKeys.currentSemester, currentSemester),
+      ]);
     }
-    final copiesValue = copiesRaw == null
-        ? 1
-        : (copiesRaw < 1 ? 1 : (copiesRaw > 999 ? 999 : copiesRaw));
-    final duplexMode =
-        await AppStorage.instance.getString(CampusPrinterPage.duplexKey) ??
-        'OFF';
-    final collateMode =
-        await AppStorage.instance.getString(CampusPrinterPage.collateKey) ??
-        'OFF';
-    final pagesPerSheet =
-        await AppStorage.instance.getString('campus_printer_nup') ?? '1-in-1';
-    final fittingMode =
-        await AppStorage.instance.getString('campus_printer_fit') ??
-        'Fit on Paper';
-    final staple =
-        await AppStorage.instance.getString('campus_printer_staple') ?? 'Off';
-    final punch =
-        await AppStorage.instance.getString('campus_printer_punch') ?? 'Off';
-    final jobOffset =
-        await AppStorage.instance.getString('campus_printer_joboffset') ??
-        'Off';
-    final slipSheet =
-        await AppStorage.instance.getString('campus_printer_slipsheet') ??
-        'Off';
-    final booklet =
-        await AppStorage.instance.getString('campus_printer_booklet') ?? 'Off';
-    final photoUrl = ApiConfig.photoUrl(profile?['photoFilePath']);
+    final copiesValue = copiesRaw == null ? 1 : copiesRaw.clamp(1, 999);
     return _CampusPrinterBootstrap(
       copies: copiesValue,
       history: history,
@@ -215,17 +196,17 @@ startxref
       studentName: fullName,
       studentShortCode: shortCode,
       currentSemester: currentSemester,
-      duplexMode: duplexMode,
-      collateMode: collateMode,
-      pagesPerSheet: pagesPerSheet,
-      fittingMode: fittingMode,
-      staple: staple,
-      punch: punch,
-      jobOffset: jobOffset,
-      slipSheet: slipSheet,
-      booklet: booklet,
+      duplexMode: saved[4] ?? 'OFF',
+      collateMode: saved[5] ?? 'OFF',
+      pagesPerSheet: saved[6] ?? '1-in-1',
+      fittingMode: saved[7] ?? 'Fit on Paper',
+      staple: saved[8] ?? 'Off',
+      punch: saved[9] ?? 'Off',
+      jobOffset: saved[10] ?? 'Off',
+      slipSheet: saved[11] ?? 'Off',
+      booklet: saved[12] ?? 'Off',
       profile: profile,
-      photoUrl: photoUrl,
+      photoUrl: ApiConfig.photoUrl(profile?['photoFilePath']),
     );
   }
 

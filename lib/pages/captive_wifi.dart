@@ -101,14 +101,21 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
       _scanning = true;
     });
     try {
-      final autoExtendEnabled = await CaptiveLoginStore.instance
-          .readAutoExtendEnabled();
-      final creds = await CaptiveLoginStore.instance.read();
-      final validPeriod = await CaptiveLoginStore.instance.readValidPeriod();
-      final remainTime = await CaptiveLoginStore.instance.readRemainTime();
-      var studentId =
-          (await AppStorage.instance.getString(StorageKeys.studentId) ?? '')
-              .trim();
+      final store = CaptiveLoginStore.instance;
+      final (
+        autoExtendEnabled,
+        creds,
+        validPeriod,
+        remainTime,
+        savedId,
+      ) = await (
+        store.readAutoExtendEnabled(),
+        store.read(),
+        store.readValidPeriod(),
+        store.readRemainTime(),
+        AppStorage.instance.getString(StorageKeys.studentId),
+      ).wait;
+      var studentId = (savedId ?? '').trim();
       if (studentId.isEmpty) {
         final profile = await ProfileService().getProfile(fromFetch: true);
         studentId = (profile?['studentId'] ?? '').trim();

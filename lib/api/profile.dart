@@ -249,58 +249,28 @@ class ProfileService {
             'email': profile['studentEmail'] ?? '',
             'cgpa': profile['cgpa']?.toString() ?? '',
           });
-          await AppStorage.instance.setString(
-            StorageKeys.studentId,
-            profile['studentId']?.toString() ?? '',
-          );
-          await AppStorage.instance.setString(
-            StorageKeys.fullName,
-            profile['fullName'] ?? '',
-          );
-          await AppStorage.instance.setString(
-            StorageKeys.studentEmail,
-            profile['studentEmail'] ?? '',
-          );
-          await AppStorage.instance.setString(
-            StorageKeys.shortCode,
-            profile['shortCode']?.toString() ?? '',
-          );
-          await AppStorage.instance.setString(
-            StorageKeys.program,
-            profile['programOrCourse']?.toString() ?? '',
-          );
-          await AppStorage.instance.setString(
-            StorageKeys.departmentName,
-            profile['departmentName']?.toString() ?? '',
-          );
-          await AppStorage.instance.setString(
-            StorageKeys.currentSemester,
-            profile['currentSemester']?.toString() ?? '',
-          );
-          await AppStorage.instance.setString(
-            StorageKeys.cgpa,
-            profile['cgpa']?.toString() ?? '',
-          );
-          await AppStorage.instance.setString(
-            StorageKeys.earnedCredit,
-            profile['earnedCredit']?.toString() ?? '',
-          );
-          await AppStorage.instance.setString(
-            StorageKeys.attemptedCredit,
-            profile['attemptedCredit']?.toString() ?? '',
-          );
-          await AppStorage.instance.setString(
-            StorageKeys.photoFilePath,
-            profile['filePath']?.toString() ?? '',
-          );
-          await AppStorage.instance.setString(
-            StorageKeys.mobileNo,
-            profile['mobileNo']?.toString() ?? '',
-          );
-          await AppStorage.instance.setString(
-            StorageKeys.bloodGroup,
-            profile['bloodGroup']?.toString() ?? '',
-          );
+          await Future.wait<void>([
+            for (final entry in <String, String>{
+              StorageKeys.studentId: profile['studentId']?.toString() ?? '',
+              StorageKeys.fullName: profile['fullName'] ?? '',
+              StorageKeys.studentEmail: profile['studentEmail'] ?? '',
+              StorageKeys.shortCode: profile['shortCode']?.toString() ?? '',
+              StorageKeys.program: profile['programOrCourse']?.toString() ?? '',
+              StorageKeys.departmentName:
+                  profile['departmentName']?.toString() ?? '',
+              StorageKeys.currentSemester:
+                  profile['currentSemester']?.toString() ?? '',
+              StorageKeys.cgpa: profile['cgpa']?.toString() ?? '',
+              StorageKeys.earnedCredit:
+                  profile['earnedCredit']?.toString() ?? '',
+              StorageKeys.attemptedCredit:
+                  profile['attemptedCredit']?.toString() ?? '',
+              StorageKeys.photoFilePath: profile['filePath']?.toString() ?? '',
+              StorageKeys.mobileNo: profile['mobileNo']?.toString() ?? '',
+              StorageKeys.bloodGroup: profile['bloodGroup']?.toString() ?? '',
+            }.entries)
+              AppStorage.instance.setString(entry.key, entry.value),
+          ]);
           final currentSessionSemesterId =
               profile['currentSessionSemesterId']?.toString().trim() ?? '';
           if (currentSessionSemesterId.isNotEmpty) {
@@ -372,86 +342,49 @@ class ProfileService {
           for (final entry in updates.entries) {
             profile[entry.key] = entry.value;
           }
-          await AppStorage.instance.setString(
-            StorageKeys.permanentAddress,
-            miscData['permanentAddress']?.toString() ?? '',
-          );
-          await AppStorage.instance.setString(
-            StorageKeys.presentAddress,
-            miscData['presentAddress']?.toString() ?? '',
-          );
-          await AppStorage.instance.setString(
-            StorageKeys.isBothAddressSame,
-            _boolToYesNo(miscData['isBothAddressSame']),
-          );
-          await AppStorage.instance.setString(
-            StorageKeys.permanentUpazilaName,
-            miscData['permanentUpazilaName']?.toString() ?? '',
-          );
-          await AppStorage.instance.setString(
-            StorageKeys.presentUpazilaName,
-            miscData['presentUpazilaName']?.toString() ?? '',
-          );
-          await AppStorage.instance.setString(
-            StorageKeys.fatherName,
-            miscData['fatherName']?.toString() ?? '',
-          );
-          await AppStorage.instance.setString(
-            StorageKeys.fatherMobileNo,
-            miscData['fatherMobileNo']?.toString() ?? '',
-          );
-          await AppStorage.instance.setString(
-            StorageKeys.fatherEmail,
-            miscData['fatherEmail']?.toString() ?? '',
-          );
-          await AppStorage.instance.setString(
-            StorageKeys.motherName,
-            miscData['motherName']?.toString() ?? '',
-          );
-          await AppStorage.instance.setString(
-            StorageKeys.motherMobileNo,
-            miscData['motherMobileNo']?.toString() ?? '',
-          );
-          await AppStorage.instance.setString(
-            StorageKeys.motherEmail,
-            miscData['motherEmail']?.toString() ?? '',
-          );
-          await AppStorage.instance.setString(
-            StorageKeys.localGuardianName,
-            miscData['localGuardianName']?.toString() ?? '',
-          );
-          await AppStorage.instance.setString(
-            StorageKeys.localGuardianMobileNo,
-            miscData['localGuardianMobileNo']?.toString() ?? '',
-          );
-          await AppStorage.instance.setString(
-            StorageKeys.localGuardianEmail,
-            miscData['localGuardianEmail']?.toString() ?? '',
-          );
-          await AppStorage.instance.setString(
-            StorageKeys.sponsoredBy,
-            miscData['sponsoredBy']?.toString() ?? '',
-          );
-          await AppStorage.instance.setString(
-            StorageKeys.countryName,
-            miscData['countryName']?.toString() ?? '',
-          );
-          await AppStorage.instance.setString(
-            StorageKeys.hobbies,
-            miscData['hobbies']?.toString() ?? '',
-          );
-          await AppStorage.instance.setString(
-            StorageKeys.awards,
-            miscData['awards']?.toString() ?? '',
-          );
-          await AppStorage.instance.setString(
-            StorageKeys.hasDisability,
-            _boolToYesNo(miscData['hasDisability']),
-          );
-          await AppStorage.instance.setString(
-            StorageKeys.disabilityDetails,
-            miscData['disabilityDetails']?.toString() ?? '',
-          );
+          await Future.wait<void>([
+            for (final entry in <String, String>{
+              StorageKeys.permanentAddress:
+                  miscData['permanentAddress']?.toString() ?? '',
+              StorageKeys.presentAddress:
+                  miscData['presentAddress']?.toString() ?? '',
+              StorageKeys.isBothAddressSame: _boolToYesNo(
+                miscData['isBothAddressSame'],
+              ),
+              StorageKeys.permanentUpazilaName:
+                  miscData['permanentUpazilaName']?.toString() ?? '',
+              StorageKeys.presentUpazilaName:
+                  miscData['presentUpazilaName']?.toString() ?? '',
+              StorageKeys.fatherName: miscData['fatherName']?.toString() ?? '',
+              StorageKeys.fatherMobileNo:
+                  miscData['fatherMobileNo']?.toString() ?? '',
+              StorageKeys.fatherEmail:
+                  miscData['fatherEmail']?.toString() ?? '',
+              StorageKeys.motherName: miscData['motherName']?.toString() ?? '',
+              StorageKeys.motherMobileNo:
+                  miscData['motherMobileNo']?.toString() ?? '',
+              StorageKeys.motherEmail:
+                  miscData['motherEmail']?.toString() ?? '',
+              StorageKeys.localGuardianName:
+                  miscData['localGuardianName']?.toString() ?? '',
+              StorageKeys.localGuardianMobileNo:
+                  miscData['localGuardianMobileNo']?.toString() ?? '',
+              StorageKeys.localGuardianEmail:
+                  miscData['localGuardianEmail']?.toString() ?? '',
+              StorageKeys.sponsoredBy:
+                  miscData['sponsoredBy']?.toString() ?? '',
+              StorageKeys.countryName:
+                  miscData['countryName']?.toString() ?? '',
+              StorageKeys.hobbies: miscData['hobbies']?.toString() ?? '',
+              StorageKeys.awards: miscData['awards']?.toString() ?? '',
+              StorageKeys.hasDisability: _boolToYesNo(
+                miscData['hasDisability'],
+              ),
+              StorageKeys.disabilityDetails:
+                  miscData['disabilityDetails']?.toString() ?? '',
+            }.entries)
+              AppStorage.instance.setString(entry.key, entry.value),
+          ]);
         }
       } catch (error) {
         _recordProfileError('Profile miscellaneous data fetch', error);
@@ -481,30 +414,23 @@ class ProfileService {
           for (final entry in updates.entries) {
             profile[entry.key] = entry.value;
           }
-          await AppStorage.instance.setString(
-            StorageKeys.dateOfBirth,
-            studentData['dateOfBirth']?.toString() ?? '',
-          );
-          await AppStorage.instance.setString(
-            StorageKeys.nationalIdNo,
-            studentData['nationalIdNo']?.toString() ?? '',
-          );
-          await AppStorage.instance.setString(
-            StorageKeys.passportNo,
-            studentData['passportNo']?.toString() ?? '',
-          );
-          await AppStorage.instance.setString(
-            StorageKeys.birthCertificateNo,
-            studentData['birthCertificateNo']?.toString() ?? '',
-          );
-          await AppStorage.instance.setString(
-            StorageKeys.emergencyContactNo,
-            studentData['emergencyContactNo']?.toString() ?? '',
-          );
-          await AppStorage.instance.setString(
-            StorageKeys.emergencyContactName,
-            studentData['emergencyContactName']?.toString() ?? '',
-          );
+          await Future.wait<void>([
+            for (final entry in <String, String>{
+              StorageKeys.dateOfBirth:
+                  studentData['dateOfBirth']?.toString() ?? '',
+              StorageKeys.nationalIdNo:
+                  studentData['nationalIdNo']?.toString() ?? '',
+              StorageKeys.passportNo:
+                  studentData['passportNo']?.toString() ?? '',
+              StorageKeys.birthCertificateNo:
+                  studentData['birthCertificateNo']?.toString() ?? '',
+              StorageKeys.emergencyContactNo:
+                  studentData['emergencyContactNo']?.toString() ?? '',
+              StorageKeys.emergencyContactName:
+                  studentData['emergencyContactName']?.toString() ?? '',
+            }.entries)
+              AppStorage.instance.setString(entry.key, entry.value),
+          ]);
         }
       } catch (error) {
         _recordProfileError('Student identity fetch', error);
