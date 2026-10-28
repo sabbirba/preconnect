@@ -135,8 +135,18 @@ startxref
   static Future<_CampusPrinterBootstrap> _loadBootstrap() async {
     final copiesRaw = await AppStorage.instance.getInt('campus_printer_copies');
     final history = await _loadHistorySnapshot();
-    final isLoggedIn = await AuthService().isLoggedIn();
-    final profile = await ProfileService().getProfile();
+    var isLoggedIn = false;
+    try {
+      isLoggedIn = await AuthService().isLoggedIn();
+    } catch (error) {
+      unawaited(AppLog.write('Printer sign-in check failed: $error'));
+    }
+    Map<String, String?>? profile;
+    try {
+      profile = await ProfileService().getProfile();
+    } catch (error) {
+      unawaited(AppLog.write('Printer profile load failed: $error'));
+    }
     final studentId =
         ((profile?['studentId'] ??
                 await AppStorage.instance.getString(StorageKeys.studentId) ??
