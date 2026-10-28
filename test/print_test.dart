@@ -6,6 +6,7 @@ import 'package:image/image.dart' as img;
 import 'package:preconnect/tools/print_compose.dart';
 import 'package:preconnect/tools/http/http_utils.dart';
 import 'package:preconnect/tools/print_layout.dart';
+import 'package:preconnect/tools/print_options.dart';
 
 String _pjl({
   String pagesPerSheet = '1-in-1',
@@ -32,6 +33,45 @@ String _pjl({
 }
 
 void main() {
+  group('finishing and separation buttons', () {
+    test('finishing cycles staple left and right, then 2 and 3 holes', () {
+      var state = const PrintFinishing('Off', 'Off');
+      final labels = <String>[];
+      for (var i = 0; i < 5; i++) {
+        labels.add(PrintFinishing.label(state.staple, state.punch));
+        state = PrintFinishing.after(state.staple, state.punch);
+      }
+      expect(labels, [
+        'Finishing Off',
+        'Staple Left',
+        'Staple Right',
+        'Punch 2 Holes',
+        'Punch 3 Holes',
+      ]);
+      expect((state.staple, state.punch), ('Off', 'Off'));
+    });
+
+    test('a saved staple and punch pair resets to off on the next tap', () {
+      final next = PrintFinishing.after('Left Corner', '2 Holes');
+      expect((next.staple, next.punch), ('Off', 'Off'));
+      expect(
+        PrintFinishing.label('Left Corner', '2 Holes'),
+        'Staple Left + Punch 2 Holes',
+      );
+    });
+
+    test('separation reaches every offset and slip sheet combination', () {
+      var state = const PrintSeparation(false, false);
+      final seen = <String>[];
+      for (var i = 0; i < 4; i++) {
+        seen.add(PrintSeparation.label(state.offset, state.slip));
+        state = PrintSeparation.after(state.offset, state.slip);
+      }
+      expect(seen, ['Separate Off', 'Offset', 'Slip Sheet', 'Offset + Slip']);
+      expect((state.offset, state.slip), (false, false));
+    });
+  });
+
   group('parsePageRange', () {
     test('empty selects every page', () {
       expect(PrintLayout.parsePageRange('', 3), [0, 1, 2]);

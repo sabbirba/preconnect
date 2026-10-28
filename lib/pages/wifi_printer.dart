@@ -17,6 +17,7 @@ import 'package:preconnect/tools/app_storage.dart';
 import 'package:preconnect/tools/http/http_utils.dart';
 import 'package:preconnect/tools/print_compose.dart';
 import 'package:preconnect/tools/print_layout.dart';
+import 'package:preconnect/tools/print_options.dart';
 import 'package:preconnect/tools/storage_keys.dart';
 import 'package:preconnect/tools/app_log.dart';
 import 'package:preconnect/tools/string_utils.dart';
@@ -1553,17 +1554,17 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
             buildInstructionStep(
               context,
               stepNumber: '•',
-              title: 'Stapling & Hole Punching',
+              title: 'Finishing',
               body:
-                  'Configure staple location or punch hole counts for automatic document binding.',
+                  'Tap Finishing to cycle Off, Staple Left, Staple Right, Punch 2 Holes and Punch 3 Holes. One finishing option is used at a time.',
             ),
             const Gap(12),
             buildInstructionStep(
               context,
               stepNumber: '•',
-              title: 'Offset & Slip Sheets',
+              title: 'Separate',
               body:
-                  'Toggle "Offset" to shift printed sets sideways for easy separation. Toggle "Slip Sheet" to insert blank separator sheets between print jobs.',
+                  'Tap Separate to cycle Off, Offset (shifts each printed set sideways), Slip Sheet (adds a blank sheet between jobs) and both together.',
             ),
             const Gap(12),
             buildInstructionStep(
@@ -2322,27 +2323,20 @@ class _PrinterLayoutPreferencesPanel extends StatelessWidget {
                     padding: EdgeInsets.symmetric(horizontal: gap / 2),
                     child: AppActionButton(
                       onPressed: () {
-                        final nextVal = staple == 'Off'
-                            ? 'Left Corner'
-                            : (staple == 'Left Corner'
-                                  ? 'Right Corner'
-                                  : 'Off');
-                        onStapleChanged(nextVal);
+                        final next = PrintFinishing.after(staple, punch);
+                        onStapleChanged(next.staple);
+                        onPunchChanged(next.punch);
                       },
                       outlined: true,
-                      backgroundColor: staple != 'Off'
+                      backgroundColor: staple != 'Off' || punch != 'Off'
                           ? AppPalette.primary.withValues(alpha: 0.12)
                           : Colors.transparent,
-                      foregroundColor: staple != 'Off'
+                      foregroundColor: staple != 'Off' || punch != 'Off'
                           ? AppPalette.primary
                           : AppPalette.textPrimary(context),
                       borderRadius: 12,
                       padding: buttonPadding,
-                      label: staple == 'Off'
-                          ? 'Staple Off'
-                          : (staple == 'Left Corner'
-                                ? 'Staple Left'
-                                : 'Staple Right'),
+                      label: PrintFinishing.label(staple, punch),
                       fontSize: toggleFont,
                     ),
                   ),
@@ -2353,69 +2347,26 @@ class _PrinterLayoutPreferencesPanel extends StatelessWidget {
                     padding: EdgeInsets.symmetric(horizontal: gap / 2),
                     child: AppActionButton(
                       onPressed: () {
-                        final nextVal = punch == 'Off'
-                            ? '2 Holes'
-                            : (punch == '2 Holes' ? '3 Holes' : 'Off');
-                        onPunchChanged(nextVal);
+                        final next = PrintSeparation.after(
+                          jobOffset == 'On',
+                          slipSheet == 'On',
+                        );
+                        onJobOffsetChanged(next.offset ? 'On' : 'Off');
+                        onSlipSheetChanged(next.slip ? 'On' : 'Off');
                       },
                       outlined: true,
-                      backgroundColor: punch != 'Off'
+                      backgroundColor: jobOffset == 'On' || slipSheet == 'On'
                           ? AppPalette.primary.withValues(alpha: 0.12)
                           : Colors.transparent,
-                      foregroundColor: punch != 'Off'
+                      foregroundColor: jobOffset == 'On' || slipSheet == 'On'
                           ? AppPalette.primary
                           : AppPalette.textPrimary(context),
                       borderRadius: 12,
                       padding: buttonPadding,
-                      label: punch == 'Off' ? 'Punch Off' : punch,
-                      fontSize: toggleFont,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            Gap(gap),
-            Row(
-              children: [
-                Expanded(
-                  child: Padding(
-                    padding: EdgeInsets.symmetric(horizontal: gap / 2),
-                    child: AppActionButton(
-                      onPressed: () {
-                        onJobOffsetChanged(jobOffset == 'On' ? 'Off' : 'On');
-                      },
-                      outlined: true,
-                      backgroundColor: jobOffset == 'On'
-                          ? AppPalette.primary.withValues(alpha: 0.12)
-                          : Colors.transparent,
-                      foregroundColor: jobOffset == 'On'
-                          ? AppPalette.primary
-                          : AppPalette.textPrimary(context),
-                      borderRadius: 12,
-                      padding: buttonPadding,
-                      label: 'Offset',
-                      fontSize: toggleFont,
-                    ),
-                  ),
-                ),
-                Gap(gap),
-                Expanded(
-                  child: Padding(
-                    padding: EdgeInsets.symmetric(horizontal: gap / 2),
-                    child: AppActionButton(
-                      onPressed: () {
-                        onSlipSheetChanged(slipSheet == 'On' ? 'Off' : 'On');
-                      },
-                      outlined: true,
-                      backgroundColor: slipSheet == 'On'
-                          ? AppPalette.primary.withValues(alpha: 0.12)
-                          : Colors.transparent,
-                      foregroundColor: slipSheet == 'On'
-                          ? AppPalette.primary
-                          : AppPalette.textPrimary(context),
-                      borderRadius: 12,
-                      padding: buttonPadding,
-                      label: 'Slip Sheet',
+                      label: PrintSeparation.label(
+                        jobOffset == 'On',
+                        slipSheet == 'On',
+                      ),
                       fontSize: toggleFont,
                     ),
                   ),
