@@ -1403,9 +1403,9 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
             buildInstructionStep(
               context,
               stepNumber: '2',
-              title: 'Set Student ID',
+              title: 'Check Your ID Card',
               body:
-                  'Ensure your student ID is entered correctly in the printer identity section above.',
+                  'Your ID card at the top shows who the job is printed for. If it is missing, open Profile and pull down to refresh, then come back.',
             ),
             const Gap(12),
             buildInstructionStep(
@@ -1420,7 +1420,8 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
               context,
               stepNumber: '4',
               title: 'Send Print Job',
-              body: 'Tap the Print button. Files will be sent sequentially.',
+              body:
+                  'Tap Print. Files are sent one by one. Print stays off until a file is chosen, your name and student ID are loaded, and the printer is found.',
             ),
             const Gap(12),
             buildInstructionStep(
@@ -1452,7 +1453,8 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
               context,
               stepNumber: '•',
               title: 'Not found',
-              body: 'No printer found on your network.',
+              body:
+                  'No printer found on your network. Use Print By Email at the bottom of the page instead.',
             ),
             const Gap(12),
             buildInstructionStep(
@@ -1500,7 +1502,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
               stepNumber: '•',
               title: 'Pages Per Sheet',
               body:
-                  'Tap the layout button to cycle "1-in-1" (default), "2-in-1", "4-in-1" and "Booklet". Multiple pages are placed on one A4 sheet to save page quota.',
+                  'Tap the layout button to cycle "1-in-1" (default), "2-in-1", "4-in-1" and "Booklet". Pages are placed on one A4 portrait sheet to save page quota. The layout is built on your phone, so the result is the same on any printer.',
             ),
             const Gap(12),
             buildInstructionStep(
@@ -1508,7 +1510,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
               stepNumber: '•',
               title: 'Pages',
               body:
-                  'Print only part of a document, for example 1-5, 8, 11-13. Blank pages are skipped automatically.',
+                  'Print only part of a document, for example 1-5, 8, 11-13. Blank pages are skipped automatically. If every page you chose is blank, they are printed as they are.',
             ),
             const Gap(12),
             buildInstructionStep(
@@ -1516,7 +1518,15 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
               stepNumber: '•',
               title: 'Preview',
               body:
-                  'Tap the eye on a file to see exactly how it will print before you send it.',
+                  'Tap the eye on a file to see exactly how it will print. Swipe or use Previous and Next to move between sheets, and double-tap to zoom. Preview never sends anything to the printer; only the Print button does.',
+            ),
+            const Gap(12),
+            buildInstructionStep(
+              context,
+              stepNumber: '•',
+              title: 'Photos and PDFs',
+              body:
+                  'JPEG and PNG photos are fitted to an A4 page. Password-protected or damaged PDFs cannot be read; remove the password first.',
             ),
             const Gap(12),
             buildInstructionStep(

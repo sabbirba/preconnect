@@ -1051,7 +1051,7 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
               stepNumber: '3',
               title: 'Connect Session',
               body:
-                  'Tap the Connect button. PreConnect will automatically configure parameters and authenticate with the campus gateway.',
+                  'Tap the Connect button. PreConnect saves your password on this device, sets up Student-WiFi, and signs in to the campus gateway for you.',
             ),
             const Gap(12),
             buildInstructionStep(
@@ -1059,7 +1059,7 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
               stepNumber: '4',
               title: 'Auto Extend Session',
               body:
-                  'Enable Auto Extend to allow PreConnect to run in the background and keep your connectivity active.',
+                  'Turn on Auto Extend so PreConnect renews your session before it expires while the app is running.',
             ),
             const Gap(12),
             buildInstructionStep(
@@ -1068,6 +1068,41 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
               title: 'Disconnect',
               body:
                   'Tap Disconnect to log out of the active captive portal network session immediately.',
+            ),
+            const Gap(20),
+            Divider(height: 1, color: textSecondary.withValues(alpha: 0.18)),
+            const Gap(16),
+            Text(
+              'Android Shortcuts',
+              style: TextStyle(
+                color: textPrimary,
+                fontSize: 15,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const Gap(12),
+            buildInstructionStep(
+              context,
+              stepNumber: '•',
+              title: 'Automatic Sign-in',
+              body:
+                  'After you connect once, Android joins Student-WiFi by itself and PreConnect signs you in in the background, even when the app is closed.',
+            ),
+            const Gap(12),
+            buildInstructionStep(
+              context,
+              stepNumber: '•',
+              title: 'Student-WiFi Tile',
+              body:
+                  'Add the Student-WiFi tile from your quick settings panel. Tap it to log in, or tap again while connected to disconnect. Press and hold it to open this page.',
+            ),
+            const Gap(12),
+            buildInstructionStep(
+              context,
+              stepNumber: '•',
+              title: 'Tile Messages',
+              body:
+                  'The tile shows Connected, Tap to log in, Logging in, Disconnecting, or Open PreConnect when your saved password is missing. Not Student-WiFi means you are on another network.',
             ),
             const Gap(20),
             Divider(height: 1, color: textSecondary.withValues(alpha: 0.18)),
