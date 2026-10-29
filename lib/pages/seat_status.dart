@@ -6,6 +6,7 @@ import 'package:gap/gap.dart';
 import 'package:preconnect/api/api_client.dart';
 import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/api/seat_status.dart';
+import 'package:preconnect/api/seat_stream.dart';
 import 'package:preconnect/pages/home_tab.dart';
 import 'package:preconnect/model/section_info.dart' as section;
 import 'package:preconnect/model/seat_timetable.dart';
@@ -82,6 +83,7 @@ class _SeatStatusPageState extends State<SeatStatusPage>
   final Set<String> _pinnedSections = <String>{};
   final TextEditingController _searchController = TextEditingController();
   Timer? _searchDebounce;
+  StreamSubscription<List<SeatCount>>? _seatStream;
 
   List<String> _archiveSemesters = [];
   String _selectedArchive = '';
@@ -120,6 +122,7 @@ class _SeatStatusPageState extends State<SeatStatusPage>
     WidgetsBinding.instance.addObserver(this);
     HomeTabRegistry.activeTab.addListener(_onActiveTabChanged);
     bindRefreshBus(_onRefreshSignal);
+    _syncSeatStream();
   }
 
   Future<void> _loadArchiveSemesters() async {
@@ -174,6 +177,7 @@ class _SeatStatusPageState extends State<SeatStatusPage>
   @override
   void dispose() {
     unbindRefreshBus(_onRefreshSignal);
+    unawaited(_seatStream?.cancel());
     WidgetsBinding.instance.removeObserver(this);
     HomeTabRegistry.activeTab.removeListener(_onActiveTabChanged);
     _searchDebounce?.cancel();
@@ -185,6 +189,47 @@ class _SeatStatusPageState extends State<SeatStatusPage>
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     _refreshIfActive();
+  }
+
+  void _syncSeatStream() {
+    final state = WidgetsBinding.instance.lifecycleState;
+    final shouldRun =
+        mounted &&
+        _selectedArchive.isEmpty &&
+        HomeTabRegistry.activeTab.value == HomeTab.seatStatus &&
+        state != AppLifecycleState.paused &&
+        state != AppLifecycleState.detached &&
+        state != AppLifecycleState.hidden;
+    if (shouldRun && _seatStream == null) {
+      _seatStream = SeatStream.instance.updates.listen(_applySeatCounts);
+    } else if (!shouldRun && _seatStream != null) {
+      unawaited(_seatStream!.cancel());
+      _seatStream = null;
+    }
+  }
+
+  void _applySeatCounts(List<SeatCount> counts) {
+    if (!mounted || _selectedArchive.isNotEmpty || counts.isEmpty) return;
+    final byId = {for (final count in counts) count.sectionId: count};
+    var changed = false;
+    final updated = <_SeatStatusCardData>[
+      for (final card in _cards)
+        if (byId[card.sectionId] case final count?
+            when count.consumed != card.consumed ||
+                (count.capacity != null && count.capacity != card.total))
+          () {
+            changed = true;
+            final total = count.capacity ?? card.total;
+            return card.copyWith(
+              consumed: count.consumed,
+              total: total,
+              remaining: total - count.consumed,
+            );
+          }()
+        else
+          card,
+    ];
+    if (changed) _applyCardsSnapshot(updated, isInitialLoading: false);
   }
 
   void _onActiveTabChanged() {

@@ -479,6 +479,7 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
   }
 
   void _refreshIfActive() {
+    _syncSeatStream();
     final shouldRefresh =
         mounted &&
         _selectedArchive.isEmpty &&
