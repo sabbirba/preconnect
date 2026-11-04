@@ -19,7 +19,7 @@ dependencies:
   intl: ^0.20.3
   mobile_scanner: ^7.4.2
   image_picker: ^1.2.4
-  archive: ^4.5.2
+  archive: ^4.6.0
   barcode_widget: ^2.0.4
   flutter_flip_card: ^0.0.6
   cached_network_image: ^4.0.6
