@@ -120,10 +120,7 @@ Future<Tab> _safeTabsCreate({required String url, bool active = true}) async {
   final createProps =
       {'url': url, 'active': active}.jsify() as $js.CreateProperties;
   final jsTab = await $js.chrome.tabs.create(createProps).toDart;
-  if (jsTab == null) {
-    throw Exception('Failed to create tab');
-  }
-  return Tab.fromJS(jsTab as $js.Tab);
+  return Tab.fromJS(jsTab);
 }
 
 bool _isFirefox() {

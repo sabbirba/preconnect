@@ -21,9 +21,6 @@ updates:
       - "*"
     multi-ecosystem-group: "all-dependencies"
     versioning-strategy: "increase"
-    ignore:
-      - dependency-name: "chrome_extension"
-        versions: ["0.6.0"]
     groups:
       security-updates:
         applies-to: "security-updates"
