@@ -80,7 +80,6 @@ class PreConnectPushConfig {
   static const String unregisterDevicePath = '/push/device/unregister';
   static const String subscribeTopicPath = '/push/topic/subscribe';
   static const String unsubscribeTopicPath = '/push/topic/unsubscribe';
-  static const String sendConfirmationPath = '/push/device/send-confirmation';
 
   static String coursePinsKey(String scope) => 'course_pins_$scope';
   static String seatTopic(String sectionId) => 'seat_${sectionId.trim()}';

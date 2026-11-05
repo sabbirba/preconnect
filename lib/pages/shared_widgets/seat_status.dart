@@ -502,7 +502,6 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
           : await _service.fetchArchiveSections(archive);
       if (!mounted || generation != _requestGeneration) return;
       _applyDetailsUpdate(details);
-      if (archive.isEmpty) unawaited(_syncWatchlistPins(details));
     } catch (error) {
       if (!mounted || generation != _requestGeneration) return;
       unawaited(AppLog.write('Seat status load failed: $error'));
@@ -519,88 +518,6 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
   bool _isPinnedSection(int sectionId) {
     return _selectedArchive.isEmpty &&
         _pinnedSections.contains(sectionId.toString());
-  }
-
-  Future<void> _syncWatchlistPins(
-    Map<int, SeatStatusDetailsResponse> details,
-  ) async {
-    final generation = _requestGeneration;
-    try {
-      final idToken = await TokenStorage.instance.read(
-        key: PreConnectStorageKeys.idToken,
-      );
-      if (idToken == null || idToken.isEmpty) return;
-
-      final url = '${ApiConfig.websiteBase}/api/_client/snapshot';
-      final client = ApiClient();
-      final response = await client.publicPost(
-        url,
-        body: jsonEncode(<String, dynamic>{
-          'idToken': idToken,
-          'key': 'seat.watchlist',
-        }),
-      );
-
-      if (response.statusCode != 200) return;
-      final decoded = jsonDecode(response.body);
-      if (decoded is! Map) return;
-      if (decoded['found'] != true) return;
-      final data = decoded['data'];
-      if (data is! List) return;
-
-      final backendSectionIds = <String>{};
-      for (final item in data) {
-        if (item is! Map) continue;
-        final courseCode = normalizeCourseCode(
-          item['courseCode']?.toString() ?? '',
-        );
-        final sectionName = normalizeSectionName(
-          item['sectionName']?.toString() ?? '',
-        );
-        if (courseCode.isEmpty || sectionName.isEmpty) continue;
-
-        for (final detail in details.values) {
-          if (normalizeCourseCode(detail.courseCode) == courseCode &&
-              normalizeSectionName(detail.sectionName) == sectionName) {
-            backendSectionIds.add(detail.sectionId.toString());
-          }
-        }
-      }
-
-      if (!mounted || generation != _requestGeneration) return;
-      bool changed = false;
-      for (final secId in backendSectionIds) {
-        if (!_pinnedSections.contains(secId)) {
-          final topic = PreConnectPushConfig.seatTopic(secId);
-          unawaited(FCMService.instance.subscribeToTopic(topic));
-          _pinnedSections.add(secId);
-          changed = true;
-        }
-      }
-
-      final localCopy = Set<String>.from(_pinnedSections);
-      for (final secId in localCopy) {
-        if (!backendSectionIds.contains(secId)) {
-          final topic = PreConnectPushConfig.seatTopic(secId);
-          unawaited(FCMService.instance.unsubscribeFromTopic(topic));
-          _pinnedSections.remove(secId);
-          changed = true;
-        }
-      }
-
-      if (changed) {
-        await CoursePinStore.save(
-          _SeatStatusPageState._pinScope,
-          _pinnedSections,
-        );
-        if (mounted && generation == _requestGeneration) {
-          _updateSeatStatusState(() {});
-          final refreshed = List<_SeatStatusCardData>.from(_cards);
-          _sortCardsByCourseAndSection(refreshed);
-          _applyCardsSnapshot(refreshed, isInitialLoading: false);
-        }
-      }
-    } catch (_) {}
   }
 
   void _showFacultyScheduleSheet(String facultyInitial, String? staffName) {

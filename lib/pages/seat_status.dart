@@ -1,10 +1,7 @@
 import 'dart:async';
-import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
-import 'package:preconnect/api/api_client.dart';
-import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/api/seat_status.dart';
 import 'package:preconnect/api/seat_stream.dart';
 import 'package:preconnect/pages/home_tab.dart';
@@ -20,7 +17,6 @@ import 'package:preconnect/tools/ramadan.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
 import 'package:preconnect/pages/shared_widgets/faculty_sheet.dart';
 import 'package:preconnect/pages/shared_widgets/seat_filters.dart';
-import 'package:preconnect/tools/string_utils.dart';
 import 'package:preconnect/pages/shared_widgets/seat_blocks.dart';
 import 'package:preconnect/tools/app_log.dart';
 part 'shared_widgets/seat_status.dart';
@@ -371,23 +367,6 @@ class _SeatStatusPageState extends State<SeatStatusPage>
             );
           }
           return;
-        }
-
-        if (card != null) {
-          unawaited(
-            FCMService.instance.syncSeatEmailAlert(
-              card.courseCode,
-              card.sectionName,
-              subscribe: willPin,
-            ),
-          );
-          unawaited(
-            FCMService.instance.syncWatchlistSnapshot(
-              card.courseCode,
-              card.sectionName,
-              subscribe: willPin,
-            ),
-          );
         }
 
         if (willPin && fcmSupported && card != null) {

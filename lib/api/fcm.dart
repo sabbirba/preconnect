@@ -12,7 +12,6 @@ import 'package:preconnect/api/api_client.dart';
 import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/api/exam_map.dart';
 import 'package:preconnect/api/materials.dart';
-import 'package:preconnect/api/profile.dart';
 import 'package:preconnect/api/repository_cache.dart';
 import 'package:preconnect/api/schedule.dart';
 import 'package:preconnect/api/notification.dart';
@@ -30,7 +29,6 @@ import 'package:preconnect/tools/push_stub.dart'
 import 'package:preconnect/tools/runtime_stub.dart'
     if (dart.library.js_interop) 'package:preconnect/tools/runtime_web.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:preconnect/tools/string_utils.dart';
 
 class FCMService {
   FCMService._internal();
@@ -571,19 +569,30 @@ class FCMService {
     }
   }
 
+  Future<void> _postTopicWeb(String path, String token, String topic) async {
+    final url = '${ApiConfig.realtimeApiBase}$path';
+    final body = jsonEncode(<String, dynamic>{'token': token, 'topic': topic});
+    const headers = <String, String>{'Content-Type': 'application/json'};
+    if (topic.startsWith(PreConnectPushConfig.seatTopic(''))) {
+      await HttpUtils.client.post(Uri.parse(url), headers: headers, body: body);
+      return;
+    }
+    final client = ApiClient();
+    if (!await client.hasAccessToken()) return;
+    await client.authenticatedRequest(
+      'POST',
+      url,
+      body: body,
+      additionalHeaders: headers,
+    );
+  }
+
   Future<void> _subscribeToTopicWeb(String token, String topic) async {
     try {
-      final client = ApiClient();
-      if (!await client.hasAccessToken()) return;
-      final url =
-          '${ApiConfig.realtimeApiBase}${PreConnectPushConfig.subscribeTopicPath}';
-      await client.authenticatedRequest(
-        'POST',
-        url,
-        body: jsonEncode(<String, dynamic>{'token': token, 'topic': topic}),
-        additionalHeaders: const <String, String>{
-          'Content-Type': 'application/json',
-        },
+      await _postTopicWeb(
+        PreConnectPushConfig.subscribeTopicPath,
+        token,
+        topic,
       );
       unawaited(AppLog.write('FCM topic subscribed: $topic'));
     } catch (error) {
@@ -593,142 +602,16 @@ class FCMService {
 
   Future<void> _unsubscribeFromTopicWeb(String token, String topic) async {
     try {
-      final client = ApiClient();
-      if (!await client.hasAccessToken()) return;
-      final url =
-          '${ApiConfig.realtimeApiBase}${PreConnectPushConfig.unsubscribeTopicPath}';
-      await client.authenticatedRequest(
-        'POST',
-        url,
-        body: jsonEncode(<String, dynamic>{'token': token, 'topic': topic}),
-        additionalHeaders: const <String, String>{
-          'Content-Type': 'application/json',
-        },
+      await _postTopicWeb(
+        PreConnectPushConfig.unsubscribeTopicPath,
+        token,
+        topic,
       );
       unawaited(AppLog.write('FCM topic unsubscribed: $topic'));
     } catch (error) {
       unawaited(
         AppLog.write('FCM topic unsubscription failed ($topic): $error'),
       );
-    }
-  }
-
-  Future<bool> syncSeatEmailAlert(
-    String courseCode,
-    String sectionName, {
-    required bool subscribe,
-  }) async {
-    try {
-      final profile = await ProfileService().getProfile();
-      final email =
-          profile?['institutionalEmail'] ??
-          profile?['email'] ??
-          profile?['studentEmail'];
-      if (email == null || email.isEmpty) return true;
-
-      final url = subscribe
-          ? '${ApiConfig.websiteBase}/api/_client/seat-watch/register'
-          : '${ApiConfig.websiteBase}/api/_client/seat-watch/unregister';
-
-      final response = await HttpUtils.client.post(
-        Uri.parse(url),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'email': email,
-          'courseCode': courseCode,
-          'sectionName': sectionName,
-          'provider': 'email',
-          'endpoint': 'email:$email',
-        }),
-      );
-
-      if (response.statusCode != 200) {
-        return false;
-      }
-      return true;
-    } catch (e) {
-      return false;
-    }
-  }
-
-  Future<bool> syncWatchlistSnapshot(
-    String courseCode,
-    String sectionName, {
-    required bool subscribe,
-  }) async {
-    try {
-      final idToken = await TokenStorage.instance.read(
-        key: PreConnectStorageKeys.idToken,
-      );
-      if (idToken == null || idToken.isEmpty) return false;
-
-      final snapshotUrl = '${ApiConfig.websiteBase}/api/_client/snapshot';
-      final client = ApiClient();
-      final snapshotRes = await client.publicPost(
-        snapshotUrl,
-        body: jsonEncode(<String, dynamic>{
-          'idToken': idToken,
-          'key': 'seat.watchlist',
-        }),
-      );
-
-      List<dynamic> currentList = <dynamic>[];
-      if (snapshotRes.statusCode == 200) {
-        final decoded = jsonDecode(snapshotRes.body);
-        if (decoded is Map) {
-          final found = decoded['found'] == true;
-          if (found && decoded['data'] is List) {
-            currentList = List<dynamic>.from(decoded['data'] as List);
-          }
-        }
-      }
-
-      final targetCourse = normalizeCourseCode(courseCode);
-      final targetSection = normalizeSectionName(sectionName);
-
-      if (subscribe) {
-        bool exists = false;
-        for (final item in currentList) {
-          if (item is Map) {
-            final c = normalizeCourseCode(item['courseCode']?.toString() ?? '');
-            final s = normalizeSectionName(
-              item['sectionName']?.toString() ?? '',
-            );
-            if (c == targetCourse && s == targetSection) {
-              exists = true;
-              break;
-            }
-          }
-        }
-        if (!exists) {
-          currentList.add(<String, dynamic>{
-            'courseCode': targetCourse,
-            'sectionName': targetSection,
-            'addedAt': DateTime.now().millisecondsSinceEpoch,
-          });
-        }
-      } else {
-        currentList.removeWhere((dynamic item) {
-          if (item is! Map) return false;
-          final c = normalizeCourseCode(item['courseCode']?.toString() ?? '');
-          final s = normalizeSectionName(item['sectionName']?.toString() ?? '');
-          return c == targetCourse && s == targetSection;
-        });
-      }
-
-      final saveUrl = '${ApiConfig.websiteBase}/api/_client/save-snapshot';
-      final saveRes = await client.publicPost(
-        saveUrl,
-        body: jsonEncode(<String, dynamic>{
-          'idToken': idToken,
-          'key': 'seat.watchlist',
-          'data': currentList,
-        }),
-      );
-
-      return saveRes.statusCode == 200;
-    } catch (e) {
-      return false;
     }
   }
 
@@ -1152,27 +1035,11 @@ class FCMService {
   ) async {
     if (!isSupported) return;
     try {
-      final token = await _getToken();
-      if (token == null) {
-        return;
-      }
-      final client = ApiClient();
-      if (!await client.hasAccessToken()) return;
-      final url =
-          '${ApiConfig.realtimeApiBase}${PreConnectPushConfig.sendConfirmationPath}';
-      unawaited(
-        client.authenticatedRequest(
-          'POST',
-          url,
-          body: jsonEncode(<String, dynamic>{
-            'token': token,
-            'courseCode': courseCode,
-            'sectionName': sectionName,
-          }),
-          additionalHeaders: const <String, String>{
-            'Content-Type': 'application/json',
-          },
-        ),
+      await showNotificationStatic(
+        id: Object.hash(courseCode, sectionName) & 0x7fffffff,
+        title: 'Seat Alerts Enabled',
+        body:
+            "You'll be notified when a seat becomes available in $courseCode Section $sectionName.",
       );
     } catch (error) {
       unawaited(AppLog.write('Confirmation notification send failed: $error'));
