@@ -8,7 +8,6 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:preconnect/firebase_options.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-import 'package:preconnect/api/api_client.dart';
 import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/api/exam_map.dart';
 import 'package:preconnect/api/materials.dart';
@@ -522,10 +521,7 @@ class FCMService {
 
   Future<void> _sendTokenToBackend(String token) async {
     try {
-      final client = ApiClient();
-      if (!await client.hasAccessToken()) return;
-      final registry = _deviceRegistry(client);
-      await registry.register(
+      await _deviceRegistry().register(
         token: token,
         platform: kIsWeb
             ? (isChromeRuntimeAvailable()
@@ -538,7 +534,7 @@ class FCMService {
     }
   }
 
-  PushDeviceRegistry _deviceRegistry(ApiClient client) {
+  PushDeviceRegistry _deviceRegistry() {
     return PushDeviceRegistry(
       registerUrl:
           '${ApiConfig.realtimeApiBase}${PreConnectPushConfig.registerDevicePath}',
@@ -551,11 +547,10 @@ class FCMService {
             body = '',
             additionalHeaders = const <String, String>{},
           }) async {
-            await client.authenticatedRequest(
-              method,
-              url,
+            await HttpUtils.client.post(
+              Uri.parse(url),
+              headers: additionalHeaders,
               body: body,
-              additionalHeaders: additionalHeaders,
             );
           },
     );
@@ -573,18 +568,7 @@ class FCMService {
     final url = '${ApiConfig.realtimeApiBase}$path';
     final body = jsonEncode(<String, dynamic>{'token': token, 'topic': topic});
     const headers = <String, String>{'Content-Type': 'application/json'};
-    if (topic.startsWith(PreConnectPushConfig.seatTopic(''))) {
-      await HttpUtils.client.post(Uri.parse(url), headers: headers, body: body);
-      return;
-    }
-    final client = ApiClient();
-    if (!await client.hasAccessToken()) return;
-    await client.authenticatedRequest(
-      'POST',
-      url,
-      body: body,
-      additionalHeaders: headers,
-    );
+    await HttpUtils.client.post(Uri.parse(url), headers: headers, body: body);
   }
 
   Future<void> _subscribeToTopicWeb(String token, String topic) async {
@@ -686,9 +670,7 @@ class FCMService {
     try {
       final token = await _getToken();
       if (token == null) return;
-      final client = ApiClient();
-      if (!await client.hasAccessToken()) return;
-      await _deviceRegistry(client).unregister(token);
+      await _deviceRegistry().unregister(token);
     } catch (error) {
       unawaited(AppLog.write('FCM device unregistration failed: $error'));
     }

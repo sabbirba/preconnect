@@ -99,9 +99,6 @@ const String _gcmLastMessageAtKey = 'preconnect.gcmLastMessageAt';
 const String _gcmLastDeletedAtKey = 'preconnect.gcmLastDeletedAt';
 const String _gcmLastSendErrorKey = 'preconnect.gcmLastSendError';
 const String _extensionAlarmId = 'preconnect.syncAlarm';
-const String _connectCookieUrl = 'https://connect.bracu.ac.bd/';
-const String _ssoCookieUrl =
-    'https://sso.bracu.ac.bd/realms/bracu/protocol/openid-connect/';
 final Map<int, String> _connectAuthorizationByTab = <int, String>{};
 final Map<int, Map<String, String>> _connectHeadersByTab =
     <int, Map<String, String>>{};
@@ -206,18 +203,6 @@ void _registerConnectAuthorizationObserver() {
 
 Future<void> main() async {
   _registerConnectAuthorizationObserver();
-  if (chrome.cookies.isAvailable) {
-    chrome.cookies.onChanged.listen((changeInfo) {
-      final cookie = changeInfo.cookie;
-      final domain = cookie.domain.toLowerCase();
-      if (!domain.contains('bracu.ac.bd')) return;
-      if (!domain.contains('connect.bracu.ac.bd') &&
-          !domain.contains('sso.bracu.ac.bd')) {
-        return;
-      }
-      unawaited(_guarded(_syncCookieSnapshot));
-    });
-  }
 
   chrome.runtime.onStartup.listen((_) {
     unawaited(
@@ -317,7 +302,7 @@ Future<void> main() async {
   }
 
   unawaited(_guarded(_configureBrowserSurfaces));
-  unawaited(_guarded(_syncCookieSnapshot));
+  unawaited(_guarded(_clearCookieSnapshot));
   unawaited(_guarded(_configureAlarms));
   unawaited(_guarded(_refreshBadgeAndNotifyIfNeeded));
   unawaited(_guarded(_bootstrapSessionSync));
@@ -384,44 +369,12 @@ void _handleRuntimeMessage(dynamic event) {
   unawaited(_guarded(action));
 }
 
-Future<void> _syncCookieSnapshot() async {
-  if (!chrome.cookies.isAvailable) return;
-
-  final connectCookies = await chrome.cookies.getAll(
-    ck.GetAllDetails(url: _connectCookieUrl),
-  );
-  final ssoCookies = await chrome.cookies.getAll(
-    ck.GetAllDetails(url: _ssoCookieUrl),
-  );
-
-  await chrome.storage.local.set({
-    _cookieSnapshotConnectKey: jsonEncode(
-      connectCookies.map(_cookieToJson).toList(),
-    ),
-    _cookieSnapshotSsoKey: jsonEncode(ssoCookies.map(_cookieToJson).toList()),
-    _cookieSnapshotUpdatedAtKey: DateTime.now().toIso8601String(),
-  });
-}
-
-Map<String, Object?> _cookieToJson(ck.Cookie cookie) {
-  return <String, Object?>{
-    'name': cookie.name,
-    'value': cookie.value,
-    'domain': cookie.domain,
-    'path': cookie.path,
-    'secure': cookie.secure,
-    'httpOnly': cookie.httpOnly,
-    'sameSite': cookie.sameSite.value,
-    'session': cookie.session,
-    'expirationDate': cookie.expirationDate,
-    'storeId': cookie.storeId,
-    'hostOnly': cookie.hostOnly,
-    if (cookie.partitionKey != null)
-      'partitionKey': <String, Object?>{
-        if (cookie.partitionKey!.topLevelSite != null)
-          'topLevelSite': cookie.partitionKey!.topLevelSite,
-      },
-  };
+Future<void> _clearCookieSnapshot() async {
+  await chrome.storage.local.remove([
+    _cookieSnapshotConnectKey,
+    _cookieSnapshotSsoKey,
+    _cookieSnapshotUpdatedAtKey,
+  ]);
 }
 
 Future<void> _openOrFocusAppTab() async {
@@ -1269,7 +1222,6 @@ Future<void> _processNavigation(int tabId, String url) async {
           PreConnectStorageKeys.idToken: tokens.idToken,
         PreConnectStorageKeys.cachedHasAuthSession: 'true',
       });
-      await _syncCookieSnapshot();
       await _refreshBadgeAndNotifyIfNeeded();
       unawaited(_registerGcmAndSyncToken());
       if (!chrome.sidePanel.isAvailable && !_isFirefox()) {
@@ -1519,29 +1471,14 @@ Future<Set<String>> _loadPinnedSeatTopics() async {
   }
 }
 
-Future<void> _postPushJson(
-  String path,
-  Map<String, dynamic> body, {
-  String? accessToken,
-}) async {
+Future<void> _postPushJson(String path, Map<String, dynamic> body) async {
   try {
-    var token = accessToken?.trim() ?? '';
-    if (token.isEmpty) {
-      final values = await chrome.storage.local.get(
-        PreConnectStorageKeys.accessToken,
-      );
-      token = '${values[PreConnectStorageKeys.accessToken] ?? ''}'.trim();
-    }
-    if (token.isEmpty) return;
-
     await _fetch(
       '${ApiConfig.realtimeApiBase}$path',
       RequestInit(
         method: 'POST',
         headers: _headersFromMap(<String, String>{
-          ...ApiConfig.apiHeaders,
           'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
         }),
         body: jsonEncode(body).toJS,
       ),
@@ -1563,18 +1500,10 @@ Future<void> _unregisterGcmToken() async {
       token = await chrome.gcm.register([PreConnectPushConfig.gcmSenderId]);
     }
     if (token.isNotEmpty) {
-      final values = await chrome.storage.local.get(
-        PreConnectStorageKeys.accessToken,
+      await _postPushJson(
+        PreConnectPushConfig.unregisterDevicePath,
+        <String, dynamic>{'token': token},
       );
-      final accessToken = '${values[PreConnectStorageKeys.accessToken] ?? ''}'
-          .trim();
-      if (accessToken.isNotEmpty) {
-        await _postPushJson(
-          PreConnectPushConfig.unregisterDevicePath,
-          <String, dynamic>{'token': token},
-          accessToken: accessToken,
-        );
-      }
     }
   } catch (error, stackTrace) {
     _reportBackgroundError(error, stackTrace);
