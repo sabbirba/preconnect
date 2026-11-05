@@ -17,7 +17,7 @@ dependencies:
   path_provider: ^2.1.6
   webview_flutter: ^4.14.1
   intl: ^0.20.3
-  mobile_scanner: ^7.4.2
+  mobile_scanner: ^7.5.0
   image_picker: ^1.2.4
   archive: ^4.6.0
   barcode_widget: ^2.0.4
@@ -29,7 +29,7 @@ dependencies:
   file_selector: ^1.1.0
   share_plus: ^13.3.0
   local_auth: ^3.0.2
-  chrome_extension: ^0.4.0
+  chrome_extension: ^0.6.0
   web: ^1.1.2
   http: ^1.6.0
   flutter_secure_storage: ^11.2.0
