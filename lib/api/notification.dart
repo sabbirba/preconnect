@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'package:preconnect/tools/time_utils.dart';
 import 'package:intl/intl.dart';
 import 'package:preconnect/api/api_client.dart';
 import 'package:preconnect/api/api_config.dart';
@@ -669,15 +670,13 @@ class NotificationService {
       'EEEE, MMMM d, yyyy - H:mm',
       'MMMM d, yyyy - HH:mm',
       'MMMM d, yyyy - H:mm',
-      'MMMM d, yyyy',
-      'MMM d, yyyy',
     ];
     for (final pattern in formats) {
       try {
         return DateFormat(pattern).parseLoose(normalized);
       } catch (_) {}
     }
-    return DateTime.tryParse(normalized);
+    return AppTime.parseDate(normalized);
   }
 
   List<String> _extractImageUrls(

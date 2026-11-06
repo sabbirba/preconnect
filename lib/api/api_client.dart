@@ -61,6 +61,17 @@ class ApiClient {
     _cachedPortfolioId = null;
   }
 
+  void invalidateResponses(bool Function(String url) matches) {
+    bool matchesKey(String key) {
+      final parts = key.split('\n');
+      return parts.length > 1 && matches(parts[1]);
+    }
+
+    _cacheRevision++;
+    _cachedResponses.removeWhere((key, _) => matchesKey(key));
+    _inFlightRequests.removeWhere((key, _) => matchesKey(key));
+  }
+
   void _purgeExpiredResponseCache() {
     _cachedResponses.removeWhere(
       (_, cachedResponse) => cachedResponse.isExpired,
@@ -86,7 +97,7 @@ class ApiClient {
     }
   }
 
-  Future<String?> getAccessToken({int retries = 3}) async {
+  Future<String?> getAccessToken() async {
     final cachedToken = _cachedAccessToken;
     final cachedAt = _cachedAccessTokenAt;
     if (cachedToken != null &&
@@ -96,21 +107,11 @@ class ApiClient {
       return cachedToken;
     }
 
-    for (int i = 0; i < retries; i++) {
-      final token = await _storage.read(key: PreConnectStorageKeys.accessToken);
-      if (token != null && token.isNotEmpty) {
-        _cachedAccessToken = token;
-        _cachedAccessTokenAt = DateTime.now();
-        return token;
-      }
-
-      if (i < retries - 1) {
-        continue;
-      }
-    }
-    _cachedAccessToken = null;
+    final token = await _storage.read(key: PreConnectStorageKeys.accessToken);
+    final hasToken = token != null && token.isNotEmpty;
+    _cachedAccessToken = hasToken ? token : null;
     _cachedAccessTokenAt = DateTime.now();
-    return null;
+    return _cachedAccessToken;
   }
 
   Future<bool> hasAccessToken() async {
@@ -118,15 +119,38 @@ class ApiClient {
     return token != null && token.trim().isNotEmpty;
   }
 
-  Future<void> _refreshTokensWithRetry() async {
+  static const Duration _tokenRefreshLeadTime = Duration(seconds: 60);
+
+  Future<TokenRefreshStatus> _refreshTokens() async {
     final status =
         await (_refresh?.call() ?? AuthService().refreshTokenStatus());
     if (status == TokenRefreshStatus.invalidSession) {
       throw const SessionExpiredException();
     }
-    if (status != TokenRefreshStatus.refreshed) {
+    if (status == TokenRefreshStatus.refreshed) {
+      _cachedAccessToken = null;
+      _cachedAccessTokenAt = null;
+    }
+    return status;
+  }
+
+  Future<void> _refreshTokensWithRetry() async {
+    if (await _refreshTokens() != TokenRefreshStatus.refreshed) {
       throw const SessionRefreshException();
     }
+  }
+
+  bool _expiresSoon(String token) {
+    final expiry = tokenExpiry(token);
+    return expiry.millisecondsSinceEpoch > 0 &&
+        DateTime.now().add(_tokenRefreshLeadTime).isAfter(expiry);
+  }
+
+  Future<String?> _validAccessToken() async {
+    final token = await getAccessToken();
+    if (token == null || token.isEmpty || !_expiresSoon(token)) return token;
+    if (await _refreshTokens() != TokenRefreshStatus.refreshed) return token;
+    return getAccessToken();
   }
 
   Future<http.Response> authenticatedGet(
@@ -160,7 +184,9 @@ class ApiClient {
       isWeb: kIsWeb,
       runtimeAvailable: isChromeRuntimeAvailable(),
     );
-    final token = await getAccessToken();
+    final token = usesBrowserSession
+        ? await getAccessToken()
+        : await _validAccessToken();
     if ((token == null || token.isEmpty) && !usesBrowserSession) {
       throw const UnauthenticatedException();
     }
@@ -342,8 +368,12 @@ class ApiClient {
     if (usePersistentValidation) {
       final etagKey = 'etag_$url';
       final bodyKey = 'etag_resp_$url';
-      cachedEtag = AppStorage.instance.getStringSync(etagKey);
-      cachedBody = AppStorage.instance.getStringSync(bodyKey);
+      final cached = await Future.wait(<Future<String?>>[
+        AppStorage.instance.getString(etagKey),
+        AppStorage.instance.getString(bodyKey),
+      ]);
+      cachedEtag = cached[0];
+      cachedBody = cached[1];
       if (isValidHttpEtag(cachedEtag) &&
           cachedBody != null &&
           cachedBody.isNotEmpty) {

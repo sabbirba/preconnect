@@ -39,7 +39,7 @@ class ExamMapService {
     bool forceRefresh = false,
   }) async {
     final parsedKey = StorageKeys.examMapParsed(semesterSessionId);
-    final cachedParsed = AppStorage.instance.getStringSync(parsedKey);
+    final cachedParsed = await RepositoryCache.instance.readString(parsedKey);
     final decoded = ExamScheduleOverride.decodeOverrides(cachedParsed);
 
     if (!forceRefresh && decoded.isNotEmpty) {

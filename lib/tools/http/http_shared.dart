@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:http/browser_client.dart';
 
@@ -32,8 +31,4 @@ class _BrowserHttpClient extends http.BaseClient {
     _authClient.close();
     _extensionClient.close();
   }
-}
-
-Future<dynamic> computeJsonDecode(String source) async {
-  return jsonDecode(source);
 }

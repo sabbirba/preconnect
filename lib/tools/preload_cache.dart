@@ -5,6 +5,19 @@ class PreloadCache<T> {
   T? value;
   Future<T>? inFlight;
 
+  Future<T> share(Future<T> Function() fetch) {
+    final existing = inFlight;
+    if (existing != null) return existing;
+    final future = fetch();
+    inFlight = future;
+    unawaited(
+      future.then<void>((_) {}, onError: (Object _) {}).whenComplete(() {
+        if (identical(inFlight, future)) inFlight = null;
+      }),
+    );
+    return future;
+  }
+
   Future<T> load({
     required bool forceRefresh,
     required Future<T> Function() fetch,

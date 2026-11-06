@@ -1,11 +1,13 @@
-import 'dart:convert';
-
 import 'package:preconnect/tools/app_storage.dart';
 import 'package:preconnect/api/api_client.dart';
 import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/api/profile.dart';
 import 'package:preconnect/api/repository_cache.dart';
 import 'package:preconnect/model/progress_info.dart';
+import 'package:preconnect/tools/json_decode.dart';
+import 'package:preconnect/tools/preload_cache.dart';
+
+typedef _ProgressComponent = ({dynamic data, String raw});
 
 class ProgressService {
   ProgressService._internal();
@@ -24,28 +26,21 @@ class ProgressService {
     ApiConfig.coursePrerequisitesUrl,
   ];
   final ApiClient _client = ApiClient();
-  final Map<String, Future<ProgressInfo?>> _fetchInFlight =
-      <String, Future<ProgressInfo?>>{};
+  final Map<bool, PreloadCache<ProgressInfo?>> _fetches =
+      <bool, PreloadCache<ProgressInfo?>>{};
 
   Future<ProgressInfo?> fetchProgress({
     bool fromGet = false,
     Duration cacheDuration = const Duration(seconds: 30),
-  }) async {
-    final inFlightKey = 'progress|$fromGet';
-    final inFlight = _fetchInFlight[inFlightKey];
-    if (inFlight != null) {
-      return await inFlight;
-    }
-    final request = _fetchProgressInternal(
-      fromGet: fromGet,
-      cacheDuration: cacheDuration,
-    );
-    _fetchInFlight[inFlightKey] = request;
-    try {
-      return await request;
-    } finally {
-      _fetchInFlight.remove(inFlightKey);
-    }
+  }) {
+    return _fetches
+        .putIfAbsent(fromGet, PreloadCache<ProgressInfo?>.new)
+        .share(
+          () => _fetchProgressInternal(
+            fromGet: fromGet,
+            cacheDuration: cacheDuration,
+          ),
+        );
   }
 
   Future<ProgressInfo?> _fetchProgressInternal({
@@ -67,53 +62,28 @@ class ProgressService {
     }
 
     try {
-      final majorMinorsUrl =
-          '${ApiConfig.connectApiBase}${ApiConfig.majorMinorsPath(portfolioId)}';
-      final completedCoursesUrl =
-          '${ApiConfig.connectApiBase}${ApiConfig.completedCoursesPath(portfolioId)}';
-      final curriculumUrl =
-          '${ApiConfig.connectApiBase}${ApiConfig.programCurriculumsPath(portfolioId)}';
       final repo = RepositoryCache.instance;
-
-      final responses = await Future.wait([
-        _client.authenticatedGet(
-          majorMinorsUrl,
-          acceptedStatusCodes: const <int>{200},
-          cacheDuration: cacheDuration,
-        ),
-        _client.authenticatedGet(
-          completedCoursesUrl,
-          acceptedStatusCodes: const <int>{200},
-          cacheDuration: cacheDuration,
-        ),
-        _client.authenticatedGet(
-          curriculumUrl,
-          acceptedStatusCodes: const <int>{200},
-          cacheDuration: cacheDuration,
-        ),
-      ]);
-
-      final resolved = await Future.wait<dynamic>([
-        _resolveComponent(
-          repo: repo,
-          response: responses[0],
-          dataKey: _majorMinorsCacheKey,
-        ),
-        _resolveComponent(
-          repo: repo,
-          response: responses[1],
-          dataKey: _completedCoursesCacheKey,
-        ),
-        _resolveComponent(
-          repo: repo,
-          response: responses[2],
-          dataKey: _curriculumCacheKey,
-        ),
-        _resolvePublicComponent(
-          repo: repo,
-          urls: _coursePrerequisitesUrls,
-          dataKey: _coursePrerequisitesCacheKey,
-        ),
+      final prerequisitesFuture = _resolvePublicComponent(
+        repo: repo,
+        urls: _coursePrerequisitesUrls,
+        dataKey: _coursePrerequisitesCacheKey,
+      );
+      final resolved = await Future.wait<_ProgressComponent?>([
+        for (final (path, dataKey) in [
+          (ApiConfig.majorMinorsPath(portfolioId), _majorMinorsCacheKey),
+          (
+            ApiConfig.completedCoursesPath(portfolioId),
+            _completedCoursesCacheKey,
+          ),
+          (ApiConfig.programCurriculumsPath(portfolioId), _curriculumCacheKey),
+        ])
+          _resolveComponent(
+            repo: repo,
+            url: '${ApiConfig.connectApiBase}$path',
+            cacheDuration: cacheDuration,
+            dataKey: dataKey,
+          ),
+        prerequisitesFuture,
       ]);
       final majorMinors = resolved[0];
       final completedCourses = resolved[1];
@@ -126,15 +96,20 @@ class ProgressService {
         return await getProgress(fromFetch: true);
       }
 
-      final payload = <String, dynamic>{
-        'majorMinors': majorMinors,
-        'completedCourses': completedCourses,
-        'curriculum': curriculum,
-        'coursePrerequisites': coursePrerequisites,
-      };
-      final info = ProgressInfo.fromPayload(payload);
+      final info = ProgressInfo.fromPayload(<String, dynamic>{
+        'majorMinors': majorMinors.data,
+        'completedCourses': completedCourses.data,
+        'curriculum': curriculum.data,
+        'coursePrerequisites': coursePrerequisites?.data,
+      });
       final summary = ProgressSummary.fromProgressInfo(info);
-      await repo.writeJson(_cacheKey, payload);
+      await repo.writeString(
+        _cacheKey,
+        '{"majorMinors":${majorMinors.raw},'
+        '"completedCourses":${completedCourses.raw},'
+        '"curriculum":${curriculum.raw},'
+        '"coursePrerequisites":${coursePrerequisites?.raw ?? 'null'}}',
+      );
       await repo.writeJson(_summaryCacheKey, summary.toJson());
       return info;
     } catch (_) {
@@ -142,22 +117,27 @@ class ProgressService {
     }
   }
 
-  Future<dynamic> _resolveComponent({
+  Future<_ProgressComponent?> _resolveComponent({
     required RepositoryCache repo,
-    required dynamic response,
+    required String url,
+    required Duration cacheDuration,
     required String dataKey,
   }) async {
-    if (response.statusCode != 200) return null;
+    final response = await _client.authenticatedGet(
+      url,
+      acceptedStatusCodes: const <int>{200},
+      cacheDuration: cacheDuration,
+    );
     try {
-      final decoded = jsonDecode(response.body);
-      await repo.writeJson(dataKey, decoded);
-      return decoded;
-    } catch (e) {
-      return await _readCachedComponent(repo, dataKey);
+      final component = await _decodeComponent(response.body);
+      await repo.writeString(dataKey, response.body);
+      return component;
+    } catch (_) {
+      return _readCachedComponent(repo, dataKey);
     }
   }
 
-  Future<dynamic> _resolvePublicComponent({
+  Future<_ProgressComponent?> _resolvePublicComponent({
     required RepositoryCache repo,
     required List<String> urls,
     required String dataKey,
@@ -168,26 +148,28 @@ class ProgressService {
           url,
           cacheDuration: const Duration(minutes: 10),
         );
-        final decoded = jsonDecode(response.body);
-        await repo.writeJson(dataKey, decoded);
-        return decoded;
+        final component = await _decodeComponent(response.body);
+        await repo.writeString(dataKey, response.body);
+        return component;
       } catch (_) {
         continue;
       }
     }
-    final cached = await repo.readString(dataKey);
-    if (cached == null || cached.trim().isEmpty) return null;
-    return jsonDecode(cached);
+    return _readCachedComponent(repo, dataKey);
   }
 
-  Future<dynamic> _readCachedComponent(
+  Future<_ProgressComponent> _decodeComponent(String raw) async {
+    return (data: await computeJsonDecode(raw), raw: raw);
+  }
+
+  Future<_ProgressComponent?> _readCachedComponent(
     RepositoryCache repo,
     String dataKey,
   ) async {
     final cached = await repo.readString(dataKey);
     if (cached == null || cached.trim().isEmpty) return null;
     try {
-      return jsonDecode(cached);
+      return await _decodeComponent(cached);
     } catch (_) {
       return null;
     }
@@ -206,15 +188,12 @@ class ProgressService {
   }
 
   ProgressInfo? getProgressSync() {
-    final raw = AppStorage.instance.getStringSync(_cacheKey);
-    if (raw == null || raw.trim().isEmpty) return null;
-    try {
-      final decoded = jsonDecode(raw);
-      if (decoded is! Map) return null;
-      return ProgressInfo.fromPayload(decoded.cast<String, dynamic>());
-    } catch (_) {
-      return null;
-    }
+    return RepositoryCache.instance.readJsonSync(
+      _cacheKey,
+      (decoded) => decoded is Map
+          ? ProgressInfo.fromPayload(decoded.cast<String, dynamic>())
+          : null,
+    );
   }
 
   Future<ProgressSummary?> getProgressSummary({bool fromFetch = false}) async {

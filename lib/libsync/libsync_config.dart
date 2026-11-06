@@ -30,6 +30,7 @@ class LibSyncConfig {
   static const String googleRedirectUri =
       'https://preconnect.app/api/auth/callback';
   static const String googleScopes = 'openid email profile';
+  static const String googleTokenUrl = 'https://oauth2.googleapis.com/token';
 
   static Uri buildOAuthUrl({
     String redirectUri = googleRedirectUri,

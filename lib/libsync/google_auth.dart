@@ -12,7 +12,7 @@ class GoogleAuthHelper {
     try {
       final response = await client
           .post(
-            Uri.parse('https://oauth2.googleapis.com/token'),
+            Uri.parse(LibSyncConfig.googleTokenUrl),
             headers: {'Content-Type': 'application/x-www-form-urlencoded'},
             body: {
               'client_id': LibSyncConfig.googleClientId,
@@ -43,7 +43,7 @@ class GoogleAuthHelper {
     try {
       final response = await client
           .post(
-            Uri.parse('https://oauth2.googleapis.com/token'),
+            Uri.parse(LibSyncConfig.googleTokenUrl),
             headers: {'Content-Type': 'application/x-www-form-urlencoded'},
             body: {
               'client_id': LibSyncConfig.googleClientId,

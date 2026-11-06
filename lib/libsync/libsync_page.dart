@@ -7,6 +7,7 @@ import 'package:preconnect/tools/app_storage.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
 import 'package:preconnect/api/preferences_store.dart';
 import 'package:preconnect/api/auth.dart';
+import 'package:preconnect/pages/shared_widgets/info_line.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/pages/home_tab.dart';
 import 'package:preconnect/tools/time_utils.dart' show AppTime;
@@ -132,21 +133,7 @@ class _LibSyncPageState extends State<LibSyncPage>
     final chartData = _getDynamicChartData();
     if (chartData.isEmpty) return;
     final now = DateTime.now();
-    final fullMonths = [
-      'January',
-      'February',
-      'March',
-      'April',
-      'May',
-      'June',
-      'July',
-      'August',
-      'September',
-      'October',
-      'November',
-      'December',
-    ];
-    final currentMonthStr = fullMonths[now.month - 1].toLowerCase();
+    final currentMonthStr = AppTime.monthName(now).toLowerCase();
     final idx = chartData.indexWhere((item) {
       final name = item.name.toLowerCase();
       return name.startsWith(currentMonthStr) ||
@@ -1026,28 +1013,28 @@ class _RecentReservationsListState extends State<_RecentReservationsList> {
                   ],
                 ),
                 const Gap(8),
-                _InfoLine(
+                InfoLine(
                   label: 'Category',
                   value: category,
                   isLabelBold: true,
                   isValueBold: true,
                 ),
                 const Gap(8),
-                _InfoLine(
+                InfoLine(
                   label: 'Date',
                   value: date,
                   isLabelBold: false,
                   isValueBold: false,
                 ),
                 const Gap(6),
-                _InfoLine(
+                InfoLine(
                   label: 'Time Slot',
                   value: _formatSlot(res['slot']),
                   isLabelBold: true,
                   isValueBold: true,
                 ),
                 const Gap(6),
-                _InfoLine(
+                InfoLine(
                   label: 'Status',
                   value: status,
                   isLabelBold: true,
@@ -1058,7 +1045,7 @@ class _RecentReservationsListState extends State<_RecentReservationsList> {
                   Column(
                     children: [
                       const Gap(6),
-                      _InfoLine(label: 'Check-In?', value: 'Awaiting (later)'),
+                      InfoLine(label: 'Check-In?', value: 'Awaiting (later)'),
                     ],
                   ),
                 if (status.toLowerCase() == 'confirmed' &&
@@ -1229,60 +1216,5 @@ class _RecentReservationsListState extends State<_RecentReservationsList> {
       return '${formatTime(start)} - ${formatTime(end)}';
     }
     return 'N/A';
-  }
-}
-
-class _InfoLine extends StatelessWidget {
-  const _InfoLine({
-    required this.label,
-    required this.value,
-    this.isValueBold = false,
-    this.isLabelBold = false,
-    this.valueColor,
-  });
-
-  final String label;
-  final String value;
-  final bool isValueBold;
-  final bool isLabelBold;
-  final Color? valueColor;
-
-  @override
-  Widget build(BuildContext context) {
-    final textSecondary = AppPalette.textSecondary(context);
-    final textPrimary = AppPalette.textPrimary(context);
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 2),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(
-            flex: 5,
-            child: Text(
-              label,
-              style: TextStyle(
-                color: textSecondary,
-                fontWeight: isLabelBold ? FontWeight.w700 : FontWeight.w500,
-                fontSize: 14,
-              ),
-              textAlign: TextAlign.left,
-            ),
-          ),
-          const Gap(12),
-          Expanded(
-            flex: 6,
-            child: Text(
-              value,
-              style: TextStyle(
-                color: valueColor ?? textPrimary,
-                fontWeight: isValueBold ? FontWeight.w700 : FontWeight.w500,
-                fontSize: 14,
-              ),
-              textAlign: TextAlign.right,
-            ),
-          ),
-        ],
-      ),
-    );
   }
 }

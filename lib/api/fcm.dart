@@ -56,6 +56,26 @@ class FCMService {
     _openNotifications = openNotifications;
   }
 
+  static Future<void>? _firebaseReady;
+
+  static Future<void> ensureFirebase() {
+    if (isChromeRuntimeAvailable()) return Future<void>.value();
+    return _firebaseReady ??= _initializeFirebase();
+  }
+
+  static Future<void> _initializeFirebase() async {
+    try {
+      await Firebase.initializeApp(
+        options: DefaultFirebaseOptions.currentPlatform,
+      );
+      FirebaseMessaging.onBackgroundMessage(backgroundHandler);
+    } catch (error, stackTrace) {
+      unawaited(
+        AppLog.write('Firebase initialization failed: $error\n$stackTrace'),
+      );
+    }
+  }
+
   bool get isSupported {
     if (kIsWeb) {
       return true;
@@ -473,6 +493,7 @@ class FCMService {
         return token;
       } else {
         try {
+          await ensureFirebase();
           final token = await _firebaseRegistration();
 
           _cachedToken = token;
@@ -483,6 +504,7 @@ class FCMService {
       }
     }
     try {
+      await ensureFirebase();
       if (defaultTargetPlatform == TargetPlatform.iOS ||
           defaultTargetPlatform == TargetPlatform.macOS) {
         String? apnsToken;
@@ -625,6 +647,7 @@ class FCMService {
     }
 
     try {
+      await ensureFirebase();
       await FirebaseMessaging.instance.subscribeToTopic(topic);
     } catch (error) {
       unawaited(AppLog.write('Native FCM topic subscription failed: $error'));
@@ -658,6 +681,7 @@ class FCMService {
     }
 
     try {
+      await ensureFirebase();
       await FirebaseMessaging.instance.unsubscribeFromTopic(topic);
     } catch (error) {
       unawaited(AppLog.write('Native FCM topic unsubscription failed: $error'));
@@ -683,6 +707,7 @@ class FCMService {
 
     if (kIsWeb) {
       try {
+        await ensureFirebase();
         final messaging = FirebaseMessaging.instance;
         final settings = await messaging.requestPermission(
           alert: true,
@@ -699,6 +724,7 @@ class FCMService {
     }
 
     try {
+      await ensureFirebase();
       final messaging = FirebaseMessaging.instance;
       final settings = await messaging.requestPermission(
         alert: true,
@@ -729,6 +755,7 @@ class FCMService {
     if (kIsWeb && isChromeRuntimeAvailable()) return true;
 
     try {
+      await ensureFirebase();
       final settings = await FirebaseMessaging.instance
           .getNotificationSettings();
       return settings.authorizationStatus == AuthorizationStatus.authorized;
@@ -740,13 +767,7 @@ class FCMService {
   Future<void> init() async {
     if (isChromeRuntimeAvailable()) return;
     if (!isSupported) return;
-    try {
-      await Firebase.initializeApp(
-        options: DefaultFirebaseOptions.currentPlatform,
-      );
-    } catch (error) {
-      unawaited(AppLog.write('Firebase initialization failed: $error'));
-    }
+    await ensureFirebase();
     if (!kIsWeb) {
       await _setupLocalNotifications();
     }

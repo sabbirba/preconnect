@@ -1,5 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
+import 'package:preconnect/tools/preload_cache.dart';
+import 'package:preconnect/api/repository_cache.dart';
 import 'package:http/http.dart' as http;
 
 import 'package:preconnect/tools/app_storage.dart';
@@ -9,8 +11,9 @@ class CdnJsonCache {
   CdnJsonCache._();
 
   static final Map<String, Object?> _memory = <String, Object?>{};
-  static final Map<String, Future<Object?>> _inFlight =
-      <String, Future<Object?>>{};
+  static final Map<String, DateTime> _storedAt = <String, DateTime>{};
+  static final Map<String, PreloadCache<Object?>> _fetches =
+      <String, PreloadCache<Object?>>{};
 
   static T? peek<T extends Object>(String cacheKey) {
     return _memory[cacheKey] as T?;
@@ -23,8 +26,10 @@ class CdnJsonCache {
     bool forceRefresh = false,
     http.Client? client,
     Duration timeout = const Duration(seconds: 8),
+    Duration? maxAge,
   }) async {
-    if (!forceRefresh && _memory.containsKey(cacheKey)) {
+    final fresh = maxAge == null || _isFresh(cacheKey, maxAge);
+    if (!forceRefresh && fresh && _memory.containsKey(cacheKey)) {
       return _memory[cacheKey] as T?;
     }
 
@@ -46,26 +51,18 @@ class CdnJsonCache {
       }
     }
 
-    final existingFetch = _inFlight[cacheKey];
-    if (existingFetch != null) {
-      return (await existingFetch) as T?;
-    }
-
-    final fetch = _fetch<T>(
-      url: url,
-      cacheKey: cacheKey,
-      decode: decode,
-      timeout: timeout,
-      client: client,
-    );
-    _inFlight[cacheKey] = fetch;
-    try {
-      return await fetch;
-    } finally {
-      if (identical(_inFlight[cacheKey], fetch)) {
-        _inFlight.remove(cacheKey);
-      }
-    }
+    final fetched = await _fetches
+        .putIfAbsent(cacheKey, PreloadCache<Object?>.new)
+        .share(
+          () => _fetch<T>(
+            url: url,
+            cacheKey: cacheKey,
+            decode: decode,
+            timeout: timeout,
+            client: client,
+          ),
+        );
+    return fetched as T?;
   }
 
   static Future<T?> _fetch<T extends Object>({
@@ -83,7 +80,7 @@ class CdnJsonCache {
         final decoded = jsonDecode(response.body);
         final value = decode(decoded);
         if (value != null) {
-          _memory[cacheKey] = value;
+          _remember(cacheKey, value);
           await AppStorage.instance.setString(cacheKey, response.body);
           return value;
         }
@@ -98,17 +95,20 @@ class CdnJsonCache {
     return null;
   }
 
+  static void _remember(String cacheKey, Object value) {
+    _memory[cacheKey] = value;
+    _storedAt[cacheKey] = DateTime.now();
+  }
+
+  static bool _isFresh(String cacheKey, Duration maxAge) {
+    final storedAt = _storedAt[cacheKey];
+    return storedAt != null && DateTime.now().difference(storedAt) < maxAge;
+  }
+
   static Future<T?> _readCached<T extends Object>(
     String cacheKey,
     T? Function(dynamic decoded) decode,
-  ) async {
-    final raw = await AppStorage.instance.getString(cacheKey);
-    if (raw == null || raw.trim().isEmpty) return null;
-    try {
-      final decoded = jsonDecode(raw);
-      return decode(decoded);
-    } catch (_) {
-      return null;
-    }
+  ) {
+    return RepositoryCache.instance.readJson(cacheKey, decode);
   }
 }

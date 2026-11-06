@@ -1,14 +1,11 @@
 import 'dart:async';
 
-import 'package:firebase_core/firebase_core.dart';
-import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/foundation.dart';
 import 'package:home_widget/home_widget.dart';
 import 'package:preconnect/api/fcm.dart';
 import 'package:preconnect/features/schedule/application/today_widget.dart';
-import 'package:preconnect/firebase_options.dart';
 import 'package:preconnect/pages/home.dart';
 import 'package:preconnect/pages/home_tab.dart';
 import 'package:preconnect/pages/notifications.dart';
@@ -19,9 +16,6 @@ import 'tools/app_storage.dart';
 import 'tools/token_storage.dart';
 import 'tools/wifi_tile.dart';
 
-import 'package:preconnect/tools/runtime_stub.dart'
-    if (dart.library.js_interop) 'package:preconnect/tools/runtime_web.dart';
-
 @pragma('vm:entry-point')
 Future<void> homeWidgetBackground(Uri? uri) async {
   if (WifiTile.handles(uri)) {
@@ -29,19 +23,6 @@ Future<void> homeWidgetBackground(Uri? uri) async {
     return;
   }
   await syncTodayWidgetInBackground(uri);
-}
-
-Future<void> _initFirebase() async {
-  try {
-    await Firebase.initializeApp(
-      options: DefaultFirebaseOptions.currentPlatform,
-    );
-    FirebaseMessaging.onBackgroundMessage(FCMService.backgroundHandler);
-  } catch (error, stackTrace) {
-    unawaited(
-      AppLog.write('Firebase initialization failed: $error\n$stackTrace'),
-    );
-  }
 }
 
 Future<void> _initStorage() async {
@@ -87,11 +68,7 @@ Future<void> main() async {
         return true;
       };
 
-      await Future.wait<void>([
-        if (!isChromeRuntimeAvailable()) _initFirebase(),
-        _initStorage(),
-        _initWidgets(),
-      ]);
+      await Future.wait<void>([_initStorage(), _initWidgets()]);
 
       unawaited(CaptiveLoginStore.instance.publishTileReady());
 
@@ -115,6 +92,9 @@ Future<void> main() async {
       unawaited(NotificationsPage.preloadData());
 
       runApp(MyApp(bootstrapState: initialState));
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        unawaited(FCMService.ensureFirebase());
+      });
     },
     (error, stackTrace) {
       unawaited(AppLog.write('Uncaught zone error: $error\n$stackTrace'));

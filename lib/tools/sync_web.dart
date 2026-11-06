@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'package:preconnect/tools/client_bridge.dart';
 import 'package:preconnect/tools/preconnect_constants.dart';
 import 'package:preconnect/tools/token_refresh.dart';
@@ -19,9 +18,8 @@ Future<bool> ensureFreshWebExtensionSession({bool forceRefresh = false}) async {
   }
 
   if (!forceRefresh && accessToken != null && accessToken.isNotEmpty) {
-    final expiresAt = _jwtExpiry(accessToken);
-    if (expiresAt != null &&
-        DateTime.now().isBefore(expiresAt.subtract(_refreshLeadTime))) {
+    final expiresAt = tokenExpiry(accessToken);
+    if (DateTime.now().isBefore(expiresAt.subtract(_refreshLeadTime))) {
       return true;
     }
   }
@@ -48,22 +46,4 @@ Future<bool> ensureFreshWebExtensionSession({bool forceRefresh = false}) async {
     },
   );
   return status == TokenRefreshStatus.refreshed;
-}
-
-DateTime? _jwtExpiry(String token) {
-  try {
-    final parts = token.split('.');
-    if (parts.length != 3) return null;
-    final payload = jsonDecode(
-      utf8.decode(base64Url.decode(base64Url.normalize(parts[1]))),
-    );
-    if (payload is! Map) return null;
-    final exp = payload['exp'];
-    if (exp == null) return null;
-    final seconds = int.tryParse('$exp');
-    if (seconds == null) return null;
-    return DateTime.fromMillisecondsSinceEpoch(seconds * 1000);
-  } catch (_) {
-    return null;
-  }
 }

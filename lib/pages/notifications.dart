@@ -1,6 +1,6 @@
-import 'dart:convert';
 import 'dart:async';
 import 'dart:math' as math;
+import 'package:preconnect/api/repository_cache.dart';
 import 'package:preconnect/tools/app_storage.dart';
 
 import 'package:flutter/material.dart';
@@ -42,49 +42,38 @@ class _NotificationsPageState extends State<NotificationsPage>
 
   static NotificationsViewData? _loadCachedDataSync() {
     try {
-      final recentFeedJson = AppStorage.instance.getStringSync(
+      final repo = RepositoryCache.instance;
+      final connect = repo.readJsonSync(
         'RecentNotificationsFeed',
+        (decoded) => decoded is Map
+            ? NotificationsFeed.fromJson(decoded.cast<String, dynamic>())
+            : null,
       );
-      final feedJson = AppStorage.instance.getStringSync(
-        'feed_notifications_v1',
-      );
-      final seenJson = AppStorage.instance.getStringSync('feed_seen_v1');
-
-      NotificationsFeed? connect;
-      if (recentFeedJson != null) {
-        final decoded = jsonDecode(recentFeedJson);
-        if (decoded is Map) {
-          connect = NotificationsFeed.fromJson(decoded.cast<String, dynamic>());
-        }
-      }
-
-      List<FeedItem> feed = [];
-      if (feedJson != null) {
-        final decoded = jsonDecode(feedJson);
-        if (decoded is Map) {
-          final rawItems = decoded['items'];
-          if (rawItems is List) {
-            feed = rawItems
-                .whereType<Map>()
-                .map((item) => FeedItem.fromJson(item.cast<String, dynamic>()))
-                .toList();
-          }
-        }
-      }
-
-      Set<String> seenFeedIds = {};
-      if (seenJson != null) {
-        final decoded = jsonDecode(seenJson);
-        if (decoded is Map) {
-          final raw = decoded['ids'];
-          if (raw is List) {
-            seenFeedIds = raw
-                .map((v) => '$v'.trim())
-                .where((v) => v.isNotEmpty)
-                .toSet();
-          }
-        }
-      }
+      final feed =
+          repo.readJsonSync(
+            'feed_notifications_v1',
+            (decoded) => decoded is Map && decoded['items'] is List
+                ? (decoded['items'] as List)
+                      .whereType<Map>()
+                      .map(
+                        (item) =>
+                            FeedItem.fromJson(item.cast<String, dynamic>()),
+                      )
+                      .toList()
+                : null,
+          ) ??
+          <FeedItem>[];
+      final seenFeedIds =
+          repo.readJsonSync(
+            'feed_seen_v1',
+            (decoded) => decoded is Map && decoded['ids'] is List
+                ? (decoded['ids'] as List)
+                      .map((v) => '$v'.trim())
+                      .where((v) => v.isNotEmpty)
+                      .toSet()
+                : null,
+          ) ??
+          <String>{};
 
       if (connect == null && feed.isEmpty && seenFeedIds.isEmpty) {
         return null;

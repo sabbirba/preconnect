@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:convert';
 import 'package:preconnect/tools/http/http_utils.dart';
 import 'package:preconnect/tools/http/http_headers.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
@@ -287,7 +286,6 @@ class AuthService {
 
       final status = await refreshSessionTokens(
         refreshToken: refreshToken,
-        timeout: _authRequestTimeout,
         persistTokens: (accessToken, refreshToken, idToken) async {
           await _storage.write(
             key: PreConnectStorageKeys.accessToken,
@@ -346,25 +344,6 @@ class AuthService {
       await refreshTokenStatus();
     }
     return true;
-  }
-
-  static DateTime tokenExpiry(String? token) {
-    try {
-      final parts = token?.split('.') ?? const <String>[];
-      if (parts.length == 3 && parts.every((part) => part.isNotEmpty)) {
-        final decoded = parts
-            .map((part) => base64Url.decode(base64Url.normalize(part)))
-            .toList();
-        final payload = jsonDecode(utf8.decode(decoded[1]));
-        final seconds = payload is Map
-            ? int.tryParse('${payload['exp']}')
-            : null;
-        if (seconds != null) {
-          return DateTime.fromMillisecondsSinceEpoch(seconds * 1000);
-        }
-      }
-    } catch (_) {}
-    return DateTime.fromMillisecondsSinceEpoch(0);
   }
 
   Future<DateTime> getTokenExpiryTime() async =>

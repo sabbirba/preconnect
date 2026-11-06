@@ -202,7 +202,7 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
               onRefresh: () async {
                 await Future.wait([
                   _loadArchiveSemesters(),
-                  _refreshDetailsFromApi(),
+                  _refreshDetailsFromApi(forceRefresh: true),
                 ]);
               },
               itemCount: itemCount,
@@ -491,14 +491,14 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
     }
   }
 
-  Future<void> _refreshDetailsFromApi() async {
+  Future<void> _refreshDetailsFromApi({bool forceRefresh = false}) async {
     if (_isDetailsRefreshing) return;
     final generation = _requestGeneration;
     final archive = _selectedArchive;
     _isDetailsRefreshing = true;
     try {
       final details = archive.isEmpty
-          ? await _service.fetchRealtimeSections()
+          ? await _service.fetchRealtimeSections(forceRefresh: forceRefresh)
           : await _service.fetchArchiveSections(archive);
       if (!mounted || generation != _requestGeneration) return;
       _applyDetailsUpdate(details);

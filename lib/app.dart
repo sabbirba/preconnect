@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'package:preconnect/api/api_config.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:preconnect/tools/runtime_stub.dart'
     if (dart.library.js_interop) 'package:preconnect/tools/runtime_web.dart';
@@ -101,7 +102,7 @@ class MyApp extends StatefulWidget {
     final hasToken =
         prefs.getBoolSync(PreConnectStorageKeys.cachedHasAuthSession) ?? false;
 
-    final canOpenOffline = hasToken && await _hasOfflineSnapshot();
+    final canOpenOffline = hasToken && _hasOfflineSnapshot();
 
     unawaited(NotificationsPage.preloadData());
 
@@ -122,7 +123,7 @@ class MyApp extends StatefulWidget {
 
     final hasToken =
         prefs.getBoolSync(PreConnectStorageKeys.cachedHasAuthSession) ?? false;
-    final canOpenOffline = hasToken && _hasOfflineSnapshotSync();
+    final canOpenOffline = hasToken && _hasOfflineSnapshot();
 
     unawaited(NotificationsPage.preloadData());
     if (hasToken) {
@@ -137,18 +138,7 @@ class MyApp extends StatefulWidget {
     );
   }
 
-  static Future<bool> _hasOfflineSnapshot() async {
-    final prefs = AppStorage.instance;
-    final studentId = (await prefs.getString(StorageKeys.studentId) ?? '')
-        .trim();
-    final fullName = (await prefs.getString(StorageKeys.fullName) ?? '').trim();
-    final schedule = (await prefs.getString(StorageKeys.studentSchedule) ?? '')
-        .trim();
-    if (schedule.isNotEmpty) return true;
-    return studentId.isNotEmpty && fullName.isNotEmpty;
-  }
-
-  static bool _hasOfflineSnapshotSync() {
+  static bool _hasOfflineSnapshot() {
     final prefs = AppStorage.instance;
     final studentId = (prefs.getStringSync(StorageKeys.studentId) ?? '').trim();
     final fullName = (prefs.getStringSync(StorageKeys.fullName) ?? '').trim();
@@ -269,13 +259,12 @@ class _MyAppState extends State<MyApp>
       bindRefreshBus(_onRefreshSignal);
     }
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      unawaited(_warmPublicCdnCaches());
       if (_supportsInAppUpdates) {
         unawaited(_maybeCheckForUpdates());
       }
       unawaited(_runDeferredStartupWork());
+      unawaited(FCMService.instance.init());
     });
-    unawaited(FCMService.instance.init());
     _connectivitySub = Connectivity().onConnectivityChanged.listen(
       _onConnectivityChanged,
     );
@@ -445,8 +434,6 @@ class _MyAppState extends State<MyApp>
     );
   }
 
-  Future<void> _warmPublicCdnCaches() async {}
-
   Future<void> _consumePendingShortcutAction() async {
     final pendingAction = kIsWeb
         ? await TokenStorage.instance.read(
@@ -468,9 +455,11 @@ class _MyAppState extends State<MyApp>
         final localVersion = packageInfo.version;
         final bundleId = packageInfo.packageName;
 
-        final response = await http.get(
-          Uri.parse('https://itunes.apple.com/lookup?bundleId=$bundleId'),
-        );
+        final response = await http
+            .get(
+              Uri.parse('https://itunes.apple.com/lookup?bundleId=$bundleId'),
+            )
+            .timeout(const Duration(seconds: 10));
         if (response.statusCode == 200) {
           final data = jsonDecode(response.body);
           if (data != null &&
@@ -481,11 +470,11 @@ class _MyAppState extends State<MyApp>
               final storeVersion = results[0]['version']?.toString() ?? '';
               final appStoreId = results[0]['trackId']?.toString() ?? '';
               if (storeVersion.compareTo(localVersion) > 0) {
-                final targetId = appStoreId.isEmpty ? '6791423431' : appStoreId;
+                final targetId = appStoreId.isEmpty
+                    ? ApiConfig.appStoreId
+                    : appStoreId;
                 await launchUrl(
-                  Uri.parse(
-                    'https://apps.apple.com/us/app/preconnect-bracu-student-app/id$targetId',
-                  ),
+                  Uri.parse('${ApiConfig.appStoreBaseUrl}$targetId'),
                   mode: LaunchMode.externalApplication,
                 );
                 return true;

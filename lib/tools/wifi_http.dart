@@ -79,159 +79,171 @@ class CaptiveWifiHttp {
     return defaultProbeUri;
   }
 
-  static const List<String> kProbeUrls = [
-    'http://connectivitycheck.gstatic.com/generate_204',
-    'http://www.google.com/generate_204',
-    'http://gstatic.com/generate_204',
+  static final List<Uri> kProbeUrls = [
+    defaultProbeUri,
+    Uri.parse('http://www.google.com/generate_204'),
+    Uri.parse('http://gstatic.com/generate_204'),
   ];
 
-  static Future<Uri?> detectCaptivePortal() async {
-    if (AndroidNetworkAssist.isSupported) {
+  static const Duration _probeTimeout = Duration(seconds: 4);
+  static int _wifiBindings = 0;
+
+  static Future<T> _onWifiNetwork<T>(Future<T> Function() body) async {
+    if (!AndroidNetworkAssist.isSupported) return body();
+    if (_wifiBindings++ == 0) {
       await AndroidNetworkAssist.bindToWifiNetwork();
     }
     try {
-      final client = HttpClient()
-        ..userAgent = kPreConnectUserAgent
-        ..connectionTimeout = const Duration(seconds: 4);
-      client.badCertificateCallback = (cert, host, port) => true;
-
-      for (final probeStr in kProbeUrls) {
-        try {
-          final probeUri = Uri.parse(probeStr);
-          final request = await client.getUrl(probeUri);
-          request.followRedirects = false;
-          final response = await request.close().timeout(
-            const Duration(seconds: 4),
-          );
-          final status = response.statusCode;
-          final location =
-              response.headers.value('location') ??
-              response.headers.value('Location');
-          if (status >= 300 && status < 400 && location != null) {
-            final parsed = Uri.tryParse(location);
-            if (parsed != null) {
-              return parsed.isAbsolute ? parsed : probeUri.resolve(location);
-            }
-          }
-          final body = await response.transform(utf8.decoder).join();
-          if (status == 200) {
-            final metaReg = RegExp(
-              r'''<meta\b([^>]*http-equiv\s*=\s*["']refresh["'][^>]*)>''',
-              caseSensitive: false,
-            );
-            final metaMatch = metaReg.firstMatch(body);
-            if (metaMatch != null) {
-              final attrs = metaMatch.group(1) ?? '';
-              final contentReg = RegExp(
-                r'''content\s*=\s*["']\s*(?:\d+\s*;\s*)?url\s*=\s*([^"']+)["']''',
-                caseSensitive: false,
-              );
-              final contentMatch = contentReg.firstMatch(attrs);
-              if (contentMatch != null) {
-                final targetUrl = contentMatch.group(1)?.trim();
-                if (targetUrl != null && targetUrl.isNotEmpty) {
-                  final parsed = Uri.tryParse(targetUrl);
-                  if (parsed != null) {
-                    return parsed.isAbsolute
-                        ? parsed
-                        : probeUri.resolve(targetUrl);
-                  }
-                }
-              }
-            }
-
-            final jsReg = RegExp(
-              r'''(?:window\.)?location(?:\.href|\.replace)?\s*=\s*["']([^"']+)["']''',
-              caseSensitive: false,
-            );
-            final jsMatch = jsReg.firstMatch(body);
-            if (jsMatch != null) {
-              final targetUrl = jsMatch.group(1)?.trim();
-              if (targetUrl != null && targetUrl.isNotEmpty) {
-                final parsed = Uri.tryParse(targetUrl);
-                if (parsed != null) {
-                  return parsed.isAbsolute
-                      ? parsed
-                      : probeUri.resolve(targetUrl);
-                }
-              }
-            }
-
-            final jsAssignReg = RegExp(
-              r'''(?:window\.)?location\.assign\s*\(\s*["']([^"']+)["']\s*\)''',
-              caseSensitive: false,
-            );
-            final jsAssignMatch = jsAssignReg.firstMatch(body);
-            if (jsAssignMatch != null) {
-              final targetUrl = jsAssignMatch.group(1)?.trim();
-              if (targetUrl != null && targetUrl.isNotEmpty) {
-                final parsed = Uri.tryParse(targetUrl);
-                if (parsed != null) {
-                  return parsed.isAbsolute
-                      ? parsed
-                      : probeUri.resolve(targetUrl);
-                }
-              }
-            }
-
-            if (body.contains('/portalpage/') ||
-                body.contains('portalauth') ||
-                body.contains('wlanuserip')) {
-              return Uri.parse('http://${probeUri.host}/portalpage/index.html');
-            }
-          }
-        } catch (_) {}
-      }
-    } catch (_) {
+      return await body();
     } finally {
-      if (AndroidNetworkAssist.isSupported) {
+      if (--_wifiBindings == 0) {
         await AndroidNetworkAssist.unbindFromWifiNetwork();
       }
+    }
+  }
+
+  static Future<T?> _firstNonNull<T extends Object>(
+    Iterable<Future<T?>> futures,
+  ) {
+    final pending = futures.toList();
+    if (pending.isEmpty) return Future<T?>.value();
+    final completer = Completer<T?>();
+    var remaining = pending.length;
+    for (final future in pending) {
+      future.then(
+        (value) {
+          remaining--;
+          if (completer.isCompleted) return;
+          if (value != null || remaining == 0) completer.complete(value);
+        },
+        onError: (Object _) {
+          remaining--;
+          if (!completer.isCompleted && remaining == 0) {
+            completer.complete(null);
+          }
+        },
+      );
+    }
+    return completer.future;
+  }
+
+  static Uri? _resolveRedirectTarget(Uri probeUri, String? target) {
+    final trimmed = target?.trim();
+    if (trimmed == null || trimmed.isEmpty) return null;
+    final parsed = Uri.tryParse(trimmed);
+    if (parsed == null) return null;
+    return parsed.isAbsolute ? parsed : probeUri.resolve(trimmed);
+  }
+
+  static Uri? _portalFromProbeBody(Uri probeUri, String body) {
+    final metaMatch = RegExp(
+      r'''<meta\b([^>]*http-equiv\s*=\s*["']refresh["'][^>]*)>''',
+      caseSensitive: false,
+    ).firstMatch(body);
+    if (metaMatch != null) {
+      final contentMatch = RegExp(
+        r'''content\s*=\s*["']\s*(?:\d+\s*;\s*)?url\s*=\s*([^"']+)["']''',
+        caseSensitive: false,
+      ).firstMatch(metaMatch.group(1) ?? '');
+      final resolved = _resolveRedirectTarget(probeUri, contentMatch?.group(1));
+      if (resolved != null) return resolved;
+    }
+
+    final scriptPatterns = <RegExp>[
+      RegExp(
+        r'''(?:window\.)?location(?:\.href|\.replace)?\s*=\s*["']([^"']+)["']''',
+        caseSensitive: false,
+      ),
+      RegExp(
+        r'''(?:window\.)?location\.assign\s*\(\s*["']([^"']+)["']\s*\)''',
+        caseSensitive: false,
+      ),
+    ];
+    for (final pattern in scriptPatterns) {
+      final resolved = _resolveRedirectTarget(
+        probeUri,
+        pattern.firstMatch(body)?.group(1),
+      );
+      if (resolved != null) return resolved;
+    }
+
+    if (body.contains('/portalpage/') ||
+        body.contains('portalauth') ||
+        body.contains('wlanuserip')) {
+      return Uri.parse('http://${probeUri.host}/portalpage/index.html');
     }
     return null;
   }
 
-  static Future<bool> checkIfOnCampusNetwork() async {
-    if (AndroidNetworkAssist.isSupported) {
-      await AndroidNetworkAssist.bindToWifiNetwork();
-    }
+  static Future<Uri?> _probeForPortal(HttpClient client, Uri probeUri) async {
     try {
-      final savedUrlStr = await CaptiveLoginStore.instance.readLastPortalUrl();
-      if (savedUrlStr == null || savedUrlStr.isEmpty) {
-        final portalUri = await detectCaptivePortal();
-        return portalUri != null;
+      final request = await client.getUrl(probeUri);
+      request.followRedirects = false;
+      final response = await request.close().timeout(_probeTimeout);
+      final status = response.statusCode;
+      if (status >= 300 && status < 400) {
+        final resolved = _resolveRedirectTarget(
+          probeUri,
+          response.headers.value(HttpHeaders.locationHeader),
+        );
+        if (resolved != null) return resolved;
       }
-
-      final savedUri = Uri.tryParse(savedUrlStr);
-      if (savedUri == null) return false;
-
-      final client = HttpClient();
-      client.connectionTimeout = const Duration(seconds: 3);
-      client.badCertificateCallback = (cert, host, port) => true;
-
-      final request = await client.getUrl(
-        Uri.parse('http://${savedUri.host}/'),
-      );
-      final response = await request.close().timeout(
-        const Duration(seconds: 3),
-      );
       final body = await response.transform(utf8.decoder).join();
-      client.close(force: true);
-
-      final isPortal =
-          body.contains('portalauth') ||
-          body.contains('portalpage') ||
-          body.contains(savedUri.host) ||
-          response.headers.value('location')?.contains('portal') == true;
-
-      return isPortal;
+      return status == 200 ? _portalFromProbeBody(probeUri, body) : null;
     } catch (_) {
-    } finally {
-      if (AndroidNetworkAssist.isSupported) {
-        await AndroidNetworkAssist.unbindFromWifiNetwork();
-      }
+      return null;
     }
-    return false;
+  }
+
+  static Future<Uri?> detectCaptivePortal() {
+    return _onWifiNetwork(() async {
+      final client = newClient(connectionTimeout: _probeTimeout);
+      try {
+        return await _firstNonNull(
+          kProbeUrls.map((probeUri) => _probeForPortal(client, probeUri)),
+        );
+      } finally {
+        client.close(force: true);
+      }
+    });
+  }
+
+  static Future<bool> checkIfOnCampusNetwork() {
+    return _onWifiNetwork(() async {
+      try {
+        final savedUrlStr = await CaptiveLoginStore.instance
+            .readLastPortalUrl();
+        if (savedUrlStr == null || savedUrlStr.isEmpty) {
+          return await detectCaptivePortal() != null;
+        }
+
+        final savedUri = Uri.tryParse(savedUrlStr);
+        if (savedUri == null) return false;
+
+        final client = newClient(connectionTimeout: const Duration(seconds: 3));
+        try {
+          final request = await client.getUrl(
+            Uri.parse('http://${savedUri.host}/'),
+          );
+          final response = await request.close().timeout(
+            const Duration(seconds: 3),
+          );
+          final body = await response.transform(utf8.decoder).join();
+          return body.contains('portalauth') ||
+              body.contains('portalpage') ||
+              body.contains(savedUri.host) ||
+              response.headers.value('location')?.contains('portal') == true;
+        } finally {
+          client.close(force: true);
+        }
+      } catch (_) {
+        return false;
+      }
+    });
+  }
+
+  static Future<(bool, Uri?)> detectCampusAndPortal() {
+    return (checkIfOnCampusNetwork(), detectCaptivePortal()).wait;
   }
 
   static Map<String, String> parseFormInputs(String html) {
@@ -290,18 +302,18 @@ class CaptiveWifiHttp {
     return inputs;
   }
 
-  Future<HttpClient> newClient() async {
-    final client = HttpClient()..userAgent = kPreConnectUserAgent;
-    client.connectionTimeout = _connectionTimeout;
-    client.badCertificateCallback =
-        (X509Certificate cert, String host, int port) => true;
-    return client;
+  static HttpClient newClient({
+    Duration connectionTimeout = _connectionTimeout,
+  }) {
+    return HttpClient()
+      ..userAgent = kPreConnectUserAgent
+      ..connectionTimeout = connectionTimeout
+      ..badCertificateCallback =
+          (X509Certificate cert, String host, int port) => true;
   }
 
   static Future<bool> checkInternetAccess({Uri? probeUri}) async {
-    final client = HttpClient()..userAgent = kPreConnectUserAgent;
-    client.connectionTimeout = const Duration(seconds: 4);
-    client.badCertificateCallback = (cert, host, port) => true;
+    final client = newClient(connectionTimeout: _probeTimeout);
     try {
       final request = await client.getUrl(probeUri ?? defaultProbeUri);
       request.followRedirects = false;
@@ -526,7 +538,7 @@ class CaptiveWifiHttp {
     if (AndroidNetworkAssist.isSupported) {
       await AndroidNetworkAssist.bindToWifiNetwork();
     }
-    final client = await newClient();
+    final client = newClient();
     final cookies = sessionCookies;
     cookies.clear();
 
@@ -939,7 +951,7 @@ class CaptiveWifiHttp {
       final savedToken = await CaptiveLoginStore.instance.readSessionToken();
       final savedPSessionId = await CaptiveLoginStore.instance.readPSessionId();
       if (savedToken == null || savedToken.isEmpty) return false;
-      final client = await newClient();
+      final client = newClient();
       final cookies = sessionCookies;
       cookies['XSRF-TOKEN'] = Cookie('XSRF-TOKEN', savedToken);
       if (savedPSessionId != null && savedPSessionId.isNotEmpty) {
@@ -1005,7 +1017,7 @@ class CaptiveWifiHttp {
     if (AndroidNetworkAssist.isSupported) {
       await AndroidNetworkAssist.bindToWifiNetwork();
     }
-    final client = await newClient();
+    final client = newClient();
     final cookies = sessionCookies;
 
     final savedToken = await CaptiveLoginStore.instance.readSessionToken();

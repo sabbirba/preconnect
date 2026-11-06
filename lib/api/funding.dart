@@ -2,7 +2,6 @@ import 'dart:convert';
 import 'package:preconnect/api/api_client.dart';
 import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/api/repository_cache.dart';
-import 'package:preconnect/tools/app_storage.dart';
 import 'package:preconnect/tools/http/http_headers.dart';
 
 class ContributionItem {
@@ -85,14 +84,10 @@ class FundingService {
   static FundingStatus? _cached;
 
   static FundingStatus? get cached {
-    if (_cached != null) return _cached;
-    final cachedRaw = AppStorage.instance.getStringSync(_cacheKey);
-    if (cachedRaw != null && cachedRaw.trim().isNotEmpty) {
-      try {
-        _cached = FundingStatus.fromJson(jsonDecode(cachedRaw));
-      } catch (_) {}
-    }
-    return _cached;
+    return _cached ??= RepositoryCache.instance.readJsonSync(
+      _cacheKey,
+      (decoded) => FundingStatus.fromJson(decoded),
+    );
   }
 
   static Future<FundingStatus?> fetchStatus({bool forceRefresh = false}) async {

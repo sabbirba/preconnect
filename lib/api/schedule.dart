@@ -98,6 +98,15 @@ class ScheduleService {
     }
   }
 
+  static List<SemesterSessionItem> _parseSemesterSessions(List<dynamic> raw) {
+    return raw
+        .whereType<Map>()
+        .map((e) => SemesterSessionItem.fromJson(e.cast<String, dynamic>()))
+        .where((e) => e.semesterSessionId > 0)
+        .toList()
+      ..sort((a, b) => b.semesterSessionId.compareTo(a.semesterSessionId));
+  }
+
   Future<List<SemesterSessionItem>> _fetchSemesterSessionsInternal({
     required bool forceRefresh,
   }) async {
@@ -114,20 +123,8 @@ class ScheduleService {
           try {
             final decoded = jsonDecode(cachedStr);
             if (decoded is List) {
-              final items = decoded
-                  .whereType<Map>()
-                  .map(
-                    (e) =>
-                        SemesterSessionItem.fromJson(e.cast<String, dynamic>()),
-                  )
-                  .where((e) => e.semesterSessionId > 0)
-                  .toList();
-              if (items.isNotEmpty) {
-                items.sort(
-                  (a, b) => b.semesterSessionId.compareTo(a.semesterSessionId),
-                );
-                return items;
-              }
+              final items = _parseSemesterSessions(decoded);
+              if (items.isNotEmpty) return items;
             }
           } catch (_) {}
         }
@@ -150,16 +147,7 @@ class ScheduleService {
             _semesterSessionsFetchedAtKey,
             DateTime.now().millisecondsSinceEpoch,
           );
-          final items = decoded
-              .whereType<Map>()
-              .map(
-                (e) => SemesterSessionItem.fromJson(e.cast<String, dynamic>()),
-              )
-              .where((e) => e.semesterSessionId > 0)
-              .toList();
-          items.sort(
-            (a, b) => b.semesterSessionId.compareTo(a.semesterSessionId),
-          );
+          final items = _parseSemesterSessions(decoded);
           unawaited(
             AppLog.write('Schedule: Fetched ${items.length} semester sessions'),
           );
@@ -416,18 +404,22 @@ class ScheduleService {
           currentSessionId == null ||
           semesterSessionId == currentSessionId;
       if ((sections == null || sections.isEmpty) && isCurrentOrUnspecified) {
-        final raw = AppStorage.instance.getStringSync(
-          StorageKeys.alarmsSnapshot,
-        );
-        if (raw != null && raw.trim().isNotEmpty) {
-          final decoded = jsonDecode(raw);
-          if (decoded is Map<String, dynamic> && decoded['sections'] is List) {
-            sections = (decoded['sections'] as List)
-                .whereType<Map>()
-                .map((e) => section.Section.fromJson(e.cast<String, dynamic>()))
-                .toList(growable: false);
-          }
-        }
+        sections =
+            RepositoryCache.instance.readJsonSync(
+              StorageKeys.alarmsSnapshot,
+              (decoded) =>
+                  decoded is Map<String, dynamic> && decoded['sections'] is List
+                  ? (decoded['sections'] as List)
+                        .whereType<Map>()
+                        .map(
+                          (e) => section.Section.fromJson(
+                            e.cast<String, dynamic>(),
+                          ),
+                        )
+                        .toList(growable: false)
+                  : null,
+            ) ??
+            sections;
       }
       return sections;
     } catch (_) {

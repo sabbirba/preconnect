@@ -172,10 +172,11 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
       fromFetch: forceRefresh,
     );
     final ramadanFuture = RamadanTiming.isRamadan(forceRefresh: forceRefresh);
-    final customSchedules = await CustomSchedulesService()
+    final customSchedulesFuture = CustomSchedulesService()
         .getItems(forceRefresh: forceRefresh)
         .catchError((e) => const <CustomSchedule>[]);
     final semesterSessionId = await resolveCurrentSessionSemesterIdWithRetry();
+    final customSchedules = await customSchedulesFuture;
     if (semesterSessionId == null) {
       final isRamadan = await ramadanFuture;
       final advisingInfo = await advisingFuture;
@@ -758,10 +759,6 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
       if (!context.mounted) return;
       showAppSnackBar(context, 'Unable to open alarm on Android.');
     }
-  }
-
-  String _formatExamDateOnly(DateTime dt) {
-    return DateFormat('d MMMM, yyyy').format(dt);
   }
 
   @override
@@ -1492,7 +1489,7 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
                                     borderRadius: BorderRadius.circular(12),
                                   ),
                                   child: Text(
-                                    _formatExamDateOnly(exam.dateTime),
+                                    AppTime.formatLongDate(exam.dateTime),
                                     style: TextStyle(
                                       fontSize: 12,
                                       color: AppPalette.textPrimary(context),

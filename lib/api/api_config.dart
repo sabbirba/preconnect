@@ -15,7 +15,7 @@ class ApiConfig {
   static String get _webProxyBase {
     final origin = getWebAppOrigin();
     if (origin.contains('localhost') || origin.contains('127.0.0.1')) {
-      return 'https://preconnect.app';
+      return websiteBase;
     }
     return origin;
   }
@@ -81,6 +81,18 @@ class ApiConfig {
   static const String connectMercureLoginPath = '/ns/mercure/login';
   static const String connectMercureLogoutPath = '/ns/mercure/logout';
   static const String websiteBase = 'https://preconnect.app';
+  static const String fundingUrl = '$websiteBase/funding';
+  static const String androidPackageName = 'com.sabbirba.preconnect';
+  static const String appStoreId = '6791423431';
+
+  static const String appStoreBaseUrl =
+      'https://apps.apple.com/us/app/preconnect-bracu-student-app/id';
+  static const String appStoreUrl = '$appStoreBaseUrl$appStoreId';
+  static const String playStoreBaseUrl =
+      'https://play.google.com/store/apps/details?id=';
+  static const String playStoreUrl = '$playStoreBaseUrl$androidPackageName';
+  static const String storeLinksText =
+      'Play Store: $playStoreUrl\nApp Store: $appStoreUrl';
 
   static const String clientId = 'slm';
   static String get redirectUri => _kIsWeb

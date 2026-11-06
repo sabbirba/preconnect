@@ -5,9 +5,9 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
-import 'package:preconnect/api/auth.dart';
 import 'package:preconnect/libsync/libsync_client.dart';
 import 'package:preconnect/tools/app_storage.dart';
+import 'package:preconnect/tools/token_refresh.dart';
 import 'package:preconnect/tools/token_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -147,12 +147,9 @@ void main() {
         base64Url.encode(utf8.encode(jsonEncode(value)));
     final valid =
         '${encode({'alg': 'synthetic'})}.${encode({'exp': 1900000000})}.${encode('signature')}';
-    expect(
-      AuthService.tokenExpiry(valid).millisecondsSinceEpoch,
-      1900000000000,
-    );
+    expect(tokenExpiry(valid).millisecondsSinceEpoch, 1900000000000);
     for (final token in [null, '', 'invalid', 'a.b.c', '...']) {
-      expect(AuthService.tokenExpiry(token).millisecondsSinceEpoch, 0);
+      expect(tokenExpiry(token).millisecondsSinceEpoch, 0);
     }
   });
 }

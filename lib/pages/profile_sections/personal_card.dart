@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
-import 'package:intl/intl.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/time_utils.dart';
 
@@ -10,13 +9,6 @@ class PersonalInfoCard extends StatelessWidget {
   final Map<String, String?> profile;
 
   String _valueOf(String key) => (profile[key] ?? '').trim();
-
-  String _formatDateOfBirth(String value) {
-    if (value.isEmpty) return '';
-    final parsed = AppTime.parseDate(value);
-    if (parsed == null) return value;
-    return DateFormat('d MMMM, yyyy').format(parsed);
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -31,7 +23,7 @@ class PersonalInfoCard extends StatelessWidget {
       (label: 'Email', value: _valueOf('email')),
       (
         label: 'Date of Birth',
-        value: _formatDateOfBirth(_valueOf('dateOfBirth')),
+        value: AppTime.formatDate(_valueOf('dateOfBirth')),
       ),
       (label: 'Academic Type', value: _valueOf('academicType')),
       (label: 'Current Semester', value: _valueOf('currentSemester')),

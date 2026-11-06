@@ -1,11 +1,11 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:math' as math;
 
 import 'package:http/http.dart' as http;
 import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/tools/app_log.dart';
 import 'package:preconnect/tools/http/http_utils.dart';
+import 'package:preconnect/tools/reconnect_backoff.dart';
 
 class SeatCount {
   const SeatCount({
@@ -51,7 +51,7 @@ class SeatStream {
   }
 
   Future<void> _run(int generation) async {
-    var delay = _minDelay;
+    final backoff = ReconnectBackoff(min: _minDelay, max: _maxDelay);
     while (generation == _generation) {
       try {
         final request = http.Request('GET', Uri.parse(ApiConfig.seatStreamUrl))
@@ -60,20 +60,14 @@ class SeatStream {
         final response = await HttpUtils.client.send(request);
         if (generation != _generation) return;
         if (response.statusCode == 200) {
-          delay = _minDelay;
+          backoff.reset();
           await _consume(response.stream, generation);
         }
       } catch (error) {
         unawaited(AppLog.write('Seat stream error: $error'));
       }
       if (generation != _generation) return;
-      await Future<void>.delayed(delay);
-      delay = Duration(
-        milliseconds: math.min(
-          delay.inMilliseconds * 2,
-          _maxDelay.inMilliseconds,
-        ),
-      );
+      await Future<void>.delayed(backoff.next());
     }
   }
 

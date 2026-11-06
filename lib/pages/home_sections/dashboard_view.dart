@@ -450,8 +450,7 @@ extension _HomeDashboardView on _HomeDashboardState {
                                                 ShareParams(
                                                   text:
                                                       'PreConnect • Prepare. Connect. Succeed.\n\n'
-                                                      'Play Store: https://play.google.com/store/apps/details?id=com.sabbirba.preconnect\n'
-                                                      'App Store: https://apps.apple.com/us/app/preconnect-bracu-student-app/id6791423431',
+                                                      '${ApiConfig.storeLinksText}',
                                                   subject:
                                                       'PreConnect • Prepare. Connect. Succeed.',
                                                 ),

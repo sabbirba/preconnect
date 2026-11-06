@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:preconnect/api/api_config.dart';
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
 import 'package:http/http.dart' as http;
@@ -525,7 +526,7 @@ class _ApiButton extends StatelessWidget {
       subtitle: 'api.preconnect.app',
       onTap: () => openExternalUrl(
         context,
-        kPreConnectApiUrl,
+        ApiConfig.realtimeApiBase,
         failureMessage: 'Unable to open api.preconnect.app.',
       ),
     );

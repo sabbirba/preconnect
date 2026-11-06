@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:preconnect/api/api_config.dart';
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
 import 'package:preconnect/pages/home_tab.dart';
@@ -73,7 +74,7 @@ class StudentOverviewCard extends StatelessWidget {
                   icon: Icons.language_rounded,
                   onTap: () => openExternalUrl(
                     context,
-                    kPreConnectWebsiteUrl,
+                    ApiConfig.websiteBase,
                     failureMessage: 'Unable to open preconnect.app.',
                   ),
                 ),

@@ -9,6 +9,8 @@ import 'package:preconnect/api/repository_cache.dart';
 import 'package:preconnect/tools/storage_keys.dart';
 import 'package:preconnect/tools/cache_durations.dart';
 import 'package:preconnect/tools/app_log.dart';
+import 'package:preconnect/tools/preload_cache.dart';
+import 'package:preconnect/tools/time_utils.dart';
 
 part 'profile_sections/profile_models.dart';
 
@@ -22,8 +24,8 @@ class ProfileService {
   ProfileService._();
 
   final ApiClient _client = ApiClient();
-  final Map<String, Future<Map<String, String?>?>> _profileFetchInFlight =
-      <String, Future<Map<String, String?>?>>{};
+  final Map<bool, PreloadCache<Map<String, String?>?>> _profileFetches =
+      <bool, PreloadCache<Map<String, String?>?>>{};
   static const Map<String, String> _bloodTypeIdToLabel = {
     '7157': 'A+',
     '7158': 'B+',
@@ -154,24 +156,91 @@ class ProfileService {
     return value.toString();
   }
 
-  Future<Map<String, String?>?> fetchProfile({bool fromGet = false}) async {
-    final inFlightKey = 'profile|$fromGet';
-    final inFlight = _profileFetchInFlight[inFlightKey];
-    if (inFlight != null) {
-      return await inFlight;
-    }
-    final request = _fetchProfileInternal(fromGet: fromGet);
-    _profileFetchInFlight[inFlightKey] = request;
+  static Map<String, String?> storedProfileSync() {
+    final storage = AppStorage.instance;
+    return <String, String?>{
+      'fullName': storage.getStringSync(StorageKeys.fullName),
+      'studentId': storage.getStringSync(StorageKeys.studentId),
+      'studentEmail': storage.getStringSync(StorageKeys.studentEmail),
+      'shortCode': storage.getStringSync(StorageKeys.shortCode),
+      'program': storage.getStringSync(StorageKeys.program),
+      'departmentName': storage.getStringSync(StorageKeys.departmentName),
+      'currentSemester': storage.getStringSync(StorageKeys.currentSemester),
+      'currentSessionSemesterId': storage.getStringSync(
+        StorageKeys.currentSessionSemesterId,
+      ),
+      'cgpa': storage.getStringSync(StorageKeys.cgpa),
+      'earnedCredit': storage.getStringSync(StorageKeys.earnedCredit),
+      'mobileNo': storage.getStringSync(StorageKeys.mobileNo),
+      'photoFilePath': storage.getStringSync(StorageKeys.photoFilePath),
+    };
+  }
+
+  Future<Map<String, String?>?> fetchProfile({bool fromGet = false}) {
+    return _profileFetches
+        .putIfAbsent(fromGet, PreloadCache<Map<String, String?>?>.new)
+        .share(() => _fetchProfileInternal(fromGet: fromGet));
+  }
+
+  bool _hasMissingMiscFields(Map<String, String?>? profile) {
+    if (profile == null) return true;
+    return _miscKeys.any((key) {
+      final value = profile[key];
+      return value == null || value.isEmpty;
+    });
+  }
+
+  Future<dynamic> _fetchProfileJson(String path, String operation) async {
     try {
-      return await request;
-    } finally {
-      _profileFetchInFlight.remove(inFlightKey);
+      final response = await _client.authenticatedGet(
+        '${ApiConfig.connectApiBase}$path',
+        cacheDuration: CacheDurations.profileOverview,
+      );
+      return jsonDecode(response.body);
+    } catch (error) {
+      _recordProfileError(operation, error);
+      return null;
     }
   }
 
   Future<Map<String, String?>?> _fetchProfileInternal({
     required bool fromGet,
   }) async {
+    final cachedProfile = await getProfile(fromFetch: true);
+    final needsDetails = fromGet || _hasMissingMiscFields(cachedProfile);
+    final miscFuture = needsDetails
+        ? _fetchProfileJson(
+            ApiConfig.miscellaneousInfoPath,
+            'Profile miscellaneous data fetch',
+          )
+        : null;
+    final studentFuture = needsDetails
+        ? _fetchProfileJson(ApiConfig.studentPath, 'Student identity fetch')
+        : null;
+
+    await _syncPortfolios(fromGet: fromGet);
+
+    final profile = await getProfile(fromFetch: true);
+    if (profile == null) return null;
+
+    if (miscFuture != null) {
+      try {
+        await _applyMiscData(await miscFuture, profile);
+      } catch (error) {
+        _recordProfileError('Profile miscellaneous data fetch', error);
+      }
+    }
+    if (studentFuture != null) {
+      try {
+        await _applyStudentData(await studentFuture, profile);
+      } catch (error) {
+        _recordProfileError('Student identity fetch', error);
+      }
+    }
+    return profile;
+  }
+
+  Future<void> _syncPortfolios({required bool fromGet}) async {
     final url = '${ApiConfig.connectApiBase}${ApiConfig.profilePath}';
     final repo = RepositoryCache.instance;
 
@@ -284,160 +353,125 @@ class ProfileService {
     } catch (error) {
       _recordProfileError('Profile fetch', error);
     }
+  }
 
-    final profile = await getProfile(fromFetch: true);
-
-    if (profile == null) return null;
-
-    final anyMiscMissing = _miscKeys.any((key) {
-      final value = profile[key];
-      return value == null || value.isEmpty;
-    });
-
-    if (anyMiscMissing || fromGet) {
-      try {
-        final miscUrl =
-            '${ApiConfig.connectApiBase}${ApiConfig.miscellaneousInfoPath}';
-        final miscResponse = await _client.authenticatedGet(
-          miscUrl,
-          cacheDuration: CacheDurations.profileOverview,
-        );
-        final miscData = jsonDecode(miscResponse.body);
-        if (miscData is Map<String, dynamic>) {
-          final resolvedBloodGroup = _normalizeBloodType(
-            bloodGroup: miscData['bloodGroup'],
-            bloodGroupName: miscData['bloodGroupName'],
-            bloodType: miscData['bloodType'],
-          );
-          final updates = <String, String>{
-            if (resolvedBloodGroup.isNotEmpty) 'bloodGroup': resolvedBloodGroup,
-            'permanentAddress': miscData['permanentAddress']?.toString() ?? '',
-            'presentAddress': miscData['presentAddress']?.toString() ?? '',
-            'isBothAddressSame': _boolToYesNo(miscData['isBothAddressSame']),
-            'permanentUpazilaName':
-                miscData['permanentUpazilaName']?.toString() ?? '',
-            'presentUpazilaName':
-                miscData['presentUpazilaName']?.toString() ?? '',
-            'fatherName': miscData['fatherName']?.toString() ?? '',
-            'fatherMobileNo': miscData['fatherMobileNo']?.toString() ?? '',
-            'fatherEmail': miscData['fatherEmail']?.toString() ?? '',
-            'motherName': miscData['motherName']?.toString() ?? '',
-            'motherMobileNo': miscData['motherMobileNo']?.toString() ?? '',
-            'motherEmail': miscData['motherEmail']?.toString() ?? '',
-            'localGuardianName':
-                miscData['localGuardianName']?.toString() ?? '',
-            'localGuardianMobileNo':
-                miscData['localGuardianMobileNo']?.toString() ?? '',
-            'localGuardianEmail':
-                miscData['localGuardianEmail']?.toString() ?? '',
-            'sponsoredBy': miscData['sponsoredBy']?.toString() ?? '',
-            'countryName': miscData['countryName']?.toString() ?? '',
-            'hobbies': miscData['hobbies']?.toString() ?? '',
-            'awards': miscData['awards']?.toString() ?? '',
-            'hasDisability': _boolToYesNo(miscData['hasDisability']),
-            'disabilityDetails':
-                miscData['disabilityDetails']?.toString() ?? '',
-          };
-          await repo.writeStringMap(updates);
-          for (final entry in updates.entries) {
-            profile[entry.key] = entry.value;
-          }
-          await Future.wait<void>([
-            for (final entry in <String, String>{
-              StorageKeys.permanentAddress:
-                  miscData['permanentAddress']?.toString() ?? '',
-              StorageKeys.presentAddress:
-                  miscData['presentAddress']?.toString() ?? '',
-              StorageKeys.isBothAddressSame: _boolToYesNo(
-                miscData['isBothAddressSame'],
-              ),
-              StorageKeys.permanentUpazilaName:
-                  miscData['permanentUpazilaName']?.toString() ?? '',
-              StorageKeys.presentUpazilaName:
-                  miscData['presentUpazilaName']?.toString() ?? '',
-              StorageKeys.fatherName: miscData['fatherName']?.toString() ?? '',
-              StorageKeys.fatherMobileNo:
-                  miscData['fatherMobileNo']?.toString() ?? '',
-              StorageKeys.fatherEmail:
-                  miscData['fatherEmail']?.toString() ?? '',
-              StorageKeys.motherName: miscData['motherName']?.toString() ?? '',
-              StorageKeys.motherMobileNo:
-                  miscData['motherMobileNo']?.toString() ?? '',
-              StorageKeys.motherEmail:
-                  miscData['motherEmail']?.toString() ?? '',
-              StorageKeys.localGuardianName:
-                  miscData['localGuardianName']?.toString() ?? '',
-              StorageKeys.localGuardianMobileNo:
-                  miscData['localGuardianMobileNo']?.toString() ?? '',
-              StorageKeys.localGuardianEmail:
-                  miscData['localGuardianEmail']?.toString() ?? '',
-              StorageKeys.sponsoredBy:
-                  miscData['sponsoredBy']?.toString() ?? '',
-              StorageKeys.countryName:
-                  miscData['countryName']?.toString() ?? '',
-              StorageKeys.hobbies: miscData['hobbies']?.toString() ?? '',
-              StorageKeys.awards: miscData['awards']?.toString() ?? '',
-              StorageKeys.hasDisability: _boolToYesNo(
-                miscData['hasDisability'],
-              ),
-              StorageKeys.disabilityDetails:
-                  miscData['disabilityDetails']?.toString() ?? '',
-            }.entries)
-              AppStorage.instance.setString(entry.key, entry.value),
-          ]);
-        }
-      } catch (error) {
-        _recordProfileError('Profile miscellaneous data fetch', error);
+  Future<void> _applyMiscData(
+    dynamic miscData,
+    Map<String, String?> profile,
+  ) async {
+    final repo = RepositoryCache.instance;
+    if (miscData is Map<String, dynamic>) {
+      final resolvedBloodGroup = _normalizeBloodType(
+        bloodGroup: miscData['bloodGroup'],
+        bloodGroupName: miscData['bloodGroupName'],
+        bloodType: miscData['bloodType'],
+      );
+      final updates = <String, String>{
+        if (resolvedBloodGroup.isNotEmpty) 'bloodGroup': resolvedBloodGroup,
+        'permanentAddress': miscData['permanentAddress']?.toString() ?? '',
+        'presentAddress': miscData['presentAddress']?.toString() ?? '',
+        'isBothAddressSame': _boolToYesNo(miscData['isBothAddressSame']),
+        'permanentUpazilaName':
+            miscData['permanentUpazilaName']?.toString() ?? '',
+        'presentUpazilaName': miscData['presentUpazilaName']?.toString() ?? '',
+        'fatherName': miscData['fatherName']?.toString() ?? '',
+        'fatherMobileNo': miscData['fatherMobileNo']?.toString() ?? '',
+        'fatherEmail': miscData['fatherEmail']?.toString() ?? '',
+        'motherName': miscData['motherName']?.toString() ?? '',
+        'motherMobileNo': miscData['motherMobileNo']?.toString() ?? '',
+        'motherEmail': miscData['motherEmail']?.toString() ?? '',
+        'localGuardianName': miscData['localGuardianName']?.toString() ?? '',
+        'localGuardianMobileNo':
+            miscData['localGuardianMobileNo']?.toString() ?? '',
+        'localGuardianEmail': miscData['localGuardianEmail']?.toString() ?? '',
+        'sponsoredBy': miscData['sponsoredBy']?.toString() ?? '',
+        'countryName': miscData['countryName']?.toString() ?? '',
+        'hobbies': miscData['hobbies']?.toString() ?? '',
+        'awards': miscData['awards']?.toString() ?? '',
+        'hasDisability': _boolToYesNo(miscData['hasDisability']),
+        'disabilityDetails': miscData['disabilityDetails']?.toString() ?? '',
+      };
+      await repo.writeStringMap(updates);
+      for (final entry in updates.entries) {
+        profile[entry.key] = entry.value;
       }
-
-      try {
-        final studentUrl =
-            '${ApiConfig.connectApiBase}${ApiConfig.studentPath}';
-        final studentResponse = await _client.authenticatedGet(
-          studentUrl,
-          cacheDuration: CacheDurations.profileOverview,
-        );
-        final studentData = jsonDecode(studentResponse.body);
-        if (studentData is Map<String, dynamic>) {
-          final updates = <String, String>{
-            'dateOfBirth': studentData['dateOfBirth']?.toString() ?? '',
-            'nationalIdNo': studentData['nationalIdNo']?.toString() ?? '',
-            'passportNo': studentData['passportNo']?.toString() ?? '',
-            'birthCertificateNo':
-                studentData['birthCertificateNo']?.toString() ?? '',
-            'emergencyContactNo':
-                studentData['emergencyContactNo']?.toString() ?? '',
-            'emergencyContactName':
-                studentData['emergencyContactName']?.toString() ?? '',
-          };
-          await repo.writeStringMap(updates);
-          for (final entry in updates.entries) {
-            profile[entry.key] = entry.value;
-          }
-          await Future.wait<void>([
-            for (final entry in <String, String>{
-              StorageKeys.dateOfBirth:
-                  studentData['dateOfBirth']?.toString() ?? '',
-              StorageKeys.nationalIdNo:
-                  studentData['nationalIdNo']?.toString() ?? '',
-              StorageKeys.passportNo:
-                  studentData['passportNo']?.toString() ?? '',
-              StorageKeys.birthCertificateNo:
-                  studentData['birthCertificateNo']?.toString() ?? '',
-              StorageKeys.emergencyContactNo:
-                  studentData['emergencyContactNo']?.toString() ?? '',
-              StorageKeys.emergencyContactName:
-                  studentData['emergencyContactName']?.toString() ?? '',
-            }.entries)
-              AppStorage.instance.setString(entry.key, entry.value),
-          ]);
-        }
-      } catch (error) {
-        _recordProfileError('Student identity fetch', error);
-      }
+      await Future.wait<void>([
+        for (final entry in <String, String>{
+          StorageKeys.permanentAddress:
+              miscData['permanentAddress']?.toString() ?? '',
+          StorageKeys.presentAddress:
+              miscData['presentAddress']?.toString() ?? '',
+          StorageKeys.isBothAddressSame: _boolToYesNo(
+            miscData['isBothAddressSame'],
+          ),
+          StorageKeys.permanentUpazilaName:
+              miscData['permanentUpazilaName']?.toString() ?? '',
+          StorageKeys.presentUpazilaName:
+              miscData['presentUpazilaName']?.toString() ?? '',
+          StorageKeys.fatherName: miscData['fatherName']?.toString() ?? '',
+          StorageKeys.fatherMobileNo:
+              miscData['fatherMobileNo']?.toString() ?? '',
+          StorageKeys.fatherEmail: miscData['fatherEmail']?.toString() ?? '',
+          StorageKeys.motherName: miscData['motherName']?.toString() ?? '',
+          StorageKeys.motherMobileNo:
+              miscData['motherMobileNo']?.toString() ?? '',
+          StorageKeys.motherEmail: miscData['motherEmail']?.toString() ?? '',
+          StorageKeys.localGuardianName:
+              miscData['localGuardianName']?.toString() ?? '',
+          StorageKeys.localGuardianMobileNo:
+              miscData['localGuardianMobileNo']?.toString() ?? '',
+          StorageKeys.localGuardianEmail:
+              miscData['localGuardianEmail']?.toString() ?? '',
+          StorageKeys.sponsoredBy: miscData['sponsoredBy']?.toString() ?? '',
+          StorageKeys.countryName: miscData['countryName']?.toString() ?? '',
+          StorageKeys.hobbies: miscData['hobbies']?.toString() ?? '',
+          StorageKeys.awards: miscData['awards']?.toString() ?? '',
+          StorageKeys.hasDisability: _boolToYesNo(miscData['hasDisability']),
+          StorageKeys.disabilityDetails:
+              miscData['disabilityDetails']?.toString() ?? '',
+        }.entries)
+          AppStorage.instance.setString(entry.key, entry.value),
+      ]);
     }
+  }
 
-    return profile;
+  Future<void> _applyStudentData(
+    dynamic studentData,
+    Map<String, String?> profile,
+  ) async {
+    final repo = RepositoryCache.instance;
+    if (studentData is Map<String, dynamic>) {
+      final updates = <String, String>{
+        'dateOfBirth': studentData['dateOfBirth']?.toString() ?? '',
+        'nationalIdNo': studentData['nationalIdNo']?.toString() ?? '',
+        'passportNo': studentData['passportNo']?.toString() ?? '',
+        'birthCertificateNo':
+            studentData['birthCertificateNo']?.toString() ?? '',
+        'emergencyContactNo':
+            studentData['emergencyContactNo']?.toString() ?? '',
+        'emergencyContactName':
+            studentData['emergencyContactName']?.toString() ?? '',
+      };
+      await repo.writeStringMap(updates);
+      for (final entry in updates.entries) {
+        profile[entry.key] = entry.value;
+      }
+      await Future.wait<void>([
+        for (final entry in <String, String>{
+          StorageKeys.dateOfBirth: studentData['dateOfBirth']?.toString() ?? '',
+          StorageKeys.nationalIdNo:
+              studentData['nationalIdNo']?.toString() ?? '',
+          StorageKeys.passportNo: studentData['passportNo']?.toString() ?? '',
+          StorageKeys.birthCertificateNo:
+              studentData['birthCertificateNo']?.toString() ?? '',
+          StorageKeys.emergencyContactNo:
+              studentData['emergencyContactNo']?.toString() ?? '',
+          StorageKeys.emergencyContactName:
+              studentData['emergencyContactName']?.toString() ?? '',
+        }.entries)
+          AppStorage.instance.setString(entry.key, entry.value),
+      ]);
+    }
   }
 
   Future<Map<String, String?>?> getProfile({bool fromFetch = false}) async {
@@ -495,8 +529,7 @@ class AdvisingService {
   }) async {
     final asyncPrefs = AppStorage.instance;
     final repo = RepositoryCache.instance;
-    String? studentId = await repo.readString('studentId');
-    studentId ??= await asyncPrefs.getString('studentId');
+    String? studentId = await asyncPrefs.getString(StorageKeys.studentId);
     if (studentId == null || studentId.isEmpty) {
       final profile = await ProfileService().getProfile(fromFetch: true);
       studentId = profile?['studentId'];
@@ -889,7 +922,7 @@ class PaymentService {
 
       var streamedResponse = await sendRequest(token);
       if (streamedResponse.statusCode == 401) {
-        token = await ApiClient().getAccessToken(retries: 3);
+        token = await ApiClient().getAccessToken();
         if (token != null && token.isNotEmpty) {
           streamedResponse = await sendRequest(token);
         }
@@ -1112,21 +1145,7 @@ class PayslipDetail {
     if (deadline == null || deadline!.isEmpty) return '';
     try {
       final dt = DateTime.parse(deadline!);
-      final months = [
-        'January',
-        'February',
-        'March',
-        'April',
-        'May',
-        'June',
-        'July',
-        'August',
-        'September',
-        'October',
-        'November',
-        'December',
-      ];
-      return '${dt.day} ${months[dt.month - 1]} ${dt.year}';
+      return AppTime.formatDayMonthYear(dt);
     } catch (_) {
       return deadline!;
     }

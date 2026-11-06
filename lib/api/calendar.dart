@@ -10,7 +10,6 @@ import 'package:preconnect/api/schedule.dart';
 import 'package:preconnect/model/calendar_info.dart';
 import 'package:preconnect/features/schedule/application/session_resolver.dart';
 import 'package:preconnect/tools/app_log.dart';
-import 'package:preconnect/tools/app_storage.dart';
 import 'package:preconnect/tools/holiday.dart';
 
 class CalendarService {
@@ -40,14 +39,10 @@ class CalendarService {
   }
 
   CalendarFeed? getCachedCalendarSync() {
-    final cachedJson = AppStorage.instance.getStringSync(_cacheKey);
-    if (cachedJson != null && cachedJson.trim().isNotEmpty) {
-      try {
-        final decoded = jsonDecode(cachedJson);
-        return CalendarFeed.fromJson(decoded);
-      } catch (_) {}
-    }
-    return null;
+    return RepositoryCache.instance.readJsonSync(
+      _cacheKey,
+      (decoded) => CalendarFeed.fromJson(decoded),
+    );
   }
 
   Future<CalendarFeed?> fetchCalendar({

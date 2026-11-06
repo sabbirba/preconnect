@@ -143,46 +143,25 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
   }
 
   static _HomeData? _loadHomeDashboardSnapshotSyncHelper() {
+    final cached = RepositoryCache.instance.readJsonSync(
+      _homeDashboardSnapshotCacheKey,
+      (decoded) => decoded is Map
+          ? _HomeData.fromCache(Map<String, dynamic>.from(decoded))
+          : null,
+    );
+    if (cached != null) {
+      return _withCurrentVisibilitySync(cached);
+    }
     try {
-      final raw = AppStorage.instance.getStringSync(
-        _homeDashboardSnapshotCacheKey,
-      );
-      if (raw != null && raw.isNotEmpty) {
-        final decoded = jsonDecode(raw);
-        if (decoded is Map) {
-          final cached = _HomeData.fromCache(
-            Map<String, dynamic>.from(decoded),
-          );
-          if (cached != null) {
-            return _withCurrentVisibilitySync(cached);
-          }
-        }
-      }
-    } catch (_) {}
-    try {
-      final storage = AppStorage.instance;
-      final fullName = storage.getStringSync(StorageKeys.fullName);
-      final studentId = storage.getStringSync(StorageKeys.studentId);
+      final profile = ProfileService.storedProfileSync();
+      final fullName = profile['fullName'];
+      final studentId = profile['studentId'];
       if ((fullName != null && fullName.trim().isNotEmpty) ||
           (studentId != null && studentId.trim().isNotEmpty)) {
-        final profile = <String, String?>{
-          'fullName': fullName,
-          'studentId': studentId,
-          'studentEmail': storage.getStringSync(StorageKeys.studentEmail),
-          'shortCode': storage.getStringSync(StorageKeys.shortCode),
-          'program': storage.getStringSync(StorageKeys.program),
-          'departmentName': storage.getStringSync(StorageKeys.departmentName),
-          'currentSemester': storage.getStringSync(StorageKeys.currentSemester),
-          'currentSessionSemesterId': storage.getStringSync(
-            StorageKeys.currentSessionSemesterId,
-          ),
-          'cgpa': storage.getStringSync(StorageKeys.cgpa),
-          'earnedCredit': storage.getStringSync(StorageKeys.earnedCredit),
-          'mobileNo': storage.getStringSync(StorageKeys.mobileNo),
-          'photoFilePath': storage.getStringSync(StorageKeys.photoFilePath),
-        };
         final photoUrl = ApiConfig.photoUrl(profile['photoFilePath']);
-        final scheduleJson = storage.getStringSync(StorageKeys.studentSchedule);
+        final scheduleJson = AppStorage.instance.getStringSync(
+          StorageKeys.studentSchedule,
+        );
         final sections = section.parseSectionsFromScheduleJson(scheduleJson);
         final entries = _ScheduleEntry.buildEntries(
           sections: sections,

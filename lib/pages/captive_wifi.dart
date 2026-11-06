@@ -73,8 +73,8 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
     _iosProbeTimer?.cancel();
     _iosProbeTimer = PollingTimer(const Duration(seconds: 10), (_) async {
       if (!mounted || _isConnecting || _isDisconnecting) return;
-      final onCampus = await CaptiveWifiHttp.checkIfOnCampusNetwork();
-      final portalUri = await CaptiveWifiHttp.detectCaptivePortal();
+      final (onCampus, portalUri) =
+          await CaptiveWifiHttp.detectCampusAndPortal();
       if (mounted) {
         setState(() {
           _isOnCampusNetwork = onCampus;
@@ -140,8 +140,8 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
       unawaited(_checkPostConnectionEvent());
 
       if (IosNetworkAssist.isSupported) {
-        final onCampus = await CaptiveWifiHttp.checkIfOnCampusNetwork();
-        final portalUri = await CaptiveWifiHttp.detectCaptivePortal();
+        final (onCampus, portalUri) =
+            await CaptiveWifiHttp.detectCampusAndPortal();
         if (mounted) {
           setState(() {
             _isOnCampusNetwork = onCampus;
@@ -173,7 +173,6 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
                 }
                 return st;
               },
-              isSuccess: (st) => st != null && (!st.captive && st.validated),
             );
 
         if (status != null) {

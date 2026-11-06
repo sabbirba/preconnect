@@ -1,3 +1,7 @@
+import 'dart:convert';
+
+import 'package:preconnect/tools/json_decode.dart';
+import 'package:preconnect/tools/app_storage.dart';
 import 'package:preconnect/api/preferences_store.dart';
 
 class RepositoryCache {
@@ -9,6 +13,29 @@ class RepositoryCache {
 
   Future<String?> readString(String key) {
     return _store.getString(key);
+  }
+
+  T? readJsonSync<T>(String key, T? Function(dynamic decoded) decode) {
+    final raw = AppStorage.instance.getStringSync(key);
+    if (raw == null || raw.trim().isEmpty) return null;
+    try {
+      return decode(jsonDecode(raw));
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<T?> readJson<T>(
+    String key,
+    T? Function(dynamic decoded) decode,
+  ) async {
+    final raw = await readString(key);
+    if (raw == null || raw.trim().isEmpty) return null;
+    try {
+      return decode(await computeJsonDecode(raw));
+    } catch (_) {
+      return null;
+    }
   }
 
   Future<int?> readInt(String key) {

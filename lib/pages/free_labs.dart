@@ -791,26 +791,7 @@ class _FreeLabsPageState extends State<FreeLabsPage> {
 
   String _headerDayLabel() {
     final display = _activeDate;
-    return '${formatWeekdayTitle(_activeDayName)}, ${display.day} ${_monthLabel(display.month)}';
-  }
-
-  String _monthLabel(int month) {
-    const months = <String>[
-      'January',
-      'February',
-      'March',
-      'April',
-      'May',
-      'June',
-      'July',
-      'August',
-      'September',
-      'October',
-      'November',
-      'December',
-    ];
-    if (month < 1 || month > 12) return '';
-    return months[month - 1];
+    return '${formatWeekdayTitle(_activeDayName)}, ${AppTime.formatDayMonth(display)}';
   }
 
   Future<void> _showNextDayLabs() async {
@@ -824,8 +805,7 @@ class _FreeLabsPageState extends State<FreeLabsPage> {
   Widget _buildAfterHoursPromptState() {
     final nextDate = _nextLabsDate();
     final nextDay = formatWeekdayTitle(DateFormat('EEEE').format(nextDate));
-    final nextDateLabel =
-        '$nextDay, ${nextDate.day} ${_monthLabel(nextDate.month)}';
+    final nextDateLabel = '$nextDay, ${AppTime.formatDayMonth(nextDate)}';
     return AppRefreshList(
       onRefresh: _refresh,
       controller: _scrollController,
@@ -1047,10 +1027,7 @@ class _FreeLabsPageState extends State<FreeLabsPage> {
   }
 
   String _formatTimeOfDay(TimeOfDay time) {
-    final normalizedHour = time.hourOfPeriod == 0 ? 12 : time.hourOfPeriod;
-    final minute = time.minute.toString().padLeft(2, '0');
-    final suffix = time.period == DayPeriod.am ? 'AM' : 'PM';
-    return '$normalizedHour:$minute $suffix';
+    return AppTime.formatHourMinute(time.hour, time.minute);
   }
 
   String _roomHeaderSubtitle(_FreeRoomSlot slot) {

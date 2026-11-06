@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
-import 'package:flutter/foundation.dart' show compute;
+import 'package:preconnect/tools/json_decode.dart';
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
 import 'package:preconnect/api/api_config.dart';
@@ -72,22 +72,11 @@ class _StudentProfileState extends State<StudentProfile>
       _shortCodesDisplay = snapshot.shortCodesDisplay;
       return;
     }
-    final storage = AppStorage.instance;
-    final fullName = storage.getStringSync(StorageKeys.fullName);
+    final storedProfile = ProfileService.storedProfileSync();
+    final fullName = storedProfile['fullName'];
     if (fullName != null && fullName.isNotEmpty) {
-      _profile = {
-        'fullName': fullName,
-        'studentId': storage.getStringSync(StorageKeys.studentId),
-        'studentEmail': storage.getStringSync(StorageKeys.studentEmail),
-        'program': storage.getStringSync(StorageKeys.program),
-        'departmentName': storage.getStringSync(StorageKeys.departmentName),
-        'cgpa': storage.getStringSync(StorageKeys.cgpa),
-        'earnedCredit': storage.getStringSync(StorageKeys.earnedCredit),
-        'mobileNo': storage.getStringSync(StorageKeys.mobileNo),
-      };
-      _photoUrl = ApiConfig.photoUrl(
-        storage.getStringSync(StorageKeys.photoFilePath),
-      );
+      _profile = storedProfile;
+      _photoUrl = ApiConfig.photoUrl(storedProfile['photoFilePath']);
     }
   }
 
@@ -151,10 +140,10 @@ class _StudentProfileState extends State<StudentProfile>
     }
   }
 
-  static List<dynamic> _decodeListStatic(String? raw) {
+  static Future<List<dynamic>> _decodeList(String? raw) async {
     if (raw == null || raw.trim().isEmpty) return const [];
     try {
-      final decoded = jsonDecode(raw);
+      final decoded = await computeJsonDecode(raw);
       if (decoded is List<dynamic>) return decoded;
       if (decoded is Map<String, dynamic>) {
         final data = decoded['data'];
@@ -168,8 +157,8 @@ class _StudentProfileState extends State<StudentProfile>
     }
   }
 
-  static List<PaymentInfo> _parsePaymentsIsolate(String? raw) {
-    final paymentsJson = _decodeListStatic(raw);
+  static Future<List<PaymentInfo>> _parsePayments(String? raw) async {
+    final paymentsJson = await _decodeList(raw);
     return paymentsJson
         .map<PaymentInfo?>((item) {
           try {
@@ -185,8 +174,8 @@ class _StudentProfileState extends State<StudentProfile>
       ..sort(_comparePayments);
   }
 
-  static List<AttendanceInfo> _parseAttendanceIsolate(String? raw) {
-    final attendanceJson = _decodeListStatic(raw);
+  static Future<List<AttendanceInfo>> _parseAttendance(String? raw) async {
+    final attendanceJson = await _decodeList(raw);
     return attendanceJson
         .map<AttendanceInfo?>((item) {
           try {
@@ -252,7 +241,7 @@ class _StudentProfileState extends State<StudentProfile>
                 cacheDuration: Duration.zero,
               )
             : await PaymentService().getPaymentInfo();
-        return await compute(_parsePaymentsIsolate, raw);
+        return await _parsePayments(raw);
       } catch (_) {
         return const <PaymentInfo>[];
       }
@@ -264,7 +253,7 @@ class _StudentProfileState extends State<StudentProfile>
                 cacheDuration: Duration.zero,
               )
             : await AttendanceService().getAttendanceInfo();
-        return await compute(_parseAttendanceIsolate, raw);
+        return await _parseAttendance(raw);
       } catch (_) {
         return const <AttendanceInfo>[];
       }

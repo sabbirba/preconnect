@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:isolate';
 import 'package:preconnect/api/api_client.dart';
 import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/model/section_info.dart'
@@ -9,8 +8,8 @@ import 'package:preconnect/model/seat_timetable.dart';
 import 'package:flutter/foundation.dart';
 import 'package:preconnect/api/repository_cache.dart';
 import 'package:preconnect/tools/app_log.dart';
-import 'package:preconnect/tools/app_storage.dart';
 import 'package:preconnect/tools/preconnect_constants.dart';
+import 'package:preconnect/tools/preload_cache.dart';
 
 class SeatStatusService {
   static final SeatStatusService _instance = SeatStatusService._();
@@ -19,22 +18,24 @@ class SeatStatusService {
 
   final ApiClient _client = ApiClient();
 
-  static Map<int, SeatStatusDetailsResponse>? _cachedDetails;
-  static Future<Map<int, SeatStatusDetailsResponse>>? _preloadFuture;
+  static final PreloadCache<Map<int, SeatStatusDetailsResponse>> _details =
+      PreloadCache<Map<int, SeatStatusDetailsResponse>>();
 
-  Map<int, SeatStatusDetailsResponse>? get cachedDetails {
-    if (_cachedDetails == null) {
-      final cachedJson = AppStorage.instance.getStringSync(
-        PreConnectStorageKeys.seatStatusCacheJson,
-      );
-      if (cachedJson != null && cachedJson.trim().isNotEmpty) {
-        try {
-          final decoded = jsonDecode(cachedJson);
-          _cachedDetails = _parseConnectJson(decoded);
-        } catch (_) {}
-      }
+  Map<int, SeatStatusDetailsResponse>? get cachedDetails => _details.value;
+
+  Future<Map<int, SeatStatusDetailsResponse>?> loadCachedDetails() async {
+    final memory = _details.value;
+    if (memory != null) return memory;
+    final cachedJson = await RepositoryCache.instance.readString(
+      PreConnectStorageKeys.seatStatusCacheJson,
+    );
+    if (cachedJson == null || cachedJson.trim().isEmpty) return null;
+    try {
+      final parsed = await _decodeSections(cachedJson);
+      return _details.value ??= parsed;
+    } catch (_) {
+      return null;
     }
-    return _cachedDetails;
   }
 
   Future<List<String>> fetchArchiveSemesters() async {
@@ -86,58 +87,34 @@ class SeatStatusService {
       acceptedStatusCodes: const <int>{200},
       cacheDuration: Duration.zero,
     );
-    if (jsonDecode(response.body) is! List) {
+    final sections = await _parseSectionsOffThread(response.body);
+    if (sections == null) {
       throw const FormatException('Invalid archived sections');
     }
-    return compute(_parseJsonStringInIsolate, response.body);
+    return sections;
   }
 
   static Future<void> preload() async {
     await SeatStatusService().preloadData();
   }
 
-  Future<Map<int, SeatStatusDetailsResponse>> fetchRealtimeSections() {
-    return _loadDetailsRealtimeOnly(forceRefresh: true);
+  Future<Map<int, SeatStatusDetailsResponse>> fetchRealtimeSections({
+    bool forceRefresh = false,
+  }) {
+    return _loadDetailsRealtimeOnly(forceRefresh: forceRefresh);
   }
 
   Future<Map<int, SeatStatusDetailsResponse>> preloadData({
     bool forceRefresh = false,
   }) async {
-    if (!forceRefresh && _cachedDetails != null) {
-      return _cachedDetails!;
-    }
     if (!forceRefresh) {
-      final cachedJson = await RepositoryCache.instance.readString(
-        PreConnectStorageKeys.seatStatusCacheJson,
-      );
-      if (cachedJson != null && cachedJson.trim().isNotEmpty) {
-        try {
-          final parsed = kIsWeb
-              ? _parseJsonStringInIsolate(cachedJson)
-              : await Isolate.run(() => _parseJsonStringInIsolate(cachedJson));
-          _cachedDetails = parsed;
-          return parsed;
-        } catch (_) {}
-      }
+      final cached = await loadCachedDetails();
+      if (cached != null) return cached;
     }
-    if (!forceRefresh) {
-      final inFlight = _preloadFuture;
-      if (inFlight != null) {
-        return inFlight;
-      }
-    }
-
-    final future = _loadDetails(forceRefresh: forceRefresh);
-    _preloadFuture = future;
-    try {
-      final details = await future;
-      _cachedDetails = details;
-      return details;
-    } finally {
-      if (identical(_preloadFuture, future)) {
-        _preloadFuture = null;
-      }
-    }
+    return _details.load(
+      forceRefresh: forceRefresh,
+      fetch: () => _loadDetails(forceRefresh: forceRefresh),
+    );
   }
 
   Future<Map<int, SeatStatusDetailsResponse>> _loadDetails({
@@ -146,8 +123,8 @@ class SeatStatusService {
     try {
       return await _loadDetailsRealtimeOnly(forceRefresh: forceRefresh);
     } catch (_) {
-      final cached = cachedDetails;
-      return cached ?? const <int, SeatStatusDetailsResponse>{};
+      return await loadCachedDetails() ??
+          const <int, SeatStatusDetailsResponse>{};
     }
   }
 
@@ -161,14 +138,14 @@ class SeatStatusService {
     );
 
     try {
-      final parsed = await compute(_parseJsonStringInIsolate, response.body);
+      final parsed = await _decodeSections(response.body);
 
       await RepositoryCache.instance.writeString(
         PreConnectStorageKeys.seatStatusCacheJson,
         response.body,
       );
 
-      _cachedDetails = parsed;
+      _details.value = parsed;
       unawaited(
         AppLog.write('Seat Status: Synced ${parsed.length} sections from API'),
       );
@@ -185,20 +162,20 @@ class SeatStatusService {
     }
   }
 
-  Map<int, SeatStatusDetailsResponse> _parseConnectJson(dynamic raw) {
-    if (raw case final List<dynamic> list) {
-      final result = <int, SeatStatusDetailsResponse>{};
-      for (final item in list.whereType<Map>()) {
-        try {
-          final parsed = SeatStatusDetailsResponse.fromJson(
-            item.cast<String, dynamic>(),
-          );
-          result[parsed.sectionId] = parsed;
-        } catch (_) {}
-      }
-      return result;
-    }
-    return const <int, SeatStatusDetailsResponse>{};
+  static Future<Map<int, SeatStatusDetailsResponse>> _decodeSections(
+    String body,
+  ) async {
+    return await _parseSectionsOffThread(body) ??
+        const <int, SeatStatusDetailsResponse>{};
+  }
+
+  static Future<Map<int, SeatStatusDetailsResponse>?> _parseSectionsOffThread(
+    String body,
+  ) {
+    return compute<String, Map<int, SeatStatusDetailsResponse>?>(
+      _parseSectionList,
+      body,
+    );
   }
 }
 
@@ -448,14 +425,19 @@ String? _toNullableString(dynamic value) {
   return parsed;
 }
 
-Map<int, SeatStatusDetailsResponse> _parseJsonStringInIsolate(String jsonStr) {
+Map<int, SeatStatusDetailsResponse>? _parseSectionList(String jsonStr) {
   final decoded = jsonDecode(jsonStr);
-  if (decoded is! List) return const <int, SeatStatusDetailsResponse>{};
+  if (decoded is! List) return null;
+  return parseSeatSectionList(decoded);
+}
+
+Map<int, SeatStatusDetailsResponse> parseSeatSectionList(List<dynamic> list) {
   final result = <int, SeatStatusDetailsResponse>{};
-  for (final item in decoded.whereType<Map>()) {
-    final map = item.cast<String, dynamic>();
+  for (final item in list.whereType<Map>()) {
     try {
-      final parsed = SeatStatusDetailsResponse.fromJson(map);
+      final parsed = SeatStatusDetailsResponse.fromJson(
+        item.cast<String, dynamic>(),
+      );
       result[parsed.sectionId] = parsed;
     } catch (_) {}
   }

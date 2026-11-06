@@ -391,15 +391,7 @@ class AdvisingHelperService {
             _ => null,
           };
           if (list != null) {
-            final result = <int, SeatStatusDetailsResponse>{};
-            for (final item in list.whereType<Map>()) {
-              try {
-                final parsed = SeatStatusDetailsResponse.fromJson(
-                  item.cast<String, dynamic>(),
-                );
-                result[parsed.sectionId] = parsed;
-              } catch (_) {}
-            }
+            final result = parseSeatSectionList(list);
             if (result.isNotEmpty) return result;
           }
         }

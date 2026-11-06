@@ -7,6 +7,7 @@ import 'package:preconnect/features/schedule/application/session_resolver.dart';
 import 'package:preconnect/tools/app_log.dart';
 import 'package:preconnect/tools/app_logout.dart';
 import 'package:preconnect/tools/http/http_utils.dart';
+import 'package:preconnect/tools/reconnect_backoff.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
 
 class MercureService {
@@ -19,6 +20,10 @@ class MercureService {
   bool _isConnected = false;
   bool _isConnecting = false;
   Timer? _reconnectTimer;
+  final ReconnectBackoff _backoff = ReconnectBackoff(
+    min: const Duration(seconds: 3),
+    max: const Duration(seconds: 30),
+  );
 
   Future<void> connect() async {
     if (_isConnected || _isConnecting) return;
@@ -68,6 +73,7 @@ class MercureService {
       if (response.statusCode == 200) {
         _isConnected = true;
         _isConnecting = false;
+        _backoff.reset();
         unawaited(AppLog.write('Mercure SSE: Hub connected successfully'));
 
         _subscription = response.stream
@@ -114,21 +120,30 @@ class MercureService {
     }
   }
 
-  void _processMercureEvent(dynamic data) {
-    ApiClient().clearTransientCaches();
+  void _invalidateConnectData() {
+    final connectApiBase = ApiConfig.connectApiBase;
+    ApiClient().invalidateResponses((url) => url.startsWith(connectApiBase));
     resetCachedCurrentSessionSemesterId();
+  }
 
+  bool _isPrinterStatusEvent(dynamic data) {
+    return data is Map<String, dynamic> &&
+        (data.containsKey('status') ||
+            data.containsKey('activePrinters') ||
+            data.containsKey('queuedJobsCount') ||
+            data.containsKey('claimedJobsCount'));
+  }
+
+  void _processMercureEvent(dynamic data) {
+    if (_isPrinterStatusEvent(data)) {
+      unawaited(
+        AppLog.write('Mercure SSE: Received printer status update event'),
+      );
+      RefreshBus.instance.notify(reason: 'printer');
+      return;
+    }
+    _invalidateConnectData();
     if (data is Map<String, dynamic>) {
-      if (data.containsKey('status') ||
-          data.containsKey('activePrinters') ||
-          data.containsKey('queuedJobsCount') ||
-          data.containsKey('claimedJobsCount')) {
-        unawaited(
-          AppLog.write('Mercure SSE: Received printer status update event'),
-        );
-        RefreshBus.instance.notify(reason: 'printer');
-        return;
-      }
       final type = (data['type'] ?? data['event'] ?? data['topic'] ?? '')
           .toString();
       if (type.isNotEmpty) {
@@ -152,13 +167,14 @@ class MercureService {
 
   void _scheduleReconnect() {
     _reconnectTimer?.cancel();
-    _reconnectTimer = Timer(const Duration(seconds: 3), () {
+    _reconnectTimer = Timer(_backoff.next(), () {
       connect();
     });
   }
 
   void disconnect() {
     _reconnectTimer?.cancel();
+    _backoff.reset();
     _subscription?.cancel();
     _subscription = null;
     _client = null;

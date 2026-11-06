@@ -9,6 +9,23 @@ import 'package:preconnect/tools/extension_config.dart';
 
 enum TokenRefreshStatus { refreshed, invalidSession, retryableFailure }
 
+DateTime tokenExpiry(String? token) {
+  try {
+    final parts = token?.split('.') ?? const <String>[];
+    if (parts.length == 3 && parts.every((part) => part.isNotEmpty)) {
+      final decoded = parts
+          .map((part) => base64Url.decode(base64Url.normalize(part)))
+          .toList();
+      final payload = jsonDecode(utf8.decode(decoded[1]));
+      final seconds = payload is Map ? int.tryParse('${payload['exp']}') : null;
+      if (seconds != null) {
+        return DateTime.fromMillisecondsSinceEpoch(seconds * 1000);
+      }
+    }
+  } catch (_) {}
+  return DateTime.fromMillisecondsSinceEpoch(0);
+}
+
 Future<TokenRefreshStatus> refreshSessionTokens({
   required String refreshToken,
   required Future<void> Function(
@@ -18,9 +35,9 @@ Future<TokenRefreshStatus> refreshSessionTokens({
   )
   persistTokens,
   Future<void> Function()? clearTokens,
-  Duration timeout = const Duration(seconds: 12),
+  Duration timeout = const Duration(seconds: 6),
   http.Client? client,
-  int maxRetries = 3,
+  int maxRetries = 2,
 }) async {
   final cleanedRefreshToken = refreshToken.trim();
   if (cleanedRefreshToken.isEmpty) {

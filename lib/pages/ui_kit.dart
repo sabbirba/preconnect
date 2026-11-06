@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:math' as math;
 import 'dart:ui' as ui;
+import 'package:preconnect/api/api_config.dart';
 import 'package:flutter/foundation.dart'
     show ValueListenable, TargetPlatform, kIsWeb;
 import 'package:flutter/material.dart';
@@ -54,7 +55,7 @@ String formatTimeRange(String? start, String? end) {
 }
 
 String formatLongDate(DateTime date) {
-  return DateFormat('d MMMM, yyyy').format(date.toLocal());
+  return AppTime.formatLongDate(date.toLocal());
 }
 
 String formatRelativeDayLabel(
@@ -531,7 +532,7 @@ class ActionBannerCard extends StatelessWidget {
 Future<void> showFundingSupportSheet(BuildContext context) async {
   await openExternalUrl(
     context,
-    'https://preconnect.app/funding',
+    ApiConfig.fundingUrl,
     failureMessage: 'Unable to open funding link.',
   );
 }
@@ -700,8 +701,6 @@ const String kPreConnectRepositoryUrl =
     'https://github.com/sabbirba/preconnect';
 const String kPreConnectMaterialsIssueUrl =
     '$kPreConnectRepositoryUrl/issues/new?template=materials.yml';
-const String kPreConnectWebsiteUrl = 'https://preconnect.app';
-const String kPreConnectApiUrl = 'https://api.preconnect.app';
 const String kPreConnectEmail = 'mail@preconnect.app';
 
 class PreConnectDiscordIcon extends StatelessWidget {
@@ -1269,11 +1268,7 @@ class FundingSupportContent extends StatelessWidget {
                   color: AppPalette.primary,
                 ),
                 label: 'iOS Campaign',
-                onTap: () => openExternalUrl(
-                  context,
-                  'https://preconnect.app/funding',
-                  failureMessage: 'Unable to open funding link.',
-                ),
+                onTap: () => showFundingSupportSheet(context),
               ),
               _SponsorActionChip(
                 iconWidget: const Icon(

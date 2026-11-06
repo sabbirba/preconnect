@@ -64,7 +64,7 @@ class LibSyncApiClient extends http.BaseClient {
 
     _injectBrowserHeaders(request.headers);
     if (request.method != 'GET' && request.method != 'HEAD') {
-      request.headers['Origin'] ??= 'https://libsync.bracu.ac.bd';
+      request.headers['Origin'] ??= LibSyncConfig.apiBaseUrl;
     }
     final isSocialAuth = request.url.path.contains('/auth/social/google');
     if (!isSocialAuth) {
@@ -306,8 +306,8 @@ class LibSyncApiClient extends http.BaseClient {
         'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36';
     headers['Accept'] ??= 'application/json, text/plain, */*';
     headers['Accept-Language'] = 'en-US,en;q=0.9';
-    headers['Referer'] = 'https://libsync.bracu.ac.bd/login?next=%2Froom-book';
-    headers['Origin'] ??= 'https://libsync.bracu.ac.bd';
+    headers['Referer'] = '${LibSyncConfig.apiBaseUrl}/login?next=%2Froom-book';
+    headers['Origin'] ??= LibSyncConfig.apiBaseUrl;
     headers['X-Forwarded-For'] ??=
         '103.114.${Random().nextInt(250) + 1}.${Random().nextInt(250) + 1}';
   }
@@ -320,7 +320,7 @@ class LibSyncApiClient extends http.BaseClient {
         final refreshHeaders = {
           'Cookie': _buildCookieHeaderString(cookies),
           'Content-Type': 'application/json',
-          'Origin': 'https://libsync.bracu.ac.bd',
+          'Origin': LibSyncConfig.apiBaseUrl,
         };
         _injectBrowserHeaders(refreshHeaders);
         final refreshResponse = await _inner.post(
@@ -375,7 +375,7 @@ class LibSyncApiClient extends http.BaseClient {
       if (googleAccessToken != null && googleAccessToken.isNotEmpty) {
         final loginHeaders = {
           'Content-Type': 'application/json',
-          'Origin': 'https://libsync.bracu.ac.bd',
+          'Origin': LibSyncConfig.apiBaseUrl,
         };
         _injectBrowserHeaders(loginHeaders);
         final loginResponse = await _inner.post(

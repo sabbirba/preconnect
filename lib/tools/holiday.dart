@@ -1,7 +1,9 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:preconnect/api/api_client.dart';
+import 'package:preconnect/tools/preload_cache.dart';
+import 'package:preconnect/tools/cdn_cache.dart';
+import 'package:preconnect/api/repository_cache.dart';
 import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/api/notification.dart';
 import 'package:preconnect/tools/app_storage.dart';
@@ -255,22 +257,19 @@ class HolidayTiming {
   HolidayTiming._();
 
   static const String _storageKey = 'holiday_status_v1';
-  static const List<String> _statusUrls = <String>[ApiConfig.holidayStatusUrl];
+  static const String _payloadKey = 'holiday_payload_v1';
 
   static HolidayStatus? _cachedStatus;
-  static Future<HolidayStatus>? _inflight;
+  static final PreloadCache<HolidayStatus> _refresh =
+      PreloadCache<HolidayStatus>();
 
   static HolidayStatus get cachedStatus {
-    if (_cachedStatus != null) return _cachedStatus!;
-    final raw = AppStorage.instance.getStringSync(_storageKey);
-    if (raw != null && raw.isNotEmpty) {
-      try {
-        final decoded = jsonDecode(raw);
-        _cachedStatus = HolidayStatus.fromCache(decoded);
-        return _cachedStatus!;
-      } catch (_) {}
-    }
-    return HolidayStatus.empty;
+    return _cachedStatus ??=
+        RepositoryCache.instance.readJsonSync(
+          _storageKey,
+          HolidayStatus.fromCache,
+        ) ??
+        HolidayStatus.empty;
   }
 
   static Future<HolidayStatus> getTodayStatus({
@@ -279,35 +278,26 @@ class HolidayTiming {
     if (!forceRefresh && _cachedStatus != null) {
       return _cachedStatus!;
     }
-    if (_inflight != null) return _inflight!;
-
-    _inflight = _refreshStatus(forceRefresh: forceRefresh);
-    return _inflight!;
+    return _refresh.share(() => _refreshStatus(forceRefresh: forceRefresh));
   }
 
   static Future<HolidayStatus> _refreshStatus({
     required bool forceRefresh,
   }) async {
-    try {
-      final holidayResult = await _fetchTodayStatus(forceRefresh: forceRefresh);
-      final academicItems = await _fetchAcademicOffDays(
-        forceRefresh: forceRefresh,
-      );
-      final baseStatus = holidayResult.fromNetwork
-          ? holidayResult.value
-          : _fallbackOfflineStatus(DateTime.now());
-      final combined = _combineHolidays(baseStatus, academicItems);
-      _cachedStatus = combined;
-      unawaited(
-        AppStorage.instance.setString(
-          _storageKey,
-          jsonEncode(combined.toCacheJson()),
-        ),
-      );
-      return combined;
-    } finally {
-      _inflight = null;
-    }
+    final (holidayStatus, academicItems) = await (
+      _fetchTodayStatus(forceRefresh: forceRefresh),
+      _fetchAcademicOffDays(forceRefresh: forceRefresh),
+    ).wait;
+    final baseStatus = holidayStatus ?? _fallbackOfflineStatus(DateTime.now());
+    final combined = _combineHolidays(baseStatus, academicItems);
+    _cachedStatus = combined;
+    unawaited(
+      AppStorage.instance.setString(
+        _storageKey,
+        jsonEncode(combined.toCacheJson()),
+      ),
+    );
+    return combined;
   }
 
   static Future<List<HolidayItem>> _fetchAcademicOffDays({
@@ -402,34 +392,18 @@ class HolidayTiming {
     );
   }
 
-  static Future<({HolidayStatus value, bool fromNetwork})> _fetchTodayStatus({
+  static Future<HolidayStatus?> _fetchTodayStatus({
     required bool forceRefresh,
-  }) async {
-    for (final url in _statusUrls) {
-      try {
-        final response = await ApiClient().publicGet(
-          url,
-          acceptedStatusCodes: const <int>{200},
-          cacheDuration: forceRefresh
-              ? Duration.zero
-              : const Duration(minutes: 5),
-        );
-
-        if (response.statusCode != 200 || response.body.trim().isEmpty) {
-          continue;
-        }
-
-        final payload = jsonDecode(response.body);
-        if (payload is! List && payload is! Map<String, dynamic>) {
-          continue;
-        }
-
-        return (value: HolidayStatus.fromApi(payload), fromNetwork: true);
-      } catch (_) {
-        continue;
-      }
-    }
-    return (value: HolidayStatus.empty, fromNetwork: false);
+  }) {
+    return CdnJsonCache.load<HolidayStatus>(
+      url: ApiConfig.holidayStatusUrl,
+      cacheKey: _payloadKey,
+      decode: (payload) => payload is List || payload is Map<String, dynamic>
+          ? HolidayStatus.fromApi(payload)
+          : null,
+      forceRefresh: forceRefresh,
+      maxAge: const Duration(minutes: 5),
+    );
   }
 
   static HolidayStatus _fallbackOfflineStatus(DateTime now) {

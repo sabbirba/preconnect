@@ -1,6 +1,5 @@
-import 'dart:convert';
-
-import 'package:preconnect/api/api_client.dart';
+import 'package:preconnect/tools/cdn_cache.dart';
+import 'package:preconnect/tools/preload_cache.dart';
 import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/tools/time_utils.dart';
 
@@ -39,13 +38,14 @@ class RamadanStatus {
 class RamadanTiming {
   RamadanTiming._();
 
-  static const List<String> _statusUrls = <String>[ApiConfig.ramadanStatusUrl];
+  static const String _payloadKey = 'ramadan_status_v1';
   static final ({DateTime start, DateTime end}) _knownRamadanWindow2026 = (
     start: DateTime(2026, 2, 18),
     end: DateTime(2026, 3, 19),
   );
 
-  static Future<RamadanStatus>? _inflight;
+  static final PreloadCache<RamadanStatus> _refresh =
+      PreloadCache<RamadanStatus>();
 
   static const Map<String, (int start, int end)> _ramadanSlots = {
     '480-560': (480, 545),
@@ -73,35 +73,23 @@ class RamadanTiming {
   static Future<RamadanStatus> getRamadanStatus({
     bool forceRefresh = false,
   }) async {
-    if (_inflight != null) {
-      return _inflight!;
-    }
-
-    _inflight = _refreshRamadanStatus(forceRefresh: forceRefresh);
-    return _inflight!;
+    return _refresh.share(
+      () => _refreshRamadanStatus(forceRefresh: forceRefresh),
+    );
   }
 
   static Future<RamadanStatus> _refreshRamadanStatus({
     required bool forceRefresh,
   }) async {
-    try {
-      final result = await _fetchRamadanStatus(forceRefresh: forceRefresh);
-      return result.fromNetwork ? result.value : _fallbackOfflineStatus();
-    } finally {
-      _inflight = null;
-    }
-  }
-
-  static Future<({RamadanStatus value, bool fromNetwork})> _fetchRamadanStatus({
-    required bool forceRefresh,
-  }) async {
-    final fallbackPayload = await _fetchPayload(forceRefresh: forceRefresh);
-    final parsedFallback = _parseStatus(fallbackPayload);
-    if (parsedFallback != null) {
-      return (value: parsedFallback, fromNetwork: true);
-    }
-
-    return (value: const RamadanStatus(isRamadan: false), fromNetwork: false);
+    final status = await CdnJsonCache.load<RamadanStatus>(
+      url: ApiConfig.ramadanStatusUrl,
+      cacheKey: _payloadKey,
+      decode: (payload) =>
+          payload is Map<String, dynamic> ? _parseStatus(payload) : null,
+      forceRefresh: forceRefresh,
+      maxAge: const Duration(minutes: 5),
+    );
+    return status ?? _fallbackOfflineStatus();
   }
 
   static RamadanStatus _fallbackOfflineStatus() {
@@ -117,36 +105,6 @@ class RamadanTiming {
     }
 
     return const RamadanStatus(isRamadan: false);
-  }
-
-  static Future<Map<String, dynamic>?> _fetchPayload({
-    required bool forceRefresh,
-  }) async {
-    for (final url in _statusUrls) {
-      try {
-        final response = await ApiClient().publicGet(
-          url,
-          acceptedStatusCodes: const <int>{200},
-          cacheDuration: forceRefresh
-              ? Duration.zero
-              : const Duration(minutes: 5),
-        );
-
-        if (response.statusCode != 200 || response.body.trim().isEmpty) {
-          continue;
-        }
-
-        final payload = jsonDecode(response.body);
-        if (payload is! Map<String, dynamic>) {
-          continue;
-        }
-
-        return payload;
-      } catch (_) {
-        continue;
-      }
-    }
-    return null;
   }
 
   static RamadanStatus? _parseStatus(Map<String, dynamic>? payload) {

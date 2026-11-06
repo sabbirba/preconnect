@@ -103,7 +103,7 @@ class _SeatStatusPageState extends State<SeatStatusPage>
         _isRamadan = value;
       });
     });
-    _seedCachedCards();
+    unawaited(_seedCachedCards());
     _searchController.addListener(() {
       _searchDebounce?.cancel();
       _searchDebounce = Timer(const Duration(milliseconds: 150), () {
@@ -148,26 +148,18 @@ class _SeatStatusPageState extends State<SeatStatusPage>
     unawaited(_refreshDetailsFromApi());
   }
 
-  void _seedCachedCards() {
-    final cachedDetails = _service.cachedDetails;
-    if (cachedDetails == null) return;
-    final cards = _buildCardsFromDetailsMap(cachedDetails);
-    _cards
-      ..clear()
-      ..addAll(cards);
-    _visibleCards
-      ..clear()
-      ..addAll(
-        _filterCards(
-          cards,
-          _searchQuery,
-          availableOnly: _availableOnly,
-          dayFilter: _selectedDayFilter,
-          modeFilter: _selectedModeFilter,
-          timeFilter: _selectedTimeFilter,
-        ),
-      );
-    _isInitialLoading = false;
+  Future<void> _seedCachedCards() async {
+    final cachedDetails = await _service.loadCachedDetails();
+    if (!mounted ||
+        cachedDetails == null ||
+        _cards.isNotEmpty ||
+        _selectedArchive.isNotEmpty) {
+      return;
+    }
+    _applyCardsSnapshot(
+      _buildCardsFromDetailsMap(cachedDetails),
+      isInitialLoading: false,
+    );
   }
 
   @override
@@ -184,7 +176,11 @@ class _SeatStatusPageState extends State<SeatStatusPage>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    _refreshIfActive();
+    if (state == AppLifecycleState.resumed) {
+      _refreshIfActive();
+    } else {
+      _syncSeatStream();
+    }
   }
 
   void _syncSeatStream() {
@@ -238,7 +234,6 @@ class _SeatStatusPageState extends State<SeatStatusPage>
     if (_selectedArchive.isNotEmpty) return;
     final reason = refreshBusReason;
     if (reason == 'seat_status' ||
-        reason == 'mercure_event' ||
         reason == 'cache_cleared' ||
         reason == 'home_dashboard') {
       unawaited(_refreshDetailsFromApi());

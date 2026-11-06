@@ -205,6 +205,12 @@ class _DegreeProgressPageState extends State<DegreeProgressPage>
     });
   }
 
+  Future<(ProgressInfo?, ProgressSummary?)> _fetchProgressWithSummary() async {
+    final info = await ProgressService().fetchProgress();
+    final summary = await ProgressService().getProgressSummary(fromFetch: true);
+    return (info, summary);
+  }
+
   Future<void> _refresh({bool notify = true}) async {
     if (_isRefreshing) return;
     if (!await ensureOnline(context, notify: notify)) return;
@@ -222,19 +228,18 @@ class _DegreeProgressPageState extends State<DegreeProgressPage>
       _isRefreshing = true;
     });
     try {
-      final freshInfo = await ProgressService().fetchProgress();
-      final freshSummary = await ProgressService().getProgressSummary(
-        fromFetch: true,
-      );
+      final progressFuture = _fetchProgressWithSummary()..ignore();
       final currentSessionSemesterId =
           await resolveCurrentSessionSemesterIdWithRetry();
       if (currentSessionSemesterId == null) {
+        await progressFuture;
         return;
       }
       final freshScheduleJson = await ScheduleService()
           .fetchStudentScheduleForSemester(
             semesterSessionId: currentSessionSemesterId,
           );
+      final (freshInfo, freshSummary) = await progressFuture;
       final freshSections = section.parseSectionsFromScheduleJson(
         freshScheduleJson,
       );

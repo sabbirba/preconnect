@@ -1,6 +1,6 @@
+import 'package:preconnect/tools/time_utils.dart';
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
-import 'package:intl/intl.dart';
 import 'package:preconnect/api/notification.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 
@@ -172,9 +172,7 @@ class NotificationCardItem extends StatelessWidget {
   }
 
   String _formatTime(DateTime? value) {
-    if (value == null) return '';
-    final local = value.toLocal();
-    return DateFormat('h:mm a').format(local);
+    return value == null ? '' : AppTime.formatDateTime(value);
   }
 }
 

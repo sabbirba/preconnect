@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'package:preconnect/api/api_config.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 
 import 'package:flutter/foundation.dart'
@@ -585,9 +586,7 @@ class InAppReviewPrompt {
   static Future<bool> _openStoreListing({String? iosAppStoreId}) async {
     try {
       if (kIsWeb) {
-        final playStoreUri = Uri.parse(
-          'https://play.google.com/store/apps/details?id=com.sabbirba.preconnect',
-        );
+        final playStoreUri = Uri.parse(ApiConfig.playStoreUrl);
         try {
           final launched = await launchUrl(
             playStoreUri,
@@ -604,7 +603,7 @@ class InAppReviewPrompt {
       if (isApple) {
         var appStoreId = (iosAppStoreId ?? '').trim();
         if (appStoreId.isEmpty) {
-          appStoreId = '6791423431';
+          appStoreId = ApiConfig.appStoreId;
         }
 
         if (appStoreId.isNotEmpty) {
@@ -631,9 +630,7 @@ class InAppReviewPrompt {
           } catch (_) {}
         }
 
-        final fallbackUri = Uri.parse(
-          'https://apps.apple.com/us/app/preconnect-bracu-student-app/id6791423431',
-        );
+        final fallbackUri = Uri.parse(ApiConfig.appStoreUrl);
         try {
           final launched = await launchUrl(
             fallbackUri,
@@ -644,7 +641,7 @@ class InAppReviewPrompt {
         return await launchUrl(fallbackUri, mode: LaunchMode.platformDefault);
       }
 
-      var packageName = 'com.sabbirba.preconnect';
+      var packageName = ApiConfig.androidPackageName;
       try {
         final packageInfo = await PackageInfo.fromPlatform();
         if (packageInfo.packageName.isNotEmpty) {
@@ -662,7 +659,7 @@ class InAppReviewPrompt {
       } catch (_) {}
 
       final playStoreUri = Uri.parse(
-        'https://play.google.com/store/apps/details?id=$packageName',
+        '${ApiConfig.playStoreBaseUrl}$packageName',
       );
       try {
         final launched = await launchUrl(

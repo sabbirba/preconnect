@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
 import 'package:preconnect/api/profile.dart';
 import 'package:preconnect/pages/profile_sections/payslip_detail.dart';
+import 'package:preconnect/pages/shared_widgets/info_line.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/string_utils.dart';
 
@@ -150,32 +151,40 @@ class _PaymentListState extends State<PaymentList> {
                       },
                     ),
                     const Gap(8),
-                    _InfoLine(
+                    InfoLine(
                       label: paymentType,
                       value: semester,
                       isLabelBold: true,
                       isValueBold: true,
+                      valueFlex: 7,
+                      valueWeight: FontWeight.w400,
                     ),
                     const Gap(8),
-                    _InfoLine(
+                    InfoLine(
                       label: 'Requested',
                       value: formatDate(payment.requestDate.toIso8601String()),
                       isLabelBold: false,
                       isValueBold: false,
+                      valueFlex: 7,
+                      valueWeight: FontWeight.w400,
                     ),
                     const Gap(6),
-                    _InfoLine(
+                    InfoLine(
                       label: 'Due Date',
                       value: dueDate,
                       isLabelBold: true,
                       isValueBold: true,
+                      valueFlex: 7,
+                      valueWeight: FontWeight.w400,
                     ),
                     const Gap(6),
-                    _InfoLine(
+                    InfoLine(
                       label: 'Status',
                       value: isPaid ? 'Paid' : 'Due',
                       isLabelBold: true,
                       isValueBold: true,
+                      valueFlex: 7,
+                      valueWeight: FontWeight.w400,
                     ),
                   ],
                 ),
@@ -198,59 +207,6 @@ class _PaymentListState extends State<PaymentList> {
           const Gap(8),
         ],
       ],
-    );
-  }
-}
-
-class _InfoLine extends StatelessWidget {
-  const _InfoLine({
-    required this.label,
-    required this.value,
-    this.isValueBold = false,
-    this.isLabelBold = false,
-  });
-
-  final String label;
-  final String value;
-  final bool isValueBold;
-  final bool isLabelBold;
-
-  @override
-  Widget build(BuildContext context) {
-    final textSecondary = AppPalette.textSecondary(context);
-    final textPrimary = AppPalette.textPrimary(context);
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 2),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(
-            flex: 5,
-            child: Text(
-              label,
-              style: TextStyle(
-                color: textSecondary,
-                fontWeight: isLabelBold ? FontWeight.w700 : FontWeight.w500,
-                fontSize: 14,
-              ),
-              textAlign: TextAlign.left,
-            ),
-          ),
-          const Gap(12),
-          Expanded(
-            flex: 7,
-            child: Text(
-              value,
-              style: TextStyle(
-                color: textPrimary,
-                fontWeight: isValueBold ? FontWeight.w700 : FontWeight.w400,
-                fontSize: 14,
-              ),
-              textAlign: TextAlign.right,
-            ),
-          ),
-        ],
-      ),
     );
   }
 }

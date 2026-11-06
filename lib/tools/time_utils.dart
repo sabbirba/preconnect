@@ -179,4 +179,24 @@ class AppTime {
   static String formatDateTime(DateTime dt) {
     return DateFormat('h:mm a').format(dt.toLocal());
   }
+
+  static String formatHourMinute(int hour, int minute) {
+    return DateFormat('h:mm a').format(DateTime(0, 1, 1, hour, minute));
+  }
+
+  static String formatLongDate(DateTime date) {
+    return DateFormat('d MMMM, yyyy').format(date);
+  }
+
+  static String formatDayMonth(DateTime date) {
+    return DateFormat('d MMMM').format(date);
+  }
+
+  static String formatDayMonthYear(DateTime date) {
+    return DateFormat('d MMMM y').format(date);
+  }
+
+  static String monthName(DateTime date) {
+    return DateFormat('MMMM').format(date);
+  }
 }

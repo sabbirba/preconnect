@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/services.dart';
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
+import 'package:preconnect/api/api_config.dart';
 import 'package:flutter/rendering.dart';
 import 'package:preconnect/api/extra_classes.dart';
 import 'package:preconnect/api/profile.dart';
@@ -272,8 +273,7 @@ class _ShareSchedulePageState extends State<ShareSchedulePage>
 
       const shareText =
           "Scan my schedule QR to import in PreConnect's Friends Schedule.\n\n"
-          'Play Store: https://play.google.com/store/apps/details?id=com.sabbirba.preconnect\n'
-          'App Store: https://apps.apple.com/us/app/preconnect-bracu-student-app/id6791423431';
+          '${ApiConfig.storeLinksText}';
 
       if (kIsWeb) {
         await openImageInBrowser(bytes: bytes, fileName: fileName);

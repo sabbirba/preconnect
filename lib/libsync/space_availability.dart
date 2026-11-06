@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'package:preconnect/tools/time_utils.dart';
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
 import 'package:flutter/services.dart';
@@ -241,16 +242,9 @@ class _SpaceAvailabilityPageState extends State<SpaceAvailabilityPage> {
   }
 
   String _formatTime(String rawTime) {
-    final parts = rawTime.split(':');
-    if (parts.length >= 2) {
-      final int hour = int.tryParse(parts[0]) ?? 0;
-      final int minute = int.tryParse(parts[1]) ?? 0;
-      final String period = hour >= 12 ? 'PM' : 'AM';
-      final int formattedHour = hour % 12 == 0 ? 12 : hour % 12;
-      final String formattedMinute = minute.toString().padLeft(2, '0');
-      return '$formattedHour:$formattedMinute $period';
-    }
-    return rawTime;
+    final parsed = AppTime.parseHourMinute(rawTime);
+    if (parsed == null) return rawTime;
+    return AppTime.formatHourMinute(parsed.$1, parsed.$2);
   }
 
   Future<void> _handleSlotTap(

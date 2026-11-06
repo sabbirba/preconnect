@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
-import 'package:flutter/foundation.dart';
+import 'package:preconnect/tools/json_decode.dart';
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
 import 'package:intl/intl.dart';
@@ -317,7 +317,7 @@ class _DSpaceBrowserPageState extends State<DSpaceBrowserPage> {
         cacheDuration: const Duration(hours: 12),
       );
 
-      final parsed = await compute(_parseDSpaceItems, response.body);
+      final parsed = _parseDSpaceItems(await computeJsonDecode(response.body));
 
       if (mounted) {
         setState(() {
@@ -334,7 +334,9 @@ class _DSpaceBrowserPageState extends State<DSpaceBrowserPage> {
           acceptedStatusCodes: const <int>{200},
           cacheDuration: const Duration(hours: 12),
         );
-        final parsed = await compute(_parseDSpaceItems, fallbackResponse.body);
+        final parsed = _parseDSpaceItems(
+          await computeJsonDecode(fallbackResponse.body),
+        );
 
         if (mounted) {
           setState(() {
@@ -355,8 +357,7 @@ class _DSpaceBrowserPageState extends State<DSpaceBrowserPage> {
     }
   }
 
-  static List<DSpaceItem> _parseDSpaceItems(String body) {
-    final decoded = jsonDecode(body);
+  static List<DSpaceItem> _parseDSpaceItems(dynamic decoded) {
     final rawItems = decoded is Map ? decoded['items'] : null;
     if (rawItems is List) {
       return rawItems

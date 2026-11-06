@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
 import 'package:preconnect/api/api_client.dart';
 import 'package:preconnect/api/advising_service.dart';
+import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/api/profile.dart';
 import 'package:preconnect/api/seat_status.dart';
 import 'package:preconnect/model/advising_phase.dart';
@@ -61,6 +62,7 @@ class _AdvisingHelperPageState extends State<AdvisingHelperPage> {
   );
   String _searchQuery = '';
   int _loadGeneration = 0;
+  DateTime _lastIdlePoll = DateTime.now();
 
   @override
   void initState() {
@@ -200,13 +202,21 @@ class _AdvisingHelperPageState extends State<AdvisingHelperPage> {
     }
   }
 
+  static const Duration _idlePollInterval = Duration(seconds: 20);
+
   Future<void> _pollEnrolled() async {
     if (_isLoading || _isRefreshingEnrolled) return;
+    final isRunning = _engine.isRunning;
+    final now = DateTime.now();
+    if (!isRunning && now.difference(_lastIdlePoll) < _idlePollInterval) {
+      return;
+    }
     _isRefreshingEnrolled = true;
     try {
-      if (_engine.isRunning) {
+      if (isRunning) {
         await _refreshEnrolled();
       } else {
+        _lastIdlePoll = now;
         await Future.wait([_refreshEnrolled(), _refreshSeats()]);
       }
     } catch (_) {
@@ -624,7 +634,7 @@ class _AdvisingHelperPageState extends State<AdvisingHelperPage> {
           icon: const Icon(Icons.open_in_new_rounded),
           onPressed: () => openExternalUrl(
             context,
-            'https://connect.bracu.ac.bd/student/advising/${_phase.pathSegment}',
+            '${ApiConfig.connectOrigin}/student/advising/${_phase.pathSegment}',
           ),
         ),
         AppRefreshButton(onPressed: _load, isLoading: _isLoading),

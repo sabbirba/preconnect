@@ -403,7 +403,7 @@ class _RamadanHeroTime extends StatelessWidget {
   }
 }
 
-class _RamadanTopCountdown extends StatelessWidget {
+class _RamadanTopCountdown extends StatefulWidget {
   const _RamadanTopCountdown({
     required this.ramadanDay,
     required this.targetLabel,
@@ -415,20 +415,34 @@ class _RamadanTopCountdown extends StatelessWidget {
   final String? targetTime;
 
   @override
+  State<_RamadanTopCountdown> createState() => _RamadanTopCountdownState();
+}
+
+class _RamadanTopCountdownState extends State<_RamadanTopCountdown> {
+  final Stream<int> _ticker =
+      Stream<int>.periodic(
+        const Duration(seconds: 1),
+        (tick) => tick,
+      ).asBroadcastStream(
+        onListen: (subscription) => subscription.resume(),
+        onCancel: (subscription) => subscription.pause(),
+      );
+
+  @override
   Widget build(BuildContext context) {
-    if (targetTime == null || targetTime!.trim().isEmpty) {
+    final targetTime = widget.targetTime;
+    final ramadanDay = widget.ramadanDay;
+    final targetLabel = widget.targetLabel;
+    if (targetTime == null || targetTime.trim().isEmpty) {
       return const SizedBox.shrink();
     }
     return SizedBox(
       width: double.infinity,
       child: StreamBuilder<int>(
-        stream: Stream<int>.periodic(
-          const Duration(seconds: 1),
-          (tick) => tick,
-        ),
+        stream: _ticker,
         builder: (context, snapshot) {
           final now = DateTime.now();
-          final remaining = _durationTo(targetTime!, now);
+          final remaining = _durationTo(targetTime, now);
           if (remaining == null) return const SizedBox.shrink();
           return Row(
             children: [
