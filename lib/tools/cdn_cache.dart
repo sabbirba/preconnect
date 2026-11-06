@@ -11,7 +11,6 @@ class CdnJsonCache {
   CdnJsonCache._();
 
   static final Map<String, Object?> _memory = <String, Object?>{};
-  static final Map<String, DateTime> _storedAt = <String, DateTime>{};
   static final Map<String, PreloadCache<Object?>> _fetches =
       <String, PreloadCache<Object?>>{};
 
@@ -26,10 +25,8 @@ class CdnJsonCache {
     bool forceRefresh = false,
     http.Client? client,
     Duration timeout = const Duration(seconds: 8),
-    Duration? maxAge,
   }) async {
-    final fresh = maxAge == null || _isFresh(cacheKey, maxAge);
-    if (!forceRefresh && fresh && _memory.containsKey(cacheKey)) {
+    if (!forceRefresh && _memory.containsKey(cacheKey)) {
       return _memory[cacheKey] as T?;
     }
 
@@ -80,7 +77,7 @@ class CdnJsonCache {
         final decoded = jsonDecode(response.body);
         final value = decode(decoded);
         if (value != null) {
-          _remember(cacheKey, value);
+          _memory[cacheKey] = value;
           await AppStorage.instance.setString(cacheKey, response.body);
           return value;
         }
@@ -93,16 +90,6 @@ class CdnJsonCache {
       return cached;
     }
     return null;
-  }
-
-  static void _remember(String cacheKey, Object value) {
-    _memory[cacheKey] = value;
-    _storedAt[cacheKey] = DateTime.now();
-  }
-
-  static bool _isFresh(String cacheKey, Duration maxAge) {
-    final storedAt = _storedAt[cacheKey];
-    return storedAt != null && DateTime.now().difference(storedAt) < maxAge;
   }
 
   static Future<T?> _readCached<T extends Object>(

@@ -1,5 +1,49 @@
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:flutter_test/flutter_test.dart';
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
+import 'package:preconnect/api/api_client.dart';
+import 'package:preconnect/api/api_config.dart';
+import 'package:preconnect/tools/app_storage.dart';
 import 'package:preconnect/tools/holiday.dart';
+import 'package:preconnect/tools/ramadan.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+String _isoDaysFromToday(int days) =>
+    HolidayTiming.toIsoDate(DateTime.now().add(Duration(days: days)));
+
+String _staleHolidaySnapshot() {
+  final yesterday = _isoDaysFromToday(-1);
+  return jsonEncode({
+    'isTodayHoliday': true,
+    'todayHolidayNames': ['Yesterday Holiday'],
+    'nextHolidaysThisYear': [
+      {
+        'startDate': yesterday,
+        'endDate': yesterday,
+        'label': 'Yesterday Holiday',
+      },
+    ],
+    'allHolidays': [
+      {
+        'startDate': yesterday,
+        'endDate': yesterday,
+        'label': 'Yesterday Holiday',
+      },
+    ],
+  });
+}
+
+void _serve(Map<String, http.Response Function()> routes) {
+  ApiClient.testOverride = ApiClient.testing(
+    MockClient((request) async {
+      final route = routes[request.url.toString()];
+      return route == null ? http.Response('', 404) : route();
+    }),
+  );
+}
 
 void main() {
   group('HolidayStatus academic off day detection', () {
@@ -186,6 +230,136 @@ void main() {
     test('formats iso date correctly', () {
       expect(HolidayTiming.toIsoDate(DateTime(2026, 2, 4)), '2026-02-04');
       expect(HolidayTiming.toIsoDate(DateTime(2026, 12, 16)), '2026-12-16');
+    });
+  });
+
+  group('Live holiday and Ramadan status', () {
+    late Directory directory;
+
+    setUp(() async {
+      directory = await Directory.systemTemp.createTemp('preconnect_holiday_');
+      SharedPreferences.setMockInitialValues({});
+      await AppStorage.initialize(cacheDirectory: directory);
+      HolidayTiming.resetSession();
+    });
+
+    tearDown(() async {
+      ApiClient.testOverride = null;
+      HolidayTiming.resetSession();
+      await directory.delete(recursive: true);
+    });
+
+    test(
+      'cold start prefers the network over a stale holiday snapshot',
+      () async {
+        await AppStorage.instance.setString(
+          'holiday_status_v1',
+          _staleHolidaySnapshot(),
+        );
+        await AppStorage.instance.setString(
+          'holiday_payload_v1',
+          _staleHolidaySnapshot(),
+        );
+        final upcoming = _isoDaysFromToday(3);
+        _serve({
+          ApiConfig.holidayStatusUrl: () => http.Response(
+            jsonEncode([
+              {
+                'startDate': upcoming,
+                'endDate': upcoming,
+                'label': 'Victory Day',
+              },
+            ]),
+            200,
+          ),
+        });
+
+        expect(HolidayTiming.cachedStatus.isTodayHoliday, isFalse);
+        final status = await HolidayTiming.getTodayStatus();
+
+        expect(status.isTodayHoliday, isFalse);
+        expect(status.todayHolidayNames, isEmpty);
+        expect(status.nextHolidaysThisYear.map((item) => item.label), [
+          'Victory Day',
+        ]);
+      },
+    );
+
+    test(
+      'offline holiday status rebases the saved snapshot to today',
+      () async {
+        await AppStorage.instance.setString(
+          'holiday_status_v1',
+          _staleHolidaySnapshot(),
+        );
+        _serve({
+          ApiConfig.holidayStatusUrl: () =>
+              throw const SocketException('offline'),
+        });
+
+        final status = await HolidayTiming.getTodayStatus();
+
+        expect(status.isTodayHoliday, isFalse);
+        expect(status.todayHolidayNames, isEmpty);
+        expect(status.allHolidays.map((item) => item.label), [
+          'Yesterday Holiday',
+        ]);
+        expect(HolidayTiming.cachedStatus.isTodayHoliday, isFalse);
+      },
+    );
+
+    test(
+      'offline holiday status keeps a saved holiday covering today',
+      () async {
+        final today = _isoDaysFromToday(0);
+        await AppStorage.instance.setString(
+          'holiday_status_v1',
+          jsonEncode({
+            'isTodayHoliday': false,
+            'todayHolidayNames': <String>[],
+            'nextHolidaysThisYear': [
+              {'startDate': today, 'endDate': today, 'label': 'Today Holiday'},
+            ],
+          }),
+        );
+        _serve({});
+
+        final status = await HolidayTiming.getTodayStatus();
+
+        expect(status.isTodayHoliday, isTrue);
+        expect(status.todayHolidayNames, ['Today Holiday']);
+      },
+    );
+
+    test(
+      'cold start prefers the network over a stale Ramadan payload',
+      () async {
+        await AppStorage.instance.setString(
+          'ramadan_status_v1',
+          jsonEncode({'isRamadan': true, 'ramadanDay': 12}),
+        );
+        _serve({
+          ApiConfig.ramadanStatusUrl: () =>
+              http.Response(jsonEncode({'isRamadan': false}), 200),
+        });
+
+        final status = await RamadanTiming.getRamadanStatus();
+
+        expect(status.isRamadan, isFalse);
+        expect(status.ramadanDay, isNull);
+      },
+    );
+
+    test('offline Ramadan status ignores saved payloads', () async {
+      await AppStorage.instance.setString(
+        'ramadan_status_v1',
+        jsonEncode({'isRamadan': true, 'ramadanDay': 12}),
+      );
+      _serve({});
+
+      final status = await RamadanTiming.getRamadanStatus(forceRefresh: true);
+      expect(status.isRamadan, isFalse);
+      expect(status.ramadanDay, isNull);
     });
   });
 }

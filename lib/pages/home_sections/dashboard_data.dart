@@ -582,7 +582,7 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
     _isBackgroundLoggingIn = true;
     _lastSilentLoginAt = now;
     try {
-      await AndroidNetworkAssist.bindToWifiNetwork();
+      await CaptiveWifiHttp.acquireWifiBinding();
       final success = await CaptiveWifiHttp.instance
           .loginViaCaptiveApi(
             studentId: studentId,
@@ -594,7 +594,7 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
     } catch (_) {
       return false;
     } finally {
-      await AndroidNetworkAssist.unbindFromWifiNetwork();
+      await CaptiveWifiHttp.releaseWifiBinding();
       _isBackgroundLoggingIn = false;
     }
   }

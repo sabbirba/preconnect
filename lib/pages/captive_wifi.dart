@@ -402,14 +402,14 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
         return;
       }
 
-      await AndroidNetworkAssist.bindToWifiNetwork();
+      await CaptiveWifiHttp.acquireWifiBinding();
       bool loggedOut = false;
       try {
         loggedOut = await CaptiveWifiHttp.instance.logoutViaCaptiveApi(
           captiveWifiUrl: captiveWifiUrl,
         );
       } finally {
-        await AndroidNetworkAssist.unbindFromWifiNetwork();
+        await CaptiveWifiHttp.releaseWifiBinding();
       }
 
       if (!mounted) return;
@@ -553,7 +553,7 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
       return false;
     }
     if (AndroidNetworkAssist.isSupported) {
-      final bound = await AndroidNetworkAssist.bindToWifiNetwork();
+      final bound = await CaptiveWifiHttp.acquireWifiBinding();
       if (!bound) {
         CaptiveWifiHttp.instance.lastError =
             'Could not bind to the Wi-Fi network. If you also have mobile '
@@ -567,9 +567,7 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
         captiveWifiUrl: captiveWifiUrl,
       );
     } finally {
-      if (AndroidNetworkAssist.isSupported) {
-        await AndroidNetworkAssist.unbindFromWifiNetwork();
-      }
+      await CaptiveWifiHttp.releaseWifiBinding();
     }
   }
 
@@ -1292,7 +1290,7 @@ class _CaptivePortalWebViewState extends State<CaptivePortalWebView> {
   @override
   void initState() {
     super.initState();
-    unawaited(AndroidNetworkAssist.bindToWifiNetwork());
+    unawaited(CaptiveWifiHttp.acquireWifiBinding());
     _controller = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..enableZoom(true)
@@ -1342,7 +1340,7 @@ class _CaptivePortalWebViewState extends State<CaptivePortalWebView> {
 
   @override
   void dispose() {
-    unawaited(AndroidNetworkAssist.unbindFromWifiNetwork());
+    unawaited(CaptiveWifiHttp.releaseWifiBinding());
     super.dispose();
   }
 

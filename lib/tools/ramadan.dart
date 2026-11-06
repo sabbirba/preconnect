@@ -1,4 +1,4 @@
-import 'package:preconnect/tools/cdn_cache.dart';
+import 'package:preconnect/api/api_client.dart';
 import 'package:preconnect/tools/preload_cache.dart';
 import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/tools/time_utils.dart';
@@ -38,7 +38,7 @@ class RamadanStatus {
 class RamadanTiming {
   RamadanTiming._();
 
-  static const String _payloadKey = 'ramadan_status_v1';
+  static const Duration _statusCacheDuration = Duration(minutes: 5);
   static final ({DateTime start, DateTime end}) _knownRamadanWindow2026 = (
     start: DateTime(2026, 2, 18),
     end: DateTime(2026, 3, 19),
@@ -81,14 +81,13 @@ class RamadanTiming {
   static Future<RamadanStatus> _refreshRamadanStatus({
     required bool forceRefresh,
   }) async {
-    final status = await CdnJsonCache.load<RamadanStatus>(
-      url: ApiConfig.ramadanStatusUrl,
-      cacheKey: _payloadKey,
-      decode: (payload) =>
-          payload is Map<String, dynamic> ? _parseStatus(payload) : null,
-      forceRefresh: forceRefresh,
-      maxAge: const Duration(minutes: 5),
+    final payload = await ApiClient().tryPublicJson(
+      ApiConfig.ramadanStatusUrl,
+      cacheDuration: forceRefresh ? Duration.zero : _statusCacheDuration,
     );
+    final status = payload is Map<String, dynamic>
+        ? _parseStatus(payload)
+        : null;
     return status ?? _fallbackOfflineStatus();
   }
 

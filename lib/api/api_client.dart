@@ -1,6 +1,7 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:connectivity_plus/connectivity_plus.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart' show kIsWeb, visibleForTesting;
 import 'package:http/http.dart' as http;
 import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/api/auth.dart';
@@ -29,7 +30,12 @@ bool usesBrowserConnectSession({
 
 class ApiClient {
   static final ApiClient _instance = ApiClient._internal();
-  factory ApiClient() => _instance;
+  static ApiClient? _testOverride;
+  factory ApiClient() => _testOverride ?? _instance;
+
+  @visibleForTesting
+  static set testOverride(ApiClient? client) => _testOverride = client;
+
   ApiClient._internal() : _http = HttpUtils.client, _refresh = null;
   ApiClient.testing(
     this._http, {
@@ -278,6 +284,19 @@ class ApiClient {
       return response;
     }
     throw ApiException(response.statusCode, response.body);
+  }
+
+  Future<Object?> tryPublicJson(
+    String url, {
+    Duration cacheDuration = _defaultGetCacheTtl,
+  }) async {
+    try {
+      final response = await publicGet(url, cacheDuration: cacheDuration);
+      if (response.body.trim().isEmpty) return null;
+      return jsonDecode(response.body);
+    } catch (_) {
+      return null;
+    }
   }
 
   Future<http.Response> publicPost(

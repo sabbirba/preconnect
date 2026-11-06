@@ -87,18 +87,30 @@ class CaptiveWifiHttp {
 
   static const Duration _probeTimeout = Duration(seconds: 4);
   static int _wifiBindings = 0;
+  static Future<bool> _wifiBound = Future<bool>.value(false);
+
+  static Future<bool> acquireWifiBinding() {
+    if (!AndroidNetworkAssist.isSupported) return Future<bool>.value(false);
+    if (_wifiBindings++ == 0) {
+      _wifiBound = AndroidNetworkAssist.bindToWifiNetwork();
+    }
+    return _wifiBound;
+  }
+
+  static Future<void> releaseWifiBinding() async {
+    if (!AndroidNetworkAssist.isSupported || _wifiBindings == 0) return;
+    if (--_wifiBindings == 0) {
+      _wifiBound = Future<bool>.value(false);
+      await AndroidNetworkAssist.unbindFromWifiNetwork();
+    }
+  }
 
   static Future<T> _onWifiNetwork<T>(Future<T> Function() body) async {
-    if (!AndroidNetworkAssist.isSupported) return body();
-    if (_wifiBindings++ == 0) {
-      await AndroidNetworkAssist.bindToWifiNetwork();
-    }
+    await acquireWifiBinding();
     try {
       return await body();
     } finally {
-      if (--_wifiBindings == 0) {
-        await AndroidNetworkAssist.unbindFromWifiNetwork();
-      }
+      await releaseWifiBinding();
     }
   }
 
@@ -535,9 +547,7 @@ class CaptiveWifiHttp {
     lastErrorCode = null;
     isLastFatal = false;
     lastResponseLog = '';
-    if (AndroidNetworkAssist.isSupported) {
-      await AndroidNetworkAssist.bindToWifiNetwork();
-    }
+    await acquireWifiBinding();
     final client = newClient();
     final cookies = sessionCookies;
     cookies.clear();
@@ -940,9 +950,7 @@ class CaptiveWifiHttp {
       return false;
     } finally {
       client.close(force: true);
-      if (AndroidNetworkAssist.isSupported) {
-        await AndroidNetworkAssist.unbindFromWifiNetwork();
-      }
+      await releaseWifiBinding();
     }
   }
 
@@ -1014,9 +1022,7 @@ class CaptiveWifiHttp {
   Future<bool> logoutViaCaptiveApi({required Uri captiveWifiUrl}) async {
     lastError = null;
     lastResponseLog = '';
-    if (AndroidNetworkAssist.isSupported) {
-      await AndroidNetworkAssist.bindToWifiNetwork();
-    }
+    await acquireWifiBinding();
     final client = newClient();
     final cookies = sessionCookies;
 
@@ -1115,9 +1121,7 @@ class CaptiveWifiHttp {
       return false;
     } finally {
       client.close(force: true);
-      if (AndroidNetworkAssist.isSupported) {
-        await AndroidNetworkAssist.unbindFromWifiNetwork();
-      }
+      await releaseWifiBinding();
     }
   }
 

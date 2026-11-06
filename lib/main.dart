@@ -68,7 +68,11 @@ Future<void> main() async {
         return true;
       };
 
-      await Future.wait<void>([_initStorage(), _initWidgets()]);
+      await Future.wait<void>([
+        FCMService.ensureFirebase(),
+        _initStorage(),
+        _initWidgets(),
+      ]);
 
       unawaited(CaptiveLoginStore.instance.publishTileReady());
 
@@ -92,9 +96,6 @@ Future<void> main() async {
       unawaited(NotificationsPage.preloadData());
 
       runApp(MyApp(bootstrapState: initialState));
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        unawaited(FCMService.ensureFirebase());
-      });
     },
     (error, stackTrace) {
       unawaited(AppLog.write('Uncaught zone error: $error\n$stackTrace'));

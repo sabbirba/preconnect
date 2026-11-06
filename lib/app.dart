@@ -263,8 +263,8 @@ class _MyAppState extends State<MyApp>
         unawaited(_maybeCheckForUpdates());
       }
       unawaited(_runDeferredStartupWork());
-      unawaited(FCMService.instance.init());
     });
+    unawaited(FCMService.instance.init());
     _connectivitySub = Connectivity().onConnectivityChanged.listen(
       _onConnectivityChanged,
     );

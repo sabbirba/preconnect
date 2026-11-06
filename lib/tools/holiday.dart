@@ -1,8 +1,10 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart' show visibleForTesting;
+
 import 'package:preconnect/tools/preload_cache.dart';
-import 'package:preconnect/tools/cdn_cache.dart';
+import 'package:preconnect/api/api_client.dart';
 import 'package:preconnect/api/repository_cache.dart';
 import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/api/notification.dart';
@@ -257,40 +259,64 @@ class HolidayTiming {
   HolidayTiming._();
 
   static const String _storageKey = 'holiday_status_v1';
-  static const String _payloadKey = 'holiday_payload_v1';
+  static const Duration _statusCacheDuration = Duration(minutes: 5);
 
-  static HolidayStatus? _cachedStatus;
+  static ({String day, HolidayStatus status})? _sessionStatus;
+  static HolidayStatus? _savedStatus;
   static final PreloadCache<HolidayStatus> _refresh =
       PreloadCache<HolidayStatus>();
 
   static HolidayStatus get cachedStatus {
-    return _cachedStatus ??=
-        RepositoryCache.instance.readJsonSync(
-          _storageKey,
-          HolidayStatus.fromCache,
-        ) ??
-        HolidayStatus.empty;
+    final now = DateTime.now();
+    return _sessionStatusOn(now) ?? _savedStatusOn(now);
   }
 
   static Future<HolidayStatus> getTodayStatus({
     bool forceRefresh = false,
   }) async {
-    if (!forceRefresh && _cachedStatus != null) {
-      return _cachedStatus!;
-    }
+    final sessionStatus = forceRefresh
+        ? null
+        : _sessionStatusOn(DateTime.now());
+    if (sessionStatus != null) return sessionStatus;
     return _refresh.share(() => _refreshStatus(forceRefresh: forceRefresh));
+  }
+
+  @visibleForTesting
+  static void resetSession() {
+    _sessionStatus = null;
+    _savedStatus = null;
+  }
+
+  static HolidayStatus? _sessionStatusOn(DateTime day) {
+    final session = _sessionStatus;
+    if (session == null || session.day != toIsoDate(day)) return null;
+    return session.status;
+  }
+
+  static HolidayStatus _savedStatusOn(DateTime day) {
+    final saved = _savedStatus ??=
+        RepositoryCache.instance.readJsonSync(
+          _storageKey,
+          HolidayStatus.fromCache,
+        ) ??
+        HolidayStatus.empty;
+    return _statusOn(saved, day);
   }
 
   static Future<HolidayStatus> _refreshStatus({
     required bool forceRefresh,
   }) async {
+    final now = DateTime.now();
     final (holidayStatus, academicItems) = await (
       _fetchTodayStatus(forceRefresh: forceRefresh),
       _fetchAcademicOffDays(forceRefresh: forceRefresh),
     ).wait;
-    final baseStatus = holidayStatus ?? _fallbackOfflineStatus(DateTime.now());
+    final baseStatus = holidayStatus ?? _fallbackOfflineStatus(now);
     final combined = _combineHolidays(baseStatus, academicItems);
-    _cachedStatus = combined;
+    if (holidayStatus != null) {
+      _sessionStatus = (day: toIsoDate(now), status: combined);
+    }
+    _savedStatus = combined;
     unawaited(
       AppStorage.instance.setString(
         _storageKey,
@@ -394,30 +420,41 @@ class HolidayTiming {
 
   static Future<HolidayStatus?> _fetchTodayStatus({
     required bool forceRefresh,
-  }) {
-    return CdnJsonCache.load<HolidayStatus>(
-      url: ApiConfig.holidayStatusUrl,
-      cacheKey: _payloadKey,
-      decode: (payload) => payload is List || payload is Map<String, dynamic>
-          ? HolidayStatus.fromApi(payload)
-          : null,
-      forceRefresh: forceRefresh,
-      maxAge: const Duration(minutes: 5),
+  }) async {
+    final payload = await ApiClient().tryPublicJson(
+      ApiConfig.holidayStatusUrl,
+      cacheDuration: forceRefresh ? Duration.zero : _statusCacheDuration,
     );
+    return payload is List || payload is Map<String, dynamic>
+        ? HolidayStatus.fromApi(payload)
+        : null;
   }
 
   static HolidayStatus _fallbackOfflineStatus(DateTime now) {
-    final cached = cachedStatus;
+    final cached = _sessionStatusOn(now) ?? _savedStatusOn(now);
     if (cached.allHolidays.isNotEmpty ||
         cached.nextHolidaysThisYear.isNotEmpty) {
       return cached;
     }
-    final inferredToday = _inferTodayHolidayNames(now, const <HolidayItem>[]);
+    return HolidayStatus.empty;
+  }
+
+  static HolidayStatus _statusOn(HolidayStatus status, DateTime day) {
+    final known = <HolidayItem>{
+      ...status.allHolidays,
+      ...status.nextHolidaysThisYear,
+    }.toList();
+    if (known.isEmpty) return HolidayStatus.empty;
+    final dayIso = toIsoDate(day);
+    final todayNames = _inferTodayHolidayNames(day, known);
+    final upcoming =
+        known.where((item) => item.endDate.compareTo(dayIso) >= 0).toList()
+          ..sort((a, b) => a.startDate.compareTo(b.startDate));
     return HolidayStatus(
-      isTodayHoliday: inferredToday.isNotEmpty,
-      todayHolidayNames: inferredToday,
-      nextHolidaysThisYear: const <HolidayItem>[],
-      allHolidays: const <HolidayItem>[],
+      isTodayHoliday: todayNames.isNotEmpty,
+      todayHolidayNames: todayNames,
+      nextHolidaysThisYear: upcoming,
+      allHolidays: status.allHolidays,
     );
   }
 
