@@ -679,7 +679,7 @@ class _FreeLabsPageState extends State<FreeLabsPage> {
       );
     }
     for (final slot in schedules) {
-      if (_normalizeDay(slot.day) != day) continue;
+      if (formatWeekdayTitle(slot.day) != day) continue;
       final key =
           '$normalizedRoomNumber|${slot.day}|${slot.startTime}|${slot.endTime}';
       if (!seenBusyKeys.add(key)) continue;
@@ -709,12 +709,6 @@ class _FreeLabsPageState extends State<FreeLabsPage> {
     return slots
         .where((slot) => _matchesFilter(slot.roomNumber, filter))
         .toList();
-  }
-
-  String _normalizeDay(String value) {
-    final trimmed = value.trim().toLowerCase();
-    if (trimmed.isEmpty) return '';
-    return trimmed[0].toUpperCase() + trimmed.substring(1);
   }
 
   List<_TimeSlot> _mergeSlots(List<_TimeSlot> slots) {

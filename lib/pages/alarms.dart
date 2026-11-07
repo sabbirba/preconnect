@@ -69,8 +69,10 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
 
   Future<void> _loadExtras() async {
     try {
-      final extras = await ExtraClassesStore().load();
-      final semesterId = await resolveCurrentSessionSemesterId();
+      final (extras, semesterId) = await (
+        ExtraClassesStore().load(),
+        resolveCurrentSessionSemesterId(),
+      ).wait;
       if (!mounted) return;
       setState(() {
         _extras = extras;
@@ -378,6 +380,71 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
     }
   }
 
+  bool _alarmUnavailableOnWeb(BuildContext context) {
+    if (!kIsWeb) return false;
+    showAppSnackBar(context, 'Alarm setup is not available on web.');
+    return true;
+  }
+
+  Future<void> _markAlarmDone(String alarmKey) async {
+    await AppStorage.instance.setBool('alarm_done_$alarmKey', true);
+    if (mounted) setState(() {});
+    RefreshBus.instance.notify(reason: 'alarms');
+  }
+
+  Future<void> _addReminders(
+    BuildContext context,
+    List<Event> events, {
+    required String alarmKey,
+    required bool plural,
+  }) async {
+    var added = false;
+    try {
+      for (final event in events) {
+        if (await Add2Reminder.addReminder(event)) added = true;
+      }
+    } catch (_) {}
+    if (!context.mounted) return;
+    if (!added) {
+      showAppSnackBar(
+        context,
+        'Unable to add ${plural ? 'reminders' : 'reminder'} to Apple Reminders.',
+      );
+      return;
+    }
+    showAppSnackBar(
+      context,
+      '${plural ? 'Reminders' : 'Reminder'} added to Apple Reminders.',
+    );
+    await _markAlarmDone(alarmKey);
+  }
+
+  Future<void> _openAndroidAlarm(
+    BuildContext context, {
+    required int hour,
+    required int minute,
+    required String message,
+    required String alarmKey,
+    required String openedMessage,
+    List<int>? days,
+  }) async {
+    try {
+      final opened = await AndroidAlarm.set(
+        hour: hour,
+        minute: minute,
+        message: message,
+        days: days,
+      );
+      if (opened != true) throw Exception('Unable to open alarm on Android.');
+      if (!context.mounted) return;
+      showAppSnackBar(context, openedMessage);
+      await _markAlarmDone(alarmKey);
+    } catch (_) {
+      if (!context.mounted) return;
+      showAppSnackBar(context, 'Unable to open alarm on Android.');
+    }
+  }
+
   Future<void> _setAlarm(
     BuildContext context,
     List<String> days,
@@ -386,108 +453,106 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
     int minutesBefore, {
     required String alarmKey,
   }) async {
-    if (kIsWeb) {
-      if (!context.mounted) return;
-      showAppSnackBar(context, 'Alarm setup is not available on web.');
-      return;
-    }
+    if (_alarmUnavailableOnWeb(context)) return;
     final parsed = AppTime.parseHourMinute(startTime);
     if (parsed == null) {
-      if (!context.mounted) return;
       showAppSnackBar(context, 'Unable to parse class time.');
       return;
     }
-    var (hour, minute) = parsed;
-
-    final classTime = DateTime(2025, 1, 2, hour, minute);
+    final classTime = DateTime(2025, 1, 2, parsed.$1, parsed.$2);
     final adjusted = classTime.subtract(Duration(minutes: minutesBefore));
-    hour = adjusted.hour;
-    minute = adjusted.minute;
     final dayShift = adjusted.day.compareTo(classTime.day);
+    final message = '$courseCode Class Reminder ($minutesBefore min before)';
 
     if (defaultTargetPlatform == TargetPlatform.iOS) {
       final weekdays = _mapWeekdays(days, shift: dayShift);
       if (weekdays.isEmpty) return;
-      try {
-        final now = DateTime.now();
-        var addedAny = false;
-        for (final targetWeekday in weekdays) {
-          DateTime nextDate = DateTime(
-            now.year,
-            now.month,
-            now.day,
-            hour,
-            minute,
-          );
-          while (nextDate.weekday != targetWeekday || nextDate.isBefore(now)) {
-            nextDate = nextDate.add(const Duration(days: 1));
-          }
-          final event = Event(
-            title: '$courseCode Class Reminder',
-            description:
-                '$courseCode Class Reminder ($minutesBefore min before)',
-            location: 'BRACU Campus',
-            startDate: nextDate,
-            endDate: nextDate.add(const Duration(hours: 1)),
-            recurrence: Recurrence(frequency: Frequency.weekly),
-          );
-          final success = await Add2Reminder.addReminder(event);
-          if (success) addedAny = true;
-        }
-        if (addedAny) {
-          if (!context.mounted) return;
-          showAppSnackBar(context, 'Reminders added to Apple Reminders.');
-          await AppStorage.instance.setBool('alarm_done_$alarmKey', true);
-          if (mounted) setState(() {});
-          RefreshBus.instance.notify(reason: 'alarms');
-        } else {
-          if (!context.mounted) return;
-          showAppSnackBar(
-            context,
-            'Unable to add reminders to Apple Reminders.',
-          );
-        }
-      } catch (_) {
-        if (!context.mounted) return;
-        showAppSnackBar(context, 'Unable to add reminders to Apple Reminders.');
-      }
+      final now = DateTime.now();
+      final events = [
+        for (final targetWeekday in weekdays)
+          () {
+            var nextDate = DateTime(
+              now.year,
+              now.month,
+              now.day,
+              adjusted.hour,
+              adjusted.minute,
+            );
+            while (nextDate.weekday != targetWeekday ||
+                nextDate.isBefore(now)) {
+              nextDate = nextDate.add(const Duration(days: 1));
+            }
+            return Event(
+              title: '$courseCode Class Reminder',
+              description: message,
+              location: 'BRACU Campus',
+              startDate: nextDate,
+              endDate: nextDate.add(const Duration(hours: 1)),
+              recurrence: Recurrence(frequency: Frequency.weekly),
+            );
+          }(),
+      ];
+      await _addReminders(context, events, alarmKey: alarmKey, plural: true);
       return;
     }
 
-    final dayMapping = {
-      'SUNDAY': 1,
-      'MONDAY': 2,
-      'TUESDAY': 3,
-      'WEDNESDAY': 4,
-      'THURSDAY': 5,
-      'FRIDAY': 6,
-      'SATURDAY': 7,
-    };
+    await _openAndroidAlarm(
+      context,
+      hour: adjusted.hour,
+      minute: adjusted.minute,
+      message: message,
+      alarmKey: alarmKey,
+      openedMessage: 'Alarm opened in Clock app.',
+      days: [
+        for (final day in days)
+          if (AppTime.weekdayFromName(day) case final weekday?) weekday % 7 + 1,
+      ],
+    );
+  }
 
-    final alarmDays = days
-        .map((day) => dayMapping[day])
-        .whereType<int>()
-        .toList();
-
-    try {
-      final opened = await AndroidAlarm.set(
-        hour: hour,
-        minute: minute,
-        message: '$courseCode Class Reminder ($minutesBefore min before)',
-        days: alarmDays,
-      );
-      if (opened != true) {
-        throw Exception('Unable to open alarm on Android.');
-      }
-      if (!context.mounted) return;
-      showAppSnackBar(context, 'Alarm opened in Clock app.');
-      await AppStorage.instance.setBool('alarm_done_$alarmKey', true);
-      if (mounted) setState(() {});
-      RefreshBus.instance.notify(reason: 'alarms');
-    } catch (_) {
-      if (!context.mounted) return;
-      showAppSnackBar(context, 'Unable to open alarm on Android.');
+  Future<void> _setOneTimeAlarm(
+    BuildContext context, {
+    required String alarmKey,
+    required String title,
+    required String label,
+    required DateTime fireAt,
+    required int minutesBefore,
+    required String overMessage,
+    List<int>? days,
+  }) async {
+    if (_alarmUnavailableOnWeb(context)) return;
+    if (fireAt.isBefore(DateTime.now())) {
+      showAppSnackBar(context, overMessage);
+      return;
     }
+    final description = '$label ($minutesBefore min before)';
+    if (defaultTargetPlatform == TargetPlatform.iOS) {
+      await _addReminders(
+        context,
+        [
+          Event(
+            title: title,
+            description: description,
+            location: 'BRACU Campus',
+            startDate: fireAt,
+            endDate: fireAt.add(const Duration(hours: 1)),
+          ),
+        ],
+        alarmKey: alarmKey,
+        plural: false,
+      );
+      return;
+    }
+    await _openAndroidAlarm(
+      context,
+      hour: fireAt.hour,
+      minute: fireAt.minute,
+      message: description,
+      alarmKey: alarmKey,
+      openedMessage:
+          'Alarm opened in Clock app. Please verify the date and time.',
+      days: days,
+    );
   }
 
   Set<int> _mapWeekdays(List<String> days, {int shift = 0}) {
@@ -496,182 +561,12 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
     return mapped.map((day) => AppTime.shiftWeekday(day, shift)).toSet();
   }
 
-  Future<void> _setExamAlarm(
-    BuildContext context,
-    _ExamAlarmEntry entry,
-    int minutesBefore,
-  ) async {
-    if (kIsWeb) {
-      if (!context.mounted) return;
-      showAppSnackBar(context, 'Alarm setup is not available on web.');
-      return;
-    }
-
-    final fireAt = entry.dateTime.subtract(Duration(minutes: minutesBefore));
-    if (fireAt.isBefore(DateTime.now())) {
-      if (!context.mounted) return;
-      showAppSnackBar(context, 'This exam is already over.');
-      return;
-    }
-
-    final alarmKey = 'exam_${entry.id}';
-
-    if (defaultTargetPlatform == TargetPlatform.iOS) {
-      try {
-        final event = Event(
-          title: '${entry.courseCode} ${entry.type} Reminder',
-          description:
-              '${entry.courseCode} ${entry.type} Reminder ($minutesBefore min before)',
-          location: 'BRACU Campus',
-          startDate: fireAt,
-          endDate: fireAt.add(const Duration(hours: 1)),
-        );
-        final success = await Add2Reminder.addReminder(event);
-        if (success) {
-          if (!context.mounted) return;
-          showAppSnackBar(context, 'Reminder added to Apple Reminders.');
-          await AppStorage.instance.setBool('alarm_done_$alarmKey', true);
-          if (mounted) setState(() {});
-          RefreshBus.instance.notify(reason: 'alarms');
-        } else {
-          if (!context.mounted) return;
-          showAppSnackBar(
-            context,
-            'Unable to add reminder to Apple Reminders.',
-          );
-        }
-      } catch (_) {
-        if (!context.mounted) return;
-        showAppSnackBar(context, 'Unable to add reminder to Apple Reminders.');
-      }
-      return;
-    }
-
-    try {
-      final opened = await AndroidAlarm.set(
-        hour: fireAt.hour,
-        minute: fireAt.minute,
-        message:
-            '${entry.courseCode} ${entry.type} Reminder ($minutesBefore min before)',
-      );
-      if (opened != true) {
-        throw Exception('Unable to open alarm on Android.');
-      }
-      if (!context.mounted) return;
-      showAppSnackBar(
-        context,
-        'Alarm opened in Clock app. Please verify the date and time.',
-      );
-      await AppStorage.instance.setBool('alarm_done_$alarmKey', true);
-      if (mounted) setState(() {});
-      RefreshBus.instance.notify(reason: 'alarms');
-    } catch (_) {
-      if (!context.mounted) return;
-      showAppSnackBar(context, 'Unable to open alarm on Android.');
-    }
-  }
-
-  Future<void> _setCustomScheduleAlarm(
-    BuildContext context,
-    CustomSchedule item,
-    int minutesBefore,
-  ) async {
-    if (kIsWeb) {
-      if (!context.mounted) return;
-      showAppSnackBar(context, 'Alarm setup is not available on web.');
-      return;
-    }
-
-    final fireAt = item.startTime.subtract(Duration(minutes: minutesBefore));
-    if (fireAt.isBefore(DateTime.now())) {
-      if (!context.mounted) return;
-      showAppSnackBar(context, 'This event is already over.');
-      return;
-    }
-
-    final alarmKey = 'custom_${item.itemId}';
-
-    if (defaultTargetPlatform == TargetPlatform.iOS) {
-      try {
-        final event = Event(
-          title: item.title,
-          description: '${item.title} Reminder ($minutesBefore min before)',
-          location: 'BRACU Campus',
-          startDate: fireAt,
-          endDate: fireAt.add(const Duration(hours: 1)),
-        );
-        final success = await Add2Reminder.addReminder(event);
-        if (success) {
-          if (!context.mounted) return;
-          showAppSnackBar(context, 'Reminder added to Apple Reminders.');
-          await AppStorage.instance.setBool('alarm_done_$alarmKey', true);
-          if (mounted) setState(() {});
-          RefreshBus.instance.notify(reason: 'alarms');
-        } else {
-          if (!context.mounted) return;
-          showAppSnackBar(
-            context,
-            'Unable to add reminder to Apple Reminders.',
-          );
-        }
-      } catch (_) {
-        if (!context.mounted) return;
-        showAppSnackBar(context, 'Unable to add reminder to Apple Reminders.');
-      }
-      return;
-    }
-
-    try {
-      final opened = await AndroidAlarm.set(
-        hour: fireAt.hour,
-        minute: fireAt.minute,
-        message: '${item.title} Reminder ($minutesBefore min before)',
-        days: const <int>[],
-      );
-      if (opened != true) {
-        throw Exception('Unable to open alarm on Android.');
-      }
-      if (!context.mounted) return;
-      showAppSnackBar(
-        context,
-        'Alarm opened in Clock app. Please verify the date and time.',
-      );
-      await AppStorage.instance.setBool('alarm_done_$alarmKey', true);
-      if (mounted) setState(() {});
-      RefreshBus.instance.notify(reason: 'alarms');
-    } catch (_) {
-      if (!context.mounted) return;
-      showAppSnackBar(context, 'Unable to open alarm on Android.');
-    }
-  }
-
   List<CustomSchedulesCourseOption> _courseOptionsFor(List<Section> sections) {
     final cached = _courseOptionsCache;
     if (cached != null && identical(_courseOptionsForSections, sections)) {
       return cached;
     }
-    final courseOptions = <CustomSchedulesCourseOption>[];
-    final seenOptions = <String>{};
-    for (final sectionItem in sections) {
-      final code = sectionItem.courseCode.trim().toUpperCase();
-      if (code.isEmpty) continue;
-      final option = (
-        courseCode: code,
-        sectionName: sectionItem.sectionName.trim(),
-        classSchedules: sectionItem.sectionSchedule.classSchedules
-            .map(
-              (schedule) => (
-                day: schedule.day,
-                startTime: schedule.startTime,
-                endTime: schedule.endTime,
-              ),
-            )
-            .toList(),
-      );
-      if (seenOptions.add('${option.courseCode}|${option.sectionName}')) {
-        courseOptions.add(option);
-      }
-    }
+    final courseOptions = courseOptionsFromSections(sections);
     _courseOptionsForSections = sections;
     _courseOptionsCache = courseOptions;
     return courseOptions;
@@ -685,81 +580,6 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
     final endDate = DateTime.tryParse(advisingInfo['advisingEndDate'] ?? '');
     if (startDate == null || endDate == null) return false;
     return !DateTime.now().isAfter(endDate);
-  }
-
-  Future<void> _setAdvisingAlarm(
-    BuildContext context,
-    String title,
-    DateTime startTime,
-    int minutesBefore,
-  ) async {
-    if (kIsWeb) {
-      if (!context.mounted) return;
-      showAppSnackBar(context, 'Alarm setup is not available on web.');
-      return;
-    }
-
-    final fireAt = startTime.subtract(Duration(minutes: minutesBefore));
-    if (fireAt.isBefore(DateTime.now())) {
-      if (!context.mounted) return;
-      showAppSnackBar(context, 'This event is already over.');
-      return;
-    }
-
-    final alarmKey = 'advising_${startTime.millisecondsSinceEpoch}';
-
-    if (defaultTargetPlatform == TargetPlatform.iOS) {
-      try {
-        final event = Event(
-          title: title,
-          description: '$title Reminder ($minutesBefore min before)',
-          location: 'BRACU Campus',
-          startDate: fireAt,
-          endDate: fireAt.add(const Duration(hours: 1)),
-        );
-        final success = await Add2Reminder.addReminder(event);
-        if (success) {
-          if (!context.mounted) return;
-          showAppSnackBar(context, 'Reminder added to Apple Reminders.');
-          await AppStorage.instance.setBool('alarm_done_$alarmKey', true);
-          if (mounted) setState(() {});
-          RefreshBus.instance.notify(reason: 'alarms');
-        } else {
-          if (!context.mounted) return;
-          showAppSnackBar(
-            context,
-            'Unable to add reminder to Apple Reminders.',
-          );
-        }
-      } catch (_) {
-        if (!context.mounted) return;
-        showAppSnackBar(context, 'Unable to add reminder to Apple Reminders.');
-      }
-      return;
-    }
-
-    try {
-      final opened = await AndroidAlarm.set(
-        hour: fireAt.hour,
-        minute: fireAt.minute,
-        message: '$title Reminder ($minutesBefore min before)',
-        days: const <int>[],
-      );
-      if (opened != true) {
-        throw Exception('Unable to open alarm on Android.');
-      }
-      if (!context.mounted) return;
-      showAppSnackBar(
-        context,
-        'Alarm opened in Clock app. Please verify the date and time.',
-      );
-      await AppStorage.instance.setBool('alarm_done_$alarmKey', true);
-      if (mounted) setState(() {});
-      RefreshBus.instance.notify(reason: 'alarms');
-    } catch (_) {
-      if (!context.mounted) return;
-      showAppSnackBar(context, 'Unable to open alarm on Android.');
-    }
   }
 
   @override
@@ -1101,11 +921,20 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
                                   showAppSnackBar(context, 'Alarm removed.');
                                   setState(() {});
                                 } else {
-                                  await _setAdvisingAlarm(
+                                  await _setOneTimeAlarm(
                                     context,
-                                    title,
-                                    startDate,
-                                    _minutesBefore[alarmKey]!,
+                                    alarmKey:
+                                        'advising_${startDate.millisecondsSinceEpoch}',
+                                    title: title,
+                                    label: '$title Reminder',
+                                    fireAt: startDate.subtract(
+                                      Duration(
+                                        minutes: _minutesBefore[alarmKey]!,
+                                      ),
+                                    ),
+                                    minutesBefore: _minutesBefore[alarmKey]!,
+                                    overMessage: 'This event is already over.',
+                                    days: const <int>[],
                                   );
                                 }
                               },
@@ -1331,10 +1160,19 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
                                 );
                                 setState(() {});
                               } else {
-                                await _setCustomScheduleAlarm(
+                                await _setOneTimeAlarm(
                                   context,
-                                  item,
-                                  _minutesBefore[alarmKey]!,
+                                  alarmKey: 'custom_${item.itemId}',
+                                  title: item.title,
+                                  label: '${item.title} Reminder',
+                                  fireAt: item.startTime.subtract(
+                                    Duration(
+                                      minutes: _minutesBefore[alarmKey]!,
+                                    ),
+                                  ),
+                                  minutesBefore: _minutesBefore[alarmKey]!,
+                                  overMessage: 'This event is already over.',
+                                  days: const <int>[],
                                 );
                               }
                             },
@@ -1637,10 +1475,20 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
                                     );
                                     setState(() {});
                                   } else {
-                                    await _setExamAlarm(
+                                    await _setOneTimeAlarm(
                                       context,
-                                      exam,
-                                      _minutesBefore[alarmKey]!,
+                                      alarmKey: 'exam_${exam.id}',
+                                      title:
+                                          '${exam.courseCode} ${exam.type} Reminder',
+                                      label:
+                                          '${exam.courseCode} ${exam.type} Reminder',
+                                      fireAt: exam.dateTime.subtract(
+                                        Duration(
+                                          minutes: _minutesBefore[alarmKey]!,
+                                        ),
+                                      ),
+                                      minutesBefore: _minutesBefore[alarmKey]!,
+                                      overMessage: 'This exam is already over.',
                                     );
                                   }
                                 },

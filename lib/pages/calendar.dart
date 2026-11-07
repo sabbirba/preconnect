@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
-import 'package:intl/intl.dart';
 import 'package:preconnect/api/calendar.dart';
 import 'package:preconnect/model/calendar_info.dart';
 import 'package:preconnect/pages/shared_widgets/scroll_helper.dart';
@@ -513,7 +512,7 @@ class _CalendarCard extends StatelessWidget {
       final start = DateTime.tryParse(item.startDate);
       final end = DateTime.tryParse(item.endDate);
       if (start != null && end != null) {
-        return '${DateFormat('d MMMM').format(start)} - ${DateFormat('d MMMM').format(end)}';
+        return '${AppTime.formatDayMonth(start)} - ${AppTime.formatDayMonth(end)}';
       }
     }
     return item.typeKey.replaceAll('_', ' ').trim();

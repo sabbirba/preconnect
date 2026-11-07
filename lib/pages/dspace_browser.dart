@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:preconnect/tools/json_decode.dart';
 import 'package:flutter/material.dart';
+import 'package:preconnect/tools/time_utils.dart';
 import 'package:gap/gap.dart';
 import 'package:intl/intl.dart';
 import 'package:preconnect/api/api_client.dart';
@@ -639,7 +640,7 @@ class _DSpaceBrowserPageState extends State<DSpaceBrowserPage> {
           final y = parts[2];
           parsed = DateTime.tryParse('$y-$m-$d');
           if (parsed != null) {
-            displayDate = DateFormat('d MMMM yyyy').format(parsed);
+            displayDate = AppTime.formatDayMonthYear(parsed);
           }
         }
       } else if (trimmed.length == 4) {
@@ -655,7 +656,7 @@ class _DSpaceBrowserPageState extends State<DSpaceBrowserPage> {
       } else {
         parsed = DateTime.tryParse(trimmed);
         if (parsed != null) {
-          displayDate = DateFormat('d MMMM yyyy').format(parsed);
+          displayDate = AppTime.formatDayMonthYear(parsed);
         }
       }
       if (displayDate.isEmpty) displayDate = trimmed;

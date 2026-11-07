@@ -320,20 +320,14 @@ class _AppConfirmationActionDialog extends StatefulWidget {
 class _AppConfirmationActionDialogState
     extends State<_AppConfirmationActionDialog> {
   bool _isLoading = false;
-  static const Duration _minLoadingDuration = Duration(milliseconds: 300);
 
   Future<void> _handleConfirm() async {
     if (_isLoading) return;
-    final startedAt = DateTime.now();
     setState(() {
       _isLoading = true;
     });
     try {
       await widget.onConfirm();
-      final elapsed = DateTime.now().difference(startedAt);
-      if (elapsed < _minLoadingDuration) {
-        await Future<void>.delayed(_minLoadingDuration - elapsed);
-      }
       if (!mounted) return;
       Navigator.of(context).pop(true);
     } catch (_) {
@@ -743,9 +737,9 @@ Future<DateTime?> showAppDatePicker(
 
           String label = DateFormat('EEEE, d MMMM yyyy').format(date);
           if (isToday) {
-            label = 'Today - ${DateFormat('d MMMM yyyy').format(date)}';
+            label = 'Today - ${AppTime.formatDayMonthYear(date)}';
           } else if (isTomorrow) {
-            label = 'Tomorrow - ${DateFormat('d MMMM yyyy').format(date)}';
+            label = 'Tomorrow - ${AppTime.formatDayMonthYear(date)}';
           }
 
           return Padding(

@@ -6,7 +6,6 @@ import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
 import 'package:http/http.dart' as http;
 import 'package:preconnect/api/api_client.dart';
-import 'package:preconnect/tools/http/http_headers.dart';
 import 'package:preconnect/api/preferences_store.dart';
 import 'package:preconnect/pages/api_test.dart';
 import 'package:preconnect/pages/settings.dart';
@@ -39,8 +38,9 @@ class _DevsPageState extends State<DevsPage> {
   late Future<String> _subtitleFuture;
   List<_ContributorProfile> _contributors = const <_ContributorProfile>[];
   bool _contributorsLoading = false;
-  List<_SponsorEntry> _sponsors = const <_SponsorEntry>[];
-  bool _sponsorsLoading = false;
+  List<_SponsorEntry> get _sponsors =>
+      CdnJsonCache.peek<List<_SponsorEntry>>(_sponsorsCacheKey) ??
+      const <_SponsorEntry>[];
   int _secretTapCount = 0;
   bool _isOpeningSecret = false;
   static List<_ContributorProfile>? _cachedContributors;
@@ -52,28 +52,19 @@ class _DevsPageState extends State<DevsPage> {
     if (_cachedContributors != null) {
       _contributors = _cachedContributors!;
     }
-    final peekedSponsors = CdnJsonCache.peek<List<_SponsorEntry>>(
-      _sponsorsCacheKey,
-    );
-    if (peekedSponsors != null) {
-      _sponsors = peekedSponsors;
-    }
+    CdnJsonCache.revision.addListener(_onRemoteChanged);
     _loadContributors();
-    _loadSponsors();
+    unawaited(_loadSponsorsRoster());
   }
 
-  Future<void> _loadSponsors({bool forceRefresh = false}) async {
-    if (_sponsorsLoading) return;
-    _sponsorsLoading = true;
-    try {
-      final sponsors = await _loadSponsorsRoster(forceRefresh: forceRefresh);
-      if (!mounted) return;
-      setState(() {
-        _sponsors = sponsors;
-      });
-    } finally {
-      _sponsorsLoading = false;
-    }
+  @override
+  void dispose() {
+    CdnJsonCache.revision.removeListener(_onRemoteChanged);
+    super.dispose();
+  }
+
+  void _onRemoteChanged() {
+    if (mounted) setState(() {});
   }
 
   static Future<List<_ContributorProfile>> preloadData({
@@ -123,7 +114,7 @@ class _DevsPageState extends State<DevsPage> {
   Future<void> _refreshContributors() async {
     await Future.wait([
       _loadContributors(forceRefresh: true),
-      _loadSponsors(forceRefresh: true),
+      _loadSponsorsRoster(forceRefresh: true),
     ]);
   }
 
@@ -396,11 +387,13 @@ class _DevsPageState extends State<DevsPage> {
                 physics: const AlwaysScrollableScrollPhysics(),
                 children: [
                   const _IntroCard(),
-                  const Gap(12),
+                  const Gap(_sectionGap),
                   _buildPeopleSection(),
-                  const Gap(12),
-                  _buildSponsoredSection(),
-                  const Gap(12),
+                  if (_sponsors.isNotEmpty) ...[
+                    const Gap(_sectionGap),
+                    _buildSponsoredSection(),
+                  ],
+                  const Gap(_sectionGap),
                   _buildFundingSection(),
                 ],
               ),
@@ -426,12 +419,11 @@ class _DevsPageState extends State<DevsPage> {
   }
 
   Widget _buildSponsoredSection() {
-    if (_sponsors.isEmpty) return const SizedBox.shrink();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const AppSectionTitle(title: 'Sponsored'),
-        const Gap(12),
+        const Gap(8),
         _SponsoredStrip(sponsors: _sponsors),
       ],
     );
@@ -441,9 +433,8 @@ class _DevsPageState extends State<DevsPage> {
     return const Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Gap(12),
-        FundingPromoDivider(showSupporters: true),
-        Gap(12),
+        CampaignSupporters(maxCount: 5),
+        Gap(_sectionGap),
         FundingSupportContent(),
       ],
     );
@@ -451,6 +442,7 @@ class _DevsPageState extends State<DevsPage> {
 }
 
 const _contributorsCacheKey = 'devs_contributors_v3';
+const double _sectionGap = 20;
 
 class _IntroCard extends StatelessWidget {
   const _IntroCard();
@@ -579,7 +571,7 @@ class _SponsoredStrip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      height: 62,
+      height: 40,
       child: ListView(
         scrollDirection: Axis.horizontal,
         padding: EdgeInsets.zero,
@@ -989,7 +981,6 @@ Map<String, String> _githubHeadersWithToken({required bool includeToken}) {
   final headers = <String, String>{
     'Accept': 'application/vnd.github+json',
     'X-GitHub-Api-Version': '2022-11-28',
-    ...compressionHeaders(),
   };
   final token = _githubToken.trim();
   if (includeToken && token.isNotEmpty) {

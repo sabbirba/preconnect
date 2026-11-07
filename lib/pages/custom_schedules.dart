@@ -129,34 +129,7 @@ class _CustomSchedulesPageState extends State<CustomSchedulesPage>
         jsonString,
         semesterSessionId: currentSessionSemesterId,
       );
-      final courseOptions = <CustomSchedulesCourseOption>[];
-      final seen = <String>{};
-      for (final sectionItem in sections) {
-        final code = sectionItem.courseCode.trim().toUpperCase();
-        if (code.isEmpty) continue;
-        final option = (
-          courseCode: code,
-          sectionName: sectionItem.sectionName.trim(),
-          classSchedules: sectionItem.sectionSchedule.classSchedules
-              .map(
-                (schedule) => (
-                  day: schedule.day,
-                  startTime: schedule.startTime,
-                  endTime: schedule.endTime,
-                ),
-              )
-              .toList(),
-        );
-        final identity = '${option.courseCode}|${option.sectionName}';
-        if (seen.add(identity)) {
-          courseOptions.add(option);
-        }
-      }
-      courseOptions.sort((a, b) {
-        final codeCmp = a.courseCode.compareTo(b.courseCode);
-        if (codeCmp != 0) return codeCmp;
-        return a.sectionName.compareTo(b.sectionName);
-      });
+      final courseOptions = courseOptionsFromSections(sections);
       _cachedCourseOptions = courseOptions;
     } catch (_) {
       _cachedCourseOptions ??= const <CustomSchedulesCourseOption>[];
@@ -247,35 +220,7 @@ class _CustomSchedulesPageState extends State<CustomSchedulesPage>
           jsonString,
           semesterSessionId: currentSessionSemesterId,
         );
-        final courseOptions = <CustomSchedulesCourseOption>[];
-        final seen = <String>{};
-        for (final sectionItem in sections) {
-          final code = sectionItem.courseCode.trim().toUpperCase();
-          if (code.isNotEmpty) {
-            final option = (
-              courseCode: code,
-              sectionName: sectionItem.sectionName.trim(),
-              classSchedules: sectionItem.sectionSchedule.classSchedules
-                  .map(
-                    (schedule) => (
-                      day: schedule.day,
-                      startTime: schedule.startTime,
-                      endTime: schedule.endTime,
-                    ),
-                  )
-                  .toList(),
-            );
-            if (seen.add(_courseOptionIdentity(option))) {
-              courseOptions.add(option);
-            }
-          }
-        }
-        courseOptions.sort((a, b) {
-          final codeCmp = a.courseCode.compareTo(b.courseCode);
-          if (codeCmp != 0) return codeCmp;
-          return a.sectionName.compareTo(b.sectionName);
-        });
-        final options = courseOptions;
+        final options = courseOptionsFromSections(sections);
         if (mounted) {
           setState(() {
             _latestCourseOptions = options;
@@ -292,10 +237,6 @@ class _CustomSchedulesPageState extends State<CustomSchedulesPage>
 
     _courseOptionsLoadInFlight = loadFuture;
     return loadFuture;
-  }
-
-  String _courseOptionIdentity(CustomSchedulesCourseOption option) {
-    return '${option.courseCode}|${option.sectionName}';
   }
 
   Future<void> _refresh({bool forceRefresh = true, bool notify = true}) async {

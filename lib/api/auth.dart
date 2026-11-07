@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'package:preconnect/tools/http/http_utils.dart';
-import 'package:preconnect/tools/http/http_headers.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/api/api_client.dart';
@@ -150,9 +149,7 @@ class AuthService {
     try {
       if (kIsWeb) {
         final uri = AppLogout.mercureLogoutUri;
-        await HttpUtils.client
-            .delete(uri, headers: compressionHeadersForUri(uri))
-            .timeout(_authRequestTimeout);
+        await HttpUtils.client.delete(uri).timeout(_authRequestTimeout);
         return;
       }
 
@@ -169,7 +166,6 @@ class AuthService {
               uri,
               headers: <String, String>{
                 'Content-Type': 'application/x-www-form-urlencoded',
-                ...compressionHeadersForUri(uri),
               },
               body: body,
             )
@@ -189,7 +185,6 @@ class AuthService {
             uri,
             headers: <String, String>{
               ...AppLogout.mercureLogoutHeaders(accessToken: accessToken),
-              ...compressionHeadersForUri(uri),
             },
           )
           .timeout(_authRequestTimeout);
@@ -207,7 +202,6 @@ class AuthService {
             uri,
             headers: <String, String>{
               ...AppLogout.mercureLoginHeaders(accessToken: accessToken),
-              ...compressionHeadersForUri(uri),
             },
             body: '{}',
           )

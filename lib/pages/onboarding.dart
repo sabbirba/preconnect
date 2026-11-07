@@ -30,8 +30,6 @@ class OnboardingPage extends StatefulWidget {
 }
 
 class _OnboardingPageState extends State<OnboardingPage> {
-  Future<CampusMapData?>? _campusMapFuture;
-  Future<String?>? _transportScheduleUrlFuture;
   WebExtensionLoginFlow? _webExtensionLoginFlow;
   StreamSubscription<WebExtensionLoginState>? _webLoginSub;
   bool _isStartingWebLogin = false;
@@ -92,8 +90,6 @@ class _OnboardingPageState extends State<OnboardingPage> {
   void initState() {
     super.initState();
     _loadVersion();
-    _campusMapFuture = fetchCampusMapData();
-    _transportScheduleUrlFuture = fetchTransportScheduleUrl();
     if (kIsWeb && !widget.isLoggedIn) {
       _webExtensionLoginFlow = WebExtensionLoginFlow();
       _webLoginSub = _webExtensionLoginFlow!.events.listen(_handleWebLogin);
@@ -174,17 +170,6 @@ class _OnboardingPageState extends State<OnboardingPage> {
 
   Future<void> _openLink(BuildContext context, String url) async {
     await openExternalUrl(context, url);
-  }
-
-  Future<void> _openCampusMapBottomSheet() async {
-    _campusMapFuture ??= fetchCampusMapData();
-    _transportScheduleUrlFuture ??= fetchTransportScheduleUrl();
-    if (!mounted) return;
-    await showCampusMapBottomSheet(
-      context,
-      campusMapFuture: _campusMapFuture!,
-      transportScheduleUrlFuture: _transportScheduleUrlFuture!,
-    );
   }
 
   Future<void> _openOnboardingQuickPage(Widget page) async {
@@ -428,7 +413,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
                         SizedBox(
                           width: double.infinity,
                           child: AppActionButton(
-                            onPressed: _openCampusMapBottomSheet,
+                            onPressed: () => showCampusMapBottomSheet(context),
                             label: 'Campus Map',
                             backgroundColor: isDark
                                 ? Colors.white.withValues(alpha: 0.05)

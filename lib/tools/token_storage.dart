@@ -22,7 +22,6 @@ import 'package:preconnect/tools/app_storage.dart';
 import 'package:preconnect/tools/preconnect_constants.dart';
 import 'package:preconnect/tools/platform_stub.dart'
     if (dart.library.js_interop) 'package:preconnect/tools/storage_web.dart';
-import 'package:preconnect/tools/http/http_headers.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:preconnect/tools/store_actions.dart';
 
@@ -228,6 +227,26 @@ class TokenStorage {
   Future<void> _removeLegacyValue(String key) async {
     await AppStorage.instance.remove(key);
   }
+}
+
+const Map<String, String> imageRequestHeaders = <String, String>{
+  'Accept': 'image/avif,image/webp,image/apng,image/*,*/*;q=0.8',
+  'User-Agent':
+      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
+      '(KHTML, like Gecko) Chrome/125.0 Safari/537.36',
+};
+
+Future<Map<String, String>> imageHeadersFor(Uri uri) async {
+  final headers = {...imageRequestHeaders};
+  if (uri.host != 'connect.bracu.ac.bd') return headers;
+  final storage = TokenStorage.instance;
+  final token = await storage.read(key: PreConnectStorageKeys.accessToken);
+  if (token != null && token.isNotEmpty) {
+    headers['Authorization'] = 'Bearer $token';
+  }
+  final idToken = await storage.read(key: PreConnectStorageKeys.idToken);
+  if (idToken != null && idToken.isNotEmpty) headers['X-ID-Token'] = idToken;
+  return headers;
 }
 
 const String kPreConnectUserAgent =
@@ -831,26 +850,7 @@ class ProfileImageCache {
 
     try {
       final uri = Uri.parse(photoUrl);
-      final headers = <String, String>{
-        'User-Agent':
-            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
-            '(KHTML, like Gecko) Chrome/125.0 Safari/537.36',
-      };
-      if (uri.host == 'connect.bracu.ac.bd') {
-        final token = await TokenStorage.instance.read(
-          key: PreConnectStorageKeys.accessToken,
-        );
-        if (token != null && token.isNotEmpty) {
-          headers['Authorization'] = 'Bearer $token';
-        }
-        final idToken = await TokenStorage.instance.read(
-          key: PreConnectStorageKeys.idToken,
-        );
-        if (idToken != null && idToken.isNotEmpty) {
-          headers['X-ID-Token'] = idToken;
-        }
-      }
-      headers.addAll(compressionHeadersForUri(uri));
+      final headers = await imageHeadersFor(uri);
       final fileInfo = await _cacheManager.downloadFile(
         photoUrl,
         authHeaders: headers,

@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:preconnect/tools/app_paths.dart';
 import 'package:preconnect/tools/app_log.dart';
+import 'package:preconnect/tools/notification_text.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:preconnect/firebase_options.dart';
@@ -103,9 +104,7 @@ class FCMService {
           );
         }
       } catch (error) {
-        unawaited(
-          AppLog.write('Background notification response failed: $error'),
-        );
+        unawaited(AppLog.write('Notification payload decode failed: $error'));
       }
     }
   }
@@ -137,27 +136,7 @@ class FCMService {
 
     await _localNotifications.initialize(
       settings: initializationSettings,
-      onDidReceiveNotificationResponse: (NotificationResponse response) {
-        final payload = response.payload;
-        if (payload != null && payload.isNotEmpty) {
-          if (payload == 'captive_wifi') {
-            _instance._openCaptiveWifi?.call();
-            return;
-          }
-          try {
-            final decoded = jsonDecode(payload);
-            if (decoded is Map) {
-              _instance._handleNotificationTapAction(
-                Map<String, dynamic>.from(decoded),
-              );
-            }
-          } catch (error) {
-            unawaited(
-              AppLog.write('Notification payload decode failed: $error'),
-            );
-          }
-        }
-      },
+      onDidReceiveNotificationResponse: _onBackgroundNotificationResponse,
       onDidReceiveBackgroundNotificationResponse:
           _onBackgroundNotificationResponse,
     );
@@ -304,62 +283,15 @@ class FCMService {
     }
   }
 
-  static final Set<String> _knownCategories = {
-    'announcement',
-    'announcements',
-    'news',
-    'notice',
-    'notices',
-    'advising',
-    'academics',
-    'academic',
-    'exam',
-    'exams',
-    'course',
-    'courses',
-    'grade',
-    'grades',
-    'payment',
-    'library',
-    'connect',
-    'transport',
-    'bus',
-    'general',
-  };
-
   static String cleanNotificationDescription(
     String rawBody, {
     String? category,
     String? module,
     String? source,
-  }) {
-    var text = rawBody.trim();
-    if (text.isEmpty) return '';
-
-    final candidates = <String>{
-      if (category != null && category.trim().isNotEmpty)
-        category.trim().toLowerCase(),
-      if (module != null && module.trim().isNotEmpty)
-        module.trim().toLowerCase(),
-      if (source != null && source.trim().isNotEmpty)
-        source.trim().toLowerCase(),
-      ..._knownCategories,
-    };
-
-    for (final cat in candidates) {
-      if (text.toLowerCase() == cat) {
-        return '';
-      }
-      final pattern = RegExp(
-        r'^\s*(\[|\()?\s*' + RegExp.escape(cat) + r'\s*(\]|\))?\s*[:\-–|•]?\s*',
-        caseSensitive: false,
-      );
-      if (pattern.hasMatch(text)) {
-        text = text.replaceFirst(pattern, '').trim();
-      }
-    }
-    return text;
-  }
+  }) => stripNotificationCategory(
+    rawBody,
+    categories: [category, module, source],
+  );
 
   static (String, String) _resolveNotificationTitleAndBody(
     RemoteNotification? notification,

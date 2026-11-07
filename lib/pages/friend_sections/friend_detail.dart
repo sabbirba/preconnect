@@ -77,12 +77,7 @@ class _FriendDetailPageState extends State<FriendDetailPage> {
           await resolveCurrentSessionSemesterIdWithRetry();
       if (semesterSessionId != null) {
         final overrides = await ExamScheduleService().getOverridesForSections(
-          widget.friend.courses
-              .map(
-                (course) =>
-                    course.toSection(semesterSessionId: semesterSessionId),
-              )
-              .toList(),
+          widget.friend.courses.map((course) => course).toList(),
           forcedSemesterSessionId: semesterSessionId,
         );
         if (mounted) {
@@ -189,8 +184,8 @@ class _FriendDetailPageState extends State<FriendDetailPage> {
 
     for (final entry in flatEntries) {
       final day = entry['day']?.toString() ?? '';
-      final start = _timeToMinutes(entry['startTime']?.toString());
-      final end = _timeToMinutes(entry['endTime']?.toString());
+      final start = AppTime.toMinutes(entry['startTime']?.toString());
+      final end = AppTime.toMinutes(entry['endTime']?.toString());
       final key = entry['entryKey']?.toString();
       final weekday = AppTime.weekdayFromName(day);
       if (key == null || weekday == null || start == null || end == null) {
@@ -441,11 +436,11 @@ class _FriendDetailPageState extends State<FriendDetailPage> {
       final dayDateLabel = formatLongDate(dayDate);
       final entries = grouped[day]!;
       entries.sort((a, b) {
-        final aStart = _timeToMinutes(a['startTime']?.toString()) ?? 24 * 60;
-        final bStart = _timeToMinutes(b['startTime']?.toString()) ?? 24 * 60;
+        final aStart = AppTime.toMinutes(a['startTime']?.toString()) ?? 24 * 60;
+        final bStart = AppTime.toMinutes(b['startTime']?.toString()) ?? 24 * 60;
         if (aStart != bStart) return aStart.compareTo(bStart);
-        final aEnd = _timeToMinutes(a['endTime']?.toString()) ?? 24 * 60;
-        final bEnd = _timeToMinutes(b['endTime']?.toString()) ?? 24 * 60;
+        final aEnd = AppTime.toMinutes(a['endTime']?.toString()) ?? 24 * 60;
+        final bEnd = AppTime.toMinutes(b['endTime']?.toString()) ?? 24 * 60;
         if (aEnd != bEnd) return aEnd.compareTo(bEnd);
         return (a['courseCode']?.toString() ?? '').compareTo(
           b['courseCode']?.toString() ?? '',
@@ -515,10 +510,6 @@ class _FriendDetailPageState extends State<FriendDetailPage> {
     return widgets;
   }
 
-  int? _timeToMinutes(String? raw) {
-    return AppTime.toMinutes(raw);
-  }
-
   List<Widget> _buildExamSchedule(BuildContext context) {
     if (_loadingExamOverrides) {
       return const [Gap(16), Center(child: AppSpinner())];
@@ -527,7 +518,7 @@ class _FriendDetailPageState extends State<FriendDetailPage> {
     final finalExams = <(Course, ExamSectionResolved)>[];
     for (final course in widget.friend.courses) {
       final resolved = ExamScheduleService().resolveSection(
-        section: course.toSection(),
+        section: course,
         overrides: _examOverrides,
       );
       if (resolved.midDate != null && resolved.midDate!.trim().isNotEmpty) {

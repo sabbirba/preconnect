@@ -1,4 +1,6 @@
 import 'dart:convert';
+
+import 'package:flutter/foundation.dart';
 import 'package:preconnect/api/api_client.dart';
 import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/api/repository_cache.dart';
@@ -78,6 +80,8 @@ class FundingService {
   static const String _etagKey = 'funding_status_etag';
 
   static FundingStatus? _cached;
+  static final ValueNotifier<FundingStatus?> updates =
+      ValueNotifier<FundingStatus?>(null);
 
   static FundingStatus? get cached {
     return _cached ??= RepositoryCache.instance.readJsonSync(
@@ -116,6 +120,7 @@ class FundingService {
           if (decoded is Map<String, dynamic>) {
             final status = FundingStatus.fromJson(decoded);
             _cached = status;
+            updates.value = status;
             await RepositoryCache.instance.writeString(_cacheKey, body);
 
             final etag = response.headers['etag'] ?? response.headers['ETag'];

@@ -268,12 +268,10 @@ class ApiClient {
     Set<int> acceptedStatusCodes = const <int>{200},
     Duration cacheDuration = _defaultGetCacheTtl,
   }) async {
-    final uri = Uri.parse(url);
     final mergedHeaders = <String, String>{
       'Accept': 'application/json',
       ...headers,
     };
-    mergedHeaders.addAll(compressionHeadersForUri(uri));
     final response = await _sendSharedRequest(
       'GET',
       url,
@@ -305,13 +303,11 @@ class ApiClient {
     Map<String, String> headers = const <String, String>{},
     Set<int> acceptedStatusCodes = const <int>{200, 201},
   }) async {
-    final uri = Uri.parse(url);
     final mergedHeaders = <String, String>{
       'Accept': 'application/json',
       'Content-Type': 'application/json',
       ...headers,
     };
-    mergedHeaders.addAll(compressionHeadersForUri(uri));
     final response = await _sendSharedRequest(
       'POST',
       url,
@@ -344,7 +340,6 @@ class ApiClient {
     }
 
     final uri = Uri.tryParse(url);
-    headers.addAll(compressionHeadersForUri(uri));
     if (!kIsWeb && uri != null && uri.host == 'connect.bracu.ac.bd') {
       headers['Origin'] = ApiConfig.connectOrigin;
     }

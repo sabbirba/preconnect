@@ -317,7 +317,7 @@ class _PayslipDetailSheetState extends State<PayslipDetailSheet> {
             return activeParticulars.map((p) {
               final isBold = p.type == 'AGGREGATION' || p.type == 'WORDS';
               final amountStr = p.amount != null
-                  ? '৳${_formatAmount(p.amount!)}'
+                  ? '৳${formatAmount(p.amount!)}'
                   : '';
 
               if (p.type == 'WORDS') {
@@ -452,7 +452,7 @@ class _PayslipDetailSheetState extends State<PayslipDetailSheet> {
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
                       Text(
-                        '৳${_formatAmount(c.amount)}',
+                        '৳${formatAmount(c.amount)}',
                         style: TextStyle(
                           fontSize: 12.5,
                           fontWeight: FontWeight.w700,
@@ -640,5 +640,3 @@ class _DetailRow extends StatelessWidget {
     );
   }
 }
-
-String _formatAmount(double amount) => formatAmount(amount);

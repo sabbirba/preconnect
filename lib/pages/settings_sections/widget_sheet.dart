@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:preconnect/tools/time_utils.dart';
 import 'package:gap/gap.dart';
 import 'package:intl/intl.dart';
 import 'package:preconnect/api/api_client.dart';
@@ -200,7 +201,7 @@ class _WidgetSetupSheetState extends State<WidgetSetupSheet> {
         : 'Today is ${DateFormat('EEEE').format(now)}';
     final dateText = _widgetData?.date.isNotEmpty == true
         ? _widgetData!.date
-        : DateFormat('d MMMM, yyyy').format(now);
+        : AppTime.formatLongDate(now);
     final items = _widgetData?.items ?? const <TodayItem>[];
     const emptyStatus = AppTodayScheduleStatus.noClasses();
 

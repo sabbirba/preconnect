@@ -29,9 +29,12 @@ import 'package:preconnect/pages/onboarding.dart';
 import 'package:preconnect/pages/advising_helper.dart';
 import 'package:preconnect/pages/captive_wifi.dart';
 import 'package:preconnect/pages/ui_kit.dart';
+import 'package:preconnect/tools/cdn_cache.dart';
+import 'package:preconnect/tools/http/http_utils.dart';
+import 'package:preconnect/api/notification.dart';
+import 'package:preconnect/api/funding.dart';
 import 'package:preconnect/pages/shared_widgets/map_shared.dart';
 import 'package:preconnect/pages/devs.dart';
-import 'package:preconnect/api/funding.dart';
 import 'package:preconnect/tools/app_navigator.dart';
 import 'package:preconnect/tools/preconnect_constants.dart';
 import 'package:preconnect/tools/quiet_controller.dart';
@@ -150,12 +153,22 @@ class MyApp extends StatefulWidget {
 
   static Future<void> _warmStartupCaches({bool forceRefresh = false}) async {
     try {
+      unawaited(HttpUtils.warmConnections());
       unawaited(MercureService().connect());
       unawaited(fetchCampusMapData(forceRefresh: forceRefresh));
       unawaited(fetchTransportScheduleUrl(forceRefresh: forceRefresh));
       unawaited(FundingService.fetchStatus(forceRefresh: forceRefresh));
       unawaited(DevsPage.preload(forceRefresh: forceRefresh));
     } catch (_) {}
+  }
+
+  static Future<void> _refreshRemoteData() async {
+    await Future.wait([
+      HttpUtils.warmConnections(),
+      FeedService().refreshAll(),
+      CdnJsonCache.refreshAll(),
+      FundingService.fetchStatus(forceRefresh: true),
+    ]);
   }
 
   static void warmStartupCaches() {
@@ -527,6 +540,7 @@ class _MyAppState extends State<MyApp>
       unawaited(_refreshAndUnlockIfNeeded());
       unawaited(QuietModeController.instance.refresh());
       unawaited(triggerAppRefresh(forceRefresh: true));
+      unawaited(MyApp._refreshRemoteData());
       return;
     }
     if (state == AppLifecycleState.inactive ||

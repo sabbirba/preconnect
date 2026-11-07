@@ -6,6 +6,27 @@ import 'http_client.dart';
 class HttpUtils {
   static final http.Client client = createHttpClient();
 
+  static const List<String> connectionHosts = <String>[
+    'api.preconnect.app',
+    'preconnect.app',
+    'connect.bracu.ac.bd',
+    'sso.bracu.ac.bd',
+  ];
+
+  static Future<void> warmConnections() async {
+    if (const bool.fromEnvironment('dart.library.js_interop')) return;
+    await Future.wait([
+      for (final host in connectionHosts)
+        client
+            .send(
+              http.Request('HEAD', Uri.https(host))..followRedirects = false,
+            )
+            .then((response) => response.stream.drain<void>())
+            .timeout(const Duration(seconds: 5))
+            .catchError((Object _) {}),
+    ]);
+  }
+
   static String formBody(Map<String, String> fields) {
     final buffer = StringBuffer();
     var first = true;

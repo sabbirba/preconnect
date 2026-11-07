@@ -19,6 +19,7 @@ import 'package:web/web.dart' show Headers, RequestInit, Response, console;
 import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/tools/app_logout.dart';
 import 'package:preconnect/tools/extension_config.dart';
+import 'package:preconnect/tools/notification_text.dart';
 import 'package:preconnect/tools/preconnect_constants.dart';
 import 'package:preconnect/tools/session_sync.dart';
 import 'package:preconnect/tools/pkce.dart';
@@ -947,7 +948,7 @@ Future<void> _revokeMercureSession() async {
   }
 }
 
-Future<void> _completeMercureLogout(int? appTabId) async {
+Future<void> _completeMercureLogout(int? appTabId, {int? closeTabId}) async {
   await _unregisterGcmToken();
   await _clearPendingLogout();
   await chrome.storage.local.remove([
@@ -968,6 +969,13 @@ Future<void> _completeMercureLogout(int? appTabId) async {
   if (chrome.action.isAvailable) {
     await chrome.action.setBadgeText(action.SetBadgeTextDetails(text: ''));
     await chrome.action.setTitle(action.SetTitleDetails(title: 'PreConnect'));
+  }
+  if (closeTabId != null) {
+    try {
+      await chrome.tabs.remove(closeTabId);
+    } catch (error, stackTrace) {
+      _reportBackgroundError(error, stackTrace);
+    }
   }
   if (appTabId != null) {
     try {
@@ -1243,43 +1251,7 @@ Future<bool> _handleLogoutNavigation(int tabId, String url) async {
 
   if (!AppLogout.isConnectLogoutRedirect(url)) return false;
 
-  await _unregisterGcmToken();
-  await _clearPendingLogout();
-  await chrome.storage.local.remove([
-    PreConnectStorageKeys.accessToken,
-    PreConnectStorageKeys.refreshToken,
-    PreConnectStorageKeys.idToken,
-    PreConnectStorageKeys.cachedHasAuthSession,
-    _cookieSnapshotConnectKey,
-    _cookieSnapshotSsoKey,
-    _cookieSnapshotUpdatedAtKey,
-    _cachedUnreadCountKey,
-    _gcmLastRegisteredAtKey,
-    _gcmLastMessageAtKey,
-    _gcmLastDeletedAtKey,
-    _gcmLastSendErrorKey,
-  ]);
-  await chrome.storage.session.remove(_notificationPayloadsKey);
-  if (chrome.action.isAvailable) {
-    await chrome.action.setBadgeText(action.SetBadgeTextDetails(text: ''));
-    await chrome.action.setTitle(action.SetTitleDetails(title: 'PreConnect'));
-  }
-  try {
-    await chrome.tabs.remove(tabId);
-  } catch (error, stackTrace) {
-    _reportBackgroundError(error, stackTrace);
-  }
-  if (pending.appTabId != null) {
-    try {
-      await chrome.tabs.update(
-        pending.appTabId!,
-        UpdateProperties(active: true),
-      );
-    } catch (error, stackTrace) {
-      _reportBackgroundError(error, stackTrace);
-    }
-  }
-  unawaited(_broadcastRuntimeMessage({'type': _logoutCompleteType}));
+  await _completeMercureLogout(pending.appTabId, closeTabId: tabId);
   return true;
 }
 
@@ -1549,50 +1521,8 @@ Future<void> _handleGcmMessage(OnMessageMessage event) async {
     ]);
   }
 
-  const knownCategories = <String>{
-    'announcement',
-    'announcements',
-    'news',
-    'notice',
-    'notices',
-    'advising',
-    'academics',
-    'academic',
-    'exam',
-    'exams',
-    'course',
-    'courses',
-    'grade',
-    'grades',
-    'payment',
-    'library',
-    'connect',
-    'transport',
-    'bus',
-    'general',
-  };
-
-  String cleanText(String input) {
-    var text = input.trim();
-    if (text.isEmpty) return '';
-    final candidates = <String>{
-      if (category.isNotEmpty) category.toLowerCase(),
-      ...knownCategories,
-    };
-    for (final cat in candidates) {
-      if (text.toLowerCase() == cat) {
-        return '';
-      }
-      final pattern = RegExp(
-        r'^\s*(\[|\()?\s*' + RegExp.escape(cat) + r'\s*(\]|\))?\s*[:\-–|•]?\s*',
-        caseSensitive: false,
-      );
-      if (pattern.hasMatch(text)) {
-        text = text.replaceFirst(pattern, '').trim();
-      }
-    }
-    return text;
-  }
+  String cleanText(String input) =>
+      stripNotificationCategory(input, categories: [category]);
 
   body = cleanText(body);
   final cleanedTitle = cleanText(title);

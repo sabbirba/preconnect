@@ -206,6 +206,7 @@ class _SupportButtonState extends State<_SupportButton> {
   void initState() {
     super.initState();
     _status = FundingService.cached;
+    FundingService.updates.addListener(_onStatusChanged);
     _fetchLatest();
     _rotationTimer = PollingTimer(const Duration(seconds: 10), (_) {
       if (mounted) {
@@ -219,8 +220,14 @@ class _SupportButtonState extends State<_SupportButton> {
 
   @override
   void dispose() {
+    FundingService.updates.removeListener(_onStatusChanged);
     _rotationTimer?.cancel();
     super.dispose();
+  }
+
+  void _onStatusChanged() {
+    final status = FundingService.updates.value;
+    if (mounted && status != null) setState(() => _status = status);
   }
 
   Future<void> _fetchLatest() async {
@@ -237,7 +244,7 @@ class _SupportButtonState extends State<_SupportButton> {
     return <String>[
       'Support PreConnect',
       if (status != null && status.totalRaised > 0)
-        '৳${_formatAmount(status.totalRaised)} Raised',
+        '৳${formatAmount(status.totalRaised)} Raised',
       'Join Discord',
       'GitHub Repo',
       'Fork Repo',
@@ -293,8 +300,6 @@ class _SupportButtonState extends State<_SupportButton> {
       }
     }
   }
-
-  String _formatAmount(int amount) => formatAmount(amount);
 
   String _labelText() {
     final options = _currentOptions();

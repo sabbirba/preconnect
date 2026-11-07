@@ -219,21 +219,18 @@ Future<String?> fetchTransportScheduleUrl({bool forceRefresh = false}) async {
   return null;
 }
 
-Future<void> showCampusMapBottomSheet(
-  BuildContext context, {
-  required Future<CampusMapData?> campusMapFuture,
-  required Future<String?> transportScheduleUrlFuture,
-}) async {
+Future<void> showCampusMapBottomSheet(BuildContext context) async {
+  final data = Future.wait<dynamic>([
+    fetchCampusMapData(),
+    fetchTransportScheduleUrl(),
+  ]);
   await showAppBottomSheet<void>(
     context,
     title: 'Campus Map',
     subtitle: 'Directions and key contacts',
     builder: (sheetContext, textPrimary, textSecondary) {
       return FutureBuilder<List<dynamic>>(
-        future: Future.wait<dynamic>([
-          campusMapFuture,
-          transportScheduleUrlFuture,
-        ]),
+        future: data,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const SizedBox.shrink();

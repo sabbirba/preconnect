@@ -10,7 +10,6 @@ import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/pages/shared_widgets/map_shared.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/preload_cache.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
 part 'package:preconnect/pages/bus/widgets/route_detail.dart';

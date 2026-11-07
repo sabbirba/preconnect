@@ -22,20 +22,6 @@ class _BusRouteDetailPageState extends State<BusRouteDetailPage> {
     unawaited(_refreshRouteData());
   }
 
-  @override
-  void dispose() {
-    super.dispose();
-  }
-
-  Future<void> _callAttendant(String phone) async {
-    final normalizedPhone = phone.replaceAll(RegExp(r'[^0-9+]'), '');
-    if (normalizedPhone.isEmpty) return;
-    final uri = Uri.parse('tel:$normalizedPhone');
-    final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
-    if (opened || !mounted) return;
-    showAppSnackBar(context, 'Unable to open the dialer.');
-  }
-
   Future<void> _refreshRouteData() async {
     if (_refreshing) return;
     if (!mounted) return;
@@ -125,10 +111,7 @@ class _BusRouteDetailPageState extends State<BusRouteDetailPage> {
           _RouteStopsCard(route: route),
           if (route.attendantPhone.trim().isNotEmpty) ...[
             const Gap(2),
-            _RouteAttendantFooter(
-              phone: route.attendantPhone,
-              onCallAttendant: _callAttendant,
-            ),
+            _RouteAttendantFooter(phone: route.attendantPhone),
           ],
         ],
       ),
@@ -160,18 +143,15 @@ class _RouteGoogleMapsLink extends StatelessWidget {
   }
 }
 
-Future<void> _openRouteInGoogleMaps(
+Future<bool> _openRouteInGoogleMaps(
   BuildContext context,
   double latitude,
   double longitude,
-) async {
-  final uri = Uri.parse(
-    'https://www.google.com/maps/search/?api=1&query=$latitude,$longitude',
-  );
-  final opened = await launchUrl(uri, mode: LaunchMode.inAppBrowserView);
-  if (opened || !context.mounted) return;
-  showAppSnackBar(context, 'Unable to open Google Maps.');
-}
+) => openExternalUrl(
+  context,
+  'https://www.google.com/maps/search/?api=1&query=$latitude,$longitude',
+  failureMessage: 'Unable to open Google Maps.',
+);
 
 class _RouteLiveMapCard extends StatelessWidget {
   const _RouteLiveMapCard({required this.route, required this.vehicle});
@@ -237,13 +217,9 @@ class _RouteLiveMapCard extends StatelessWidget {
 }
 
 class _RouteAttendantFooter extends StatelessWidget {
-  const _RouteAttendantFooter({
-    required this.phone,
-    required this.onCallAttendant,
-  });
+  const _RouteAttendantFooter({required this.phone});
 
   final String phone;
-  final Future<void> Function(String phone) onCallAttendant;
 
   @override
   Widget build(BuildContext context) {
@@ -254,7 +230,7 @@ class _RouteAttendantFooter extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(4, 4, 4, 8),
       child: _RouteActionButton(
         label: 'Call Attendant $normalizedPhone',
-        onPressed: () => onCallAttendant(normalizedPhone),
+        onPressed: () => openPhoneDialer(context, normalizedPhone),
       ),
     );
   }

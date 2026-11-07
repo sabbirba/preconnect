@@ -58,4 +58,21 @@ void main() {
     ]);
     expect(items.map((item) => item.name), ['Anonymous', 'New', 'Old']);
   });
+
+  test('supporters list puts anonymous gifts first as one total', () {
+    final list = groupedSupporters([
+      ContributionItem(name: 'Big Giver', amount: 2000, ts: 1),
+      ContributionItem(name: 'Anonymous', amount: 300, ts: 2),
+      ContributionItem(name: '', amount: 200, ts: 3),
+      ContributionItem(name: 'Small Giver', amount: 100, ts: 4),
+      ContributionItem(name: 'Small Giver', amount: 50, ts: 5),
+      ContributionItem(name: 'Refunded', amount: 0, ts: 6),
+    ]);
+    expect(list.map((item) => item.name), [
+      'Anonymous',
+      'Big Giver',
+      'Small Giver',
+    ]);
+    expect(list.map((item) => item.amount), [500, 2000, 150]);
+  });
 }

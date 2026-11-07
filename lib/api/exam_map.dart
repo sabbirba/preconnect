@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
-import 'package:preconnect/api/api_client.dart';
 import 'package:preconnect/api/api_config.dart';
+import 'package:preconnect/api/notification.dart';
 import 'package:preconnect/api/repository_cache.dart';
 import 'package:preconnect/api/schedule.dart';
 import 'package:preconnect/model/section_info.dart';
@@ -14,7 +14,6 @@ class ExamMapService {
   factory ExamMapService() => _instance;
   ExamMapService._();
 
-  final ApiClient _client = ApiClient();
   final RepositoryCache _repo = RepositoryCache.instance;
 
   static const Duration _indexCacheTtl = Duration(minutes: 5);
@@ -225,41 +224,14 @@ class ExamMapService {
     required String cacheKey,
     required Duration ttl,
     required bool forceRefresh,
-  }) async {
-    final cached = await _repo.readJsonMap(cacheKey);
-    final cachedData = cached?['data'];
-
-    if (!forceRefresh && _isPayloadValid(cachedData, cacheKey)) {
-      final ts = cached?['ts'];
-      if (ts is int) {
-        final age = DateTime.now().difference(
-          DateTime.fromMillisecondsSinceEpoch(ts),
-        );
-        if (age <= ttl) {
-          return cachedData;
-        }
-      }
-    }
-
-    try {
-      final response = await _client.publicGet(
-        url,
-        cacheDuration: forceRefresh
-            ? Duration.zero
-            : const Duration(seconds: 30),
-      );
-      final decoded = jsonDecode(response.body);
-      if (_isPayloadValid(decoded, cacheKey)) {
-        await _repo.writeJson(cacheKey, <String, dynamic>{
-          'ts': DateTime.now().millisecondsSinceEpoch,
-          'data': decoded,
-        });
-        return decoded;
-      }
-      return _isPayloadValid(cachedData, cacheKey) ? cachedData : null;
-    } catch (_) {
-      return _isPayloadValid(cachedData, cacheKey) ? cachedData : null;
-    }
+  }) {
+    return FeedService().fetchJson(
+      path: url,
+      cacheKey: cacheKey,
+      ttl: ttl,
+      forceRefresh: forceRefresh,
+      isValid: (data) => _isPayloadValid(data, cacheKey),
+    );
   }
 
   void _mergeExamRows(

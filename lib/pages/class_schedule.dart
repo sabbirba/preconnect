@@ -175,6 +175,10 @@ class _ClassScheduleState extends State<ClassSchedulePage>
   static Future<_ScheduleData> _loadScheduleData({
     bool forceRefresh = false,
   }) async {
+    final ramadanFuture = RamadanTiming.isRamadan(forceRefresh: forceRefresh);
+    final holidayFuture = HolidayTiming.getTodayStatus(
+      forceRefresh: forceRefresh,
+    );
     final currentSessionSemesterId = forceRefresh
         ? null
         : await resolveCurrentSessionSemesterIdWithRetry();
@@ -190,10 +194,10 @@ class _ClassScheduleState extends State<ClassSchedulePage>
           await JsonSnapshotStore.readSections() ?? const <section.Section>[];
     }
 
-    final isRamadan = await RamadanTiming.isRamadan(forceRefresh: forceRefresh);
-    final holidayStatus = await HolidayTiming.getTodayStatus(
-      forceRefresh: forceRefresh,
-    );
+    final (isRamadan, holidayStatus) = await (
+      ramadanFuture,
+      holidayFuture,
+    ).wait;
 
     final examOverrides = sections.isEmpty
         ? const <String, ExamScheduleOverride>{}

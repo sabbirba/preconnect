@@ -72,13 +72,17 @@ class FeedService {
   final RepositoryCache _repo = RepositoryCache.instance;
   static const Duration _requestCacheTtl = CacheDurations.notificationBadge;
 
+  final Map<String, Future<dynamic>> _inFlight = <String, Future<dynamic>>{};
+  final Map<String, Future<dynamic> Function()> _sources =
+      <String, Future<dynamic> Function()>{};
+
   Future<List<Map<String, dynamic>>> fetchList({
     required String path,
     required String cacheKey,
     required Duration ttl,
     bool forceRefresh = false,
   }) async {
-    final data = await _fetchJson(
+    final data = await fetchJson(
       path: path,
       cacheKey: cacheKey,
       ttl: ttl,
@@ -97,7 +101,7 @@ class FeedService {
     required Duration ttl,
     bool forceRefresh = false,
   }) async {
-    final data = await _fetchJson(
+    final data = await fetchJson(
       path: path,
       cacheKey: cacheKey,
       ttl: ttl,
@@ -107,51 +111,62 @@ class FeedService {
     return data.cast<String, dynamic>();
   }
 
-  final Map<String, Future<dynamic>> _inFlight = <String, Future<dynamic>>{};
+  Future<void> refreshAll() async {
+    await Future.wait(_sources.values.map((refresh) => refresh()));
+  }
 
-  Future<dynamic> _fetchJson({
+  Future<dynamic> fetchJson({
     required String path,
     required String cacheKey,
     required Duration ttl,
-    required bool forceRefresh,
-  }) async {
-    final inFlight = _inFlight[cacheKey];
-    if (inFlight != null && !forceRefresh) {
-      return await inFlight;
-    }
-    final request = _fetchJsonInternal(
+    bool forceRefresh = false,
+    bool Function(dynamic data) isValid = _hasData,
+  }) {
+    final isFirstUse = !_sources.containsKey(cacheKey);
+    _sources[cacheKey] = () => fetchJson(
       path: path,
       cacheKey: cacheKey,
       ttl: ttl,
-      forceRefresh: forceRefresh,
+      forceRefresh: true,
+      isValid: isValid,
     );
-    if (!forceRefresh) {
-      _inFlight[cacheKey] = request;
+    if (forceRefresh) {
+      return _fetchJsonInternal(path, cacheKey, ttl, true, isValid);
     }
-    try {
-      return await request;
-    } finally {
-      if (identical(_inFlight[cacheKey], request)) {
-        _inFlight.remove(cacheKey);
-      }
-    }
+    return _inFlight[cacheKey] ??=
+        _fetchJsonInternal(
+          path,
+          cacheKey,
+          ttl,
+          false,
+          isValid,
+          refreshInBackground: isFirstUse,
+        ).whenComplete(() {
+          _inFlight.remove(cacheKey);
+        });
   }
 
-  Future<dynamic> _fetchJsonInternal({
-    required String path,
-    required String cacheKey,
-    required Duration ttl,
-    required bool forceRefresh,
+  static bool _hasData(dynamic data) => data != null;
+
+  Future<dynamic> _fetchJsonInternal(
+    String path,
+    String cacheKey,
+    Duration ttl,
+    bool forceRefresh,
+    bool Function(dynamic data) isValid, {
+    bool refreshInBackground = false,
   }) async {
-    if (!forceRefresh) {
-      final cached = await _repo.readJsonMap(cacheKey);
-      final ts = (cached?['ts'] as num?)?.toInt();
-      final data = cached?['data'];
-      if (ts != null && data != null) {
-        final age = DateTime.now().difference(
-          DateTime.fromMillisecondsSinceEpoch(ts),
-        );
-        if (age <= ttl) return data;
+    final cached = await _repo.readJsonMap(cacheKey);
+    final cachedData = cached?['data'];
+    final hasCache = isValid(cachedData);
+    if (!forceRefresh && hasCache) {
+      final ts = (cached?['ts'] as num?)?.toInt() ?? 0;
+      final age = DateTime.now().difference(
+        DateTime.fromMillisecondsSinceEpoch(ts),
+      );
+      if (age <= ttl) {
+        if (refreshInBackground) unawaited(_sources[cacheKey]!());
+        return cachedData;
       }
     }
 
@@ -164,6 +179,7 @@ class FeedService {
         cacheDuration: forceRefresh ? Duration.zero : _requestCacheTtl,
       );
       final decoded = jsonDecode(response.body);
+      if (!isValid(decoded)) return hasCache ? cachedData : null;
       await _repo.writeJson(cacheKey, <String, dynamic>{
         'ts': DateTime.now().millisecondsSinceEpoch,
         'data': decoded,
@@ -178,8 +194,7 @@ class FeedService {
       unawaited(
         AppLog.write('Public Data Error: Failed to sync $path ($error)'),
       );
-      final cached = await _repo.readJsonMap(cacheKey);
-      return cached?['data'];
+      return hasCache ? cachedData : null;
     }
   }
 }

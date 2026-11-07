@@ -62,9 +62,6 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
   DateTime? _lastSilentLoginAt;
   String? _lastObservedApMac;
 
-  Future<CampusMapData?>? _campusMapFuture;
-  Future<String?>? _transportScheduleUrlFuture;
-
   static const Duration _silentLoginTimeout = Duration(seconds: 45);
   static const String _homeDashboardSnapshotCacheKey =
       'home_dashboard_snapshot_v1';
@@ -86,10 +83,6 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
     _future = _latestData != null
         ? Future<_HomeData>.value(_latestData!)
         : _initializeHomeData(forceRefresh: forceRefresh);
-    _campusMapFuture = fetchCampusMapData(forceRefresh: forceRefresh);
-    _transportScheduleUrlFuture = fetchTransportScheduleUrl(
-      forceRefresh: forceRefresh,
-    );
     unawaited(_warmAndBind(forceRefresh: forceRefresh));
     if (AndroidNetworkAssist.isSupported) {
       _networkStatusSubscription = AndroidNetworkAssist.statusStream.listen((
@@ -321,20 +314,6 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
 
   Future<_HomeData> _loadData({bool forceRefresh = false}) async {
     try {
-      final cardVisibility = await HomeCardPreferences.load().catchError(
-        (_) => HomeCardPreferences.defaults,
-      );
-      final currentSessionSemesterId = await resolveCurrentSessionSemesterId(
-        forceRefresh: forceRefresh,
-      ).catchError((_) => null);
-
-      final needsSchedule =
-          cardVisibility.showTodaySchedule ||
-          cardVisibility.showExamCountdownCard;
-      final needsRamadan =
-          cardVisibility.showRamadanCard || cardVisibility.showTodaySchedule;
-      final needsHoliday = cardVisibility.showTodaySchedule;
-
       final profileFuture =
           (forceRefresh
                   ? ProfileService().fetchProfile()
@@ -352,6 +331,22 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
                   ? AdvisingService().fetchAdvisingInfo()
                   : AdvisingService().getAdvisingInfo())
               .catchError((e) => null);
+
+      final (cardVisibility, currentSessionSemesterId) = await (
+        HomeCardPreferences.load().catchError(
+          (_) => HomeCardPreferences.defaults,
+        ),
+        resolveCurrentSessionSemesterId(
+          forceRefresh: forceRefresh,
+        ).catchError((_) => null),
+      ).wait;
+
+      final needsSchedule =
+          cardVisibility.showTodaySchedule ||
+          cardVisibility.showExamCountdownCard;
+      final needsRamadan =
+          cardVisibility.showRamadanCard || cardVisibility.showTodaySchedule;
+      final needsHoliday = cardVisibility.showTodaySchedule;
 
       final scheduleFuture = currentSessionSemesterId == null || !needsSchedule
           ? Future<List<section.Section>>.value(const <section.Section>[])
@@ -491,10 +486,8 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
     if (!mounted) return;
     _isRefreshing = true;
     try {
-      _campusMapFuture = fetchCampusMapData(forceRefresh: true);
-      _transportScheduleUrlFuture = fetchTransportScheduleUrl(
-        forceRefresh: true,
-      );
+      unawaited(fetchCampusMapData(forceRefresh: true));
+      unawaited(fetchTransportScheduleUrl(forceRefresh: true));
       final fresh = await _loadData(forceRefresh: true);
       if (!mounted) return;
       if (!fresh.hasProfileIdentity && _latestData != null) return;
@@ -662,7 +655,7 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
 
     final now = DateTime.now();
     final todayNormalized = DateTime(now.year, now.month, now.day);
-    final todayDate = DateFormat('d MMMM, yyyy').format(now);
+    final todayDate = AppTime.formatLongDate(now);
     final todayEntries =
         (data?.entries ?? const <_ScheduleEntry>[]).where((e) {
           if (normalizeWeekday(e.day) != normalizeWeekday(today)) return false;
@@ -678,7 +671,9 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
           }
           return true;
         }).toList()..sort(
-          (a, b) => _timeToMinutes(a.startTime) - _timeToMinutes(b.startTime),
+          (a, b) =>
+              (AppTime.toMinutes(a.startTime) ?? 0) -
+              (AppTime.toMinutes(b.startTime) ?? 0),
         );
     final examWeekStatus = _todayExamWeekStatus(
       data?.sections ?? const <section.Section>[],
@@ -1100,10 +1095,6 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
     return uniqueExams;
   }
 
-  int _timeToMinutes(String time) {
-    return AppTime.toMinutes(time) ?? 0;
-  }
-
   String? _nextRamadanTarget({String? sehri, String? iftar}) {
     DateTime? nextOccurrence(String? time) {
       final parsed = AppTime.parseTime(time);
@@ -1128,21 +1119,6 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
     if (sehriAt == null) return 'Iftar';
     if (iftarAt == null) return 'Sehri';
     return sehriAt.isBefore(iftarAt) ? 'Sehri' : 'Iftar';
-  }
-
-  Future<void> _openCampusMapBottomSheet() async {
-    _campusMapFuture ??= fetchCampusMapData();
-    _transportScheduleUrlFuture ??= fetchTransportScheduleUrl();
-    if (!mounted) return;
-    await showCampusMapBottomSheet(
-      context,
-      campusMapFuture: _campusMapFuture!,
-      transportScheduleUrlFuture: _transportScheduleUrlFuture!,
-    );
-  }
-
-  Future<void> _openCampusMapSheet() {
-    return _openCampusMapBottomSheet();
   }
 
   @override

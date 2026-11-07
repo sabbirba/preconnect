@@ -41,42 +41,14 @@ class _CurrentCourseDraft {
   }
 }
 
-class _PlannedCourseDraft {
+class _PlannedCourseDraft extends _CurrentCourseDraft {
   _PlannedCourseDraft({
-    String code = '',
-    String title = '',
-    String credit = '3',
-    this.grade = 'A',
-  }) : codeController = TextEditingController(text: code),
-       titleController = TextEditingController(text: title),
-       creditController = TextEditingController(text: credit);
-
-  final TextEditingController codeController;
-  final TextEditingController titleController;
-  final TextEditingController creditController;
-  String grade;
-
-  String get codeValue => codeController.text.trim().toUpperCase();
-  String get titleValue => titleController.text.trim();
-  String get creditValue => creditController.text.trim();
-
-  _CourseSnapshot toSnapshot() {
-    final code = codeController.text.trim().toUpperCase();
-    final credit = double.tryParse(creditController.text.trim()) ?? 0.0;
-    final gradeValue = _normalizeGrade(grade);
-    final gradePoint = _gradePointFor(gradeValue);
-    return _CourseSnapshot(
-      code: code,
-      credit: credit,
-      grade: gradeValue,
-      gradePoint: gradePoint,
-    );
-  }
-
-  void dispose() {
-    codeController.dispose();
-    titleController.dispose();
-    creditController.dispose();
+    super.code,
+    super.title,
+    super.credit = '3',
+    String grade = 'A',
+  }) : super(isRequired: false) {
+    this.grade = grade;
   }
 }
 

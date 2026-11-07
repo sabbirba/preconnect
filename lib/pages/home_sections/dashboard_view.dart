@@ -519,7 +519,8 @@ extension _HomeDashboardView on _HomeDashboardState {
                                     title: 'Campus Map & Contacts',
                                     subtitle: 'Location and emergency contacts',
                                     iconColor: const Color(0xFF22B573),
-                                    onTap: _openCampusMapSheet,
+                                    onTap: () =>
+                                        showCampusMapBottomSheet(context),
                                   ),
                                 ],
                                 if (cardVisibility.showFundingSection) ...[

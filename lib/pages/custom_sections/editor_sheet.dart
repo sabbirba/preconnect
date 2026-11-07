@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:preconnect/tools/time_utils.dart';
 import 'package:gap/gap.dart';
 import 'package:intl/intl.dart';
 import 'package:preconnect/model/custom_schedule.dart';
@@ -434,7 +435,7 @@ Future<CustomSchedulesDraft?> showCustomSchedulesEditorSheet(
                 width: double.infinity,
                 child: AppActionButton(
                   onPressed: pickDueDate,
-                  label: DateFormat('d MMMM yyyy').format(startTime),
+                  label: AppTime.formatDayMonthYear(startTime),
                   borderRadius: 14,
                   padding: const EdgeInsets.symmetric(vertical: 12),
                 ),

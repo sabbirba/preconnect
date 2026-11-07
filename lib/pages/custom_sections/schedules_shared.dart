@@ -1,4 +1,5 @@
 import 'package:preconnect/model/custom_schedule.dart';
+import 'package:preconnect/model/section_info.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/ramadan.dart';
 import 'package:preconnect/tools/time_utils.dart';
@@ -39,6 +40,33 @@ typedef CustomSchedulesCourseOption = ({
   String sectionName,
   List<CustomSchedulesClassSchedule> classSchedules,
 });
+
+List<CustomSchedulesCourseOption> courseOptionsFromSections(
+  Iterable<Section> sections,
+) {
+  final seen = <String>{};
+  return [
+    for (final section in sections)
+      if (section.courseCode.trim().toUpperCase() case final code
+          when code.isNotEmpty &&
+              seen.add('$code|${section.sectionName.trim()}'))
+        (
+          courseCode: code,
+          sectionName: section.sectionName.trim(),
+          classSchedules: [
+            for (final schedule in section.sectionSchedule.classSchedules)
+              (
+                day: schedule.day,
+                startTime: schedule.startTime,
+                endTime: schedule.endTime,
+              ),
+          ],
+        ),
+  ]..sort((a, b) {
+    final codeCmp = a.courseCode.compareTo(b.courseCode);
+    return codeCmp != 0 ? codeCmp : a.sectionName.compareTo(b.sectionName);
+  });
+}
 
 typedef CustomSchedulesTitleTemplate = ({
   CustomSchedulesCourseOption courseOption,

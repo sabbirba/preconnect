@@ -4,7 +4,6 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
 import 'package:http/http.dart' as http;
-import 'package:preconnect/tools/http/http_headers.dart';
 import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/api/auth.dart';
 import 'package:preconnect/model/advising_phase.dart';
@@ -158,7 +157,6 @@ class _ApiTestPageState extends State<ApiTestPage> {
       'Authorization': 'Bearer $accessToken',
       'X-REALM': 'bracu',
       'Accept': 'application/json',
-      ...compressionHeadersForUri(uri),
     });
 
     final streamed = await req.send().timeout(const Duration(seconds: 20));

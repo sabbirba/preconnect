@@ -672,30 +672,6 @@ String formatSemesterFromSessionId(String raw) {
   return formatSemesterFromSessionIdInt(value);
 }
 
-PopupMenuItem<T> compactPopupMenuItem<T>({
-  required T value,
-  required String label,
-  double height = 42,
-  EdgeInsets padding = const EdgeInsets.symmetric(horizontal: 16),
-  TextStyle textStyle = const TextStyle(
-    fontSize: 16,
-    fontWeight: FontWeight.w400,
-  ),
-}) {
-  return PopupMenuItem<T>(
-    value: value,
-    padding: padding,
-    height: height,
-    child: Text(
-      label,
-      style: textStyle,
-      maxLines: 1,
-      softWrap: false,
-      overflow: TextOverflow.fade,
-    ),
-  );
-}
-
 const String kPreConnectDiscordUrl = 'https://discord.gg/HwrgeFrvaz';
 const String kPreConnectRepositoryUrl =
     'https://github.com/sabbirba/preconnect';
@@ -926,120 +902,47 @@ const String _fundingPromoUrl =
     'https://raw.githubusercontent.com/sabbirba/preconnect/main/funding_promo.json';
 const String _fundingPromoCacheKey = 'funding_promo_content_v1';
 
-Future<_FundingPromoContent?> _loadFundingPromoContent({
-  bool forceRefresh = false,
-}) {
+Future<_FundingPromoContent?> _loadFundingPromoContent() {
   return CdnJsonCache.load<_FundingPromoContent>(
     url: _fundingPromoUrl,
     cacheKey: _fundingPromoCacheKey,
     decode: _FundingPromoContent.fromDecoded,
-    forceRefresh: forceRefresh,
   );
 }
 
-class FundingPromoDivider extends StatefulWidget {
-  const FundingPromoDivider({super.key, this.showSupporters = false});
-  final bool showSupporters;
-
-  @override
-  State<FundingPromoDivider> createState() => _FundingPromoDividerState();
-}
-
-class _FundingPromoDividerState extends State<FundingPromoDivider> {
-  _FundingPromoContent? _content = CdnJsonCache.peek<_FundingPromoContent>(
-    _fundingPromoCacheKey,
-  );
-
-  @override
-  void initState() {
-    super.initState();
-    unawaited(_load());
-  }
-
-  Future<void> _load() async {
-    final content = await _loadFundingPromoContent();
-    if (!mounted) return;
-    setState(() {
-      _content = content;
-    });
-  }
+class FundingShareButton extends StatelessWidget {
+  const FundingShareButton({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final content = _content;
-    if (content == null) return const SizedBox.shrink();
-    final textSecondary = AppPalette.textSecondary(context);
     final textPrimary = AppPalette.textPrimary(context);
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
+    return InkWell(
+      borderRadius: BorderRadius.circular(8),
+      onTap: () => SharePlus.instance.share(
+        ShareParams(
+          uri: Uri.parse(ApiConfig.fundingUrl),
+          subject: 'Support PreConnect',
+        ),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Expanded(
-              child: Text(
-                content.title,
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  color: textPrimary,
-                ),
-              ),
-            ),
-            InkWell(
-              borderRadius: BorderRadius.circular(8),
-              onTap: () async {
-                await SharePlus.instance.share(
-                  ShareParams(
-                    uri: Uri.parse(content.url),
-                    subject: 'PreConnect ${content.title}',
-                  ),
-                );
-              },
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.share_outlined, size: 14, color: textPrimary),
-                    const Gap(6),
-                    Text(
-                      'Share',
-                      softWrap: false,
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: textPrimary,
-                      ),
-                    ),
-                  ],
-                ),
+            Icon(Icons.share_outlined, size: 14, color: textPrimary),
+            const Gap(6),
+            Text(
+              'Share',
+              softWrap: false,
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+                color: textPrimary,
               ),
             ),
           ],
         ),
-        const Gap(12),
-        InkWell(
-          onTap: () => openExternalUrl(
-            context,
-            content.url,
-            failureMessage: 'Unable to open funding link.',
-          ),
-          borderRadius: BorderRadius.circular(8),
-          child: Text(
-            content.body,
-            style: TextStyle(
-              color: textSecondary,
-              fontSize: 13.0,
-              height: 1.4,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ),
-        if (widget.showSupporters) const CampaignSupporters(maxCount: 5),
-      ],
+      ),
     );
   }
 }
@@ -1061,7 +964,19 @@ class _CampaignSupportersState extends State<CampaignSupporters> {
   void initState() {
     super.initState();
     _status = FundingService.cached;
+    FundingService.updates.addListener(_onStatusChanged);
     _loadStatus();
+  }
+
+  @override
+  void dispose() {
+    FundingService.updates.removeListener(_onStatusChanged);
+    super.dispose();
+  }
+
+  void _onStatusChanged() {
+    final status = FundingService.updates.value;
+    if (mounted && status != null) setState(() => _status = status);
   }
 
   Future<void> _loadStatus() async {
@@ -1082,29 +997,7 @@ class _CampaignSupportersState extends State<CampaignSupporters> {
     if (status == null) return const SizedBox.shrink();
 
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final grouped = <String, ContributionItem>{};
-    for (final item in status.contributions) {
-      final key = item.name.trim();
-      if (!isNamedSupporter(key)) continue;
-      final existing = grouped[key];
-      if (existing == null) {
-        grouped[key] = item;
-      } else {
-        grouped[key] = ContributionItem(
-          name: key,
-          picture: existing.picture ?? item.picture,
-          amount: existing.amount + item.amount,
-          ts: existing.ts > item.ts ? existing.ts : item.ts,
-        );
-      }
-    }
-
-    final contributions = grouped.values.toList();
-    contributions.sort((a, b) {
-      final cmp = b.amount.compareTo(a.amount);
-      if (cmp != 0) return cmp;
-      return b.ts.compareTo(a.ts);
-    });
+    final contributions = groupedSupporters(status.contributions);
 
     final step = widget.maxCount;
     final total = contributions.length;
@@ -1118,7 +1011,6 @@ class _CampaignSupportersState extends State<CampaignSupporters> {
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        const Gap(16),
         FundingTap(
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -1131,9 +1023,7 @@ class _CampaignSupportersState extends State<CampaignSupporters> {
                   crossAxisAlignment: CrossAxisAlignment.baseline,
                   textBaseline: TextBaseline.alphabetic,
                   children: [
-                    const Flexible(
-                      child: AppSectionTitle(title: 'Campaign Supporters'),
-                    ),
+                    const Flexible(child: AppSectionTitle(title: 'Supporters')),
                     const Gap(6),
                     Text(
                       '(${supporterCount(status)})',
@@ -1155,10 +1045,12 @@ class _CampaignSupportersState extends State<CampaignSupporters> {
                   color: AppPalette.textPrimary(context),
                 ),
               ),
+              const Gap(4),
+              const FundingShareButton(),
             ],
           ),
         ),
-        const Gap(8),
+        const Gap(6),
         for (int i = 0; i < showCount; i++) ...[
           _SupporterTile(item: contributions[i]),
           if (i < showCount - 1)
@@ -1191,6 +1083,37 @@ class _CampaignSupportersState extends State<CampaignSupporters> {
       ],
     );
   }
+}
+
+List<ContributionItem> groupedSupporters(List<ContributionItem> items) {
+  const anonymous = 'Anonymous';
+  final grouped = <String, ContributionItem>{};
+  for (final item in items) {
+    if (item.amount <= 0) continue;
+    final name = item.name.trim();
+    final key = isNamedSupporter(name) ? name : anonymous;
+    final existing = grouped[key];
+    grouped[key] = existing == null
+        ? ContributionItem(
+            name: key,
+            picture: key == anonymous ? null : item.picture,
+            amount: item.amount,
+            ts: item.ts,
+          )
+        : ContributionItem(
+            name: key,
+            picture: existing.picture ?? item.picture,
+            amount: existing.amount + item.amount,
+            ts: existing.ts > item.ts ? existing.ts : item.ts,
+          );
+  }
+  final anonymousTotal = grouped.remove(anonymous);
+  final named = grouped.values.toList()
+    ..sort((a, b) {
+      final cmp = b.amount.compareTo(a.amount);
+      return cmp != 0 ? cmp : b.ts.compareTo(a.ts);
+    });
+  return [?anonymousTotal, ...named];
 }
 
 int supporterCount(FundingStatus status) {
@@ -1336,7 +1259,19 @@ class _SupportersStripState extends State<SupportersStrip> {
   @override
   void initState() {
     super.initState();
+    FundingService.updates.addListener(_onStatusChanged);
     unawaited(_load());
+  }
+
+  @override
+  void dispose() {
+    FundingService.updates.removeListener(_onStatusChanged);
+    super.dispose();
+  }
+
+  void _onStatusChanged() {
+    final status = FundingService.updates.value;
+    if (mounted && status != null) setState(() => _status = status);
   }
 
   Future<void> _load() async {
@@ -1381,6 +1316,8 @@ class _SupportersStripState extends State<SupportersStrip> {
                   color: textPrimary,
                 ),
               ),
+              const Gap(4),
+              const FundingShareButton(),
             ],
           ),
         ),
@@ -1439,8 +1376,19 @@ class _SupportersStripState extends State<SupportersStrip> {
 const String _kPreConnectWhatsAppUrl =
     'https://api.whatsapp.com/send?phone=8801865493144&text=Hi%20PreConnect%2C%20I%20want%20to%20support%20the%20app.';
 
-class FundingSupportContent extends StatelessWidget {
+class FundingSupportContent extends StatefulWidget {
   const FundingSupportContent({super.key});
+
+  @override
+  State<FundingSupportContent> createState() => _FundingSupportContentState();
+}
+
+class _FundingSupportContentState extends State<FundingSupportContent> {
+  @override
+  void initState() {
+    super.initState();
+    unawaited(_loadFundingPromoContent());
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -1448,15 +1396,21 @@ class FundingSupportContent extends StatelessWidget {
       children: [
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 4),
-          child: Text(
-            'Your support helps cover server costs, ongoing development, and app releases so PreConnect can stay reliable.',
-            style: TextStyle(
-              color: AppPalette.textSecondary(context),
-              fontSize: 13,
-              fontWeight: FontWeight.w400,
-              height: 1.45,
+          child: ListenableBuilder(
+            listenable: CdnJsonCache.revision,
+            builder: (context, _) => Text(
+              CdnJsonCache.peek<_FundingPromoContent>(
+                    _fundingPromoCacheKey,
+                  )?.body ??
+                  'Your support helps cover server costs, ongoing development, and app releases so PreConnect can stay reliable.',
+              style: TextStyle(
+                color: AppPalette.textSecondary(context),
+                fontSize: 13,
+                fontWeight: FontWeight.w400,
+                height: 1.45,
+              ),
+              textAlign: TextAlign.center,
             ),
-            textAlign: TextAlign.center,
           ),
         ),
         const Gap(16),
@@ -1488,6 +1442,7 @@ class FundingSupportContent extends StatelessWidget {
                   failureMessage: 'Unable to open WhatsApp.',
                 ),
               ),
+              const EmailLink(compact: true),
               _SponsorActionChip(
                 iconWidget: const PreConnectDiscordIcon(
                   size: 18,
@@ -1507,19 +1462,6 @@ class FundingSupportContent extends StatelessWidget {
                 ),
                 label: 'GitHub',
                 onTap: () => openExternalUrl(context, kPreConnectRepositoryUrl),
-              ),
-              _SponsorActionChip(
-                iconWidget: const Icon(
-                  Icons.fork_right_rounded,
-                  size: 18,
-                  color: AppPalette.primary,
-                ),
-                label: 'Fork',
-                onTap: () => openExternalUrl(
-                  context,
-                  '$kPreConnectRepositoryUrl/fork',
-                  failureMessage: 'Unable to open GitHub fork.',
-                ),
               ),
             ],
           ),

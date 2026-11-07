@@ -108,7 +108,7 @@ class CompareSchedulesPage extends StatefulWidget {
           schedule.endTime,
           isRamadan: isRamadan,
         );
-        final day = _normalizeDay(schedule.day);
+        final day = formatWeekdayTitle(schedule.day);
         if (day.isEmpty) continue;
         map.putIfAbsent(day, () => []).add({
           'startTime': adjusted.startTime,
@@ -129,22 +129,12 @@ class CompareSchedulesPage extends StatefulWidget {
   }
 
   static int _compareTime(String time1, String time2) {
-    final t1 = _timeToMinutes(time1);
-    final t2 = _timeToMinutes(time2);
+    final t1 = AppTime.toMinutes(time1);
+    final t2 = AppTime.toMinutes(time2);
     if (t1 == null && t2 == null) return time1.compareTo(time2);
     if (t1 == null) return 1;
     if (t2 == null) return -1;
     return t1.compareTo(t2);
-  }
-
-  static int? _timeToMinutes(String time) {
-    return AppTime.toMinutes(time);
-  }
-
-  static String _normalizeDay(String raw) {
-    final day = raw.trim().toLowerCase();
-    if (day.isEmpty) return '';
-    return day[0].toUpperCase() + day.substring(1);
   }
 
   static List<Map<String, String>> _mergeSlots(
@@ -329,8 +319,8 @@ class _CompareSchedulesPageState extends State<CompareSchedulesPage> {
           type: _CompareType.free,
           title: 'Free',
           subtitle: subtitle.isEmpty ? '$start - $end' : subtitle,
-          startMinutes: CompareSchedulesPage._timeToMinutes(start),
-          endMinutes: CompareSchedulesPage._timeToMinutes(end),
+          startMinutes: AppTime.toMinutes(start),
+          endMinutes: AppTime.toMinutes(end),
           key: 'free|$day|$start|$end',
         ),
       );
@@ -347,8 +337,8 @@ class _CompareSchedulesPageState extends State<CompareSchedulesPage> {
           type: _CompareType.busy,
           title: 'Busy',
           subtitle: subtitle.isEmpty ? '$start - $end' : subtitle,
-          startMinutes: CompareSchedulesPage._timeToMinutes(start),
-          endMinutes: CompareSchedulesPage._timeToMinutes(end),
+          startMinutes: AppTime.toMinutes(start),
+          endMinutes: AppTime.toMinutes(end),
           key: 'busy|$day|$start|$end',
         ),
       );
@@ -404,7 +394,7 @@ class _CompareSchedulesPageState extends State<CompareSchedulesPage> {
     for (final c in myCourses) {
       if (c.courseCode.trim() != courseCode.trim()) continue;
       for (final s in c.schedule) {
-        final day = CompareSchedulesPage._normalizeDay(s.day);
+        final day = formatWeekdayTitle(s.day);
         if (day.isNotEmpty) myDays.add(day);
       }
     }
@@ -412,7 +402,7 @@ class _CompareSchedulesPageState extends State<CompareSchedulesPage> {
     for (final c in friendCourses) {
       if (c.courseCode.trim() != courseCode.trim()) continue;
       for (final s in c.schedule) {
-        final day = CompareSchedulesPage._normalizeDay(s.day);
+        final day = formatWeekdayTitle(s.day);
         if (day.isNotEmpty) friendDays.add(day);
       }
     }

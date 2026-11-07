@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:preconnect/tools/image_cache.dart';
 import 'package:preconnect/tools/token_storage.dart';
-import 'package:preconnect/tools/preconnect_constants.dart';
 import 'package:preconnect/tools/url_utils.dart';
 
 class CachedImage extends StatefulWidget {
@@ -37,12 +36,7 @@ class CachedImage extends StatefulWidget {
         CachedNetworkImageProvider(
           normalized,
           cacheManager: AppImageCache.instance,
-          headers: const <String, String>{
-            'Accept': 'image/avif,image/webp,image/apng,image/*,*/*;q=0.8',
-            'User-Agent':
-                'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
-                '(KHTML, like Gecko) Chrome/125.0 Safari/537.36',
-          },
+          headers: imageRequestHeaders,
         ),
         context,
       );
@@ -115,26 +109,7 @@ class _CachedImageState extends State<CachedImage> {
         }
       }
     } catch (_) {}
-    final headers = <String, String>{
-      'Accept': 'image/avif,image/webp,image/apng,image/*,*/*;q=0.8',
-      'User-Agent':
-          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
-          '(KHTML, like Gecko) Chrome/125.0 Safari/537.36',
-    };
-    if (uri.host == 'connect.bracu.ac.bd') {
-      final token = await TokenStorage.instance.read(
-        key: PreConnectStorageKeys.accessToken,
-      );
-      if (token != null && token.isNotEmpty) {
-        headers['Authorization'] = 'Bearer $token';
-      }
-      final idToken = await TokenStorage.instance.read(
-        key: PreConnectStorageKeys.idToken,
-      );
-      if (idToken != null && idToken.isNotEmpty) {
-        headers['X-ID-Token'] = idToken;
-      }
-    }
+    final headers = await imageHeadersFor(uri);
     if (mounted && version == _loadVersion) {
       setState(() {
         _headers = headers;

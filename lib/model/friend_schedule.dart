@@ -63,18 +63,6 @@ typedef Course = Section;
 
 extension SectionFriendExtension on Section {
   List<ClassSchedule> get schedule => sectionSchedule.classSchedules;
-
-  String? get midExamDate => sectionSchedule.midExamDate;
-  String? get midExamStartTime => sectionSchedule.midExamStartTime;
-  String? get midExamEndTime => sectionSchedule.midExamEndTime;
-  String? get midExamDetail => sectionSchedule.midExamDetail;
-
-  String? get finalExamDate => sectionSchedule.finalExamDate;
-  String? get finalExamStartTime => sectionSchedule.finalExamStartTime;
-  String? get finalExamEndTime => sectionSchedule.finalExamEndTime;
-  String? get finalExamDetail => sectionSchedule.finalExamDetail;
-
-  Section toSection({int semesterSessionId = 0}) => this;
 }
 
 class FriendMetadata {
