@@ -563,26 +563,18 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
                       Row(
                         children: [
                           Expanded(
-                            child: Text(
-                              ExamCard.formatExamDate(
+                            child: AppSectionTitle(
+                              title: ExamCard.formatExamDate(
                                 isMidterm
                                     ? midDate(section)
                                     : finalDate(section),
                               ),
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                                color: AppPalette.textPrimary(context),
-                              ),
                             ),
                           ),
                           const Gap(8),
-                          Text(
-                            label,
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: AppPalette.textSecondary(context),
-                            ),
+                          AppSectionTitle(
+                            title: label,
+                            color: ExamCard.typeColor(isFinal: !isMidterm),
                           ),
                         ],
                       ),
@@ -615,6 +607,7 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
                                   : finalRoom(section),
                               faculties: section.faculties,
                               consumedSeat: section.consumedSeat,
+                              isFinal: !isMidterm,
                             ),
                           ),
                         ),

@@ -381,31 +381,37 @@ void main() {
     expect(find.byType(BottomSheet), findsNothing);
   });
 
-  testWidgets('exam cards reuse the existing green accent in both themes', (
+  testWidgets('exam cards color midterms and finals apart from classes', (
     tester,
   ) async {
     for (final brightness in Brightness.values) {
-      await tester.pumpWidget(
-        MaterialApp(
-          theme: ThemeData(brightness: brightness),
-          home: const Scaffold(
-            body: ExamCard(
-              courseCode: 'EXAMPLE',
-              sectionName: '01',
-              isHighlighted: true,
+      for (final (isFinal, color) in [
+        (false, AppPalette.info),
+        (true, AppPalette.accent),
+      ]) {
+        await tester.pumpWidget(
+          MaterialApp(
+            theme: ThemeData(brightness: brightness),
+            home: Scaffold(
+              body: ExamCard(
+                courseCode: 'EXAMPLE',
+                sectionName: '01',
+                isHighlighted: true,
+                isFinal: isFinal,
+              ),
             ),
           ),
-        ),
-      );
-      expect(
-        tester.widget<AppCard>(find.byType(AppCard)).highlightColor,
-        AppPalette.accent,
-      );
-      expect(
-        tester.widget<SectionBadge>(find.byType(SectionBadge)).color,
-        AppPalette.accent,
-      );
-      expect(AppPalette.accent, isNot(AppPalette.primary));
+        );
+        expect(
+          tester.widget<AppCard>(find.byType(AppCard)).highlightColor,
+          color,
+        );
+        expect(
+          tester.widget<SectionBadge>(find.byType(SectionBadge)).color,
+          color,
+        );
+        expect(color, isNot(AppPalette.primary));
+      }
     }
   });
 

@@ -16,6 +16,7 @@ class ExamCard extends StatelessWidget {
     this.consumedSeat = 0,
     this.isHighlighted = false,
     this.highlightKey,
+    this.isFinal = false,
   });
 
   final String courseCode;
@@ -27,6 +28,10 @@ class ExamCard extends StatelessWidget {
   final int consumedSeat;
   final bool isHighlighted;
   final Key? highlightKey;
+  final bool isFinal;
+
+  static Color typeColor({required bool isFinal}) =>
+      isFinal ? AppPalette.accent : AppPalette.info;
 
   static String formatExamDate(String? input) {
     if (input == null || input.trim().isEmpty) return 'Not published yet';
@@ -53,12 +58,12 @@ class ExamCard extends StatelessWidget {
     return AppCard(
       key: highlightKey,
       isHighlighted: isHighlighted,
-      highlightColor: AppPalette.accent,
+      highlightColor: typeColor(isFinal: isFinal),
       child: Row(
         children: [
           SectionBadge(
             label: formatSectionBadge(sectionName),
-            color: AppPalette.accent,
+            color: typeColor(isFinal: isFinal),
           ),
           const Gap(12),
           Expanded(

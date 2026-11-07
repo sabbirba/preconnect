@@ -31,6 +31,7 @@ import 'package:preconnect/tools/ramadan.dart';
 import 'package:preconnect/tools/time_utils.dart';
 import 'package:preconnect/tools/app_storage.dart';
 import 'package:preconnect/tools/android_alarm.dart';
+import 'package:preconnect/pages/shared_widgets/exam_card.dart';
 
 part 'alarm_sections/alarm_models.dart';
 
@@ -1377,9 +1378,9 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
                             children: [
                               SectionBadge(
                                 label: formatSectionBadge(exam.sectionName),
-                                color: exam.type == 'Final'
-                                    ? AppPalette.accent
-                                    : AppPalette.primary,
+                                color: ExamCard.typeColor(
+                                  isFinal: exam.type == 'Final',
+                                ),
                               ),
                               const Gap(12),
                               Expanded(
@@ -1399,8 +1400,8 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
                                             text: ' ${exam.type}',
                                             style: TextStyle(
                                               fontWeight: FontWeight.w600,
-                                              color: AppPalette.textSecondary(
-                                                context,
+                                              color: ExamCard.typeColor(
+                                                isFinal: exam.type == 'Final',
                                               ),
                                             ),
                                           ),

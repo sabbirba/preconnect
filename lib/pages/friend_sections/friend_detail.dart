@@ -593,14 +593,9 @@ class _FriendDetailPageState extends State<FriendDetailPage> {
                         ),
                       ),
                     ),
-                    Text(
-                      'Midterm',
-                      textAlign: TextAlign.right,
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: AppPalette.textPrimary(context),
-                      ),
+                    AppSectionTitle(
+                      title: 'Midterm',
+                      color: ExamCard.typeColor(isFinal: false),
                     ),
                   ],
                 ),
@@ -642,14 +637,9 @@ class _FriendDetailPageState extends State<FriendDetailPage> {
                         ),
                       ),
                     ),
-                    Text(
-                      'Final',
-                      textAlign: TextAlign.right,
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: AppPalette.textPrimary(context),
-                      ),
+                    AppSectionTitle(
+                      title: 'Final',
+                      color: ExamCard.typeColor(isFinal: true),
                     ),
                   ],
                 ),
@@ -662,6 +652,7 @@ class _FriendDetailPageState extends State<FriendDetailPage> {
                   roomNumber: resolved.finalRoomNumber,
                   faculties: course.faculties,
                   consumedSeat: course.consumedSeat,
+                  isFinal: true,
                 ),
               ],
             ),

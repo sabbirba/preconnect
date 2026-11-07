@@ -5,11 +5,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:preconnect/pages/exam_schedule.dart';
 import 'package:preconnect/pages/shared_widgets/exam_card.dart';
+import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/app_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
-  testWidgets('exam types use compact date labels without group headings', (
+  testWidgets('exam types use title sized labels without group headings', (
     tester,
   ) async {
     final directory = (await tester.runAsync(
@@ -54,7 +55,14 @@ void main() {
     await tester.pumpWidget(const MaterialApp(home: ExamSchedule()));
     await tester.pumpAndSettle();
     expect(find.text('Midterm'), findsNWidgets(2));
-    expect(tester.widget<Text>(find.text('Midterm').first).style?.fontSize, 12);
+    final label = tester.widget<Text>(find.text('Midterm').first).style;
+    expect(label?.fontSize, 16);
+    expect(label?.fontWeight, FontWeight.w600);
+    expect(label?.color, AppPalette.info);
+    expect(
+      tester.widget<Text>(find.text('Final').first).style?.color,
+      AppPalette.accent,
+    );
     expect(find.text('Final'), findsNWidgets(2));
     expect(find.byType(ExamCard), findsNWidgets(4));
     expect(tester.takeException(), isNull);
