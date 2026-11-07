@@ -360,7 +360,6 @@ class _NotificationsPageState extends State<NotificationsPage>
           final visibleCount = math.min(_visibleItemCount, items.length);
           final visibleItems = items.take(visibleCount).toList(growable: false);
           final groupedItems = _groupItemsByDate(visibleItems);
-          final hasMore = visibleCount < items.length;
           final showBackToTop = _visibleItemCount > _pageSize;
 
           return AppRefreshScroll(
@@ -390,17 +389,17 @@ class _NotificationsPageState extends State<NotificationsPage>
                         .toList(growable: false),
                   ),
                 ),
-                if (hasMore)
-                  buildLoadMoreButton(
-                    onPressed: () {
-                      setState(() {
-                        _visibleItemCount = math.min(
-                          _visibleItemCount + _pageSize,
-                          items.length,
-                        );
-                      });
-                    },
-                  ),
+                buildStepButtons(
+                  shown: visibleCount,
+                  total: items.length,
+                  step: _pageSize,
+                  moreLabel: 'Load More',
+                  onChanged: (count) {
+                    setState(() {
+                      _visibleItemCount = math.min(count, items.length);
+                    });
+                  },
+                ),
                 if (showBackToTop)
                   buildScrollToTopButton(controller: _scrollController),
               ],

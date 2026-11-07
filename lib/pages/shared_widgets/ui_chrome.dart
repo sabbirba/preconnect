@@ -426,9 +426,10 @@ class AppCard extends StatelessWidget {
 }
 
 class AppSectionTitle extends StatelessWidget {
-  const AppSectionTitle({super.key, required this.title});
+  const AppSectionTitle({super.key, required this.title, this.color});
 
   final String title;
+  final Color? color;
 
   @override
   Widget build(BuildContext context) {
@@ -437,7 +438,7 @@ class AppSectionTitle extends StatelessWidget {
       style: TextStyle(
         fontSize: 16,
         fontWeight: FontWeight.w600,
-        color: AppPalette.textPrimary(context),
+        color: color ?? AppPalette.textPrimary(context),
       ),
     );
   }
@@ -1073,26 +1074,89 @@ class AppScheduleTile extends StatelessWidget {
   }
 }
 
-class ShowMoreButton extends StatelessWidget {
-  const ShowMoreButton({super.key, required this.onPressed});
+class AppDividerAction {
+  const AppDividerAction({
+    required this.label,
+    required this.onPressed,
+    this.pointsUp = false,
+  });
 
+  final String label;
   final VoidCallback onPressed;
+  final bool pointsUp;
+}
+
+class AppDividerActions extends StatelessWidget {
+  const AppDividerActions({
+    super.key,
+    required this.actions,
+    this.showLines = true,
+  });
+
+  final List<AppDividerAction> actions;
+  final bool showLines;
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: OutlinedButton(
-        onPressed: onPressed,
-        style: appOutlinedButtonStyle(
-          context,
-          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-          borderRadius: 16,
-        ),
-        child: Text(
-          'Show More',
-          style: TextStyle(
-            fontWeight: FontWeight.w700,
-            color: AppPalette.textPrimary(context),
+    final lineColor = AppPalette.textSecondary(context).withValues(alpha: 0.22);
+    Widget line() => Expanded(child: Container(height: 1, color: lineColor));
+    final pills = <Widget>[
+      for (var i = 0; i < actions.length; i++) ...[
+        if (i > 0) const Gap(8),
+        _DividerPill(action: actions[i], borderColor: lineColor),
+      ],
+    ];
+    if (!showLines) {
+      return Row(mainAxisAlignment: MainAxisAlignment.center, children: pills);
+    }
+    return Row(
+      children: [line(), const Gap(10), ...pills, const Gap(10), line()],
+    );
+  }
+}
+
+class _DividerPill extends StatelessWidget {
+  const _DividerPill({required this.action, required this.borderColor});
+
+  final AppDividerAction action;
+  final Color borderColor;
+
+  @override
+  Widget build(BuildContext context) {
+    final textPrimary = AppPalette.textPrimary(context);
+    return Material(
+      color: Color.alphaBlend(
+        AppPalette.textSecondary(context).withValues(alpha: 0.07),
+        AppPalette.card(context),
+      ),
+      shape: StadiumBorder(side: BorderSide(color: borderColor)),
+      child: InkWell(
+        customBorder: const StadiumBorder(),
+        onTap: action.onPressed,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 12, 8),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                action.label,
+                style: TextStyle(
+                  color: textPrimary,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const Gap(4),
+              AnimatedRotation(
+                turns: action.pointsUp ? 0.5 : 0,
+                duration: const Duration(milliseconds: 200),
+                child: Icon(
+                  Icons.keyboard_arrow_down_rounded,
+                  size: 18,
+                  color: textPrimary,
+                ),
+              ),
+            ],
           ),
         ),
       ),

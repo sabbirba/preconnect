@@ -21,7 +21,6 @@ class _PaymentListState extends State<PaymentList> {
   @override
   Widget build(BuildContext context) {
     final visiblePayments = widget.payments.take(_visibleCount).toList();
-    final hasMore = widget.payments.length > _visibleCount;
 
     return Column(
       children: [
@@ -192,20 +191,14 @@ class _PaymentListState extends State<PaymentList> {
             ),
           );
         }),
-        if (hasMore) ...[
-          const Gap(4),
-          Center(
-            child: AppActionButton(
-              label: 'Load More',
-              onPressed: () {
-                setState(() {
-                  _visibleCount += 5;
-                });
-              },
-            ),
-          ),
-          const Gap(8),
-        ],
+        const Gap(4),
+        buildStepButtons(
+          shown: visiblePayments.length,
+          total: widget.payments.length,
+          step: 5,
+          moreLabel: 'Load More',
+          onChanged: (count) => setState(() => _visibleCount = count),
+        ),
       ],
     );
   }

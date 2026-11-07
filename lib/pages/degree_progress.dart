@@ -15,6 +15,7 @@ import 'package:preconnect/features/schedule/application/session_resolver.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/api/repository_cache.dart';
 import 'package:preconnect/tools/app_storage.dart';
+import 'package:preconnect/tools/course_prereq.dart';
 import 'package:preconnect/tools/preload_cache.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
 import 'package:preconnect/pages/shared_widgets/online_guard.dart';
@@ -754,17 +755,14 @@ class _DegreeProgressPageState extends State<DegreeProgressPage>
                       ),
                     );
                   }),
-                  if (wishlistCourses.length > wishlistCoursesForDisplay.length)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 10),
-                      child: ShowMoreButton(
-                        onPressed: () {
-                          setState(() {
-                            _wishlistVisibleCount += _coursesChunkSize;
-                          });
-                        },
-                      ),
-                    ),
+                  buildStepButtons(
+                    shown: wishlistCoursesForDisplay.length,
+                    total: wishlistCourses.length,
+                    step: _coursesChunkSize,
+                    padding: const EdgeInsets.only(bottom: 10),
+                    onChanged: (count) =>
+                        setState(() => _wishlistVisibleCount = count),
+                  ),
                   const Gap(4),
                 ],
                 if (currentSectionsForDisplay.isNotEmpty) ...[
@@ -855,18 +853,14 @@ class _DegreeProgressPageState extends State<DegreeProgressPage>
                       ),
                     );
                   }),
-                  if (currentSectionsForDisplay.length >
-                      currentSectionsVisible.length)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 10),
-                      child: ShowMoreButton(
-                        onPressed: () {
-                          setState(() {
-                            _currentVisibleCount += _coursesChunkSize;
-                          });
-                        },
-                      ),
-                    ),
+                  buildStepButtons(
+                    shown: currentSectionsVisible.length,
+                    total: currentSectionsForDisplay.length,
+                    step: _coursesChunkSize,
+                    padding: const EdgeInsets.only(bottom: 10),
+                    onChanged: (count) =>
+                        setState(() => _currentVisibleCount = count),
+                  ),
                   const Gap(4),
                 ],
                 const AppSectionTitle(title: 'Completed Courses'),
@@ -973,17 +967,14 @@ class _DegreeProgressPageState extends State<DegreeProgressPage>
                       ),
                     );
                   }),
-                if (topCourses.length > topCoursesVisible.length)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 10),
-                    child: ShowMoreButton(
-                      onPressed: () {
-                        setState(() {
-                          _completedVisibleCount += _coursesChunkSize;
-                        });
-                      },
-                    ),
-                  ),
+                buildStepButtons(
+                  shown: topCoursesVisible.length,
+                  total: topCourses.length,
+                  step: _coursesChunkSize,
+                  padding: const EdgeInsets.only(bottom: 10),
+                  onChanged: (count) =>
+                      setState(() => _completedVisibleCount = count),
+                ),
               ],
             ),
           );

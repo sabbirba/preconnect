@@ -167,8 +167,6 @@ class _QuickAccessGridState extends State<QuickAccessGrid> {
     final expandableItems = widget.items
         .skip(widget.initialVisibleCount)
         .toList();
-    final dividerColor = Theme.of(context).dividerColor.withValues(alpha: 0.12);
-    final primaryColor = Theme.of(context).colorScheme.primary;
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -221,12 +219,7 @@ class _QuickAccessGridState extends State<QuickAccessGrid> {
                           child: buildWrap(expandableItems),
                         ),
                         const Gap(16),
-                        _buildToggle(
-                          label: 'See Less',
-                          rotated: true,
-                          dividerColor: dividerColor,
-                          primaryColor: primaryColor,
-                        ),
+                        _buildToggle(label: 'See Less', rotated: true),
                       ],
                     )
                   : Stack(
@@ -277,12 +270,7 @@ class _QuickAccessGridState extends State<QuickAccessGrid> {
                             ),
                           ),
                         ),
-                        _buildToggle(
-                          label: 'See More',
-                          rotated: false,
-                          dividerColor: dividerColor,
-                          primaryColor: primaryColor,
-                        ),
+                        _buildToggle(label: 'See More', rotated: false),
                       ],
                     ),
             ),
@@ -292,46 +280,16 @@ class _QuickAccessGridState extends State<QuickAccessGrid> {
     );
   }
 
-  Widget _buildToggle({
-    required String label,
-    required bool rotated,
-    required Color dividerColor,
-    required Color primaryColor,
-  }) {
-    return InkWell(
-      onTap: _toggleExpanded,
-      borderRadius: BorderRadius.circular(20),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-        decoration: BoxDecoration(
-          color: Theme.of(context).scaffoldBackgroundColor,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: dividerColor, width: 1),
+  Widget _buildToggle({required String label, required bool rotated}) {
+    return AppDividerActions(
+      showLines: false,
+      actions: [
+        AppDividerAction(
+          label: label,
+          onPressed: _toggleExpanded,
+          pointsUp: rotated,
         ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: primaryColor,
-              ),
-            ),
-            const Gap(4),
-            AnimatedRotation(
-              turns: rotated ? 0.5 : 0.0,
-              duration: const Duration(milliseconds: 250),
-              child: Icon(
-                Icons.keyboard_arrow_down_rounded,
-                size: 16,
-                color: primaryColor,
-              ),
-            ),
-          ],
-        ),
-      ),
+      ],
     );
   }
 }

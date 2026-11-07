@@ -18,6 +18,7 @@ import 'package:preconnect/pages/shared_widgets/seat_filters.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/app_storage.dart';
 import 'package:preconnect/pages/shared_widgets/seat_blocks.dart';
+import 'package:preconnect/pages/shared_widgets/exam_card.dart';
 
 enum _ReplacementQueueAction { higher, lower, remove }
 
@@ -52,7 +53,7 @@ class _AdvisingHelperPageState extends State<AdvisingHelperPage> {
   final TextEditingController _searchController = TextEditingController();
   Timer? _enrolledRefreshTimer;
   bool _isRefreshingEnrolled = false;
-  bool _showAllActivityLogs = false;
+  int _visibleLogCount = 3;
   bool _availableOnly = false;
   String _selectedModeFilter = '';
   String _selectedDayFilter = '';
@@ -966,8 +967,8 @@ class _AdvisingHelperPageState extends State<AdvisingHelperPage> {
   }) {
     final queue = _engine.targetSections;
     final logs = _engine.activityLogs;
-    final visibleLogs = _showAllActivityLogs ? logs.take(20) : logs.take(3);
-    final canToggleLogs = logs.length > 3;
+    final visibleLogs = logs.take(_visibleLogCount).toList();
+    final logsExpanded = _visibleLogCount > 3;
 
     if (queue.isEmpty && logs.isEmpty) {
       if (embedded) return const SizedBox.shrink();
@@ -1005,16 +1006,6 @@ class _AdvisingHelperPageState extends State<AdvisingHelperPage> {
                       ),
                     ),
                   ),
-                  if (canToggleLogs)
-                    TextButton(
-                      key: const ValueKey('advising-activity-log-toggle'),
-                      onPressed: () => setState(
-                        () => _showAllActivityLogs = !_showAllActivityLogs,
-                      ),
-                      child: Text(
-                        _showAllActivityLogs ? 'Show Less' : 'Show More',
-                      ),
-                    ),
                   if (queue.isNotEmpty)
                     TextButton(
                       onPressed: _engine.isRunning
@@ -1044,8 +1035,8 @@ class _AdvisingHelperPageState extends State<AdvisingHelperPage> {
                               fontSize: 12,
                               color: textSecondary,
                             ),
-                            maxLines: _showAllActivityLogs ? null : 2,
-                            overflow: _showAllActivityLogs
+                            maxLines: logsExpanded ? null : 2,
+                            overflow: logsExpanded
                                 ? TextOverflow.visible
                                 : TextOverflow.ellipsis,
                           ),
@@ -1053,6 +1044,13 @@ class _AdvisingHelperPageState extends State<AdvisingHelperPage> {
                     ],
                   ),
                 ),
+              ),
+              buildStepButtons(
+                shown: visibleLogs.length,
+                total: logs.length,
+                step: 3,
+                padding: const EdgeInsets.only(top: 8),
+                onChanged: (count) => setState(() => _visibleLogCount = count),
               ),
               if (queue.isNotEmpty) const Gap(8),
             ],
@@ -1536,6 +1534,7 @@ class _AdvisingSeatStatusCard extends StatelessWidget {
                 Expanded(
                   child: SeatExamBlock(
                     label: 'Mid',
+                    labelColor: ExamCard.typeColor(isFinal: false),
                     date: midExamDate,
                     start: midExamStartTime,
                     end: midExamEndTime,
@@ -1547,6 +1546,7 @@ class _AdvisingSeatStatusCard extends StatelessWidget {
                 Expanded(
                   child: SeatExamBlock(
                     label: 'Final',
+                    labelColor: ExamCard.typeColor(isFinal: true),
                     date: finalExamDate,
                     start: finalExamStartTime,
                     end: finalExamEndTime,

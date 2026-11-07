@@ -234,20 +234,52 @@ Future<bool> openPhoneDialer(
 Widget buildCenteredOutlinedActionButton({
   required String label,
   required VoidCallback onPressed,
+  bool pointsUp = false,
   EdgeInsetsGeometry padding = const EdgeInsets.only(top: 2, bottom: 8),
 }) {
   return Padding(
     padding: padding,
-    child: Center(
-      child: AppActionButton(onPressed: onPressed, label: label),
+    child: AppDividerActions(
+      actions: [
+        AppDividerAction(
+          label: label,
+          onPressed: onPressed,
+          pointsUp: pointsUp,
+        ),
+      ],
     ),
   );
 }
 
-Widget buildLoadMoreButton({required VoidCallback onPressed}) {
-  return buildCenteredOutlinedActionButton(
-    label: 'Load More',
-    onPressed: onPressed,
+Widget buildStepButtons({
+  required int shown,
+  required int total,
+  required int step,
+  required ValueChanged<int> onChanged,
+  String moreLabel = 'Show More',
+  EdgeInsetsGeometry padding = const EdgeInsets.only(top: 2, bottom: 8),
+}) {
+  final canShowMore = shown < total;
+  final canShowLess = shown > step;
+  if (!canShowMore && !canShowLess) return const SizedBox.shrink();
+  return Padding(
+    padding: padding,
+    child: AppDividerActions(
+      actions: [
+        if (canShowMore)
+          AppDividerAction(
+            label: moreLabel,
+            onPressed: () => onChanged(shown + step),
+          ),
+        if (canShowLess)
+          AppDividerAction(
+            label: 'Show Less',
+            pointsUp: true,
+            onPressed: () =>
+                onChanged(shown - step < step ? step : shown - step),
+          ),
+      ],
+    ),
   );
 }
 

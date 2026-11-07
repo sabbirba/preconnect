@@ -895,7 +895,7 @@ class _RecentReservationsList extends StatefulWidget {
 }
 
 class _RecentReservationsListState extends State<_RecentReservationsList> {
-  bool _expanded = false;
+  int _visibleCount = 3;
 
   @override
   Widget build(BuildContext context) {
@@ -913,8 +913,9 @@ class _RecentReservationsListState extends State<_RecentReservationsList> {
     final textSecondary = AppPalette.textSecondary(context);
     final textPrimary = AppPalette.textPrimary(context);
 
-    final showCount = _expanded ? widget.reservations.length : 3;
-    final visibleReservations = widget.reservations.take(showCount).toList();
+    final visibleReservations = widget.reservations
+        .take(_visibleCount)
+        .toList();
 
     return Column(
       children: [
@@ -1151,18 +1152,13 @@ class _RecentReservationsListState extends State<_RecentReservationsList> {
             ),
           );
         }),
-        if (widget.reservations.length > 3)
-          Padding(
-            padding: const EdgeInsets.only(top: 8),
-            child: buildCenteredOutlinedActionButton(
-              label: _expanded ? 'Show Less' : 'Show More',
-              onPressed: () {
-                setState(() {
-                  _expanded = !_expanded;
-                });
-              },
-            ),
-          ),
+        buildStepButtons(
+          shown: visibleReservations.length,
+          total: widget.reservations.length,
+          step: 3,
+          padding: const EdgeInsets.only(top: 8),
+          onChanged: (count) => setState(() => _visibleCount = count),
+        ),
       ],
     );
   }

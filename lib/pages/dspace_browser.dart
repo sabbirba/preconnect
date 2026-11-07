@@ -981,7 +981,6 @@ class _DSpaceBrowserPageState extends State<DSpaceBrowserPage> {
     final visibleList = _filteredItems
         .take(visibleCount)
         .toList(growable: false);
-    final hasMore = visibleCount < _filteredItems.length;
     final showBackToTop = _visibleItemCount > _pageSize;
 
     return Expanded(
@@ -1007,14 +1006,13 @@ class _DSpaceBrowserPageState extends State<DSpaceBrowserPage> {
                 ),
               );
             }),
-            if (hasMore)
-              buildLoadMoreButton(
-                onPressed: () {
-                  setState(() {
-                    _visibleItemCount = _visibleItemCount + _pageSize;
-                  });
-                },
-              ),
+            buildStepButtons(
+              shown: visibleCount,
+              total: _filteredItems.length,
+              step: _pageSize,
+              moreLabel: 'Load More',
+              onChanged: (count) => setState(() => _visibleItemCount = count),
+            ),
             if (showBackToTop)
               buildScrollToTopButton(controller: _itemsScrollController),
           ],

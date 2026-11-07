@@ -960,18 +960,9 @@ class _ClassScheduleState extends State<ClassSchedulePage>
 
           if (canLoadMoreWeeks) {
             children.add(
-              Padding(
-                padding: const EdgeInsets.only(top: 2, bottom: 8),
-                child: Center(
-                  child: AppActionButton(
-                    onPressed: () {
-                      setState(() {
-                        _visibleWeekCount += 1;
-                      });
-                    },
-                    label: 'Next Week',
-                  ),
-                ),
+              buildCenteredOutlinedActionButton(
+                label: 'Next Week',
+                onPressed: () => setState(() => _visibleWeekCount += 1),
               ),
             );
           }
