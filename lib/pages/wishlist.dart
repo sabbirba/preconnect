@@ -457,29 +457,22 @@ class _WishlistPageState extends State<WishlistPage> {
             ),
           const Gap(8),
           Expanded(
-            child: DefaultTabController(
-              length: 2,
-              child: Column(
-                children: [
-                  TabBar(
-                    labelColor: AppPalette.primary,
-                    unselectedLabelColor: textSecondary,
-                    indicatorColor: AppPalette.primary,
-                    tabs: const [
-                      Tab(text: 'Current Wishlist'),
-                      Tab(text: 'Offered Courses'),
-                    ],
-                  ),
-                  Expanded(
-                    child: TabBarView(
-                      children: [
-                        _buildWishlistView(textPrimary, textSecondary),
-                        _buildOfferedView(textPrimary, textSecondary),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
+            child: AppRefreshList(
+              onRefresh: _refreshWishlistData,
+              children: [
+                const AppSectionTitle(title: 'Current Wishlist'),
+                const Gap(8),
+                ..._buildWishlistItems(textPrimary, textSecondary),
+                const Gap(8),
+                const AppSectionTitle(title: 'Offered Courses'),
+                const Gap(8),
+                AppSearchField(
+                  controller: _searchController,
+                  query: _searchQuery,
+                ),
+                const Gap(12),
+                ..._buildOfferedItems(textPrimary, textSecondary),
+              ],
             ),
           ),
         ],
@@ -487,24 +480,13 @@ class _WishlistPageState extends State<WishlistPage> {
     );
   }
 
-  Widget _buildWishlistView(Color textPrimary, Color textSecondary) {
+  List<Widget> _buildWishlistItems(Color textPrimary, Color textSecondary) {
     if (_wishlistCourses.isEmpty) {
-      return AppRefreshList(
-        onRefresh: _refreshWishlistData,
-        children: const [AppEmptyCard(message: 'No courses in your wishlist.')],
-      );
+      return const [AppEmptyCard(message: 'No courses in your wishlist')];
     }
-
-    return ListView.builder(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-      itemCount: _wishlistCourses.length,
-      itemBuilder: (context, index) {
-        final course = _wishlistCourses[index];
-        final code = course['courseCode'];
-        final name = course['name'];
-        final credits = course['courseCredit'];
-
-        return Padding(
+    return [
+      for (final course in _wishlistCourses)
+        Padding(
           padding: const EdgeInsets.only(bottom: 12),
           child: AppCard(
             child: Row(
@@ -514,7 +496,7 @@ class _WishlistPageState extends State<WishlistPage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        '$code - $name',
+                        '${course['courseCode']} - ${course['name']}',
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
                           color: textPrimary,
@@ -523,7 +505,7 @@ class _WishlistPageState extends State<WishlistPage> {
                       ),
                       const Gap(4),
                       Text(
-                        'Credits: $credits',
+                        'Credits: ${course['courseCredit']}',
                         style: TextStyle(color: textSecondary, fontSize: 13),
                       ),
                     ],
@@ -543,131 +525,93 @@ class _WishlistPageState extends State<WishlistPage> {
               ],
             ),
           ),
-        );
-      },
+        ),
+    ];
+  }
+
+  List<Widget> _buildOfferedItems(Color textPrimary, Color textSecondary) {
+    if (_filteredOfferedCourses.isEmpty) {
+      return [
+        AppEmptyCard(
+          message: _searchQuery.trim().isEmpty
+              ? 'No offered courses'
+              : 'No matching courses',
+        ),
+      ];
+    }
+    return [
+      for (final course in _filteredOfferedCourses)
+        _buildOfferedCard(course, textPrimary, textSecondary),
+    ];
+  }
+
+  Widget _buildOfferedCard(
+    Map<String, dynamic> course,
+    Color textPrimary,
+    Color textSecondary,
+  ) {
+    final isWishlisted = wishlistContainsCourse(_wishlistCourses, course);
+    final isQueued = wishlistContainsCourse(_batchQueue, course);
+    final isSelected = isWishlisted || isQueued;
+    final locked = _isPhaseCompleted || isWishlisted;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: AppCard(
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '${course['courseCode']} - ${course['name']}',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: textPrimary,
+                      fontSize: 15,
+                    ),
+                  ),
+                  const Gap(4),
+                  Text(
+                    'Credits: ${course['courseCredit']}',
+                    style: TextStyle(color: textSecondary, fontSize: 13),
+                  ),
+                ],
+              ),
+            ),
+            IconButton(
+              icon: Icon(
+                isSelected ? Icons.check_box_rounded : Icons.add_box_outlined,
+                color: _isPhaseCompleted
+                    ? Colors.grey.withValues(alpha: 0.5)
+                    : (isSelected ? AppPalette.accent : AppPalette.primary),
+              ),
+              onPressed: locked ? null : () => _toggleQueued(course, isQueued),
+            ),
+            IconButton(
+              icon: Icon(
+                Icons.flash_on_rounded,
+                color: _isPhaseCompleted
+                    ? Colors.grey.withValues(alpha: 0.5)
+                    : AppPalette.favorite,
+              ),
+              onPressed: locked ? null : () => _addCourse(course),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
-  Widget _buildOfferedView(Color textPrimary, Color textSecondary) {
-    return Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-          child: AppSearchField(
-            controller: _searchController,
-            query: _searchQuery,
-          ),
-        ),
-        Expanded(
-          child: _filteredOfferedCourses.isEmpty
-              ? AppRefreshList(
-                  onRefresh: _refreshWishlistData,
-                  children: [
-                    AppEmptyCard(
-                      message: _searchQuery.trim().isEmpty
-                          ? 'No offered courses are available.'
-                          : 'No offered courses match your search.',
-                    ),
-                  ],
-                )
-              : ListView.builder(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  itemCount: _filteredOfferedCourses.length,
-                  itemBuilder: (context, index) {
-                    final course = _filteredOfferedCourses[index];
-                    final code = course['courseCode'];
-                    final name = course['name'];
-                    final credits = course['courseCredit'];
-                    final isWishlisted = wishlistContainsCourse(
-                      _wishlistCourses,
-                      course,
-                    );
-                    final isQueued = wishlistContainsCourse(
-                      _batchQueue,
-                      course,
-                    );
-                    final isSelected = isWishlisted || isQueued;
-
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 12),
-                      child: AppCard(
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
-                                    children: [
-                                      Expanded(
-                                        child: Text(
-                                          '$code - $name',
-                                          style: TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                            color: textPrimary,
-                                            fontSize: 15,
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  const Gap(4),
-                                  Text(
-                                    'Credits: $credits',
-                                    style: TextStyle(
-                                      color: textSecondary,
-                                      fontSize: 13,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            IconButton(
-                              icon: Icon(
-                                isSelected
-                                    ? Icons.check_box_rounded
-                                    : Icons.add_box_outlined,
-                                color: _isPhaseCompleted
-                                    ? Colors.grey.withValues(alpha: 0.5)
-                                    : (isSelected
-                                          ? AppPalette.accent
-                                          : AppPalette.primary),
-                              ),
-                              onPressed: _isPhaseCompleted || isWishlisted
-                                  ? null
-                                  : () {
-                                      setState(() {
-                                        if (isQueued) {
-                                          _batchQueue.removeWhere(
-                                            (item) =>
-                                                wishlistCourseId(item) ==
-                                                wishlistCourseId(course),
-                                          );
-                                        } else {
-                                          _batchQueue.add(course);
-                                        }
-                                      });
-                                    },
-                            ),
-                            IconButton(
-                              icon: Icon(
-                                Icons.flash_on_rounded,
-                                color: _isPhaseCompleted
-                                    ? Colors.grey.withValues(alpha: 0.5)
-                                    : AppPalette.favorite,
-                              ),
-                              onPressed: _isPhaseCompleted || isWishlisted
-                                  ? null
-                                  : () => _addCourse(course),
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
-                  },
-                ),
-        ),
-      ],
-    );
+  void _toggleQueued(Map<String, dynamic> course, bool isQueued) {
+    setState(() {
+      if (isQueued) {
+        _batchQueue.removeWhere(
+          (item) => wishlistCourseId(item) == wishlistCourseId(course),
+        );
+      } else {
+        _batchQueue.add(course);
+      }
+    });
   }
 }

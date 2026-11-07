@@ -101,7 +101,7 @@ extension _DegreeProgressPageStateHelpers on _DegreeProgressPageState {
 
       final prereqMet =
           course.prerequisiteExpression.trim().isEmpty ||
-          _isPrerequisiteSatisfied(course.prerequisiteExpression, readyCodes);
+          prerequisiteSatisfied(course.prerequisiteExpression, readyCodes);
       if (!prereqMet) continue;
 
       wishlist.add(
@@ -124,70 +124,6 @@ extension _DegreeProgressPageStateHelpers on _DegreeProgressPageState {
     });
 
     return wishlist;
-  }
-
-  bool _isPrerequisiteSatisfied(String raw, Set<String> readyCodes) {
-    final tokens = _tokenizePrerequisite(raw);
-    if (tokens.isEmpty) return true;
-    var index = 0;
-
-    late bool Function() parseExpression;
-    late bool Function() parseTerm;
-    late bool Function() parseFactor;
-
-    parseExpression = () {
-      var value = parseTerm();
-      while (index < tokens.length && tokens[index] == 'OR') {
-        index++;
-        value = value || parseTerm();
-      }
-      return value;
-    };
-
-    parseTerm = () {
-      var value = parseFactor();
-      while (index < tokens.length && tokens[index] == 'AND') {
-        index++;
-        value = value && parseFactor();
-      }
-      return value;
-    };
-
-    parseFactor = () {
-      if (index >= tokens.length) return true;
-      final token = tokens[index];
-      if (token == '(') {
-        index++;
-        final value = parseExpression();
-        if (index < tokens.length && tokens[index] == ')') {
-          index++;
-        }
-        return value;
-      }
-      index++;
-      return readyCodes.contains(courseCodeKey(token));
-    };
-
-    return parseExpression();
-  }
-
-  List<String> _tokenizePrerequisite(String raw) {
-    final normalized = raw.trim().toUpperCase();
-    if (normalized.isEmpty ||
-        normalized == 'N/A' ||
-        normalized == 'NONE' ||
-        normalized == '-') {
-      return const <String>[];
-    }
-
-    final pattern = RegExp(
-      r'\(|\)|\bAND\b|\bOR\b|\b[A-Z]{2,4}\s*-?\s*\d{3,4}[A-Z]?\b',
-    );
-    return pattern
-        .allMatches(normalized)
-        .map((match) => (match.group(0) ?? '').replaceAll(RegExp(r'\s+'), ''))
-        .where((token) => token.isNotEmpty)
-        .toList();
   }
 }
 

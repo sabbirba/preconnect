@@ -7,6 +7,8 @@ class SectionFaculty {
   final String shortName;
   final String email;
   final String? imgUrl;
+  final String? gender;
+  final String? designation;
 
   const SectionFaculty({
     required this.id,
@@ -14,6 +16,8 @@ class SectionFaculty {
     required this.shortName,
     required this.email,
     required this.imgUrl,
+    this.gender,
+    this.designation,
   });
 
   @override
@@ -50,12 +54,18 @@ class SectionFaculty {
     final id = (json['id'] ?? shortName).toString().trim();
     final email = (json['email'] ?? '').toString().trim();
     final imgUrl = json['imgUrl']?.toString().trim();
+    final gender = json['gender']?.toString().trim();
+    final designation = json['designation']?.toString().trim();
     return SectionFaculty(
       id: id,
       staffName: staffName,
       shortName: shortName,
       email: email,
       imgUrl: imgUrl == null || imgUrl.isEmpty ? null : imgUrl,
+      gender: gender == null || gender.isEmpty ? null : gender,
+      designation: designation == null || designation.isEmpty
+          ? null
+          : designation,
     );
   }
 
@@ -66,6 +76,8 @@ class SectionFaculty {
       'shortName': shortName,
       'email': email,
       'imgUrl': imgUrl,
+      'gender': gender,
+      'designation': designation,
     };
   }
 }

@@ -165,25 +165,34 @@ class SeatMetric extends StatelessWidget {
     required this.value,
     required this.label,
     required this.color,
+    this.trend = '',
   });
 
   final int value;
   final String label;
   final Color color;
+  final String trend;
 
   @override
   Widget build(BuildContext context) {
+    final number = Text(
+      '$value',
+      textAlign: TextAlign.center,
+      style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700, color: color),
+    );
     return Column(
       children: [
-        Text(
-          '$value',
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            fontSize: 22,
-            fontWeight: FontWeight.w700,
-            color: color,
-          ),
-        ),
+        if (trend == 'up' || trend == 'down')
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const SizedBox(width: 18),
+              number,
+              _SeatTrendIcon(trend: trend),
+            ],
+          )
+        else
+          number,
         const Gap(3),
         Text(
           label,
@@ -199,6 +208,28 @@ class SeatMetric extends StatelessWidget {
   }
 }
 
+class _SeatTrendIcon extends StatelessWidget {
+  const _SeatTrendIcon({required this.trend});
+
+  final String trend;
+
+  @override
+  Widget build(BuildContext context) {
+    final dropped = trend == 'up';
+    return Tooltip(
+      message: dropped ? 'Seat Dropped' : 'Seat Booked',
+      child: SizedBox(
+        width: 18,
+        child: Icon(
+          dropped ? Icons.arrow_downward_rounded : Icons.arrow_upward_rounded,
+          size: 15,
+          color: dropped ? AppPalette.accent : AppPalette.danger,
+        ),
+      ),
+    );
+  }
+}
+
 class SeatExamBlock extends StatelessWidget {
   const SeatExamBlock({
     super.key,
@@ -208,6 +239,7 @@ class SeatExamBlock extends StatelessWidget {
     required this.end,
     required this.textPrimary,
     required this.textSecondary,
+    this.labelColor,
   });
 
   final String label;
@@ -216,6 +248,7 @@ class SeatExamBlock extends StatelessWidget {
   final String? end;
   final Color textPrimary;
   final Color textSecondary;
+  final Color? labelColor;
 
   @override
   Widget build(BuildContext context) {
@@ -230,7 +263,7 @@ class SeatExamBlock extends StatelessWidget {
         Text(
           '$label:',
           style: TextStyle(
-            color: textSecondary,
+            color: labelColor ?? textSecondary,
             fontSize: 12,
             fontWeight: FontWeight.w700,
           ),

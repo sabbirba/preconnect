@@ -206,6 +206,9 @@ class SeatStatusDetailsResponse {
     required this.labName,
     required this.labRoomName,
     required this.labSchedules,
+    this.lastUpdatedAt,
+    this.seatDelta,
+    this.seatTrend,
   });
 
   final int sectionId;
@@ -233,6 +236,9 @@ class SeatStatusDetailsResponse {
   final String? labName;
   final String? labRoomName;
   final List<SeatStatusClassSchedule> labSchedules;
+  final DateTime? lastUpdatedAt;
+  final int? seatDelta;
+  final String? seatTrend;
 
   factory SeatStatusDetailsResponse.fromJson(Map<String, dynamic> json) {
     final scheduleJson = scheduleMapFromJson(json['sectionSchedule']);
@@ -258,7 +264,11 @@ class SeatStatusDetailsResponse {
       consumedSeat: _toInt(json['consumedSeat']),
       semesterSessionId: _toInt(json['semesterSessionId']),
       parentSectionId: _toNullableInt(json['parentSectionId']),
-      faculty: SectionFaculty.tryParse(json['faculties'] ?? json['faculty']),
+      faculty: SectionFaculty.tryParse(
+        json['faculty'] is Map
+            ? json['faculty']
+            : json['faculties'] ?? json['faculty'],
+      ),
       faculties: facultyLabel(json['faculties'] ?? json['faculty']),
       roomName: _toString(json['roomName']),
       roomNumber: _toString(json['roomNumber']),
@@ -274,6 +284,46 @@ class SeatStatusDetailsResponse {
       labName: _toNullableString(json['labName']),
       labRoomName: _toNullableString(json['labRoomName']),
       labSchedules: labSchedules,
+      lastUpdatedAt: DateTime.tryParse(
+        _toString(json['lastUpdatedAt']),
+      )?.toLocal(),
+      seatDelta: _toNullableInt(json['seatDelta']),
+      seatTrend: _toNullableString(json['seatTrend']),
+    );
+  }
+
+  int get remainingSeats => capacity - consumedSeat;
+
+  SeatStatusDetailsResponse withSeats({required int consumed, int? total}) {
+    return SeatStatusDetailsResponse(
+      sectionId: sectionId,
+      courseId: courseId,
+      courseCode: courseCode,
+      sectionName: sectionName,
+      courseCredit: courseCredit,
+      capacity: total ?? capacity,
+      consumedSeat: consumed,
+      semesterSessionId: semesterSessionId,
+      parentSectionId: parentSectionId,
+      faculty: faculty,
+      faculties: faculties,
+      roomName: roomName,
+      roomNumber: roomNumber,
+      courseType: courseType,
+      academicDegree: academicDegree,
+      sectionType: sectionType,
+      courseName: courseName,
+      prerequisiteCourses: prerequisiteCourses,
+      sectionSchedule: sectionSchedule,
+      labSectionId: labSectionId,
+      labCourseCode: labCourseCode,
+      labFaculties: labFaculties,
+      labName: labName,
+      labRoomName: labRoomName,
+      labSchedules: labSchedules,
+      lastUpdatedAt: lastUpdatedAt,
+      seatDelta: seatDelta,
+      seatTrend: seatTrend,
     );
   }
 
@@ -288,15 +338,7 @@ class SeatStatusDetailsResponse {
       'consumedSeat': consumedSeat,
       'semesterSessionId': semesterSessionId,
       'parentSectionId': parentSectionId,
-      'faculty': faculty == null
-          ? null
-          : <String, dynamic>{
-              'id': faculty!.id,
-              'staffName': faculty!.staffName,
-              'shortName': faculty!.shortName,
-              'email': faculty!.email,
-              'imgUrl': faculty!.imgUrl,
-            },
+      'faculty': faculty?.toJson(),
       'faculties': faculties,
       'roomName': roomName,
       'roomNumber': roomNumber,
@@ -312,6 +354,9 @@ class SeatStatusDetailsResponse {
       'labName': labName,
       'labRoomName': labRoomName,
       'labSchedules': labSchedules.map((e) => e.toJson()).toList(),
+      'lastUpdatedAt': lastUpdatedAt?.toUtc().toIso8601String(),
+      'seatDelta': seatDelta,
+      'seatTrend': seatTrend,
     };
   }
 }

@@ -61,6 +61,7 @@ import 'package:preconnect/pages/shared_widgets/online_guard.dart';
 import 'package:preconnect/tools/storage_keys.dart';
 import 'package:preconnect/tools/time_utils.dart';
 import 'package:preconnect/pages/shared_widgets/permission_helper.dart';
+import 'package:preconnect/pages/shared_widgets/exam_card.dart';
 
 part 'home_sections/dashboard_data.dart';
 part 'home_sections/dashboard_view.dart';

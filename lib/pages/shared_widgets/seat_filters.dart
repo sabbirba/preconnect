@@ -5,6 +5,13 @@ import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/time_utils.dart';
 
 const List<String> seatFilterModes = <String>['Labs', 'Theory'];
+const List<String> seatUpdateSorts = <String>['', 'Latest', 'Oldest'];
+
+String nextSeatUpdateSort(String current) {
+  final index = seatUpdateSorts.indexOf(current);
+  return seatUpdateSorts[(index + 1) % seatUpdateSorts.length];
+}
+
 const List<String> seatFilterWeekdays = <String>[
   'SATURDAY',
   'SUNDAY',
@@ -67,6 +74,11 @@ class SeatFilterBar extends StatelessWidget {
     required this.onModeChanged,
     required this.onDayChanged,
     required this.onTimeChanged,
+    this.hideConflicts,
+    this.onHideConflictsChanged,
+    this.updateSort,
+    this.onUpdateSortChanged,
+    this.onReset,
   });
 
   final bool availableOnly;
@@ -78,6 +90,11 @@ class SeatFilterBar extends StatelessWidget {
   final ValueChanged<String> onModeChanged;
   final ValueChanged<String> onDayChanged;
   final ValueChanged<SeatTimetable> onTimeChanged;
+  final bool? hideConflicts;
+  final ValueChanged<bool>? onHideConflictsChanged;
+  final String? updateSort;
+  final ValueChanged<String>? onUpdateSortChanged;
+  final VoidCallback? onReset;
 
   @override
   Widget build(BuildContext context) {
@@ -97,6 +114,16 @@ class SeatFilterBar extends StatelessWidget {
             showArrow: false,
             onTap: () => onAvailableChanged(!availableOnly),
           ),
+          if (hideConflicts case final hide?)
+            AppSelectChip(
+              icon: Icons.block_rounded,
+              label: 'Hide Conflicts',
+              selected: hide,
+              compact: true,
+              borderRadius: 16,
+              showArrow: false,
+              onTap: () => onHideConflictsChanged?.call(!hide),
+            ),
           AppSelectDropdownChip<String>(
             icon: Icons.explore,
             label: mode.isEmpty ? 'Labs + Theory' : mode,
@@ -174,6 +201,26 @@ class SeatFilterBar extends StatelessWidget {
             ],
             onSelected: onTimeChanged,
           ),
+          if (updateSort case final sort?)
+            AppSelectChip(
+              icon: Icons.update_rounded,
+              label: sort.isEmpty ? 'Normal' : sort,
+              selected: sort.isNotEmpty,
+              compact: true,
+              borderRadius: 16,
+              showArrow: false,
+              onTap: () => onUpdateSortChanged?.call(nextSeatUpdateSort(sort)),
+            ),
+          if (onReset case final reset?)
+            AppSelectChip(
+              icon: Icons.restart_alt_rounded,
+              label: 'Reset',
+              selected: false,
+              compact: true,
+              borderRadius: 16,
+              showArrow: false,
+              onTap: reset,
+            ),
         ],
       ),
     );

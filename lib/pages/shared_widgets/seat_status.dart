@@ -1,152 +1,15 @@
 part of 'package:preconnect/pages/seat_status.dart';
 
 extension _SeatStatusPageStateMethods on _SeatStatusPageState {
-  _SeatStatusCardData _buildCardFromDetails({
-    required int sectionId,
-    required SeatStatusDetailsResponse details,
-  }) {
-    final total = details.capacity;
-    final resolvedRemaining = total - details.consumedSeat;
-    final resolvedConsumed = details.consumedSeat;
-    final facultySummaryLabel = seatStatusFacultySummaryLabel(details.faculty);
-    final facultyDetailLabel = seatStatusFacultyDetailLabel(details.faculty);
-    final facultySearchText = seatStatusFacultySearchText(details.faculty);
-    final timetables = details.sectionSchedule.classSchedules
-        .map(
-          (data) =>
-              SeatTimetable(startTime: data.startTime, endTime: data.endTime),
-        )
-        .toList();
-
-    return _SeatStatusCardData(
-      sectionId: sectionId,
-      courseCode: details.courseCode,
-      sectionName: details.sectionName,
-      courseName: details.courseName,
-      faculty: details.faculty,
-      facultyInitial: facultySummaryLabel,
-      facultyMeta: facultyDetailLabel,
-      credits: details.courseCredit,
-      room: details.roomNumber,
-      courseType: details.courseType,
-      classSchedule: details.sectionSchedule.classSchedules,
-      labSchedule: details.labSchedules,
-      labRoom: details.labRoomName ?? '',
-      labCourseCode: details.labCourseCode ?? '',
-      labName: details.labName ?? '',
-      labFaculties: details.labFaculties ?? '',
-      labSectionId: details.labSectionId,
-      midExamDate: details.sectionSchedule.midExamDate,
-      midExamStartTime: details.sectionSchedule.midExamStartTime,
-      midExamEndTime: details.sectionSchedule.midExamEndTime,
-      finalExamDate: details.sectionSchedule.finalExamDate,
-      finalExamStartTime: details.sectionSchedule.finalExamStartTime,
-      finalExamEndTime: details.sectionSchedule.finalExamEndTime,
-      timetables: timetables,
-      remaining: resolvedRemaining,
-      consumed: resolvedConsumed,
-      total: total,
-      searchToken: _buildSearchToken(
-        sectionId: sectionId,
-        courseCode: details.courseCode,
-        sectionName: details.sectionName,
-        courseName: details.courseName,
-        facultySearchText: facultySearchText,
-        room: details.roomNumber,
-        courseType: details.courseType,
-        labRoom: details.labRoomName ?? '',
-        classSchedule: details.sectionSchedule.classSchedules,
-        labSchedule: details.labSchedules,
-        midExamDate: details.sectionSchedule.midExamDate,
-        midExamStartTime: details.sectionSchedule.midExamStartTime,
-        midExamEndTime: details.sectionSchedule.midExamEndTime,
-        finalExamDate: details.sectionSchedule.finalExamDate,
-        finalExamStartTime: details.sectionSchedule.finalExamStartTime,
-        finalExamEndTime: details.sectionSchedule.finalExamEndTime,
-        total: total,
-        consumed: resolvedConsumed,
-        remaining: resolvedRemaining,
-        sectionType: details.sectionType,
-        academicDegree: details.academicDegree,
-        semesterSessionId: details.semesterSessionId,
-        parentSectionId: details.parentSectionId,
-        courseId: details.courseId,
-        roomName: details.roomName,
-        labCourseCode: details.labCourseCode ?? '',
-        labName: details.labName ?? '',
-        labFaculties: details.labFaculties ?? '',
-        labSectionId: details.labSectionId,
-      ),
-    );
-  }
-
-  String _buildSearchToken({
-    required int sectionId,
-    required String courseCode,
-    required String sectionName,
-    required String courseName,
-    required String facultySearchText,
-    required String room,
-    required String courseType,
-    required String labRoom,
-    required String sectionType,
-    required String academicDegree,
-    required int semesterSessionId,
-    required int? parentSectionId,
-    required int courseId,
-    required String roomName,
-    required String labCourseCode,
-    required String labName,
-    required String labFaculties,
-    required int? labSectionId,
-    required List<SeatStatusClassSchedule> classSchedule,
-    required List<SeatStatusClassSchedule> labSchedule,
-    required String? midExamDate,
-    required String? midExamStartTime,
-    required String? midExamEndTime,
-    required String? finalExamDate,
-    required String? finalExamStartTime,
-    required String? finalExamEndTime,
-    required int total,
-    required int consumed,
-    required int remaining,
-  }) {
-    final scheduleToken = _buildScheduleSearchToken(classSchedule, labSchedule);
-    final examToken =
-        '${midExamDate ?? ''} ${midExamStartTime ?? ''} ${midExamEndTime ?? ''} '
-        '${finalExamDate ?? ''} ${finalExamStartTime ?? ''} ${finalExamEndTime ?? ''}';
-    return '$courseCode $sectionName $courseName '
-            '$facultySearchText '
-            '$room $roomName $labRoom $labCourseCode $labName $labFaculties '
-            '$sectionId $courseId $semesterSessionId $parentSectionId $labSectionId '
-            '$courseType $sectionType $academicDegree '
-            '$total $consumed $remaining '
-            '$scheduleToken $examToken'
-        .toLowerCase();
-  }
-
-  String _buildScheduleSearchToken(
-    List<SeatStatusClassSchedule> classSchedule,
-    List<SeatStatusClassSchedule> labSchedule,
-  ) {
-    final chunks = <String>[];
-    for (final item in <SeatStatusClassSchedule>[
-      ...classSchedule,
-      ...labSchedule,
-    ]) {
-      final dayRaw = item.day.trim();
-      final dayPretty = formatWeekdayTitle(item.day);
-      final startRaw = item.startTime.trim();
-      final endRaw = item.endTime.trim();
-      chunks.add('$dayRaw $dayPretty $startRaw $endRaw');
-    }
-    return chunks.join(' ');
-  }
-
   Widget _buildPageContent(BuildContext context) {
     final hasCards = _cards.isNotEmpty;
-    final hasVisibleCards = _visibleCards.isNotEmpty;
-    final itemCount = hasVisibleCards ? _visibleCards.length + 1 : 1;
+    final listCards = _unplannedCards();
+    final hasVisibleCards = listCards.isNotEmpty;
+    final showRoutine =
+        _selectedArchive.isEmpty &&
+        PlannerController.instance.pickedSections.isNotEmpty;
+    final cardCount = hasVisibleCards ? listCards.length + 1 : 1;
+    final itemCount = cardCount + (showRoutine ? 1 : 0);
 
     return AppPageScaffold(
       title: 'Seat Status',
@@ -208,29 +71,203 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
               itemCount: itemCount,
               itemBuilder: (context, index) {
                 if (index == 0) {
-                  return _buildFilterHeader(context);
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      _buildFilterHeader(context),
+                      if (_selectedArchive.isEmpty) ..._plannedSeatCards(),
+                    ],
+                  );
                 }
+                if (index >= cardCount) return const SizedBox(height: 64);
                 if (!hasCards || !hasVisibleCards) {
                   return const SizedBox.shrink();
                 }
-                final item = _visibleCards[index - 1];
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: _SeatStatusCard(
-                    item: item,
-                    onPinTap: _selectedArchive.isEmpty
-                        ? () => _togglePin(item.sectionId)
-                        : null,
-                    pinned: _isPinnedSection(item.sectionId),
-                    onTap: () => _showFacultyScheduleSheet(
-                      item.facultyInitial,
-                      item.faculty?.staffName,
-                    ),
-                  ),
-                );
+                return _seatCard(listCards[index - 1]);
               },
             ),
+          if (_selectedArchive.isEmpty) _routineButton(context),
         ],
+      ),
+    );
+  }
+
+  Widget _routineButton(BuildContext context) {
+    final picked = PlannerController.instance.pickedSections;
+    if (picked.isEmpty) return const SizedBox.shrink();
+    final textPrimary = AppPalette.textPrimary(context);
+    return Positioned(
+      left: 0,
+      right: 0,
+      bottom: 20,
+      child: Center(
+        child: Material(
+          color: AppPalette.card(context),
+          elevation: 6,
+          shape: StadiumBorder(
+            side: BorderSide(color: AppPalette.accent.withValues(alpha: 0.6)),
+          ),
+          child: InkWell(
+            customBorder: const StadiumBorder(),
+            onTap: () => showRoutineSheet(
+              context,
+              sections: picked,
+              clashingIds: _plannedClashIds(picked),
+              isRamadan: _isRamadan,
+            ),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 10, 10, 10),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.calendar_month_rounded,
+                    size: 18,
+                    color: AppPalette.accent,
+                  ),
+                  const Gap(8),
+                  Text(
+                    'Schedule',
+                    style: TextStyle(
+                      color: textPrimary,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const Gap(8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 2,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppPalette.accent.withValues(alpha: 0.18),
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: Text(
+                      '${picked.length}',
+                      style: TextStyle(
+                        color: textPrimary,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Set<int> _plannedClashIds(List<SeatStatusDetailsResponse> picked) {
+    final conflicts = _conflictIds();
+    return {
+      for (final section in picked)
+        if (conflicts.contains(section.sectionId)) section.sectionId,
+    };
+  }
+
+  List<SeatCardData> _unplannedCards() {
+    if (_selectedArchive.isNotEmpty) return _visibleCards;
+    final plannedIds = {
+      for (final section in PlannerController.instance.pickedSections)
+        section.sectionId,
+    };
+    final conflicts = _hideConflicts ? _conflictIds() : const <int>{};
+    final cards = [
+      for (final card in _visibleCards)
+        if (!plannedIds.contains(card.sectionId) &&
+            !conflicts.contains(card.sectionId))
+          card,
+    ];
+    if (_updateSort.isNotEmpty) {
+      _sortByUpdate(cards, latest: _updateSort == 'Latest');
+    }
+    return cards;
+  }
+
+  void _sortByUpdate(List<SeatCardData> cards, {required bool latest}) {
+    final missing = latest ? 0 : 1 << 62;
+    int stamp(SeatCardData card) =>
+        card.lastUpdatedAt?.millisecondsSinceEpoch ?? missing;
+    final order = {
+      for (var i = 0; i < cards.length; i++) cards[i].sectionId: i,
+    };
+    cards.sort((a, b) {
+      final byStamp = latest
+          ? stamp(b).compareTo(stamp(a))
+          : stamp(a).compareTo(stamp(b));
+      if (byStamp != 0) return byStamp;
+      return order[a.sectionId]!.compareTo(order[b.sectionId]!);
+    });
+  }
+
+  Set<int> _conflictIds() {
+    final picked = PlannerController.instance.pickedSections;
+    if (picked.isEmpty || _cards.isEmpty) return const <int>{};
+    final key = (
+      Object.hashAll(_cards.map((card) => card.sectionId)),
+      Object.hashAll(picked.map((section) => section.sectionId)),
+    );
+    if (key == _conflictKey) return _conflictCache;
+    final plannedBlocks = [
+      for (final section in picked)
+        (planCourseKey(section.courseCode), sectionBlocks(section)),
+    ];
+    final conflicts = <int>{};
+    for (final card in _cards) {
+      final course = planCourseKey(card.courseCode);
+      final blocks = routineBlocks([
+        ...card.classSchedule,
+        ...card.labSchedule,
+      ]);
+      for (final (plannedCourse, planned) in plannedBlocks) {
+        if (plannedCourse != course && blocksClash(blocks, planned)) {
+          conflicts.add(card.sectionId);
+          break;
+        }
+      }
+    }
+    _conflictKey = key;
+    _conflictCache = conflicts;
+    return conflicts;
+  }
+
+  List<Widget> _plannedSeatCards() {
+    final picked = PlannerController.instance.pickedSections;
+    if (picked.isEmpty) return const <Widget>[];
+    final cardsById = {for (final card in _cards) card.sectionId: card};
+    return [
+      for (final section in picked)
+        _seatCard(
+          cardsById[section.sectionId] ?? SeatCardData.fromDetails(section),
+        ),
+    ];
+  }
+
+  Widget _seatCard(SeatCardData item) {
+    final current = _selectedArchive.isEmpty;
+    final planned =
+        current &&
+        PlannerController.instance.isPlanned(item.courseCode, item.sectionId);
+    final conflict = current && _conflictIds().contains(item.sectionId);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: SeatCard(
+        item: item,
+        highlighted: planned || conflict,
+        highlightColor: conflict ? AppPalette.warning : AppPalette.accent,
+        onPinTap: current ? () => _togglePin(item) : null,
+        pinned: _isPinnedSection(item.sectionId),
+        planned: planned,
+        onPlanTap: current ? () => _togglePlan(item) : null,
+        onTap: () => _showFacultyScheduleSheet(
+          item.facultyInitial,
+          item.faculty?.staffName,
+        ),
       ),
     );
   }
@@ -268,6 +305,37 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
       onModeChanged: _setModeFilter,
       onDayChanged: _setDayFilter,
       onTimeChanged: _setTimeFilter,
+      hideConflicts: _selectedArchive.isEmpty ? _hideConflicts : null,
+      onHideConflictsChanged: (next) =>
+          _updateSeatStatusState(() => _hideConflicts = next),
+      updateSort: _selectedArchive.isEmpty ? _updateSort : null,
+      onUpdateSortChanged: (next) =>
+          _updateSeatStatusState(() => _updateSort = next),
+      onReset: _canResetFilters ? _resetFilters : null,
+    );
+  }
+
+  bool get _canResetFilters =>
+      _searchQuery.isNotEmpty ||
+      _availableOnly ||
+      _hideConflicts ||
+      _updateSort.isNotEmpty ||
+      _selectedDayFilter.isNotEmpty ||
+      _selectedModeFilter.isNotEmpty ||
+      _selectedTimeFilter.isNotEmpty;
+
+  void _resetFilters() {
+    _searchController.clear();
+    _updateSeatStatusState(() {
+      _hideConflicts = false;
+      _updateSort = '';
+    });
+    _refreshVisibleCards(
+      availableOnly: false,
+      dayFilter: '',
+      modeFilter: '',
+      timeFilter: const SeatTimetable(startTime: '', endTime: ''),
+      query: '',
     );
   }
 
@@ -338,8 +406,8 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
     _refreshIfActive();
   }
 
-  List<_SeatStatusCardData> _filterCards(
-    List<_SeatStatusCardData> source,
+  List<SeatCardData> _filterCards(
+    List<SeatCardData> source,
     String query, {
     required bool availableOnly,
     required String dayFilter,
@@ -368,7 +436,7 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
   }
 
   void _applyCardsSnapshot(
-    List<_SeatStatusCardData> nextCards, {
+    List<SeatCardData> nextCards, {
     bool? isInitialLoading,
   }) {
     final nextVisible = _filterCards(
@@ -401,7 +469,7 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
     _refreshIfActive();
   }
 
-  void _sortCardsByCourseAndSection(List<_SeatStatusCardData> cards) {
+  void _sortCardsByCourseAndSection(List<SeatCardData> cards) {
     cards.sort((a, b) {
       final ap = _isPinnedSection(a.sectionId) ? 0 : 1;
       final bp = _isPinnedSection(b.sectionId) ? 0 : 1;
@@ -416,10 +484,7 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
     });
   }
 
-  bool _areCardListsDifferent(
-    List<_SeatStatusCardData> a,
-    List<_SeatStatusCardData> b,
-  ) {
+  bool _areCardListsDifferent(List<SeatCardData> a, List<SeatCardData> b) {
     if (identical(a, b)) return false;
     if (a.length != b.length) return true;
     for (var i = 0; i < a.length; i++) {
@@ -428,7 +493,7 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
     return false;
   }
 
-  bool _isSameCard(_SeatStatusCardData x, _SeatStatusCardData y) {
+  bool _isSameCard(SeatCardData x, SeatCardData y) {
     if (x.sectionId != y.sectionId) return false;
     if (x.courseCode != y.courseCode) return false;
     if (x.sectionName != y.sectionName) return false;
@@ -453,6 +518,8 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
     if (x.consumed != y.consumed) return false;
     if (x.total != y.total) return false;
     if (x.searchToken != y.searchToken) return false;
+    if (x.lastUpdatedAt != y.lastUpdatedAt) return false;
+    if (x.seatTrend != y.seatTrend) return false;
     if (!_sameSchedules(x.classSchedule, y.classSchedule)) return false;
     if (!_sameSchedules(x.labSchedule, y.labSchedule)) return false;
     return true;
@@ -516,8 +583,7 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
   }
 
   bool _isPinnedSection(int sectionId) {
-    return _selectedArchive.isEmpty &&
-        _pinnedSections.contains(sectionId.toString());
+    return _selectedArchive.isEmpty && SeatPins.instance.contains(sectionId);
   }
 
   void _showFacultyScheduleSheet(String facultyInitial, String? staffName) {

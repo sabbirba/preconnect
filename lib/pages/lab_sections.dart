@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:gap/gap.dart';
 import 'package:preconnect/api/schedule.dart';
 import 'package:preconnect/model/advising_phase.dart';
 import 'package:preconnect/model/section_info.dart';
@@ -40,10 +39,9 @@ class LabSectionsPage extends StatefulWidget {
   State<LabSectionsPage> createState() => _LabSectionsPageState();
 }
 
-class _LabSectionsPageState extends State<LabSectionsPage>
-    with SingleTickerProviderStateMixin {
-  late final TabController _tabController;
+class _LabSectionsPageState extends State<LabSectionsPage> {
   late final List<SectionLoadController<String>> _controllers;
+  int _selected = 0;
 
   @override
   void initState() {
@@ -53,63 +51,65 @@ class _LabSectionsPageState extends State<LabSectionsPage>
       for (final tab in _labPhaseTabs)
         SectionLoadController<String>(key: tab.queryValue, loader: loader),
     ];
-    _tabController = TabController(length: _labPhaseTabs.length, vsync: this)
-      ..addListener(_loadSelectedTab);
     unawaited(_controllers.first.load());
   }
 
   @override
   void dispose() {
-    _tabController
-      ..removeListener(_loadSelectedTab)
-      ..dispose();
     for (final controller in _controllers) {
       controller.dispose();
     }
     super.dispose();
   }
 
-  void _loadSelectedTab() {
-    final controller = _controllers[_tabController.index];
+  void _select(int index) {
+    if (index == _selected) return;
+    setState(() => _selected = index);
+    final controller = _controllers[index];
     if (!controller.isLoaded) unawaited(controller.load());
   }
 
   @override
   Widget build(BuildContext context) {
+    final tab = _labPhaseTabs[_selected];
     return AppPageScaffold(
       title: 'Lab Sections',
       subtitle: 'Advising',
       icon: Icons.science_outlined,
-      body: Column(
-        children: [
-          TabBar(
-            controller: _tabController,
-            isScrollable: true,
-            labelColor: AppPalette.primary,
-            unselectedLabelColor: AppPalette.textSecondary(context),
-            tabs: [for (final tab in _labPhaseTabs) Tab(text: tab.label)],
-          ),
-          const Gap(12),
-          Expanded(
-            child: TabBarView(
-              controller: _tabController,
-              children: [
-                for (var index = 0; index < _labPhaseTabs.length; index++)
-                  _LabSectionsTab(
-                    tab: _labPhaseTabs[index],
-                    controller: _controllers[index],
-                  ),
-              ],
-            ),
-          ),
-        ],
+      actions: [
+        AppSelectDropdownChip<int>(
+          title: 'Select Phase',
+          label: tab.label,
+          selected: true,
+          selectedValue: _selected,
+          compact: true,
+          showBorder: false,
+          options: [
+            for (var index = 0; index < _labPhaseTabs.length; index++)
+              AppSelectOption<int>(
+                value: index,
+                label: _labPhaseTabs[index].label,
+                icon: Icons.science_outlined,
+              ),
+          ],
+          onSelected: _select,
+        ),
+      ],
+      body: _LabSectionsTab(
+        key: ValueKey<String>(tab.queryValue),
+        tab: tab,
+        controller: _controllers[_selected],
       ),
     );
   }
 }
 
 class _LabSectionsTab extends StatelessWidget {
-  const _LabSectionsTab({required this.tab, required this.controller});
+  const _LabSectionsTab({
+    super.key,
+    required this.tab,
+    required this.controller,
+  });
 
   final _LabPhaseTab tab;
   final SectionLoadController<String> controller;
