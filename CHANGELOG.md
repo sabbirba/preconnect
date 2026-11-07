@@ -5,6 +5,26 @@ Entries are written for students, not developers — plain language, no commit h
 
 ## [Unreleased]
 
+## [2.1.4] — 2026-11-08
+
+- Plan your routine in Seat Status with conflict checks and new filters.
+- Planner Schedule sheet for planned classes and exams.
+- Live seat update times and a booked trend.
+- Midterms in light blue, finals in green.
+- Show More and Show Less step by five.
+- Supporters on the home dashboard with a Share button and an anonymous total.
+- Content refreshes in the background each time you open the app.
+- Faster connections, seat status, Wi-Fi login, and startup.
+
+## [2.1.3] — 2026-11-06
+
+- Print preview opens instantly and shows the first page of a PDF right away.
+- Staple and Punch, and Offset and Slip Sheet, now share one button each.
+- Your printer ID card and settings stay saved when a sign-in or profile read fails.
+- Seat counts update live while Seat Status is open, and seat watch stays on your device.
+- Push notifications no longer send your sign-in token.
+- Faster startup and clearer printer and Wi-Fi help.
+
 ## [2.1.2] — 2026-10-26
 
 - Add or remove extra sections from a personal routine in one tap without changing Connect enrolment.

@@ -1,6 +1,8 @@
-Add or remove extra classes in one tap.
-Combine matching times with joined weekdays.
-Clearer exam colors and more consistent spacing.
-Plan up to 30 days ahead and book LibSync up to 7 days ahead.
-Improve saved schedules, sign-in recovery, browser refresh, scanning, and notifications.
-Extra class alarms and exam focus from three days before.
+• Plan your routine in Seat Status with conflict checks and new filters.
+• Planner Schedule sheet for planned classes and exams.
+• Live seat update times and a booked trend.
+• Midterms in light blue, finals in green.
+• Show More and Show Less step by five.
+• Supporters on the home dashboard with a Share button and an anonymous total.
+• Content refreshes in the background each time you open the app.
+• Faster connections, seat status, Wi-Fi login, and startup.

@@ -17,8 +17,8 @@ Support is used to help cover the practical costs of keeping the project healthy
 ## Notes
 
 - Support is optional. The app remains free to use.
-- Donations do not create special access, private features, or priority support guarantees.
-- Bug reports, feature requests, and code contributions are still welcome and valuable even if you do not donate.
+- Supporting PreConnect does not create special access, private features, or priority support guarantees.
+- Bug reports, feature requests, and code contributions are still welcome and valuable whether or not you support the project financially.
 
 ## Community Help
 
