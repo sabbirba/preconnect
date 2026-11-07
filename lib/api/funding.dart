@@ -38,13 +38,11 @@ class ContributionItem {
 
 class FundingStatus {
   final int totalRaised;
-  final int goal;
   final int contributorsCount;
   final List<ContributionItem> contributions;
 
   const FundingStatus({
     required this.totalRaised,
-    required this.goal,
     required this.contributorsCount,
     required this.contributions,
   });
@@ -60,7 +58,6 @@ class FundingStatus {
 
     return FundingStatus(
       totalRaised: (json['totalRaised'] as num?)?.toInt() ?? 0,
-      goal: (json['goal'] as num?)?.toInt() ?? 0,
       contributorsCount: (json['contributorsCount'] as num?)?.toInt() ?? 0,
       contributions: contributionsList,
     );
@@ -69,7 +66,6 @@ class FundingStatus {
   Map<String, dynamic> toJson() {
     return <String, dynamic>{
       'totalRaised': totalRaised,
-      'goal': goal,
       'contributorsCount': contributorsCount,
       'contributions': contributions.map((e) => e.toJson()).toList(),
     };

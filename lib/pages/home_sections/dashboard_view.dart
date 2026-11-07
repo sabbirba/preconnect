@@ -249,7 +249,9 @@ extension _HomeDashboardView on _HomeDashboardState {
                                             badge: formatSectionBadge(
                                               exam.sectionName,
                                             ),
-                                            color: _HomeDashboardState._accent,
+                                            color: ExamCard.typeColor(
+                                              isFinal: exam.type == 'Final',
+                                            ),
                                             isHighlighted:
                                                 AppTime.isUpcomingOrCurrentSlot(
                                                   exam.startTime,
@@ -519,6 +521,12 @@ extension _HomeDashboardView on _HomeDashboardState {
                                     iconColor: const Color(0xFF22B573),
                                     onTap: _openCampusMapSheet,
                                   ),
+                                ],
+                                if (cardVisibility.showFundingSection) ...[
+                                  const Gap(16),
+                                  const SupportersStrip(),
+                                  const Gap(12),
+                                  const FundingSupportContent(),
                                 ],
                               ],
                             ),

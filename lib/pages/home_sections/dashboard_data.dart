@@ -47,7 +47,6 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
   static const _bgTop = Colors.white;
   static const _bgBottom = Colors.white;
   static const _primary = Color(0xFF1E6BE3);
-  static const _accent = Color(0xFF22B573);
 
   int _scheduleMinute = DateTime.now().minute;
   Timer? _scheduleTimer;

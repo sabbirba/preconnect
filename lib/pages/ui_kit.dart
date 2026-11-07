@@ -1055,6 +1055,7 @@ class CampaignSupporters extends StatefulWidget {
 class _CampaignSupportersState extends State<CampaignSupporters> {
   FundingStatus? _status;
   bool _refreshing = false;
+  int _visible = 0;
 
   @override
   void initState() {
@@ -1083,8 +1084,8 @@ class _CampaignSupportersState extends State<CampaignSupporters> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final grouped = <String, ContributionItem>{};
     for (final item in status.contributions) {
-      final name = item.name.trim();
-      final key = name.isEmpty ? 'Anonymous' : name;
+      final key = item.name.trim();
+      if (!isNamedSupporter(key)) continue;
       final existing = grouped[key];
       if (existing == null) {
         grouped[key] = item;
@@ -1105,10 +1106,11 @@ class _CampaignSupportersState extends State<CampaignSupporters> {
       return b.ts.compareTo(a.ts);
     });
 
-    int showCount = contributions.length;
-    if (widget.maxCount != null && showCount > widget.maxCount!) {
-      showCount = widget.maxCount!;
-    }
+    final step = widget.maxCount;
+    final total = contributions.length;
+    final showCount = step == null
+        ? total
+        : visibleSupporterCount(_visible, step: step, total: total);
 
     if (contributions.isEmpty) return const SizedBox.shrink();
 
@@ -1117,42 +1119,44 @@ class _CampaignSupportersState extends State<CampaignSupporters> {
       mainAxisSize: MainAxisSize.min,
       children: [
         const Gap(16),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          crossAxisAlignment: CrossAxisAlignment.baseline,
-          textBaseline: TextBaseline.alphabetic,
-          children: [
-            Expanded(
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.baseline,
-                textBaseline: TextBaseline.alphabetic,
-                children: [
-                  const Flexible(
-                    child: AppSectionTitle(title: 'Campaign Supporters'),
-                  ),
-                  const Gap(6),
-                  Text(
-                    '(${contributions.length})',
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: AppPalette.textPrimary(context),
+        FundingTap(
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.baseline,
+            textBaseline: TextBaseline.alphabetic,
+            children: [
+              Expanded(
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.baseline,
+                  textBaseline: TextBaseline.alphabetic,
+                  children: [
+                    const Flexible(
+                      child: AppSectionTitle(title: 'Campaign Supporters'),
                     ),
-                  ),
-                ],
+                    const Gap(6),
+                    Text(
+                      '(${supporterCount(status)})',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: AppPalette.textPrimary(context),
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
-            const Gap(8),
-            Text(
-              '৳${status.totalRaised}',
-              style: TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.w700,
-                color: AppPalette.textPrimary(context),
+              const Gap(8),
+              Text(
+                '৳${status.totalRaised}',
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                  color: AppPalette.textPrimary(context),
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
         const Gap(8),
         for (int i = 0; i < showCount; i++) ...[
@@ -1166,9 +1170,56 @@ class _CampaignSupportersState extends State<CampaignSupporters> {
               ).withValues(alpha: isDark ? 0.22 : 0.14),
             ),
         ],
+        if (step != null && total > step) ...[
+          const Gap(12),
+          AppDividerActions(
+            actions: [
+              if (showCount < total)
+                AppDividerAction(
+                  label: 'Show More',
+                  onPressed: () => setState(() => _visible = showCount + step),
+                ),
+              if (showCount > step)
+                AppDividerAction(
+                  label: 'Show Less',
+                  pointsUp: true,
+                  onPressed: () => setState(() => _visible = showCount - step),
+                ),
+            ],
+          ),
+        ],
       ],
     );
   }
+}
+
+int supporterCount(FundingStatus status) {
+  if (status.contributorsCount > 0) return status.contributorsCount;
+  final named = <String>{};
+  var anonymous = 0;
+  for (final item in status.contributions) {
+    final name = item.name.trim();
+    if (isNamedSupporter(name)) {
+      named.add(name);
+    } else {
+      anonymous++;
+    }
+  }
+  return named.length + anonymous;
+}
+
+int visibleSupporterCount(
+  int requested, {
+  required int step,
+  required int total,
+}) {
+  final wanted = requested < step ? step : requested;
+  return wanted > total ? total : wanted;
+}
+
+bool isNamedSupporter(String name) {
+  final value = name.trim();
+  return value.isNotEmpty && value.toLowerCase() != 'anonymous';
 }
 
 class _SupporterTile extends StatelessWidget {
@@ -1177,56 +1228,210 @@ class _SupporterTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    Widget avatar;
-    if (item.picture != null && item.picture!.startsWith('http')) {
-      avatar = ClipOval(
+    final avatar = _SupporterAvatar(item: item, size: 38);
+    return FundingTap(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 6),
+        child: Row(
+          children: [
+            SizedBox(width: 38, height: 38, child: avatar),
+            const Gap(12),
+            Expanded(
+              child: Text(
+                item.name,
+                style: TextStyle(
+                  color: AppPalette.textPrimary(context),
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+            Text(
+              '৳${item.amount}',
+              style: TextStyle(
+                color: AppPalette.primary,
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class FundingTap extends StatelessWidget {
+  const FundingTap({super.key, required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: () => showFundingSupportSheet(context),
+        child: child,
+      ),
+    );
+  }
+}
+
+class _SupporterAvatar extends StatelessWidget {
+  const _SupporterAvatar({required this.item, required this.size});
+
+  final ContributionItem item;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    final picture = item.picture;
+    if (picture != null && picture.startsWith('http')) {
+      return ClipOval(
         child: CachedImage(
-          url: item.picture!,
-          width: 38,
-          height: 38,
+          url: picture,
+          width: size,
+          height: size,
           fit: BoxFit.cover,
         ),
       );
-    } else {
-      avatar = CircleAvatar(
-        backgroundColor: isDark
-            ? const Color(0xFF1E293B)
-            : const Color(0xFFE2E8F0),
-        child: Icon(
-          Icons.person_rounded,
-          size: 20,
-          color: AppPalette.textPrimary(context),
-        ),
-      );
     }
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
-      child: Row(
-        children: [
-          SizedBox(width: 38, height: 38, child: avatar),
-          const Gap(12),
-          Expanded(
-            child: Text(
-              item.name,
-              style: TextStyle(
-                color: AppPalette.textPrimary(context),
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-          Text(
-            '৳${item.amount}',
-            style: TextStyle(
-              color: AppPalette.primary,
-              fontSize: 14,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ],
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Container(
+      width: size,
+      height: size,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: isDark ? const Color(0xFF1E293B) : const Color(0xFFE2E8F0),
       ),
+      child: Icon(
+        Icons.person_rounded,
+        size: size * 0.52,
+        color: AppPalette.textPrimary(context),
+      ),
+    );
+  }
+}
+
+List<ContributionItem> latestContributions(List<ContributionItem> items) {
+  return [
+    for (final item in items)
+      if (item.amount > 0) item,
+  ]..sort((a, b) => b.ts.compareTo(a.ts));
+}
+
+class SupportersStrip extends StatefulWidget {
+  const SupportersStrip({super.key});
+
+  @override
+  State<SupportersStrip> createState() => _SupportersStripState();
+}
+
+class _SupportersStripState extends State<SupportersStrip> {
+  FundingStatus? _status = FundingService.cached;
+
+  @override
+  void initState() {
+    super.initState();
+    unawaited(_load());
+  }
+
+  Future<void> _load() async {
+    final status = await FundingService.fetchStatus();
+    if (!mounted || status == null) return;
+    setState(() => _status = status);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final status = _status;
+    if (status == null) return const SizedBox.shrink();
+    final items = latestContributions(status.contributions);
+    if (items.isEmpty) return const SizedBox.shrink();
+    final textPrimary = AppPalette.textPrimary(context);
+    final textSecondary = AppPalette.textSecondary(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        FundingTap(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.baseline,
+            textBaseline: TextBaseline.alphabetic,
+            children: [
+              const AppSectionTitle(title: 'Supporters'),
+              const Gap(6),
+              Text(
+                '(${supporterCount(status)})',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: textPrimary,
+                ),
+              ),
+              const Spacer(),
+              Text(
+                '৳${status.totalRaised}',
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                  color: textPrimary,
+                ),
+              ),
+            ],
+          ),
+        ),
+        const Gap(10),
+        SizedBox(
+          height: 90,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            physics: const BouncingScrollPhysics(),
+            itemCount: items.length,
+            separatorBuilder: (_, _) => const Gap(4),
+            itemBuilder: (context, index) {
+              final item = items[index];
+              final name = item.name.trim();
+              return FundingTap(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(minWidth: 44, maxWidth: 76),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      _SupporterAvatar(item: item, size: 40),
+                      const Gap(4),
+                      Text(
+                        isNamedSupporter(name) ? name : 'Anonymous',
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: textSecondary,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const Gap(1),
+                      Text(
+                        '৳${item.amount}',
+                        maxLines: 1,
+                        style: const TextStyle(
+                          color: AppPalette.primary,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ],
     );
   }
 }
@@ -1267,7 +1472,7 @@ class FundingSupportContent extends StatelessWidget {
                   size: 18,
                   color: AppPalette.primary,
                 ),
-                label: 'iOS Campaign',
+                label: 'Support PreConnect',
                 onTap: () => showFundingSupportSheet(context),
               ),
               _SponsorActionChip(

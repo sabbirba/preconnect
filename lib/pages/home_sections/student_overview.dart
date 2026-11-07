@@ -235,11 +235,9 @@ class _SupportButtonState extends State<_SupportButton> {
   List<String> _currentOptions() {
     final status = _status;
     return <String>[
-      'Support iOS',
+      'Support PreConnect',
       if (status != null && status.totalRaised > 0)
         '৳${_formatAmount(status.totalRaised)} Raised',
-      if (status != null && status.goal > 0)
-        '৳${_formatAmount(status.goal)} Goal',
       'Join Discord',
       'GitHub Repo',
       'Fork Repo',
