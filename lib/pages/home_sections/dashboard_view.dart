@@ -523,12 +523,6 @@ extension _HomeDashboardView on _HomeDashboardState {
                                         showCampusMapBottomSheet(context),
                                   ),
                                 ],
-                                if (cardVisibility.showFundingSection) ...[
-                                  const Gap(16),
-                                  const SupportersStrip(),
-                                  const Gap(12),
-                                  const FundingSupportContent(),
-                                ],
                               ],
                             ),
                           );

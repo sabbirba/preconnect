@@ -947,144 +947,6 @@ class FundingShareButton extends StatelessWidget {
   }
 }
 
-class CampaignSupporters extends StatefulWidget {
-  const CampaignSupporters({super.key, this.maxCount});
-  final int? maxCount;
-
-  @override
-  State<CampaignSupporters> createState() => _CampaignSupportersState();
-}
-
-class _CampaignSupportersState extends State<CampaignSupporters> {
-  FundingStatus? _status;
-  bool _refreshing = false;
-  int _visible = 0;
-
-  @override
-  void initState() {
-    super.initState();
-    _status = FundingService.cached;
-    FundingService.updates.addListener(_onStatusChanged);
-    _loadStatus();
-  }
-
-  @override
-  void dispose() {
-    FundingService.updates.removeListener(_onStatusChanged);
-    super.dispose();
-  }
-
-  void _onStatusChanged() {
-    final status = FundingService.updates.value;
-    if (mounted && status != null) setState(() => _status = status);
-  }
-
-  Future<void> _loadStatus() async {
-    if (_refreshing) return;
-    if (mounted) setState(() => _refreshing = true);
-    final res = await FundingService.fetchStatus();
-    if (mounted) {
-      setState(() {
-        if (res != null) _status = res;
-        _refreshing = false;
-      });
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final status = _status;
-    if (status == null) return const SizedBox.shrink();
-
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final contributions = groupedSupporters(status.contributions);
-
-    final step = widget.maxCount;
-    final total = contributions.length;
-    final showCount = step == null
-        ? total
-        : visibleSupporterCount(_visible, step: step, total: total);
-
-    if (contributions.isEmpty) return const SizedBox.shrink();
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        FundingTap(
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            crossAxisAlignment: CrossAxisAlignment.baseline,
-            textBaseline: TextBaseline.alphabetic,
-            children: [
-              Expanded(
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.baseline,
-                  textBaseline: TextBaseline.alphabetic,
-                  children: [
-                    const Flexible(child: AppSectionTitle(title: 'Supporters')),
-                    const Gap(6),
-                    Text(
-                      '(${supporterCount(status)})',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: AppPalette.textPrimary(context),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const Gap(8),
-              Text(
-                '৳${status.totalRaised}',
-                style: TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w700,
-                  color: AppPalette.textPrimary(context),
-                ),
-              ),
-              const Gap(4),
-              const FundingShareButton(),
-            ],
-          ),
-        ),
-        const Gap(6),
-        for (int i = 0; i < showCount; i++) ...[
-          _SupporterTile(item: contributions[i]),
-          if (i < showCount - 1)
-            Divider(
-              height: 12,
-              thickness: 1,
-              color: AppPalette.textSecondary(
-                context,
-              ).withValues(alpha: isDark ? 0.22 : 0.14),
-            ),
-        ],
-        if (step != null && total > step) ...[
-          const Gap(12),
-          AppDividerActions(
-            actions: [
-              if (showCount < total)
-                AppDividerAction(
-                  label: 'Show More',
-                  onPressed: () => setState(() => _visible = showCount + step),
-                ),
-              if (showCount > step)
-                AppDividerAction(
-                  label: 'Show Less',
-                  pointsUp: true,
-                  onPressed: () => setState(() => _visible = showCount - step),
-                ),
-            ],
-          ),
-        ],
-      ],
-    );
-  }
-}
-
 List<ContributionItem> groupedSupporters(List<ContributionItem> items) {
   const anonymous = 'Anonymous';
   final grouped = <String, ContributionItem>{};
@@ -1107,13 +969,10 @@ List<ContributionItem> groupedSupporters(List<ContributionItem> items) {
             ts: existing.ts > item.ts ? existing.ts : item.ts,
           );
   }
-  final anonymousTotal = grouped.remove(anonymous);
-  final named = grouped.values.toList()
-    ..sort((a, b) {
-      final cmp = b.amount.compareTo(a.amount);
-      return cmp != 0 ? cmp : b.ts.compareTo(a.ts);
-    });
-  return [?anonymousTotal, ...named];
+  return grouped.values.toList()..sort((a, b) {
+    final cmp = b.amount.compareTo(a.amount);
+    return cmp != 0 ? cmp : b.ts.compareTo(a.ts);
+  });
 }
 
 int supporterCount(FundingStatus status) {
@@ -1143,45 +1002,6 @@ int visibleSupporterCount(
 bool isNamedSupporter(String name) {
   final value = name.trim();
   return value.isNotEmpty && value.toLowerCase() != 'anonymous';
-}
-
-class _SupporterTile extends StatelessWidget {
-  const _SupporterTile({required this.item});
-  final ContributionItem item;
-
-  @override
-  Widget build(BuildContext context) {
-    final avatar = _SupporterAvatar(item: item, size: 38);
-    return FundingTap(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 6),
-        child: Row(
-          children: [
-            SizedBox(width: 38, height: 38, child: avatar),
-            const Gap(12),
-            Expanded(
-              child: Text(
-                item.name,
-                style: TextStyle(
-                  color: AppPalette.textPrimary(context),
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-            Text(
-              '৳${item.amount}',
-              style: TextStyle(
-                color: AppPalette.primary,
-                fontSize: 14,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 }
 
 class FundingTap extends StatelessWidget {
@@ -1239,138 +1059,195 @@ class _SupporterAvatar extends StatelessWidget {
   }
 }
 
-List<ContributionItem> latestContributions(List<ContributionItem> items) {
-  return [
-    for (final item in items)
-      if (item.amount > 0) item,
-  ]..sort((a, b) => b.ts.compareTo(a.ts));
+class SupportersGrid extends StatefulWidget {
+  const SupportersGrid({super.key});
+
+  @override
+  State<SupportersGrid> createState() => _SupportersGridState();
 }
 
-class SupportersStrip extends StatefulWidget {
-  const SupportersStrip({super.key});
-
-  @override
-  State<SupportersStrip> createState() => _SupportersStripState();
-}
-
-class _SupportersStripState extends State<SupportersStrip> {
-  FundingStatus? _status = FundingService.cached;
-
-  @override
-  void initState() {
-    super.initState();
-    FundingService.updates.addListener(_onStatusChanged);
-    unawaited(_load());
-  }
-
-  @override
-  void dispose() {
-    FundingService.updates.removeListener(_onStatusChanged);
-    super.dispose();
-  }
-
-  void _onStatusChanged() {
-    final status = FundingService.updates.value;
-    if (mounted && status != null) setState(() => _status = status);
-  }
-
-  Future<void> _load() async {
-    final status = await FundingService.fetchStatus();
-    if (!mounted || status == null) return;
-    setState(() => _status = status);
-  }
+class _SupportersGridState extends State<SupportersGrid>
+    with FundingStatusListener<SupportersGrid> {
+  static const int _step = 6;
+  int _visible = 0;
 
   @override
   Widget build(BuildContext context) {
-    final status = _status;
-    if (status == null) return const SizedBox.shrink();
-    final items = latestContributions(status.contributions);
-    if (items.isEmpty) return const SizedBox.shrink();
-    final textPrimary = AppPalette.textPrimary(context);
-    final textSecondary = AppPalette.textSecondary(context);
+    final status = fundingStatus;
+    final items = groupedSupporters(
+      status?.contributions ?? const <ContributionItem>[],
+    );
+    if (status == null || items.isEmpty) return const SizedBox.shrink();
+    final shown = visibleSupporterCount(
+      _visible,
+      step: _step,
+      total: items.length,
+    );
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        FundingTap(
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.baseline,
-            textBaseline: TextBaseline.alphabetic,
-            children: [
-              const AppSectionTitle(title: 'Supporters'),
-              const Gap(6),
-              Text(
-                '(${supporterCount(status)})',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: textPrimary,
-                ),
+        _SupportersHeader(status: status),
+        const Gap(8),
+        PeopleGrid(
+          tiles: [
+            for (final item in items.take(shown))
+              (
+                avatar: (size) => _SupporterAvatar(item: item, size: size),
+                name: item.name,
+                detail: '৳${item.amount}',
+                onTap: () => showFundingSupportSheet(context),
               ),
-              const Spacer(),
-              Text(
-                '৳${status.totalRaised}',
-                style: TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w700,
-                  color: textPrimary,
-                ),
-              ),
-              const Gap(4),
-              const FundingShareButton(),
-            ],
-          ),
+          ],
         ),
-        const Gap(10),
-        SizedBox(
-          height: 90,
-          child: ListView.separated(
-            scrollDirection: Axis.horizontal,
-            physics: const BouncingScrollPhysics(),
-            itemCount: items.length,
-            separatorBuilder: (_, _) => const Gap(4),
-            itemBuilder: (context, index) {
-              final item = items[index];
-              final name = item.name.trim();
-              return FundingTap(
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(minWidth: 44, maxWidth: 76),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      _SupporterAvatar(item: item, size: 40),
-                      const Gap(4),
-                      Text(
-                        isNamedSupporter(name) ? name : 'Anonymous',
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: textSecondary,
-                          fontSize: 10,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      const Gap(1),
-                      Text(
-                        '৳${item.amount}',
-                        maxLines: 1,
-                        style: const TextStyle(
-                          color: AppPalette.primary,
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            },
-          ),
+        buildStepButtons(
+          shown: shown,
+          total: items.length,
+          step: _step,
+          onChanged: (value) => setState(() => _visible = value),
+          padding: const EdgeInsets.only(top: 8),
         ),
       ],
     );
   }
+}
+
+mixin FundingStatusListener<T extends StatefulWidget> on State<T> {
+  FundingStatus? get fundingStatus =>
+      FundingService.updates.value ?? FundingService.cached;
+
+  @override
+  void initState() {
+    super.initState();
+    FundingService.updates.addListener(_onFundingChanged);
+    unawaited(FundingService.fetchStatus());
+  }
+
+  @override
+  void dispose() {
+    FundingService.updates.removeListener(_onFundingChanged);
+    super.dispose();
+  }
+
+  void _onFundingChanged() {
+    if (mounted) setState(() {});
+  }
+}
+
+class _SupportersHeader extends StatelessWidget {
+  const _SupportersHeader({required this.status});
+
+  final FundingStatus status;
+
+  @override
+  Widget build(BuildContext context) {
+    final style = TextStyle(
+      color: AppPalette.textPrimary(context),
+      fontSize: 14,
+      fontWeight: FontWeight.w600,
+    );
+    return FundingTap(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.baseline,
+        textBaseline: TextBaseline.alphabetic,
+        children: [
+          const AppSectionTitle(title: 'Supporters'),
+          const Gap(6),
+          Text('(${supporterCount(status)})', style: style),
+          const Spacer(),
+          Text(
+            '৳${status.totalRaised}',
+            style: style.copyWith(fontSize: 15, fontWeight: FontWeight.w700),
+          ),
+          const Gap(4),
+          const FundingShareButton(),
+        ],
+      ),
+    );
+  }
+}
+
+typedef PeopleTile = ({
+  Widget Function(double size) avatar,
+  String name,
+  String detail,
+  VoidCallback onTap,
+});
+
+class PeopleGrid extends StatelessWidget {
+  const PeopleGrid({super.key, required this.tiles});
+
+  final List<PeopleTile> tiles;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        const spacing = 10.0;
+        final width = constraints.maxWidth;
+        final columns = math.max(1, (width + spacing) ~/ (104 + spacing));
+        final tileWidth = (width - spacing * (columns - 1)) / columns;
+        final avatarSize = (tileWidth * 0.44).clamp(50.0, 64.0);
+        final detailStyle = TextStyle(
+          color: AppPalette.textSecondary(context),
+          fontSize: 11,
+          height: 1.1,
+        );
+        return Wrap(
+          spacing: spacing,
+          runSpacing: 4,
+          children: [
+            for (final tile in tiles)
+              SizedBox(
+                width: tileWidth,
+                child: InkWell(
+                  onTap: tile.onTap,
+                  borderRadius: BorderRadius.circular(12),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 2,
+                      vertical: 4,
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        tile.avatar(avatarSize),
+                        const Gap(5),
+                        _peopleName(tile.name),
+                        const Gap(2),
+                        Text(
+                          tile.detail,
+                          maxLines: 2,
+                          textAlign: TextAlign.center,
+                          style: detailStyle,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+Widget _peopleName(String name) {
+  final singleWord = !name.contains(' ');
+  final text = Text(
+    name,
+    maxLines: singleWord ? 1 : 2,
+    softWrap: !singleWord,
+    overflow: singleWord ? null : TextOverflow.ellipsis,
+    textAlign: TextAlign.center,
+    style: const TextStyle(
+      fontSize: 13,
+      fontWeight: FontWeight.w700,
+      height: 1.1,
+    ),
+  );
+  return singleWord ? FittedBox(fit: BoxFit.scaleDown, child: text) : text;
 }
 
 const String _kPreConnectWhatsAppUrl =

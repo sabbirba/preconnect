@@ -432,11 +432,7 @@ class _DevsPageState extends State<DevsPage> {
   Widget _buildFundingSection() {
     return const Column(
       crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        CampaignSupporters(maxCount: 5),
-        Gap(_sectionGap),
-        FundingSupportContent(),
-      ],
+      children: [SupportersGrid(), Gap(_sectionGap), FundingSupportContent()],
     );
   }
 }
@@ -532,33 +528,20 @@ class _ContributorsGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final all = contributors;
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final width = constraints.maxWidth.isFinite
-            ? constraints.maxWidth
-            : 0.0;
-        const minTileWidth = 104.0;
-        const spacing = 10.0;
-        final rawCount = ((width + spacing) / (minTileWidth + spacing)).floor();
-        final crossAxisCount = rawCount < 1 ? 1 : rawCount;
-        final totalSpacing = spacing * (crossAxisCount - 1);
-        final itemWidth = ((width - totalSpacing) / crossAxisCount).clamp(
-          0.0,
-          double.infinity,
-        );
-        return Wrap(
-          spacing: spacing,
-          runSpacing: 12,
-          children: [
-            for (final contributor in all)
-              SizedBox(
-                width: itemWidth,
-                child: _DevGridTile(contributor: contributor),
-              ),
-          ],
-        );
-      },
+    return PeopleGrid(
+      tiles: [
+        for (final contributor in contributors)
+          (
+            avatar: (size) => _ContributorAvatar(
+              name: contributor.name,
+              url: contributor.avatarUrl,
+              size: size,
+            ),
+            name: contributor.name.trim(),
+            detail: contributor.role,
+            onTap: () => openExternalUrl(context, contributor.url),
+          ),
+      ],
     );
   }
 }
@@ -707,76 +690,6 @@ List<_ContributorProfile> _orderContributors(
     return aRank.compareTo(bRank);
   });
   return indexed.map((entry) => entry.value).toList();
-}
-
-class _DevGridTile extends StatelessWidget {
-  const _DevGridTile({required this.contributor});
-
-  final _ContributorProfile contributor;
-
-  @override
-  Widget build(BuildContext context) {
-    final textSecondary = AppPalette.textSecondary(context);
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final width = constraints.maxWidth;
-        final compact = width < 165;
-        final avatarSize = (width * 0.44).clamp(50.0, 64.0);
-        final nameSize = compact ? 13.0 : 13.8;
-        final roleSize = compact ? 11.0 : 11.6;
-        final nameStyle = TextStyle(
-          fontSize: nameSize,
-          fontWeight: FontWeight.w700,
-          height: 1.1,
-        );
-        final name = contributor.name.trim();
-        final isSingleWord = !name.contains(RegExp(r'\s'));
-        final nameText = Text(
-          name,
-          maxLines: isSingleWord ? 1 : 2,
-          softWrap: !isSingleWord,
-          textAlign: TextAlign.center,
-          style: nameStyle,
-        );
-        return InkWell(
-          onTap: () => openExternalUrl(context, contributor.url),
-          borderRadius: BorderRadius.circular(12),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 4),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              mainAxisAlignment: MainAxisAlignment.start,
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                _ContributorAvatar(
-                  name: contributor.name,
-                  url: contributor.avatarUrl,
-                  size: avatarSize,
-                ),
-                const Gap(5),
-                if (isSingleWord)
-                  FittedBox(fit: BoxFit.scaleDown, child: nameText)
-                else
-                  nameText,
-                const Gap(2),
-                Text(
-                  contributor.role,
-                  maxLines: 2,
-                  softWrap: true,
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: textSecondary,
-                    fontSize: roleSize,
-                    height: 1.1,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
 }
 
 class _ContributorAvatar extends StatelessWidget {

@@ -3,7 +3,6 @@ import 'package:preconnect/api/api_config.dart';
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
 import 'package:preconnect/pages/home_tab.dart';
-import 'package:preconnect/api/funding.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/polling_timer.dart';
 import 'package:preconnect/tools/string_utils.dart';
@@ -196,18 +195,15 @@ class _SupportButton extends StatefulWidget {
   State<_SupportButton> createState() => _SupportButtonState();
 }
 
-class _SupportButtonState extends State<_SupportButton> {
+class _SupportButtonState extends State<_SupportButton>
+    with FundingStatusListener<_SupportButton> {
   bool _isLoading = false;
   PollingTimer? _rotationTimer;
   int _rotationIndex = 0;
-  FundingStatus? _status;
 
   @override
   void initState() {
     super.initState();
-    _status = FundingService.cached;
-    FundingService.updates.addListener(_onStatusChanged);
-    _fetchLatest();
     _rotationTimer = PollingTimer(const Duration(seconds: 10), (_) {
       if (mounted) {
         if (HomeTabRegistry.activeTab.value != HomeTab.dashboard) return;
@@ -220,27 +216,12 @@ class _SupportButtonState extends State<_SupportButton> {
 
   @override
   void dispose() {
-    FundingService.updates.removeListener(_onStatusChanged);
     _rotationTimer?.cancel();
     super.dispose();
   }
 
-  void _onStatusChanged() {
-    final status = FundingService.updates.value;
-    if (mounted && status != null) setState(() => _status = status);
-  }
-
-  Future<void> _fetchLatest() async {
-    final latest = await FundingService.fetchStatus();
-    if (latest != null && mounted) {
-      setState(() {
-        _status = latest;
-      });
-    }
-  }
-
   List<String> _currentOptions() {
-    final status = _status;
+    final status = fundingStatus;
     return <String>[
       'Support',
       if (status != null && status.totalRaised > 0)
