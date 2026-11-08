@@ -1426,7 +1426,7 @@ class _FundingSupportContentState extends State<FundingSupportContent> {
                   size: 18,
                   color: AppPalette.primary,
                 ),
-                label: 'Support PreConnect',
+                label: 'Support',
                 onTap: () => showFundingSupportSheet(context),
               ),
               _SponsorActionChip(

@@ -242,7 +242,7 @@ class _SupportButtonState extends State<_SupportButton> {
   List<String> _currentOptions() {
     final status = _status;
     return <String>[
-      'Support PreConnect',
+      'Support',
       if (status != null && status.totalRaised > 0)
         '৳${formatAmount(status.totalRaised)} Raised',
       'Join Discord',
