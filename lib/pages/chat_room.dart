@@ -225,19 +225,32 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
     await showAppBottomSheet<void>(
       context,
       title: 'Message',
-      initialChildSize: 0.42,
       draggable: false,
+      isScrollControlled: false,
       builder: (sheetContext, textPrimary, textSecondary) {
         Widget action(IconData icon, String label, VoidCallback onTap) {
-          return ActionBannerCard(
-            icon: icon,
-            title: label,
-            showBorder: false,
-            showTrailingIcon: false,
-            onTap: () {
-              Navigator.of(sheetContext).pop();
-              onTap();
-            },
+          return Expanded(
+            child: InkWell(
+              borderRadius: BorderRadius.circular(14),
+              onTap: () {
+                Navigator.of(sheetContext).pop();
+                onTap();
+              },
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(icon, size: 22, color: AppPalette.primary),
+                    const Gap(6),
+                    Text(
+                      label,
+                      style: TextStyle(fontSize: 12, color: textPrimary),
+                    ),
+                  ],
+                ),
+              ),
+            ),
           );
         }
 
@@ -267,27 +280,33 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
                 ],
               ),
             ),
-            if (_room.active)
-              action(Icons.reply_rounded, 'Reply', () {
-                setState(() => _replyTo = message);
-              }),
-            if (_room.active && !isMine)
-              action(Icons.alternate_email_rounded, 'Mention', () {
-                _mention(message.author);
-              }),
-            if (message.text.isNotEmpty)
-              action(Icons.copy_rounded, 'Copy', () {
-                unawaited(Clipboard.setData(ClipboardData(text: message.text)));
-                showAppSnackBar(context, 'Copied.');
-              }),
-            if (!isMine)
-              action(Icons.flag_outlined, 'Report', () {
-                unawaited(_report(message));
-              }),
-            if (!isMine)
-              action(Icons.block_rounded, 'Block ${message.author.name}', () {
-                unawaited(_block(message.author));
-              }),
+            Row(
+              children: [
+                if (_room.active)
+                  action(Icons.reply_rounded, 'Reply', () {
+                    setState(() => _replyTo = message);
+                  }),
+                if (_room.active && !isMine)
+                  action(Icons.alternate_email_rounded, 'Mention', () {
+                    _mention(message.author);
+                  }),
+                if (message.text.isNotEmpty)
+                  action(Icons.copy_rounded, 'Copy', () {
+                    unawaited(
+                      Clipboard.setData(ClipboardData(text: message.text)),
+                    );
+                    showAppSnackBar(context, 'Copied.');
+                  }),
+                if (!isMine)
+                  action(Icons.flag_outlined, 'Report', () {
+                    unawaited(_report(message));
+                  }),
+                if (!isMine)
+                  action(Icons.block_rounded, 'Block', () {
+                    unawaited(_block(message.author));
+                  }),
+              ],
+            ),
           ],
         );
       },
@@ -337,7 +356,7 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
     return AppPageScaffold(
       title: _room.title,
       subtitle: switch (_room.kind) {
-        ChatRoomKind.lounge => 'Lounge',
+        ChatRoomKind.lounge => 'Everyone',
         ChatRoomKind.course => 'Course',
         ChatRoomKind.section => 'Section',
       },
@@ -480,20 +499,26 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
                 icon: Icon(Icons.image_outlined, color: textSecondary),
               ),
               Expanded(
-                child: TextField(
-                  controller: _input,
-                  minLines: 1,
-                  maxLines: 5,
-                  maxLength: 2000,
-                  textCapitalization: TextCapitalization.sentences,
-                  decoration: appInputDecoration(
-                    context,
-                    hintText: 'Message',
-                    counterText: '',
-                    borderRadius: 22,
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 10,
+                child: CallbackShortcuts(
+                  bindings: <ShortcutActivator, VoidCallback>{
+                    const SingleActivator(LogicalKeyboardKey.enter): () =>
+                        unawaited(_send()),
+                  },
+                  child: TextField(
+                    controller: _input,
+                    minLines: 1,
+                    maxLines: 5,
+                    maxLength: 2000,
+                    textCapitalization: TextCapitalization.sentences,
+                    decoration: appInputDecoration(
+                      context,
+                      hintText: 'Message',
+                      counterText: '',
+                      borderRadius: 22,
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 10,
+                      ),
                     ),
                   ),
                 ),
@@ -503,7 +528,15 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
                 onPressed: _sending ? null : _send,
                 icon: _sending
                     ? const AppSpinner(size: 20)
-                    : const Icon(Icons.send_rounded, color: AppPalette.primary),
+                    : ValueListenableBuilder<TextEditingValue>(
+                        valueListenable: _input,
+                        builder: (context, value, _) => Icon(
+                          Icons.send_rounded,
+                          color: value.text.trim().isEmpty && _images.isEmpty
+                              ? textSecondary
+                              : AppPalette.primary,
+                        ),
+                      ),
               ),
             ],
           ),
@@ -557,8 +590,10 @@ class _ComposerBanner extends StatelessWidget {
     final textSecondary = AppPalette.textSecondary(context);
     return Row(
       children: [
-        Icon(icon, size: 16, color: AppPalette.primary),
-        const Gap(8),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Icon(icon, size: 16, color: AppPalette.primary),
+        ),
         Expanded(
           child: Text(
             label,
@@ -622,9 +657,9 @@ class _MessageBubble extends StatelessWidget {
   Widget build(BuildContext context) {
     final textPrimary = AppPalette.textPrimary(context);
     final textSecondary = AppPalette.textSecondary(context);
-    final bubbleColor = isMine
-        ? AppPalette.primary.withValues(alpha: 0.16)
-        : AppPalette.card(context);
+    final borderColor = isMine
+        ? AppPalette.primary.withValues(alpha: 0.5)
+        : textSecondary.withValues(alpha: 0.3);
     final counts = <String, int>{};
     for (final reaction in reactions) {
       counts[reaction.emoji] = (counts[reaction.emoji] ?? 0) + 1;
@@ -633,55 +668,72 @@ class _MessageBubble extends StatelessWidget {
         .where((r) => r.studentId == myId)
         .map((r) => r.emoji)
         .toSet();
+    final time = Text(
+      AppTime.formatDateTime(message.created),
+      style: TextStyle(fontSize: 10, color: textSecondary),
+    );
+    final hasReply =
+        message.replyToId.isNotEmpty && message.replyText.isNotEmpty;
+    final hasText = hasReply || message.text.isNotEmpty;
     final bubble = GestureDetector(
       onLongPress: onLongPress,
-      child: Container(
-        constraints: BoxConstraints(
-          maxWidth: MediaQuery.sizeOf(context).width * 0.72,
-        ),
-        padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
-        decoration: BoxDecoration(
-          color: bubbleColor,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: textSecondary.withValues(alpha: 0.14)),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (message.replyToId.isNotEmpty && message.replyText.isNotEmpty)
-              Container(
-                margin: const EdgeInsets.only(bottom: 6),
-                padding: const EdgeInsets.only(left: 8),
-                decoration: const BoxDecoration(
-                  border: Border(
-                    left: BorderSide(color: AppPalette.primary, width: 2),
-                  ),
-                ),
-                child: Text(
-                  '${message.replyAuthorName}: ${message.replyText}',
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(fontSize: 12, color: textSecondary),
-                ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: isMine
+            ? CrossAxisAlignment.end
+            : CrossAxisAlignment.start,
+        children: [
+          if (message.hasImage) _ChatPhotos(message: message),
+          if (message.hasImage && hasText) const Gap(4),
+          if (hasText)
+            Container(
+              constraints: BoxConstraints(
+                maxWidth: MediaQuery.sizeOf(context).width * 0.72,
               ),
-            if (message.hasImage) _ChatPhotos(message: message),
-            if (message.hasImage && message.text.isNotEmpty) const Gap(6),
-            if (message.text.isNotEmpty)
-              Text(
-                message.text,
-                style: TextStyle(
-                  fontSize: 14,
-                  height: 1.35,
-                  color: textPrimary,
-                ),
+              padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: borderColor),
               ),
-            const Gap(4),
-            Text(
-              AppTime.formatDateTime(message.created),
-              style: TextStyle(fontSize: 10, color: textSecondary),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (hasReply)
+                    Container(
+                      margin: const EdgeInsets.only(bottom: 6),
+                      padding: const EdgeInsets.only(left: 8),
+                      decoration: const BoxDecoration(
+                        border: Border(
+                          left: BorderSide(color: AppPalette.primary, width: 2),
+                        ),
+                      ),
+                      child: Text(
+                        '${message.replyAuthorName}: ${message.replyText}',
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(fontSize: 12, color: textSecondary),
+                      ),
+                    ),
+                  if (message.text.isNotEmpty)
+                    Text(
+                      message.text,
+                      style: TextStyle(
+                        fontSize: 14,
+                        height: 1.35,
+                        color: textPrimary,
+                      ),
+                    ),
+                  const Gap(4),
+                  time,
+                ],
+              ),
+            )
+          else
+            Padding(
+              padding: const EdgeInsets.fromLTRB(4, 4, 4, 0),
+              child: time,
             ),
-          ],
-        ),
+        ],
       ),
     );
     return Padding(
@@ -698,11 +750,31 @@ class _MessageBubble extends StatelessWidget {
               child: showAuthor
                   ? Align(
                       alignment: Alignment.topLeft,
-                      child: FriendAvatar(
-                        name: message.author.name,
-                        photoUrl: message.author.photo,
-                        size: _avatarSize,
-                        radius: _avatarSize / 2,
+                      child: Stack(
+                        children: [
+                          CircleAvatar(
+                            radius: _avatarSize / 2,
+                            backgroundColor: AppPalette.primary.withValues(
+                              alpha: 0.16,
+                            ),
+                            child: Text(
+                              message.author.name.characters.firstOrNull
+                                      ?.toUpperCase() ??
+                                  '',
+                              style: const TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                                color: AppPalette.primary,
+                              ),
+                            ),
+                          ),
+                          FriendAvatar(
+                            name: message.author.name,
+                            photoUrl: message.author.photo,
+                            size: _avatarSize,
+                            radius: _avatarSize / 2,
+                          ),
+                        ],
                       ),
                     )
                   : null,
@@ -884,14 +956,22 @@ class _ChatImageState extends State<_ChatImage> {
         final url = snapshot.data;
         return GestureDetector(
           onTap: url == null ? null : _openFull,
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(12),
-            child: SizedBox(
-              width: widget.size,
-              height: widget.size,
-              child: url == null
-                  ? const Center(child: AppSpinner(size: 20))
-                  : CachedImage(url: url, fit: BoxFit.cover),
+          child: Container(
+            foregroundDecoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: AppPalette.textSecondary(context).withValues(alpha: 0.3),
+              ),
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: SizedBox(
+                width: widget.size,
+                height: widget.size,
+                child: url == null
+                    ? const Center(child: AppSpinner(size: 20))
+                    : CachedImage(url: url, fit: BoxFit.cover),
+              ),
             ),
           ),
         );
