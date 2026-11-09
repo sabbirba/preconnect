@@ -12,6 +12,7 @@ import 'package:gap/gap.dart';
 import 'package:flutter/services.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:http/http.dart' as http;
+import 'package:preconnect/api/dataset_sync.dart';
 import 'package:preconnect/api/fcm.dart';
 import 'package:preconnect/features/auth/data/oauth_exchange.dart';
 import 'package:preconnect/features/auth/application/auth_bridge.dart';
@@ -129,6 +130,7 @@ class MyApp extends StatefulWidget {
     final canOpenOffline = hasToken && _hasOfflineSnapshot();
 
     unawaited(NotificationsPage.preloadData());
+    DatasetSync.instance.startLive();
     if (hasToken) {
       unawaited(MercureService().connect());
     }
@@ -168,6 +170,7 @@ class MyApp extends StatefulWidget {
       FeedService().refreshAll(),
       CdnJsonCache.refreshAll(),
       FundingService.fetchStatus(forceRefresh: true),
+      DatasetSync.instance.checkManifest(),
     ]);
   }
 
@@ -533,6 +536,7 @@ class _MyAppState extends State<MyApp>
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
+      DatasetSync.instance.startLive();
       if (_initialLoggedIn) {
         unawaited(MercureService().connect());
       }
@@ -548,6 +552,7 @@ class _MyAppState extends State<MyApp>
         state == AppLifecycleState.hidden) {
       if (state == AppLifecycleState.paused) {
         MercureService().disconnect();
+        DatasetSync.instance.stopLive();
       }
       if (_appLockEnabled && _isUnlocked && !_isUnlocking) {
         _lastPausedAt ??= DateTime.now();
@@ -608,6 +613,7 @@ class _MyAppState extends State<MyApp>
   @override
   void dispose() {
     MercureService().disconnect();
+    DatasetSync.instance.stopLive();
     _connectivitySub?.cancel();
     _deepLinkSub?.cancel();
     _webSessionSub?.cancel();

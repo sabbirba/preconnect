@@ -76,11 +76,8 @@ class MaterialsService {
       return _sourcesCache!;
     }
     try {
-      final url = forceRefresh
-          ? '${ApiConfig.materialsUrl}?refresh=${DateTime.now().millisecondsSinceEpoch}'
-          : ApiConfig.materialsUrl;
       final response = await _client.publicGet(
-        url,
+        ApiConfig.materialsUrl,
         acceptedStatusCodes: const <int>{200},
         cacheDuration: forceRefresh
             ? Duration.zero
@@ -115,11 +112,8 @@ class MaterialsService {
     final cacheKey = 'materials_collections_${key.toLowerCase()}_v1';
     try {
       final baseUrl = ApiConfig.materialsSourceUrl(key);
-      final url = forceRefresh
-          ? '$baseUrl?refresh=${DateTime.now().millisecondsSinceEpoch}'
-          : baseUrl;
       final response = await _client.publicGet(
-        url,
+        baseUrl,
         acceptedStatusCodes: const <int>{200},
         cacheDuration: forceRefresh
             ? Duration.zero
@@ -161,11 +155,8 @@ class MaterialsService {
         normalizedSource,
         normalizedCode,
       );
-      final url = forceRefresh
-          ? '$baseUrl?refresh=${DateTime.now().millisecondsSinceEpoch}'
-          : baseUrl;
       final response = await _client.publicGet(
-        url,
+        baseUrl,
         acceptedStatusCodes: const <int>{200},
         cacheDuration: forceRefresh
             ? Duration.zero

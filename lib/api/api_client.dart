@@ -373,7 +373,6 @@ class ApiClient {
 
     final usePersistentValidation =
         isPreconnectUrl &&
-        cacheDuration > Duration.zero &&
         !headers.keys.any(
           (key) =>
               const {'authorization', 'x-id-token'}.contains(key.toLowerCase()),
@@ -411,7 +410,7 @@ class ApiClient {
       body: body,
     );
     _purgeExpiredResponseCache();
-    if (!bypassCache) {
+    if (!bypassCache && cacheDuration > Duration.zero) {
       final cachedResponse = _cachedResponses[inFlightKey];
       if (cachedResponse != null && !cachedResponse.isExpired) {
         return cachedResponse.response;
