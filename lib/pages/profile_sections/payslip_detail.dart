@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
 import 'package:preconnect/api/profile.dart';
 import 'package:preconnect/pages/ui_kit.dart';
+import 'package:preconnect/tools/time_utils.dart';
 import 'package:preconnect/tools/file_open.dart';
 import 'package:preconnect/tools/string_utils.dart';
 
@@ -12,15 +13,18 @@ class PayslipDetailSheet extends StatefulWidget {
     super.key,
     required this.payslipNumber,
     this.fallbackItem,
+    this.installmentLabel,
   });
 
   final String payslipNumber;
   final PayslipItem? fallbackItem;
+  final String? installmentLabel;
 
   static Future<void> show(
     BuildContext context, {
     required String payslipNumber,
     PayslipItem? fallbackItem,
+    String? installmentLabel,
   }) {
     return showAppBottomSheet<void>(
       context,
@@ -30,6 +34,7 @@ class PayslipDetailSheet extends StatefulWidget {
         return PayslipDetailSheet(
           payslipNumber: payslipNumber,
           fallbackItem: fallbackItem,
+          installmentLabel: installmentLabel,
         );
       },
     );
@@ -235,17 +240,15 @@ class _PayslipDetailSheetState extends State<PayslipDetailSheet> {
           ),
           const Gap(6),
           _DetailRow(label: 'Program', value: detail.programOrCourseName),
-          if (detail.installmentNumber case final installment?) ...[
+          if (widget.installmentLabel ?? detail.installmentNumber?.toString()
+              case final installment?) ...[
             const Gap(6),
-            _DetailRow(label: 'Installment', value: '$installment'),
+            _DetailRow(label: 'Installment', value: installment),
           ],
-          if (detail.deadlineFormatted.isNotEmpty) ...[
+          if (AppTime.formatCampusTime(detail.deadline, 'd MMMM, y')
+              case final dueDate when dueDate.isNotEmpty) ...[
             const Gap(6),
-            _DetailRow(
-              label: 'Due Date',
-              value: detail.deadlineFormatted,
-              isBold: true,
-            ),
+            _DetailRow(label: 'Due Date', value: dueDate, isBold: true),
           ],
           const Gap(14),
           SizedBox(
@@ -309,83 +312,69 @@ class _PayslipDetailSheetState extends State<PayslipDetailSheet> {
             ),
           ),
           const Gap(10),
-          ...() {
-            final activeParticulars = detail.particulars.where((p) {
-              if (p.type == 'AGGREGATION' || p.type == 'WORDS') return true;
-              final amt = p.amount ?? 0;
-              if (amt > 0) return true;
-              return p.particular.toLowerCase().contains('fee') ||
-                  p.particular.toLowerCase().contains('due');
-            }).toList();
+          ...detail.shownParticulars.map((p) {
+            final isBold = p.isEmphasized;
+            final amountStr = p.amount != null
+                ? '৳${formatAmount(p.amount!)}'
+                : '';
 
-            return activeParticulars.map((p) {
-              final isBold = p.type == 'AGGREGATION' || p.type == 'WORDS';
-              final amountStr = p.amount != null
-                  ? '৳${formatAmount(p.amount!)}'
-                  : '';
-
-              if (p.type == 'WORDS') {
-                return Padding(
-                  padding: const EdgeInsets.only(top: 6),
-                  child: Text(
-                    p.particular,
-                    style: TextStyle(
-                      fontSize: 11.5,
-                      fontStyle: FontStyle.italic,
-                      color: textSecondary,
-                    ),
-                  ),
-                );
-              }
-
-              final isLessHeader = p.particular.trim().toLowerCase() == 'less:';
-              if (isLessHeader) {
-                return Padding(
-                  padding: const EdgeInsets.only(top: 4, bottom: 2),
-                  child: Text(
-                    p.particular,
-                    style: TextStyle(
-                      fontSize: 11.5,
-                      fontStyle: FontStyle.italic,
-                      color: textSecondary,
-                    ),
-                  ),
-                );
-              }
-
+            if (p.type == 'WORDS') {
               return Padding(
-                padding: const EdgeInsets.symmetric(vertical: 3.5),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Expanded(
-                      child: Text(
-                        p.particular,
-                        style: TextStyle(
-                          fontSize: 12.5,
-                          fontWeight: isBold
-                              ? FontWeight.w700
-                              : FontWeight.w500,
-                          color: textPrimary,
-                        ),
-                      ),
-                    ),
-                    if (amountStr.isNotEmpty)
-                      Text(
-                        amountStr,
-                        style: TextStyle(
-                          fontSize: 12.5,
-                          fontWeight: isBold
-                              ? FontWeight.w700
-                              : FontWeight.w600,
-                          color: isBold ? AppPalette.primary : textPrimary,
-                        ),
-                      ),
-                  ],
+                padding: const EdgeInsets.only(top: 6),
+                child: Text(
+                  p.particular,
+                  style: TextStyle(
+                    fontSize: 11.5,
+                    fontStyle: FontStyle.italic,
+                    color: textSecondary,
+                  ),
                 ),
               );
-            });
-          }(),
+            }
+
+            final isLessHeader = p.particular.trim().toLowerCase() == 'less:';
+            if (isLessHeader) {
+              return Padding(
+                padding: const EdgeInsets.only(top: 4, bottom: 2),
+                child: Text(
+                  p.particular,
+                  style: TextStyle(
+                    fontSize: 11.5,
+                    fontStyle: FontStyle.italic,
+                    color: textSecondary,
+                  ),
+                ),
+              );
+            }
+
+            return Padding(
+              padding: const EdgeInsets.symmetric(vertical: 3.5),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: Text(
+                      p.particular,
+                      style: TextStyle(
+                        fontSize: 12.5,
+                        fontWeight: isBold ? FontWeight.w700 : FontWeight.w500,
+                        color: textPrimary,
+                      ),
+                    ),
+                  ),
+                  if (amountStr.isNotEmpty)
+                    Text(
+                      amountStr,
+                      style: TextStyle(
+                        fontSize: 12.5,
+                        fontWeight: isBold ? FontWeight.w700 : FontWeight.w600,
+                        color: isBold ? AppPalette.primary : textPrimary,
+                      ),
+                    ),
+                ],
+              ),
+            );
+          }),
         ],
       ),
     );

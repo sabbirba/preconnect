@@ -951,6 +951,10 @@ class PayslipParticular {
   final double? amount;
   final String? type;
 
+  bool get isNetPayable => particular.toLowerCase().startsWith('net payable');
+
+  bool get isEmphasized => type != 'NORMAL' || isNetPayable;
+
   factory PayslipParticular.fromJson(Map<String, dynamic> json) {
     return PayslipParticular(
       particular: json['particular']?.toString() ?? '',
@@ -1087,33 +1091,33 @@ class PayslipDetail {
   static String _pdfAmount(num amount) =>
       NumberFormat.decimalPattern('en_US').format(amount.round());
 
-  static bool _isNetPayable(PayslipParticular row) =>
-      row.particular.toLowerCase().startsWith('net payable');
-
-  List<Map<String, dynamic>> get printParticulars {
+  List<PayslipParticular> get shownParticulars {
     final shown = particulars
         .where(
           (p) =>
-              _isNetPayable(p) || !(p.type == 'NORMAL' && (p.amount ?? 0) == 0),
+              p.isNetPayable || !(p.type == 'NORMAL' && (p.amount ?? 0) == 0),
         )
         .toList();
-    final net = shown.where(_isNetPayable).lastOrNull;
+    final net = shown.where((p) => p.isNetPayable).lastOrNull;
     final words = shown
         .where((p) => p.type == 'WORDS' && p.particular.startsWith('In Words'))
         .lastOrNull;
-    return <PayslipParticular>[
+    return [
       ...shown.where((p) => !identical(p, net) && !identical(p, words)),
       ?net,
       ?words,
-    ].map((p) {
-      return <String, dynamic>{
-        'className': p.type == 'NORMAL' && !_isNetPayable(p) ? '' : 'font-bold',
+    ];
+  }
+
+  List<Map<String, dynamic>> get printParticulars => [
+    for (final p in shownParticulars)
+      <String, dynamic>{
+        'className': p.isEmphasized ? 'font-bold' : '',
         'colspan': p.type == 'WORDS' ? 2 : 1,
         'title': p.particular,
         if (p.amount != null) 'amount': _pdfAmount(p.amount!),
-      };
-    }).toList();
-  }
+      },
+  ];
 
   Map<String, dynamic> printData(List<BankConfig> banks) {
     final degree = titleCaseWords(academicDegree);

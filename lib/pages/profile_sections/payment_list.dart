@@ -65,6 +65,9 @@ class _PaymentListState extends State<PaymentList> {
                 PayslipDetailSheet.show(
                   context,
                   payslipNumber: payment.payslipNumber,
+                  installmentLabel: installmentTotal == null
+                      ? null
+                      : '${payment.installmentNumber} of $installmentTotal',
                 );
               }
             },
