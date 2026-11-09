@@ -49,4 +49,27 @@ void main() {
     expect(peak, 4);
     expect(finished..sort(), List<int>.generate(10, (i) => i));
   });
+
+  test('counts a download as fresh only when its ETag matches', () {
+    expect(DatasetSync.compactEtag('W/"abc123"'), 'abc123');
+    expect(DatasetSync.isFreshResponse({'etag': 'W/"v2"'}, 'v2'), isTrue);
+    expect(DatasetSync.isFreshResponse({'etag': 'W/"v1"'}, 'v2'), isFalse);
+    expect(DatasetSync.isFreshResponse({'etag': '"v1"'}, null), isTrue);
+    expect(
+      DatasetSync.isFreshResponse({'content-type': 'application/json'}, null),
+      isFalse,
+    );
+  });
+
+  test('reads dataset versions sent with a push', () {
+    expect(
+      DatasetSync.pushVersions({
+        'type': 'dataset_updated',
+        'versions': '{"holiday":"h2","news":""}',
+      }),
+      {'holiday': 'h2'},
+    );
+    expect(DatasetSync.pushVersions({'versions': 'broken'}), isEmpty);
+    expect(DatasetSync.pushVersions({'type': 'exam_updated'}), isEmpty);
+  });
 }

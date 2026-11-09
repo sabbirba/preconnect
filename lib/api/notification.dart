@@ -111,8 +111,28 @@ class FeedService {
     return data.cast<String, dynamic>();
   }
 
+  static const String campusMapCacheKey = 'campus_map_v1';
+  static const String transportCacheKey = 'transport_v1';
+  static const String academicDatesCacheKey = 'academic_dates_v1';
+  static const Map<String, String> publicFeedCacheKeys = <String, String>{
+    ApiConfig.campusMapUrl: campusMapCacheKey,
+    ApiConfig.transportUrl: transportCacheKey,
+    ApiConfig.academicDatesUrl: academicDatesCacheKey,
+  };
+
   Future<void> refreshAll() async {
     await Future.wait(_sources.values.map((refresh) => refresh()));
+  }
+
+  Future<void> refreshPublicFeed(String url) async {
+    final cacheKey = publicFeedCacheKeys[url];
+    if (cacheKey == null) return;
+    await fetchJson(
+      path: url,
+      cacheKey: cacheKey,
+      ttl: Duration.zero,
+      forceRefresh: true,
+    );
   }
 
   Future<dynamic> fetchJson({

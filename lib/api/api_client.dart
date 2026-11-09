@@ -453,6 +453,9 @@ class ApiClient {
         }
       }
 
+      if (cacheDuration == Duration.zero && response.statusCode == 200) {
+        _cachedResponses.remove(inFlightKey);
+      }
       if (revision == _cacheRevision &&
           cacheDuration > Duration.zero &&
           response.statusCode == 200) {

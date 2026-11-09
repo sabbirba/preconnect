@@ -172,7 +172,7 @@ void _prewarmImages(List<String> urls) {
 Future<CampusMapData?> fetchCampusMapData({bool forceRefresh = false}) async {
   final payload = await FeedService().fetchMap(
     path: ApiConfig.campusMapUrl,
-    cacheKey: 'campus_map_v1',
+    cacheKey: FeedService.campusMapCacheKey,
     ttl: const Duration(hours: 12),
     forceRefresh: forceRefresh,
   );
@@ -188,7 +188,7 @@ Future<CampusMapData?> fetchCampusMapData({bool forceRefresh = false}) async {
 
   final freshPayload = await FeedService().fetchMap(
     path: ApiConfig.campusMapUrl,
-    cacheKey: 'campus_map_v1',
+    cacheKey: FeedService.campusMapCacheKey,
     ttl: const Duration(hours: 12),
     forceRefresh: true,
   );
@@ -208,7 +208,7 @@ Future<CampusMapData?> fetchCampusMapData({bool forceRefresh = false}) async {
 Future<String?> fetchTransportScheduleUrl({bool forceRefresh = false}) async {
   final rows = await FeedService().fetchList(
     path: ApiConfig.transportUrl,
-    cacheKey: 'transport_v1',
+    cacheKey: FeedService.transportCacheKey,
     ttl: const Duration(hours: 12),
     forceRefresh: forceRefresh,
   );

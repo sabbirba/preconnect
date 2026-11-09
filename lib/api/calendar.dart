@@ -392,7 +392,7 @@ class CalendarService {
   _fetchAcademicDates({required bool forceRefresh}) async {
     final rows = await _feed.fetchList(
       path: ApiConfig.academicDatesUrl,
-      cacheKey: 'academic_dates_v1',
+      cacheKey: FeedService.academicDatesCacheKey,
       ttl: const Duration(days: 30),
       forceRefresh: forceRefresh,
     );

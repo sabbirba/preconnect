@@ -17,6 +17,8 @@ import 'package:preconnect/tools/app_storage.dart';
 import 'package:preconnect/tools/http/http_utils.dart';
 import 'package:preconnect/tools/reconnect_backoff.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
+import 'package:preconnect/tools/holiday.dart';
+import 'package:preconnect/tools/ramadan.dart';
 import 'package:preconnect/tools/storage_keys.dart';
 
 class DatasetSync {
@@ -59,6 +61,7 @@ class DatasetSync {
   Future<void> _versionQueue = Future<void>.value();
   int _liveGeneration = 0;
   StreamSubscription<String>? _liveLines;
+  Completer<void>? _liveFinished;
 
   Future<void> checkManifest() {
     return _manifestCheck ??= _checkManifest().whenComplete(
@@ -105,7 +108,7 @@ class DatasetSync {
     final known = await _knownVersions();
     final changed = changedDatasets(remote, known);
     if (changed.isEmpty) return;
-    final refreshed = await refresh(changed);
+    final refreshed = await refresh(changed, expected: remote);
     if (refreshed.isEmpty) return;
     await _saveVersions(<String, String>{
       ...known,
@@ -113,46 +116,90 @@ class DatasetSync {
     });
   }
 
-  Future<Set<String>> refresh(Iterable<String> datasets) async {
+  Future<Set<String>> refresh(
+    Iterable<String> datasets, {
+    Map<String, String> expected = const <String, String>{},
+  }) async {
     final pending = datasets.where(datasetUrls.containsKey).toSet().toList();
-    final refreshed = <String>{};
-    final feedRefresh = pending.any(_isFeed) ? _refreshFeed() : null;
+    final fresh = <String>{};
     await runInParallel(pending, parallelDownloads, (dataset) async {
-      try {
-        await (_isFeed(dataset) ? feedRefresh! : _refreshDataset(dataset));
-        refreshed.add(dataset);
-      } catch (error) {
-        unawaited(AppLog.write('Dataset refresh failed ($dataset): $error'));
+      if (await _downloadMatches(dataset, expected[dataset])) {
+        fresh.add(dataset);
       }
     });
-    for (final reason in refreshed.map(_reasonFor).toSet()) {
+    await _refreshOwners(fresh);
+    for (final reason in fresh.map(_reasonFor).toSet()) {
       RefreshBus.instance.notify(reason: reason);
     }
-    return refreshed;
+    return fresh;
   }
 
-  static bool _isFeed(String dataset) =>
-      dataset == 'announcements' || dataset == 'news';
+  static String compactEtag(String? etag) =>
+      (etag ?? '').replaceFirst(RegExp(r'^W/'), '').replaceAll('"', '').trim();
+
+  static bool isFreshResponse(
+    Map<String, String> headers,
+    String? expectedVersion,
+  ) {
+    final version = compactEtag(headers['etag']);
+    if (version.isEmpty) return false;
+    return expectedVersion == null || version == expectedVersion;
+  }
+
+  Future<bool> _downloadMatches(String dataset, String? expectedVersion) async {
+    try {
+      final response = await ApiClient().publicGet(
+        datasetUrls[dataset]!,
+        cacheDuration: Duration.zero,
+      );
+      final fresh = isFreshResponse(response.headers, expectedVersion);
+      if (!fresh) {
+        unawaited(AppLog.write('Dataset not fresh yet ($dataset)'));
+      }
+      return fresh;
+    } catch (error) {
+      unawaited(AppLog.write('Dataset refresh failed ($dataset): $error'));
+      return false;
+    }
+  }
 
   static String _reasonFor(String dataset) =>
       _refreshReasons[dataset] ?? 'dataset_$dataset';
 
-  Future<void> _refreshFeed() async {
-    await NotificationService().getFeedItems(forceRefresh: true);
-  }
-
-  Future<void> _refreshDataset(String dataset) async {
-    switch (dataset) {
-      case 'materials':
-        await MaterialsService().loadSources(forceRefresh: true);
-      case 'exammap':
-        await _refreshExamOverrides();
-      default:
-        await ApiClient().publicGet(
-          datasetUrls[dataset]!,
-          cacheDuration: Duration.zero,
-        );
+  Future<void> _refreshOwners(Set<String> datasets) async {
+    final owners = <String, Future<void> Function()>{};
+    for (final dataset in datasets) {
+      switch (dataset) {
+        case 'announcements' || 'news':
+          owners['feed'] = () =>
+              NotificationService().getFeedItems(forceRefresh: true);
+        case 'holiday' || 'academic-dates':
+          owners['holiday'] = () =>
+              HolidayTiming.getTodayStatus(forceRefresh: true);
+        case 'ramadan':
+          owners[dataset] = () =>
+              RamadanTiming.getRamadanStatus(forceRefresh: true);
+        case 'map' || 'transport':
+          owners[dataset] = () =>
+              FeedService().refreshPublicFeed(datasetUrls[dataset]!);
+        case 'materials':
+          owners[dataset] = () =>
+              MaterialsService().loadSources(forceRefresh: true);
+        case 'exammap':
+          owners[dataset] = _refreshExamOverrides;
+      }
     }
+    await Future.wait(
+      owners.entries.map((owner) async {
+        try {
+          await owner.value();
+        } catch (error) {
+          unawaited(
+            AppLog.write('Dataset cache refresh failed (${owner.key}): $error'),
+          );
+        }
+      }),
+    );
   }
 
   Future<void> _refreshExamOverrides() async {
@@ -189,16 +236,36 @@ class DatasetSync {
     if (type.isEmpty) return;
     try {
       if (type == datasetUpdatedType) {
-        final datasets = '${data['datasets'] ?? ''}'
-            .split(',')
-            .map((dataset) => dataset.trim())
-            .where((dataset) => dataset.isNotEmpty);
-        await refresh(datasets);
+        final versions = pushVersions(data);
+        if (versions.isNotEmpty) {
+          await applyVersions(versions);
+          return;
+        }
+        await refresh(
+          '${data['datasets'] ?? ''}'
+              .split(',')
+              .map((dataset) => dataset.trim())
+              .where((dataset) => dataset.isNotEmpty),
+        );
         return;
       }
       await _applyLegacyPush(type);
     } catch (error) {
       unawaited(AppLog.write('Background sync error ($type): $error'));
+    }
+  }
+
+  static Map<String, String> pushVersions(Map<String, dynamic> data) {
+    try {
+      final decoded = jsonDecode('${data['versions'] ?? ''}');
+      if (decoded is! Map) return const <String, String>{};
+      return <String, String>{
+        for (final entry in decoded.entries)
+          if (entry.value case final String version when version.isNotEmpty)
+            '${entry.key}': version,
+      };
+    } catch (_) {
+      return const <String, String>{};
     }
   }
 
@@ -277,6 +344,9 @@ class DatasetSync {
     _liveGeneration++;
     unawaited(_liveLines?.cancel());
     _liveLines = null;
+    final finished = _liveFinished;
+    if (finished != null && !finished.isCompleted) finished.complete();
+    _liveFinished = null;
   }
 
   Future<void> _runLive(int generation) async {
@@ -290,8 +360,9 @@ class DatasetSync {
           ..headers['accept'] = 'text/event-stream'
           ..headers['cache-control'] = 'no-cache';
         final response = await HttpUtils.client.send(request);
-        if (generation != _liveGeneration) return;
-        if (response.statusCode == 200) {
+        if (generation != _liveGeneration || response.statusCode != 200) {
+          await response.stream.listen(null).cancel();
+        } else {
           backoff.reset();
           await _consumeLive(response.stream, generation);
         }
@@ -304,7 +375,7 @@ class DatasetSync {
   }
 
   Future<void> _consumeLive(Stream<List<int>> body, int generation) {
-    final finished = Completer<void>();
+    final finished = _liveFinished = Completer<void>();
     _liveLines = body
         .transform(utf8.decoder)
         .transform(const LineSplitter())
