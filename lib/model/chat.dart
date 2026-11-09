@@ -55,7 +55,6 @@ class ChatRoom {
     required this.pushTopic,
     required this.lastMessageAt,
     required this.semesterSessionId,
-    required this.memberCount,
   });
 
   factory ChatRoom.fromJson(Map<String, dynamic> json) => ChatRoom(
@@ -66,7 +65,6 @@ class ChatRoom {
     pushTopic: _string(json['pushTopic']),
     lastMessageAt: _int(json['lastMessageAt']),
     semesterSessionId: _int(json['semesterSessionId']),
-    memberCount: _int(json['memberCount']),
   );
 
   final String id;
@@ -76,7 +74,6 @@ class ChatRoom {
   final String pushTopic;
   final int lastMessageAt;
   final int semesterSessionId;
-  final int memberCount;
 }
 
 class ChatMessage {

@@ -46,18 +46,18 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
 
   ChatRoom get _room => widget.room;
 
-  String _classInfo = '';
+  String _roomNumber = '';
 
-  Future<void> _loadClassInfo() async {
+  Future<void> _loadRoomNumber() async {
     if (_room.kind == ChatRoomKind.lounge) return;
     final schedule = await ScheduleService().getStudentScheduleForSemester(
       semesterSessionId: _room.semesterSessionId,
     );
-    final info = _buildClassInfo(schedule);
-    if (mounted && info.isNotEmpty) setState(() => _classInfo = info);
+    final number = _buildRoomNumber(schedule);
+    if (mounted && number.isNotEmpty) setState(() => _roomNumber = number);
   }
 
-  String _buildClassInfo(String? schedule) {
+  String _buildRoomNumber(String? schedule) {
     final dash = _room.title.lastIndexOf('-');
     final isSection = _room.kind == ChatRoomKind.section && dash > 0;
     final code = isSection ? _room.title.substring(0, dash) : _room.title;
@@ -71,39 +71,20 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
                   normalizeSectionName(name)),
     );
     if (match.isEmpty) return '';
-    final classes = match.first.sectionSchedule.classSchedules;
-    if (classes.isEmpty) return '';
-    final start = classes.first.startTime;
-    final days = classes
-        .where((c) => c.startTime == start)
-        .map((c) => c.day)
-        .toList();
-    return <String>[
-      days
-          .map(formatWeekdayTitle)
-          .where((day) => day.length >= 3)
-          .map((day) => day.substring(0, 3))
-          .join(' '),
-      formatTime(start),
-      roomsForDays(match.first.roomNumber, days),
-    ].where((part) => part.isNotEmpty).join(' · ');
+    final section = match.first;
+    return roomsForDays(
+      section.roomNumber,
+      section.sectionSchedule.classSchedules.map((c) => c.day),
+    );
   }
 
   String _headerSubtitle() {
-    final current = _chat.rooms.value.where((room) => room.id == _room.id);
-    final count = current.isEmpty
-        ? _room.memberCount
-        : current.first.memberCount;
-    final members = count > 0
-        ? '${formatAmount(count)} ${count == 1 ? 'student' : 'students'}'
-        : '';
-    final parts = <String>[
-      if (_room.kind == ChatRoomKind.lounge) 'Everyone',
-      if (members.isNotEmpty) members,
-      if (_classInfo.isNotEmpty) _classInfo,
-    ];
-    if (parts.isNotEmpty) return parts.join(' · ');
-    return _room.kind == ChatRoomKind.course ? 'Course' : 'Section';
+    if (_roomNumber.isNotEmpty) return _roomNumber;
+    return switch (_room.kind) {
+      ChatRoomKind.lounge => 'Everyone',
+      ChatRoomKind.course => 'Course',
+      ChatRoomKind.section => 'Section',
+    };
   }
 
   @override
@@ -112,7 +93,7 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
     _chat.activeRoomId = _room.id;
     _scroll.addListener(_onScroll);
     unawaited(_load());
-    unawaited(_loadClassInfo());
+    unawaited(_loadRoomNumber());
   }
 
   @override

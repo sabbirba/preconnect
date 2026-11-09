@@ -211,7 +211,7 @@ IconData _roomIcon(ChatRoomKind kind) => switch (kind) {
 String _roomSubtitle(ChatRoom room, bool muted) {
   if (!room.active) return 'Read only';
   return switch (room.kind) {
-    ChatRoomKind.lounge => 'Everyone · Mentions only',
+    ChatRoomKind.lounge => 'Everyone',
     ChatRoomKind.course => muted ? 'All sections · Muted' : 'All sections',
     ChatRoomKind.section => muted ? 'Your section · Muted' : 'Your section',
   };
