@@ -30,25 +30,21 @@ class MercureService {
   Future<http.BaseRequest?> _hubRequest() async {
     final token = await ApiClient().getAccessToken();
     if (token == null || token.isEmpty) return null;
-    String? cookieHeader;
-    try {
-      final loginResponse = await HttpUtils.client.post(
-        AppLogout.mercureLoginUri,
-        headers: AppLogout.mercureLoginHeaders(accessToken: token),
-        body: '{}',
-      );
-      cookieHeader = loginResponse.headers['set-cookie'];
-    } catch (_) {}
-    final jwt = cookieHeader == null
-        ? null
-        : RegExp(r'mercureAuthorization=([^;]+)').firstMatch(cookieHeader)?[1];
+    final login = await HttpUtils.client.post(
+      AppLogout.mercureLoginUri,
+      headers: AppLogout.mercureLoginHeaders(accessToken: token),
+      body: '{}',
+    );
+    final cookie = AppLogout.mercureCookie(login.headers);
+    if (cookie == null) {
+      unawaited(AppLog.write('Mercure login ${login.statusCode}: no cookie'));
+      return null;
+    }
     return http.Request('GET', Uri.parse(ApiConfig.connectMercureHubUrl))
       ..headers.addAll(<String, String>{
-        'authorization': 'Bearer ${jwt == null || jwt.isEmpty ? token : jwt}',
-        'x-realm': 'bracu',
-        'x-source': '3',
-        if (cookieHeader != null && cookieHeader.isNotEmpty)
-          'cookie': cookieHeader,
+        'cookie': cookie,
+        'origin': ApiConfig.connectOrigin,
+        'referer': AppLogout.mercureReferer,
       });
   }
 

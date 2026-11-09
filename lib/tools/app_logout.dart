@@ -20,15 +20,33 @@ class AppLogout {
     '${ApiConfig.connectApiBase}${ApiConfig.connectMercureLoginPath}',
   );
 
+  static const String mercureReferer =
+      '${ApiConfig.connectOrigin}/student/advising/section-status';
+  static const String _mercureCookieName = 'mercureAuthorization';
+
   static Map<String, String> mercureLoginHeaders({String? accessToken}) {
     final cleanedAccessToken = accessToken?.trim() ?? '';
     return <String, String>{
       ...ApiConfig.apiHeaders,
       'Content-Type': 'application/json',
       'Origin': ApiConfig.connectOrigin,
+      'Referer': mercureReferer,
       if (cleanedAccessToken.isNotEmpty)
         'Authorization': 'Bearer $cleanedAccessToken',
     };
+  }
+
+  static String? mercureCookie(Map<String, String> headers) {
+    final direct = (headers['x-mercure-authorization'] ?? '').trim();
+    if (direct.isNotEmpty) {
+      return direct.startsWith('$_mercureCookieName=')
+          ? direct
+          : '$_mercureCookieName=$direct';
+    }
+    final value = RegExp(
+      '$_mercureCookieName=([^;,\\s]+)',
+    ).firstMatch(headers['set-cookie'] ?? '')?[1];
+    return value == null ? null : '$_mercureCookieName=$value';
   }
 
   static Uri get mercureLogoutUri => Uri.parse(
