@@ -114,12 +114,11 @@ class _NotificationsPageState extends State<NotificationsPage>
   void _onRefreshSignal() {
     if (!mounted) return;
     if (isRefreshingFrom('push_notification') ||
-        isRefreshingFrom('notifications') ||
         isRefreshingFrom('notices') ||
         isRefreshingFrom('global_sync') ||
         isRefreshingFrom('refresh') ||
         isRefreshingFrom('cache_cleared')) {
-      unawaited(_refresh());
+      unawaited(_refresh(keepPaging: true));
     }
   }
 
@@ -194,11 +193,11 @@ class _NotificationsPageState extends State<NotificationsPage>
     return _loadDataStatic(forceRefresh: forceRefresh);
   }
 
-  Future<void> _refresh() async {
+  Future<void> _refresh({bool keepPaging = false}) async {
     final next = _loadData(forceRefresh: true);
     setState(() {
       _future = next;
-      _visibleItemCount = _pageSize;
+      if (!keepPaging) _visibleItemCount = _pageSize;
     });
     final refreshed = await next;
     if (!mounted) return;
