@@ -616,6 +616,108 @@ class _ComposerBanner extends StatelessWidget {
   }
 }
 
+class _PhotoViewer extends StatefulWidget {
+  const _PhotoViewer({
+    required this.urls,
+    required this.thumbs,
+    required this.page,
+  });
+
+  final List<String> urls;
+  final List<String> thumbs;
+  final ValueNotifier<int> page;
+
+  @override
+  State<_PhotoViewer> createState() => _PhotoViewerState();
+}
+
+class _PhotoViewerState extends State<_PhotoViewer> {
+  late final PageController _pages = PageController(
+    initialPage: widget.page.value,
+  );
+
+  static const double _thumbSize = 52;
+
+  @override
+  void dispose() {
+    _pages.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Expanded(
+          child: PageView.builder(
+            controller: _pages,
+            itemCount: widget.urls.length,
+            onPageChanged: (index) => widget.page.value = index,
+            itemBuilder: (context, index) => InteractiveViewer(
+              child: Center(
+                child: CachedImage(
+                  url: widget.urls[index],
+                  fit: BoxFit.contain,
+                ),
+              ),
+            ),
+          ),
+        ),
+        if (widget.urls.length > 1)
+          Padding(
+            padding: const EdgeInsets.only(top: 10),
+            child: SizedBox(
+              height: _thumbSize,
+              child: ValueListenableBuilder<int>(
+                valueListenable: widget.page,
+                builder: (context, current, _) => Center(
+                  child: ListView.separated(
+                    shrinkWrap: true,
+                    scrollDirection: Axis.horizontal,
+                    itemCount: widget.thumbs.length,
+                    separatorBuilder: (_, _) => const Gap(8),
+                    itemBuilder: (context, index) => GestureDetector(
+                      onTap: () => _pages.animateToPage(
+                        index,
+                        duration: const Duration(milliseconds: 250),
+                        curve: Curves.easeOutCubic,
+                      ),
+                      child: Container(
+                        width: _thumbSize,
+                        height: _thumbSize,
+                        foregroundDecoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                            color: index == current
+                                ? AppPalette.primary
+                                : Colors.transparent,
+                            width: 2,
+                          ),
+                        ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(10),
+                          child: Opacity(
+                            opacity: index == current ? 1 : 0.55,
+                            child: CachedImage(
+                              url: widget.thumbs[index],
+                              fit: BoxFit.cover,
+                              width: _thumbSize,
+                              height: _thumbSize,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
 class _AttachedPhotos extends StatelessWidget {
   const _AttachedPhotos({required this.images, required this.onRemove});
 
@@ -965,15 +1067,28 @@ class _ChatImageState extends State<_ChatImage> {
   );
 
   Future<void> _openFull() async {
-    final url = await ChatService.instance.imageUrl(
-      widget.message,
-      widget.name,
-      thumb: false,
-    );
+    final message = widget.message;
+    final chat = ChatService.instance;
+    final (urls, thumbs) = await (
+      Future.wait(
+        message.images.map(
+          (name) => chat.imageUrl(message, name, thumb: false),
+        ),
+      ),
+      Future.wait(message.images.map((name) => chat.imageUrl(message, name))),
+    ).wait;
     if (!mounted) return;
+    final page = ValueNotifier<int>(message.images.indexOf(widget.name));
+    final title = ValueNotifier<String>('');
+    void updateTitle() => title.value = urls.length == 1
+        ? 'Photo'
+        : 'Photo ${page.value + 1} of ${urls.length}';
+    updateTitle();
+    page.addListener(updateTitle);
     await showAppBottomSheet<void>(
       context,
       title: 'Photo',
+      liveTitle: title,
       initialChildSize: 0.9,
       draggable: false,
       actions: [
@@ -984,19 +1099,26 @@ class _ChatImageState extends State<_ChatImage> {
               Icons.adaptive.share,
               color: AppPalette.textSecondary(buttonContext),
             ),
-            onPressed: () => _save(buttonContext, url),
+            onPressed: () => _save(
+              buttonContext,
+              urls[page.value],
+              message.images[page.value],
+            ),
           ),
         ),
       ],
-      builder: (sheetContext, textPrimary, textSecondary) => InteractiveViewer(
-        child: Center(
-          child: CachedImage(url: url, fit: BoxFit.contain),
-        ),
-      ),
+      builder: (sheetContext, textPrimary, textSecondary) =>
+          _PhotoViewer(urls: urls, thumbs: thumbs, page: page),
     );
+    page.dispose();
+    title.dispose();
   }
 
-  Future<void> _save(BuildContext buttonContext, String url) async {
+  Future<void> _save(
+    BuildContext buttonContext,
+    String url,
+    String name,
+  ) async {
     final box = buttonContext.findRenderObject() as RenderBox?;
     final origin = box == null
         ? null
@@ -1006,9 +1128,7 @@ class _ChatImageState extends State<_ChatImage> {
       final bytes = await file.readAsBytes();
       await SharePlus.instance.share(
         ShareParams(
-          files: [
-            XFile.fromData(bytes, mimeType: 'image/jpeg', name: widget.name),
-          ],
+          files: [XFile.fromData(bytes, mimeType: 'image/jpeg', name: name)],
           sharePositionOrigin: origin,
         ),
       );
