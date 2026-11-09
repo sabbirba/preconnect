@@ -11,6 +11,7 @@ class SseClient {
     required this.name,
     required this.request,
     required this.onEvent,
+    this.onFailure,
     this.silence,
     Duration minDelay = const Duration(seconds: 1),
     Duration maxDelay = const Duration(seconds: 30),
@@ -19,6 +20,7 @@ class SseClient {
   final String name;
   final Future<http.BaseRequest?> Function() request;
   final void Function(String event, String data) onEvent;
+  final void Function()? onFailure;
   final Duration? silence;
   final ReconnectBackoff _backoff;
 
@@ -61,6 +63,7 @@ class SseClient {
           await response.stream.listen(null).cancel();
           if (generation != _generation) return;
           unawaited(AppLog.write('$name stream: ${response.statusCode}'));
+          onFailure?.call();
           if (const <int>{401, 403}.contains(response.statusCode)) {
             stop();
             return;
@@ -71,6 +74,7 @@ class SseClient {
         }
       } catch (error) {
         unawaited(AppLog.write('$name stream error: $error'));
+        if (generation == _generation) onFailure?.call();
       }
       if (generation != _generation) return;
       await Future<void>.delayed(_backoff.next());

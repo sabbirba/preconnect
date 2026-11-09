@@ -1,58 +1,45 @@
 part of 'package:preconnect/pages/bus.dart';
 
 class BusRouteDetailPage extends StatefulWidget {
-  const BusRouteDetailPage({super.key, required this.route, this.vehicle});
+  const BusRouteDetailPage({super.key, required this.route});
 
   final BusTransportRoute route;
-  final BusRouteVehicle? vehicle;
 
   @override
   State<BusRouteDetailPage> createState() => _BusRouteDetailPageState();
 }
 
 class _BusRouteDetailPageState extends State<BusRouteDetailPage> {
-  late BusTransportRoute _route;
-  bool _refreshing = false;
-  String? _error;
+  final Listenable _live = Listenable.merge([_BusLive.data, _BusLive.failed]);
+  late BusTransportRoute _route = widget.route;
 
   @override
   void initState() {
     super.initState();
-    _route = widget.route;
-    unawaited(_refreshRouteData());
+    _BusLive.watch();
+    _live.addListener(_onLive);
   }
 
-  Future<void> _refreshRouteData() async {
-    if (_refreshing) return;
-    if (!mounted) return;
-    setState(() {
-      _refreshing = true;
-      _error = null;
-    });
+  @override
+  void dispose() {
+    _live.removeListener(_onLive);
+    _BusLive.unwatch();
+    super.dispose();
+  }
 
-    try {
-      final package = await _fetchBusDataPackage();
-      final refreshedRoute = _findUpdatedRoute(package, _route);
-      if (!mounted) return;
-      setState(() {
-        if (refreshedRoute != null) {
-          _route = refreshedRoute;
-        }
-        _refreshing = false;
-      });
-    } catch (error) {
-      if (!mounted) return;
-      setState(() {
-        _refreshing = false;
-        _error = 'Unable to load bus data right now.';
-      });
-    }
+  void _onLive() {
+    if (!mounted) return;
+    final package = _BusLive.data.value;
+    final match = package == null ? null : _matchingRoute(package, _route.name);
+    setState(() {
+      if (match != null) _route = match;
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     final route = _route;
-    final vehicle = widget.vehicle;
+    final failed = _BusLive.failed.value;
     final hasLivePosition = route.live.hasPosition;
     final hasLiveStats =
         route.live.speed.trim().isNotEmpty ||
@@ -69,20 +56,17 @@ class _BusRouteDetailPageState extends State<BusRouteDetailPage> {
       title: title,
       subtitle: subtitle,
       icon: Icons.directions_bus_filled_rounded,
-      actions: [
-        AppRefreshButton(onPressed: _refreshRouteData, isLoading: _refreshing),
-      ],
       body: AppRefreshList(
-        onRefresh: _refreshRouteData,
+        onRefresh: _BusLive.reconnect,
         children: [
-          if (_error != null)
+          if (failed)
             Padding(
               padding: const EdgeInsets.fromLTRB(4, 4, 4, 8),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    _error!,
+                    'Unable to load bus data right now.',
                     style: TextStyle(
                       color: AppPalette.textPrimary(context),
                       fontWeight: FontWeight.w600,
@@ -90,8 +74,7 @@ class _BusRouteDetailPageState extends State<BusRouteDetailPage> {
                   ),
                   const Gap(12),
                   AppActionButton(
-                    onPressed: _refreshRouteData,
-                    isLoading: _refreshing,
+                    onPressed: _BusLive.reconnect,
                     icon: Icons.sync_rounded,
                     label: 'Retry',
                   ),
@@ -99,7 +82,7 @@ class _BusRouteDetailPageState extends State<BusRouteDetailPage> {
               ),
             ),
           if (hasLivePosition && !kIsWeb) ...[
-            _RouteLiveMapCard(route: route, vehicle: vehicle),
+            _RouteLiveMapCard(route: route),
             const Gap(2),
             if (hasLiveStats) _LiveTrackingCard(route: route),
             const Gap(2),
@@ -154,10 +137,9 @@ Future<bool> _openRouteInGoogleMaps(
 );
 
 class _RouteLiveMapCard extends StatelessWidget {
-  const _RouteLiveMapCard({required this.route, required this.vehicle});
+  const _RouteLiveMapCard({required this.route});
 
   final BusTransportRoute route;
-  final BusRouteVehicle? vehicle;
 
   @override
   Widget build(BuildContext context) {
@@ -168,9 +150,7 @@ class _RouteLiveMapCard extends StatelessWidget {
         : BusFleetMarker(
             code: route.code.isNotEmpty ? route.code : route.id,
             title: route.displayTitle,
-            subtitle: vehicle?.displayLabel.isNotEmpty == true
-                ? vehicle!.displayLabel
-                : route.routeVehicle.displayLabel,
+            subtitle: route.routeVehicle.displayLabel,
             status: live.status,
             speed: live.speed,
             updatedAt: live.time,
@@ -433,7 +413,7 @@ String? _updatedLabel(BusRouteLiveSnapshot data) {
   final raw = data.time.trim();
   if (raw.isEmpty) return null;
   try {
-    final parsed = DateTime.parse(raw).toLocal();
+    final parsed = DateTime.parse('${raw.replaceFirst(' ', 'T')}Z').toLocal();
     return DateFormat('d MMMM, h:mm a').format(parsed);
   } catch (_) {
     return null;
@@ -444,34 +424,11 @@ double _parseDouble(String value) {
   return double.tryParse(value.trim()) ?? 0;
 }
 
-BusTransportRoute? _findUpdatedRoute(
-  _BusDataPackage package,
-  BusTransportRoute currentRoute,
-) {
-  final routeKeys = <String>{
-    _routeMatchKey(currentRoute.id),
-    _routeMatchKey(currentRoute.code),
-    _routeMatchKey(currentRoute.routeVehicle.code),
-    _routeMatchKey(currentRoute.displayTitle),
-  }.where((key) => key.isNotEmpty).toSet();
-
+BusTransportRoute? _matchingRoute(_BusDataPackage package, String name) {
   for (final route in package.routes) {
-    final candidateKeys = <String>{
-      _routeMatchKey(route.id),
-      _routeMatchKey(route.code),
-      _routeMatchKey(route.routeVehicle.code),
-      _routeMatchKey(route.displayTitle),
-    };
-    if (candidateKeys.any(routeKeys.contains)) {
-      return route;
-    }
+    if (route.name == name) return route;
   }
-
   return null;
-}
-
-String _routeMatchKey(String value) {
-  return value.trim().toLowerCase();
 }
 
 bool _isStopHighlighted(BusTransportStop stop, BusTransportRoute route) {

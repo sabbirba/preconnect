@@ -4,12 +4,13 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
+import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
-import 'package:preconnect/api/api_client.dart';
 import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/pages/shared_widgets/map_shared.dart';
 import 'package:preconnect/pages/ui_kit.dart';
-import 'package:preconnect/tools/preload_cache.dart';
+import 'package:preconnect/tools/app_log.dart';
+import 'package:preconnect/tools/sse_client.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
 part 'package:preconnect/pages/bus/widgets/route_detail.dart';
@@ -17,67 +18,78 @@ part 'package:preconnect/pages/bus/widgets/bus_models.dart';
 part 'package:preconnect/pages/bus/widgets/bus_sections.dart';
 part 'package:preconnect/pages/bus/widgets/bus_widgets.dart';
 
+class _BusLive {
+  static final ValueNotifier<_BusDataPackage?> data =
+      ValueNotifier<_BusDataPackage?>(null);
+  static final ValueNotifier<bool> failed = ValueNotifier<bool>(false);
+  static int _viewers = 0;
+  static final SseClient _client = SseClient(
+    name: 'Bus',
+    request: () async => http.Request('GET', Uri.parse(ApiConfig.busStreamUrl)),
+    onEvent: _apply,
+    onFailure: () => failed.value = true,
+    silence: const Duration(seconds: 20),
+  );
+
+  static void _apply(String event, String payload) {
+    if (event != 'bus-snapshot' && event != 'bus-updated') return;
+    try {
+      final decoded = jsonDecode(payload);
+      if (decoded is Map) {
+        data.value = _BusDataPackage.fromJson(decoded.cast<String, dynamic>());
+        failed.value = false;
+      }
+    } on FormatException catch (error) {
+      unawaited(AppLog.write('Bus stream event unreadable: $error'));
+    }
+  }
+
+  static void watch() {
+    if (_viewers++ == 0) _client.start();
+  }
+
+  static void unwatch() {
+    if (--_viewers > 0) return;
+    _client.stop();
+    data.value = null;
+    failed.value = false;
+  }
+
+  static Future<void> reconnect() async {
+    failed.value = false;
+    _client.stop();
+    _client.start();
+  }
+}
+
 class BusPage extends StatefulWidget {
   const BusPage({super.key});
-
-  static Future<void> preload() async {
-    await _BusPageState.preloadData();
-  }
 
   @override
   State<BusPage> createState() => _BusPageState();
 }
 
 class _BusPageState extends State<BusPage> {
-  static final CachedPageController<_BusDataPackage> controller =
-      CachedPageController<_BusDataPackage>(
-        ({bool forceRefresh = false}) =>
-            _fetchBusDataPackage(forceRefresh: forceRefresh),
-      );
-
-  String? _error;
-  _BusDataPackage? _data;
+  final Listenable _live = Listenable.merge([_BusLive.data, _BusLive.failed]);
   String _schedulePdfUrl = '';
 
   @override
   void initState() {
     super.initState();
-    _data = controller.value;
-    controller.addListener(_onCacheUpdated);
-    _load();
+    _BusLive.watch();
+    _live.addListener(_onLive);
     _fetchSchedulePdfUrl();
-    unawaited(_warmAndBind());
   }
 
   @override
   void dispose() {
-    controller.removeListener(_onCacheUpdated);
+    _live.removeListener(_onLive);
+    _BusLive.unwatch();
     super.dispose();
   }
 
-  void _onCacheUpdated() {
-    if (!mounted) return;
-    final val = controller.value;
-    if (val != null) {
-      setState(() {
-        _data = val;
-      });
-    }
-  }
-
-  static Future<_BusDataPackage> preloadData({
-    bool forceRefresh = false,
-  }) async {
-    return controller.load(forceRefresh: forceRefresh);
-  }
-
-  Future<void> _warmAndBind() async {
-    if (_data != null) return;
-    final package = await preloadData();
-    if (!mounted) return;
-    setState(() {
-      _data = package;
-    });
+  void _onLive() {
+    if (mounted) setState(() {});
   }
 
   Future<void> _fetchSchedulePdfUrl() async {
@@ -95,35 +107,15 @@ class _BusPageState extends State<BusPage> {
     } catch (_) {}
   }
 
-  Future<void> _load({bool forceRefresh = false}) async {
-    if (mounted) {
-      setState(() {
-        _error = null;
-      });
-    }
-
-    try {
-      final package = await preloadData(forceRefresh: forceRefresh);
-      if (!mounted) return;
-      setState(() {
-        _data = package;
-        controller.value = package;
-      });
-    } catch (error) {
-      if (!mounted) return;
-      setState(() {
-        _error = 'Unable to load bus route data right now.';
-      });
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
-    final routes = _data?.routes ?? const <BusTransportRoute>[];
-    final outbound = _data?.outbound;
-    final fares = _data?.fares ?? const <_BusFare>[];
-    final contacts = _data?.contacts ?? const <_BusContact>[];
-    final instructions = _data?.instructions ?? const <String>[];
+    final data = _BusLive.data.value;
+    final failed = _BusLive.failed.value && data == null;
+    final routes = data?.routes ?? const <BusTransportRoute>[];
+    final outbound = data?.outbound;
+    final fares = data?.fares ?? const <_BusFare>[];
+    final contacts = data?.contacts ?? const <_BusContact>[];
+    final instructions = data?.instructions ?? const <String>[];
     final schedulePdfUrl = _schedulePdfUrl;
 
     return AppPageScaffold(
@@ -140,15 +132,15 @@ class _BusPageState extends State<BusPage> {
         ),
       ],
       body: AppRefreshList(
-        onRefresh: () => _load(forceRefresh: true),
+        onRefresh: _BusLive.reconnect,
         children: [
-          if (_error != null && _data == null)
+          if (failed)
             AppCard(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    _error!,
+                    'Unable to load bus route data right now.',
                     style: TextStyle(
                       color: AppPalette.textPrimary(context),
                       fontWeight: FontWeight.w600,
@@ -156,14 +148,14 @@ class _BusPageState extends State<BusPage> {
                   ),
                   const Gap(12),
                   AppActionButton(
-                    onPressed: () => _load(forceRefresh: true),
+                    onPressed: _BusLive.reconnect,
                     icon: Icons.sync_rounded,
                     label: 'Retry',
                   ),
                 ],
               ),
             ),
-          if (_data == null && _error == null)
+          if (data == null && !failed)
             const Center(child: AppLoading())
           else if (routes.isEmpty)
             const AppEmptyState(message: 'No bus route data available')
@@ -177,12 +169,7 @@ class _BusPageState extends State<BusPage> {
                   onTap: () {
                     Navigator.of(context).push(
                       MaterialPageRoute(
-                        builder: (_) => BusRouteDetailPage(
-                          route: route,
-                          vehicle: route.routeVehicle.code.isNotEmpty
-                              ? route.routeVehicle
-                              : null,
-                        ),
+                        builder: (_) => BusRouteDetailPage(route: route),
                       ),
                     );
                   },
@@ -207,28 +194,6 @@ class _BusPageState extends State<BusPage> {
       ),
     );
   }
-}
-
-Future<_BusDataPackage> _fetchBusDataPackage({
-  bool forceRefresh = false,
-}) async {
-  Future<_BusDataPackage> parseUrl(String url) async {
-    final response = await ApiClient().publicGet(
-      url,
-      acceptedStatusCodes: <int>{200},
-      cacheDuration: forceRefresh ? Duration.zero : const Duration(hours: 6),
-    );
-    final decoded = jsonDecode(response.body);
-    if (decoded is Map<String, dynamic>) {
-      return _BusDataPackage.fromJson(decoded);
-    }
-    if (decoded is Map) {
-      return _BusDataPackage.fromJson(decoded.cast<String, dynamic>());
-    }
-    return const _BusDataPackage.empty();
-  }
-
-  return await parseUrl(ApiConfig.busDataUrl);
 }
 
 class _TransportRouteCard extends StatelessWidget {

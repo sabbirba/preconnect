@@ -203,13 +203,6 @@ class _BusDataPackage {
     required this.instructions,
   });
 
-  const _BusDataPackage.empty()
-    : routes = const <BusTransportRoute>[],
-      outbound = null,
-      fares = const <_BusFare>[],
-      contacts = const <_BusContact>[],
-      instructions = const <String>[];
-
   final List<BusTransportRoute> routes;
   final _BusOutbound? outbound;
   final List<_BusFare> fares;
