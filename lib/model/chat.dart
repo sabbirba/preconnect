@@ -6,6 +6,10 @@ ChatRoomKind _roomKind(String value) => switch (value) {
   _ => ChatRoomKind.lounge,
 };
 
+List<String> _strings(dynamic value) => value is List
+    ? value.map(_string).where((item) => item.isNotEmpty).toList()
+    : const <String>[];
+
 String _string(Object? value) => value == null ? '' : '$value'.trim();
 
 int _int(Object? value) =>
@@ -78,7 +82,7 @@ class ChatMessage {
     required this.roomId,
     required this.author,
     required this.text,
-    required this.image,
+    required this.images,
     required this.created,
     this.replyToId = '',
     this.replyAuthorName = '',
@@ -89,7 +93,6 @@ class ChatMessage {
   factory ChatMessage.fromJson(Map<String, dynamic> json) {
     final reply = _expanded(json, 'replyTo');
     final replyAuthor = _expanded(reply, 'author');
-    final mentions = json['mentions'];
     return ChatMessage(
       id: _string(json['id']),
       roomId: _string(json['room']),
@@ -98,16 +101,14 @@ class ChatMessage {
         ..._expanded(json, 'author'),
       }),
       text: _string(json['text']),
-      image: _string(json['image']),
+      images: _strings(json['image']),
       created: _date(json['created']) ?? DateTime.now(),
       replyToId: _string(json['replyTo']),
       replyAuthorName: _string(replyAuthor['name']),
       replyText: reply.isEmpty
           ? ''
           : (_string(reply['text']).isEmpty ? 'Photo' : _string(reply['text'])),
-      mentions: mentions is List
-          ? mentions.map(_string).where((id) => id.isNotEmpty).toList()
-          : const <String>[],
+      mentions: _strings(json['mentions']),
     );
   }
 
@@ -115,14 +116,14 @@ class ChatMessage {
   final String roomId;
   final ChatAuthor author;
   final String text;
-  final String image;
+  final List<String> images;
   final DateTime created;
   final String replyToId;
   final String replyAuthorName;
   final String replyText;
   final List<String> mentions;
 
-  bool get hasImage => image.isNotEmpty;
+  bool get hasImage => images.isNotEmpty;
 }
 
 class ChatReaction {

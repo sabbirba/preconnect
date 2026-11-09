@@ -60,15 +60,16 @@ class _ChatPageState extends State<ChatPage> {
     });
     try {
       final rooms = await _chat.loadRooms();
-      await (_watch ??= _chat.watchRooms()).catchError((Object error) {
-        _watch = null;
-        throw error;
-      });
+      if (mounted) setState(() => _loading = false);
       final target = widget.openRoomId;
       if (target != null && target.isNotEmpty && mounted) {
         final match = rooms.where((room) => room.id == target);
         if (match.isNotEmpty) unawaited(_openRoom(match.first));
       }
+      await (_watch ??= _chat.watchRooms()).catchError((Object error) {
+        _watch = null;
+        throw error;
+      });
     } on ChatException catch (error) {
       if (mounted) setState(() => _error = error.message);
     } catch (_) {

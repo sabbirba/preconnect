@@ -33,6 +33,18 @@ void main() {
     expect(await ChatService.savedPushTopics(), isEmpty);
   });
 
+  test('message keeps every photo name in order', () {
+    final message = ChatMessage.fromJson({
+      'id': 'm3',
+      'room': 'r1',
+      'author': 's1',
+      'image': ['a.jpg', '', 'b.jpg'],
+      'created': '2026-11-09 06:30:00.000Z',
+    });
+    expect(message.images, ['a.jpg', 'b.jpg']);
+    expect(message.hasImage, isTrue);
+  });
+
   test('message reads author, reply and photo from the expanded record', () {
     final message = ChatMessage.fromJson({
       'id': 'm2',

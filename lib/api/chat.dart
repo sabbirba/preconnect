@@ -45,6 +45,7 @@ class ChatService {
     '🙏',
   ];
   static const int pageSize = 50;
+  static const int maxPhotos = 10;
   static const Duration _sessionLifetime = Duration(hours: 5);
   static const Duration _fileTokenLifetime = Duration(minutes: 2);
   static const String _messageExpand = 'author,replyTo,replyTo.author';
@@ -335,22 +336,16 @@ class ChatService {
   Future<ChatMessage> send(
     ChatRoom room, {
     String text = '',
-    Uint8List? image,
+    List<Uint8List> images = const <Uint8List>[],
     ChatMessage? replyTo,
     List<String> mentions = const <String>[],
   }) async {
     final pb = await _client();
-    final files = <http.MultipartFile>[];
-    if (image != null) {
-      final compressed = await compressChatImage(image);
-      files.add(
-        http.MultipartFile.fromBytes(
-          'image',
-          compressed,
-          filename: 'photo.jpg',
-        ),
-      );
-    }
+    final compressed = await Future.wait(images.map(compressChatImage));
+    final files = <http.MultipartFile>[
+      for (final photo in compressed)
+        http.MultipartFile.fromBytes('image', photo, filename: 'photo.jpg'),
+    ];
     try {
       final record = await pb
           .collection('chat_messages')
@@ -458,7 +453,11 @@ class ChatService {
     unread.value = <String, int>{...unread.value, roomId: 0};
   }
 
-  Future<String> imageUrl(ChatMessage message, {bool thumb = true}) async {
+  Future<String> imageUrl(
+    ChatMessage message,
+    String name, {
+    bool thumb = true,
+  }) async {
     final pb = await _client();
     final issued = _fileTokenAt;
     if (_fileToken == null ||
@@ -472,7 +471,7 @@ class ChatService {
       'token=${Uri.encodeQueryComponent(_fileToken!)}',
     ].join('&');
     return '${ApiConfig.pocketBaseUrl}/api/files/chat_messages/'
-        '${message.id}/${Uri.encodeComponent(message.image)}?$query';
+        '${message.id}/${Uri.encodeComponent(name)}?$query';
   }
 
   Future<ChatWatch> watchRoom(

@@ -20,6 +20,7 @@ Future<T?> showAppBottomSheet<T>(
 }) {
   return showAppCustomBottomSheet<T>(
     context: context,
+    useSafeArea: true,
     backgroundColor: AppPalette.card(context),
     clipBehavior: Clip.antiAlias,
     initialChildSize: initialChildSize,

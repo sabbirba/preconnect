@@ -8,7 +8,9 @@ import 'package:preconnect/api/chat.dart';
 import 'package:preconnect/model/chat.dart';
 import 'package:preconnect/pages/friend_sections/friend_header.dart';
 import 'package:preconnect/pages/ui_kit.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:preconnect/tools/cached_image.dart';
+import 'package:preconnect/tools/image_cache.dart';
 import 'package:preconnect/tools/time_utils.dart';
 
 class ChatRoomPage extends StatefulWidget {
@@ -30,7 +32,7 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
   List<ChatReaction> _reactions = <ChatReaction>[];
   Future<ChatWatch>? _watch;
   ChatMessage? _replyTo;
-  Uint8List? _image;
+  List<Uint8List> _images = const <Uint8List>[];
   bool _loading = true;
   bool _loadingOlder = false;
   bool _hasMore = true;
@@ -70,9 +72,6 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
         throw error;
       });
       final messages = await _chat.loadMessages(_room.id);
-      final reactions = await _chat.loadReactions(
-        messages.map((m) => m.id).toList(),
-      );
       if (!mounted) return;
       final loaded = messages.map((m) => m.id).toSet();
       setState(() {
@@ -80,16 +79,20 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
           ...messages,
           ..._messages.where((m) => !loaded.contains(m.id)),
         ];
-        _reactions = <ChatReaction>[
-          ...reactions,
-          ..._reactions.where((r) => !loaded.contains(r.messageId)),
-        ];
         _hasMore = messages.length >= ChatService.pageSize;
         _loading = false;
         _error = null;
       });
       _markLatestRead();
       _loadOlderIfAllHidden();
+      final reactions = await _chat.loadReactions(loaded.toList());
+      if (!mounted) return;
+      setState(() {
+        _reactions = <ChatReaction>[
+          ...reactions,
+          ..._reactions.where((r) => !loaded.contains(r.messageId)),
+        ];
+      });
     } on ChatException catch (error) {
       if (mounted) setState(() => _error = error.message);
     } catch (_) {
@@ -160,11 +163,17 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
     }
   }
 
-  Future<void> _pickImage() async {
-    final file = await ImagePicker().pickImage(source: ImageSource.gallery);
-    if (file == null) return;
-    final bytes = await file.readAsBytes();
-    if (mounted) setState(() => _image = bytes);
+  Future<void> _pickImages() async {
+    final files = await ImagePicker().pickMultiImage(
+      limit: ChatService.maxPhotos,
+    );
+    final room = ChatService.maxPhotos - _images.length;
+    final picked = await Future.wait(
+      files.take(room).map((file) => file.readAsBytes()),
+    );
+    if (picked.isNotEmpty && mounted) {
+      setState(() => _images = <Uint8List>[..._images, ...picked]);
+    }
   }
 
   List<String> _mentionIds(String text) => _mentionPicks.entries
@@ -174,13 +183,13 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
 
   Future<void> _send() async {
     final text = _input.text.trim();
-    if (_sending || (text.isEmpty && _image == null)) return;
+    if (_sending || (text.isEmpty && _images.isEmpty)) return;
     setState(() => _sending = true);
     try {
       final sent = await _chat.send(
         _room,
         text: text,
-        image: _image,
+        images: _images,
         replyTo: _replyTo,
         mentions: _mentionIds(text),
       );
@@ -188,7 +197,7 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
       _input.clear();
       _mentionPicks.clear();
       setState(() {
-        _image = null;
+        _images = const <Uint8List>[];
         _replyTo = null;
       });
       _onIncoming(sent);
@@ -453,17 +462,21 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
                   'Replying to ${_replyTo!.author.name}: ${_replyTo!.text.isEmpty ? 'Photo' : _replyTo!.text}',
               onClear: () => setState(() => _replyTo = null),
             ),
-          if (_image != null)
+          if (_images.isNotEmpty)
             _ComposerBanner(
               icon: Icons.image_outlined,
-              label: 'Photo attached',
-              onClear: () => setState(() => _image = null),
+              label: _images.length == 1
+                  ? '1 photo attached'
+                  : '${_images.length} photos attached',
+              onClear: () => setState(() => _images = const <Uint8List>[]),
             ),
           Row(
             children: [
               IconButton(
-                tooltip: 'Add Photo',
-                onPressed: _sending ? null : _pickImage,
+                tooltip: 'Add Photos',
+                onPressed: _sending || _images.length >= ChatService.maxPhotos
+                    ? null
+                    : _pickImages,
                 icon: Icon(Icons.image_outlined, color: textSecondary),
               ),
               Expanded(
@@ -651,7 +664,7 @@ class _MessageBubble extends StatelessWidget {
                   style: TextStyle(fontSize: 12, color: textSecondary),
                 ),
               ),
-            if (message.hasImage) _ChatImage(message: message),
+            if (message.hasImage) _ChatPhotos(message: message),
             if (message.hasImage && message.text.isNotEmpty) const Gap(6),
             if (message.text.isNotEmpty)
               Text(
@@ -761,10 +774,42 @@ class _MessageBubble extends StatelessWidget {
   }
 }
 
-class _ChatImage extends StatefulWidget {
-  const _ChatImage({required this.message});
+class _ChatPhotos extends StatelessWidget {
+  const _ChatPhotos({required this.message});
 
   final ChatMessage message;
+
+  static const double _width = 220;
+  static const double _gap = 4;
+
+  @override
+  Widget build(BuildContext context) {
+    final single = message.images.length == 1;
+    final size = single ? _width : (_width - _gap) / 2;
+    return SizedBox(
+      width: _width,
+      child: Wrap(
+        spacing: _gap,
+        runSpacing: _gap,
+        children: [
+          for (final name in message.images)
+            _ChatImage(message: message, name: name, size: size),
+        ],
+      ),
+    );
+  }
+}
+
+class _ChatImage extends StatefulWidget {
+  const _ChatImage({
+    required this.message,
+    required this.name,
+    required this.size,
+  });
+
+  final ChatMessage message;
+  final String name;
+  final double size;
 
   @override
   State<_ChatImage> createState() => _ChatImageState();
@@ -773,11 +818,13 @@ class _ChatImage extends StatefulWidget {
 class _ChatImageState extends State<_ChatImage> {
   late final Future<String> _thumb = ChatService.instance.imageUrl(
     widget.message,
+    widget.name,
   );
 
   Future<void> _openFull() async {
     final url = await ChatService.instance.imageUrl(
       widget.message,
+      widget.name,
       thumb: false,
     );
     if (!mounted) return;
@@ -786,12 +833,47 @@ class _ChatImageState extends State<_ChatImage> {
       title: 'Photo',
       initialChildSize: 0.9,
       draggable: false,
+      actions: [
+        Builder(
+          builder: (buttonContext) => IconButton(
+            tooltip: 'Save',
+            icon: Icon(
+              Icons.adaptive.share,
+              color: AppPalette.textSecondary(buttonContext),
+            ),
+            onPressed: () => _save(buttonContext, url),
+          ),
+        ),
+      ],
       builder: (sheetContext, textPrimary, textSecondary) => InteractiveViewer(
         child: Center(
           child: CachedImage(url: url, fit: BoxFit.contain),
         ),
       ),
     );
+  }
+
+  Future<void> _save(BuildContext buttonContext, String url) async {
+    final box = buttonContext.findRenderObject() as RenderBox?;
+    final origin = box == null
+        ? null
+        : box.localToGlobal(Offset.zero) & box.size;
+    try {
+      final file = await AppImageCache.instance.getSingleFile(url);
+      final bytes = await file.readAsBytes();
+      await SharePlus.instance.share(
+        ShareParams(
+          files: [
+            XFile.fromData(bytes, mimeType: 'image/jpeg', name: widget.name),
+          ],
+          sharePositionOrigin: origin,
+        ),
+      );
+    } catch (_) {
+      if (buttonContext.mounted) {
+        showAppSnackBar(buttonContext, 'Photo could not be saved.');
+      }
+    }
   }
 
   @override
@@ -805,8 +887,8 @@ class _ChatImageState extends State<_ChatImage> {
           child: ClipRRect(
             borderRadius: BorderRadius.circular(12),
             child: SizedBox(
-              width: 220,
-              height: 220,
+              width: widget.size,
+              height: widget.size,
               child: url == null
                   ? const Center(child: AppSpinner(size: 20))
                   : CachedImage(url: url, fit: BoxFit.cover),
