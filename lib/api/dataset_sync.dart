@@ -32,6 +32,7 @@ class DatasetSync {
     Duration(seconds: 1),
     Duration(seconds: 2),
   ];
+  static const Duration lateRetryDelay = Duration(seconds: 65);
   static const String _versionsKey = 'dataset_versions_v1';
 
   static const Map<String, String> datasetUrls = <String, String>{
@@ -65,6 +66,7 @@ class DatasetSync {
     silence: const Duration(seconds: 20),
   );
   Future<void>? _manifestCheck;
+  Timer? _lateRetry;
   Future<void> _versionQueue = Future<void>.value();
 
   void startLive() {
@@ -140,6 +142,10 @@ class DatasetSync {
     await runInParallel(changed, parallelDownloads, (dataset) async {
       if (await _download(dataset, remote[dataset]!)) fresh.add(dataset);
     });
+    _retryLater(<String, String>{
+      for (final dataset in changed)
+        if (!fresh.contains(dataset)) dataset: remote[dataset]!,
+    });
     if (fresh.isEmpty) return;
     await _refreshOwners(fresh);
     for (final reason in fresh.map((d) => _refreshReasons[d] ?? 'datasets')) {
@@ -149,6 +155,12 @@ class DatasetSync {
       ...known,
       for (final dataset in fresh) dataset: remote[dataset]!,
     });
+  }
+
+  void _retryLater(Map<String, String> stale) {
+    if (stale.isEmpty) return;
+    _lateRetry?.cancel();
+    _lateRetry = Timer(lateRetryDelay, () => unawaited(applyVersions(stale)));
   }
 
   Future<Map<String, String>> _knownVersions() async {
