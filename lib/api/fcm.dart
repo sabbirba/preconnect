@@ -10,6 +10,7 @@ import 'package:preconnect/firebase_options.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:preconnect/api/api_config.dart';
+import 'package:preconnect/api/chat.dart';
 import 'package:preconnect/api/dataset_sync.dart';
 import 'package:preconnect/api/notification.dart';
 import 'package:preconnect/features/notifications/data/device_registry.dart';
@@ -41,15 +42,18 @@ class FCMService {
   void Function()? _openCaptiveWifi;
   Future<void> Function(String url)? _openUrl;
   void Function()? _openNotifications;
+  void Function(String roomId)? _openChat;
 
   void configureNavigation({
     required void Function() openCaptiveWifi,
     required Future<void> Function(String url) openUrl,
     void Function()? openNotifications,
+    void Function(String roomId)? openChat,
   }) {
     _openCaptiveWifi = openCaptiveWifi;
     _openUrl = openUrl;
     _openNotifications = openNotifications;
+    _openChat = openChat;
   }
 
   static Future<void>? _firebaseReady;
@@ -275,6 +279,10 @@ class FCMService {
 
   static Future<void> _handleIncomingMessage(RemoteMessage message) async {
     RefreshBus.instance.notify(reason: 'push_notification');
+    if (message.data['type'] == 'chat_message' &&
+        ChatService.instance.isViewing('${message.data['roomId'] ?? ''}')) {
+      return;
+    }
     final (title, body) = _resolveNotificationTitleAndBody(
       message.notification,
       message.data,
@@ -689,13 +697,15 @@ class FCMService {
     if (token == null) return;
 
     try {
-      final (topics, pinned) = await (
+      final (topics, pinned, chat) = await (
         _topicsToSubscribe(),
         _pinnedSeatTopics(),
+        ChatService.savedPushTopics(),
       ).wait;
       await _subscribeAll({
         ...topics,
         ...pinned,
+        ...chat,
       }, (topic) => _subscribeToTopicWeb(token, topic));
     } catch (error) {
       unawaited(AppLog.write('FCM topic restore failed: $error'));
@@ -714,13 +724,15 @@ class FCMService {
 
   Future<void> _subscribeToDefaultTopics() async {
     final token = await _getToken();
-    final (topics, pinned) = await (
+    final (topics, pinned, chat) = await (
       _topicsToSubscribe(),
       _pinnedSeatTopics(),
+      ChatService.savedPushTopics(),
     ).wait;
     await _subscribeAll({
       ...topics,
       ...pinned,
+      ...chat,
     }, (topic) => _subscribeToTopicInternal(topic, cachedToken: token));
   }
 
@@ -847,6 +859,10 @@ class FCMService {
   }
 
   void _handleNotificationTapAction(Map<String, dynamic> data) {
+    if (data['type'] == 'chat_message') {
+      _openChat?.call('${data['roomId'] ?? ''}');
+      return;
+    }
     final action = data['payload'] ?? data['action'];
     if (action == 'captive_wifi') {
       _openCaptiveWifi?.call();

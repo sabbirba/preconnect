@@ -236,25 +236,7 @@ class _AppNotificationsIconButtonState extends State<AppNotificationsIconButton>
               Positioned(
                 left: widget.padding + widget.iconSize * 0.58,
                 top: widget.padding - 5,
-                child: Container(
-                  height: 16,
-                  constraints: const BoxConstraints(minWidth: 16),
-                  padding: const EdgeInsets.symmetric(horizontal: 4),
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    color: AppPalette.danger,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    unreadBadgeLabel(newCount),
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 10,
-                      fontWeight: FontWeight.w700,
-                      height: 1,
-                    ),
-                  ),
-                ),
+                child: UnreadCountPill(count: newCount),
               ),
           ],
         );
@@ -264,6 +246,35 @@ class _AppNotificationsIconButtonState extends State<AppNotificationsIconButton>
 }
 
 String unreadBadgeLabel(int count) => count > 9 ? '9+' : '$count';
+
+class UnreadCountPill extends StatelessWidget {
+  const UnreadCountPill({super.key, required this.count});
+
+  final int count;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 16,
+      constraints: const BoxConstraints(minWidth: 16),
+      padding: const EdgeInsets.symmetric(horizontal: 4),
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: AppPalette.danger,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Text(
+        unreadBadgeLabel(count),
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 10,
+          fontWeight: FontWeight.w700,
+          height: 1,
+        ),
+      ),
+    );
+  }
+}
 
 class AppSearchField extends StatelessWidget {
   const AppSearchField({

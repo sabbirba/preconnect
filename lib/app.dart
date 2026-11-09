@@ -23,6 +23,7 @@ import 'package:preconnect/api/api_client.dart';
 import 'package:preconnect/api/mercure_service.dart';
 import 'package:preconnect/pages/home.dart';
 import 'package:preconnect/pages/notifications.dart';
+import 'package:preconnect/pages/chat.dart';
 import 'package:preconnect/pages/login.dart';
 import 'package:preconnect/pages/wifi_printer.dart';
 import 'package:preconnect/pages/home_tab.dart';
@@ -318,6 +319,11 @@ class _MyAppState extends State<MyApp>
       openNotifications: () {
         AppNavigator.key.currentState?.push(
           MaterialPageRoute(builder: (_) => const NotificationsPage()),
+        );
+      },
+      openChat: (roomId) {
+        AppNavigator.key.currentState?.push(
+          MaterialPageRoute(builder: (_) => ChatPage(openRoomId: roomId)),
         );
       },
     );

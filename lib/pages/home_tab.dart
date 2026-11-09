@@ -21,6 +21,7 @@ enum HomeTab {
   dspace,
   materials,
   wishlist,
+  chat,
 }
 
 class HomeTabRegistry {

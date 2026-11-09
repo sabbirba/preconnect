@@ -29,6 +29,13 @@ List<QuickAccessItem> defaultQuickAccessItems({
     onTap: () => onTap(HomeTab.profile),
   ),
   QuickAccessItem(
+    icon: Icons.chat_bubble_outline_rounded,
+    title: 'Chat',
+    subtitle: 'Lounge',
+    color: const Color(0xFF00A86B),
+    onTap: () => onTap(HomeTab.chat),
+  ),
+  QuickAccessItem(
     icon: Icons.schedule_outlined,
     title: 'Class',
     subtitle: 'Schedules',

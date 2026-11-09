@@ -40,7 +40,7 @@ The app runs without production credentials. `GITHUB_TOKEN` is optional for loca
 - `test`: automated tests
 - `tool`: release and extension scripts
 
-The app is 100% databaseless — it uses 0 database engines (no Cloud Firestore, Realtime Database, or remote database) and 0 tracking/analytics SDKs. Keep API and storage layers independent of pages. Keep navigation and dialogs in presentation bridges. Store authentication tokens, Wi-Fi credentials, and other secrets through `FlutterSecureStorage`; use `AppStorage` only for non-sensitive settings and caches. Surface persistence failures instead of swallowing them.
+The app uses no on-device database engine, no Cloud Firestore or Firebase Realtime Database, and 0 tracking/analytics SDKs. Chat is the only remote store: it runs on PreConnect's own PocketBase server (`pb.preconnect.app`) through the official `pocketbase` SDK, and messages are deleted after 180 days. Keep API and storage layers independent of pages. Keep navigation and dialogs in presentation bridges. Store authentication tokens, Wi-Fi credentials, and other secrets through `FlutterSecureStorage`; use `AppStorage` only for non-sensitive settings and caches. Surface persistence failures instead of swallowing them.
 
 ## Run
 

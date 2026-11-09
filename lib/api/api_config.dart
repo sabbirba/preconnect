@@ -14,6 +14,8 @@ class ApiConfig {
   static const String ssoBase = '$ssoRealm/protocol/openid-connect';
   static const String accountSecurityUrl =
       '$ssoRealm/account/account-security/device-activity';
+  static const String pocketBaseUrl = 'https://pb.preconnect.app';
+  static const String chatSessionUrl = '$pocketBaseUrl/api/chat/session';
   static String get _webProxyBase {
     final origin = getWebAppOrigin();
     if (origin.contains('localhost') || origin.contains('127.0.0.1')) {

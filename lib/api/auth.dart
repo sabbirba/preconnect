@@ -18,6 +18,7 @@ import 'package:preconnect/tools/token_storage.dart';
 import 'package:preconnect/libsync/auth_service.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
 import 'package:preconnect/api/fcm.dart';
+import 'package:preconnect/api/chat.dart';
 
 class AuthService {
   static final AuthService _instance = AuthService._internal();
@@ -220,6 +221,7 @@ class AuthService {
   }
 
   Future<void> _clearLocalCaches() async {
+    await ChatService.instance.reset();
     await AppStorage.instance.clear();
     await ProfileImageCache.instance.clear();
     CachedImage.clearMemoryCache();
