@@ -9,20 +9,6 @@ bool hasExamSchedule(String? date, String? start, String? end) {
       (end ?? '').trim().isNotEmpty;
 }
 
-String seatTitleCase(String value) {
-  final cleaned = value
-      .replaceAll(RegExp(r'[^a-z0-9]+', caseSensitive: false), ' ')
-      .trim();
-  if (cleaned.isEmpty) return '';
-  return cleaned
-      .split(RegExp(r'\s+'))
-      .map((part) {
-        if (part.isEmpty) return part;
-        return part[0].toUpperCase() + part.substring(1).toLowerCase();
-      })
-      .join(' ');
-}
-
 List<String> seatScheduleLines(List<SeatStatusClassSchedule> schedules) {
   if (schedules.isEmpty) return const <String>[];
   final lines = schedules.map((entry) {

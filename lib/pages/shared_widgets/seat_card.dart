@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:preconnect/tools/string_utils.dart';
 import 'package:preconnect/tools/time_utils.dart';
 import 'package:gap/gap.dart';
 import 'package:preconnect/api/seat_status.dart';
@@ -87,7 +88,7 @@ class SeatCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final textPrimary = AppPalette.textPrimary(context);
     final textSecondary = AppPalette.textSecondary(context);
-    final theoryLabel = seatTitleCase(item.courseType);
+    final theoryLabel = titleCaseWords(item.courseType);
     final courseHeader = _headerLine(item.courseCode, item.sectionName);
     final faculty = item.faculty;
     final facultyName = faculty?.staffName.trim() ?? '';

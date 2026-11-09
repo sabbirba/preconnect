@@ -235,6 +235,10 @@ class _PayslipDetailSheetState extends State<PayslipDetailSheet> {
           ),
           const Gap(6),
           _DetailRow(label: 'Program', value: detail.programOrCourseName),
+          if (detail.installmentNumber case final installment?) ...[
+            const Gap(6),
+            _DetailRow(label: 'Installment', value: '$installment'),
+          ],
           if (detail.deadlineFormatted.isNotEmpty) ...[
             const Gap(6),
             _DetailRow(

@@ -1,0 +1,1377 @@
+{
+ "banks": [
+  {
+   "bankId": 1,
+   "bankName": "Example Bank 1",
+   "branch": "Example Branch",
+   "routingNumber": "000000000",
+   "accountName": "Example University",
+   "accountNumber": "0000001",
+   "refName": "EX",
+   "active": true
+  },
+  {
+   "bankId": 2,
+   "bankName": "Example Bank 2",
+   "branch": "Example Branch",
+   "routingNumber": "000000000",
+   "accountName": "Example University",
+   "accountNumber": "0000002",
+   "refName": "EX",
+   "active": true
+  },
+  {
+   "bankId": 3,
+   "bankName": "Example Bank 3",
+   "branch": "Example Branch",
+   "routingNumber": "000000000",
+   "accountName": "Example University",
+   "accountNumber": "0000003",
+   "refName": "EX",
+   "active": true
+  },
+  {
+   "bankId": 4,
+   "bankName": "Example Bank 4",
+   "branch": "Example Branch",
+   "routingNumber": "000000000",
+   "accountName": "Example University",
+   "accountNumber": "0000004",
+   "refName": "EX",
+   "active": true
+  },
+  {
+   "bankId": 5,
+   "bankName": "Example Bank 5",
+   "branch": "Example Branch",
+   "routingNumber": "000000000",
+   "accountName": "Example University",
+   "accountNumber": "0000005",
+   "refName": "EX",
+   "active": true
+  },
+  {
+   "bankId": 6,
+   "bankName": "Example Bank 6",
+   "branch": "Example Branch",
+   "routingNumber": "000000000",
+   "accountName": "Example University",
+   "accountNumber": "0000006",
+   "refName": "EX",
+   "active": true
+  },
+  {
+   "bankId": 7,
+   "bankName": "Example Bank 7",
+   "branch": "Example Branch",
+   "routingNumber": "000000000",
+   "accountName": "Example University",
+   "accountNumber": "0000007",
+   "refName": "EX",
+   "active": true
+  }
+ ],
+ "cases": [
+  {
+   "detail": {
+    "isPayslipPayable": false,
+    "courseList": [
+     {
+      "courseTitle": "ADMINISTRATIVE LAW",
+      "isPaid": false,
+      "amount": 24000,
+      "academicCredit": 3,
+      "courseCode": "LAW448",
+      "registrationDate": "2026-09-10T16:50+0600",
+      "courseStatus": "ADDED",
+      "financialCredit": 3,
+      "retakeOrRepeat": "N/M",
+      "isStudioCourse": false,
+      "courseId": 1074
+     },
+     {
+      "courseTitle": "AGRICULTURAL LAW AND REFORMS",
+      "isPaid": false,
+      "amount": 24000,
+      "academicCredit": 3,
+      "courseCode": "LAW301",
+      "registrationDate": "2026-09-10T16:50+0600",
+      "courseStatus": "ADDED",
+      "financialCredit": 3,
+      "retakeOrRepeat": "N/M",
+      "isStudioCourse": false,
+      "courseId": 1207
+     },
+     {
+      "courseTitle": "COMPANY LAW",
+      "isPaid": false,
+      "amount": 24000,
+      "academicCredit": 3,
+      "courseCode": "LAW303",
+      "registrationDate": "2026-09-10T16:50+0600",
+      "courseStatus": "ADDED",
+      "financialCredit": 3,
+      "retakeOrRepeat": "N/M",
+      "isStudioCourse": false,
+      "courseId": 746
+     },
+     {
+      "courseTitle": "INTERNATIONAL LAW [PUBLIC]",
+      "isPaid": false,
+      "amount": 24000,
+      "academicCredit": 3,
+      "courseCode": "LAW304",
+      "registrationDate": "2026-09-10T16:50+0600",
+      "courseStatus": "ADDED",
+      "financialCredit": 3,
+      "retakeOrRepeat": "N/M",
+      "isStudioCourse": false,
+      "courseId": 1390
+     },
+     {
+      "courseTitle": "ELEMENTS OF ENVIRONMENTAL SCIENCES",
+      "isPaid": false,
+      "amount": 24000,
+      "academicCredit": 3,
+      "courseCode": "ENV103",
+      "registrationDate": "2026-09-10T16:50+0600",
+      "courseStatus": "ADDED",
+      "financialCredit": 3,
+      "retakeOrRepeat": "RT",
+      "isStudioCourse": false,
+      "courseId": 1533
+     },
+     {
+      "courseTitle": "CRIMINAL LAW",
+      "isPaid": false,
+      "amount": 24000,
+      "academicCredit": 3,
+      "courseCode": "LAW302",
+      "registrationDate": "2026-09-10T16:50+0600",
+      "courseStatus": "ADDED",
+      "financialCredit": 3,
+      "retakeOrRepeat": "N/M",
+      "isStudioCourse": false,
+      "courseId": 1191
+     }
+    ],
+    "program": "BACHELOR OF LAWS, LL.B (HONS.)",
+    "payslipGenerationDate": "2026-09-20T18:15+0600",
+    "studentId": "20000000",
+    "installmentNumber": 2,
+    "paySlipTitle": "Registration Payslip",
+    "presentAddress": "Example Address",
+    "lateAdvisingFee": 0,
+    "studentName": "Example Student",
+    "academicDegree": "UNDERGRADUATE",
+    "lateFee": 100,
+    "payslipNumber": "900000001",
+    "particulars": [
+     {
+      "amount": 48000,
+      "particular": "Course Fee",
+      "type": "NORMAL"
+     },
+     {
+      "amount": 4250,
+      "particular": "Semester Fee",
+      "type": "NORMAL"
+     },
+     {
+      "amount": 0,
+      "particular": "Previous Due",
+      "type": "NORMAL"
+     },
+     {
+      "amount": 400,
+      "particular": "Late Fee",
+      "type": "AGGREGATION"
+     },
+     {
+      "amount": 52650,
+      "particular": "Gross Payable:",
+      "type": "AGGREGATION"
+     },
+     {
+      "particular": "Less:",
+      "type": "WORDS"
+     },
+     {
+      "amount": 0,
+      "particular": "Suf fund Waiver",
+      "type": "NORMAL"
+     },
+     {
+      "amount": 0,
+      "particular": "Discount",
+      "type": "NORMAL"
+     },
+     {
+      "amount": 0,
+      "particular": "Previous Advance",
+      "type": "NORMAL"
+     },
+     {
+      "amount": 0,
+      "particular": "Late Fine Waiver",
+      "type": "NORMAL"
+     },
+     {
+      "amount": 0,
+      "particular": "Late Advising Fee Waiver",
+      "type": "NORMAL"
+     },
+     {
+      "amount": 52650,
+      "particular": "Net Payable:",
+      "type": "NORMAL"
+     },
+     {
+      "particular": "In Words: Taka fifty two thousand six hundred fifty only.",
+      "type": "WORDS"
+     }
+    ],
+    "paySlipTypes": "REGISTRATION_FEE",
+    "programOrCourseName": "BACHELOR OF LAWS, LL.B (HONS.)",
+    "deadline": "2026-10-14T00:00+0600",
+    "isExpired": true,
+    "semesterSession": "Fall 2026",
+    "paymentStatus": "PAID",
+    "contactNo": "01000000000"
+   },
+   "connectPrintData": {
+    "copyForLabel": "Student",
+    "title": "Registration Payslip",
+    "subTitle": "Fall 2026 Undergraduate Programme",
+    "studentId": "20000000",
+    "payslipNo": "900000001",
+    "name": "Example Student",
+    "generationDate": "20-Sep-2026 06:15 PM",
+    "programCourseLabel": "Programme",
+    "programOrcourse": "BACHELOR OF LAWS, LL.B (HONS.)",
+    "contactNo": "01000000000",
+    "address": "Example Address",
+    "registrationSlipColumns": true,
+    "isCourseList": true,
+    "totalFinancialCredits": "18",
+    "totalAcademicCredits": "18",
+    "totalCourseAmount": "144,000",
+    "hasQuantity": false,
+    "payslipCourseList": [
+     {
+      "courseId": "LAW448",
+      "courseTitle": "ADMINISTRATIVE LAW",
+      "academicCredits": "3",
+      "financialCredits": "3",
+      "regDate": "09/20/2026 06:15 PM",
+      "amount": "24,000",
+      "rpRt": "N/M"
+     },
+     {
+      "courseId": "LAW301",
+      "courseTitle": "AGRICULTURAL LAW AND REFORMS",
+      "academicCredits": "3",
+      "financialCredits": "3",
+      "regDate": "09/20/2026 06:15 PM",
+      "amount": "24,000",
+      "rpRt": "N/M"
+     },
+     {
+      "courseId": "LAW303",
+      "courseTitle": "COMPANY LAW",
+      "academicCredits": "3",
+      "financialCredits": "3",
+      "regDate": "09/20/2026 06:15 PM",
+      "amount": "24,000",
+      "rpRt": "N/M"
+     },
+     {
+      "courseId": "LAW304",
+      "courseTitle": "INTERNATIONAL LAW [PUBLIC]",
+      "academicCredits": "3",
+      "financialCredits": "3",
+      "regDate": "09/20/2026 06:15 PM",
+      "amount": "24,000",
+      "rpRt": "N/M"
+     },
+     {
+      "courseId": "ENV103",
+      "courseTitle": "ELEMENTS OF ENVIRONMENTAL SCIENCES",
+      "academicCredits": "3",
+      "financialCredits": "3",
+      "regDate": "09/20/2026 06:15 PM",
+      "amount": "24,000",
+      "rpRt": "RT"
+     },
+     {
+      "courseId": "LAW302",
+      "courseTitle": "CRIMINAL LAW",
+      "academicCredits": "3",
+      "financialCredits": "3",
+      "regDate": "09/20/2026 06:15 PM",
+      "amount": "24,000",
+      "rpRt": "N/M"
+     }
+    ],
+    "particularsList": [
+     {
+      "className": "",
+      "colspan": 1,
+      "title": "Course Fee",
+      "amount": "48,000"
+     },
+     {
+      "className": "",
+      "colspan": 1,
+      "title": "Semester Fee",
+      "amount": "4,250"
+     },
+     {
+      "className": "font-bold",
+      "colspan": 1,
+      "title": "Late Fee",
+      "amount": "400"
+     },
+     {
+      "className": "font-bold",
+      "colspan": 1,
+      "title": "Gross Payable:",
+      "amount": "52,650"
+     },
+     {
+      "className": "font-bold",
+      "colspan": 2,
+      "title": "Less:"
+     },
+     {
+      "className": "font-bold",
+      "colspan": 1,
+      "title": "Net Payable:",
+      "amount": "52,650"
+     },
+     {
+      "className": "font-bold",
+      "colspan": 2,
+      "title": "In Words: Taka fifty two thousand six hundred fifty only."
+     }
+    ],
+    "bankingInformationHint": "Please deposit the net payable amount to any of the above mentioned banks. Please avoid Cheque, PO, Agent Banking, CDM, BEFTN, RTGS, NPSB.",
+    "bankingInformationList": [
+     {
+      "bankName": "Example Bank 1",
+      "accName": "Example University",
+      "accNo": "0000001"
+     },
+     {
+      "bankName": "Example Bank 2",
+      "accName": "Example University",
+      "accNo": "0000002"
+     },
+     {
+      "bankName": "Example Bank 3",
+      "accName": "Example University",
+      "accNo": "0000003"
+     },
+     {
+      "bankName": "Example Bank 4",
+      "accName": "Example University",
+      "accNo": "0000004"
+     },
+     {
+      "bankName": "Example Bank 5",
+      "accName": "Example University",
+      "accNo": "0000005"
+     },
+     {
+      "bankName": "Example Bank 6",
+      "accName": "Example University",
+      "accNo": "0000006"
+     },
+     {
+      "bankName": "Example Bank 7",
+      "accName": "Example University",
+      "accNo": "0000007"
+     }
+    ],
+    "deadLine": "14 October 2026",
+    "isPaid": true,
+    "expired": false
+   }
+  },
+  {
+   "detail": {
+    "isPayslipPayable": false,
+    "courseList": [
+     {
+      "courseTitle": "INTRODUCTION TO SOCIOLOGY",
+      "isPaid": false,
+      "amount": 24000,
+      "refundPercentage": 0,
+      "academicCredit": 3,
+      "courseCode": "SOC101",
+      "registrationDate": "2025-02-17T16:22+0600",
+      "courseStatus": "ADDED",
+      "financialCredit": 3,
+      "retakeOrRepeat": "N/M",
+      "isStudioCourse": false,
+      "courseId": 1523
+     },
+     {
+      "courseTitle": "MUSLIM FAMILY LAW AND REFORMS",
+      "isPaid": false,
+      "amount": 24000,
+      "refundPercentage": 0,
+      "academicCredit": 3,
+      "courseCode": "LAW202",
+      "registrationDate": "2025-02-17T16:22+0600",
+      "courseStatus": "ADDED",
+      "financialCredit": 3,
+      "retakeOrRepeat": "N/M",
+      "isStudioCourse": false,
+      "courseId": 11
+     },
+     {
+      "courseTitle": "INTRODUCTION TO POLITICAL SCIENCE",
+      "isPaid": false,
+      "amount": 24000,
+      "refundPercentage": 0,
+      "academicCredit": 3,
+      "courseCode": "POL101",
+      "registrationDate": "2025-02-17T16:22+0600",
+      "courseStatus": "ADDED",
+      "financialCredit": 3,
+      "retakeOrRepeat": "N/M",
+      "isStudioCourse": false,
+      "courseId": 1525
+     },
+     {
+      "courseTitle": "HISTORY OF BANGLADESH",
+      "isPaid": false,
+      "amount": 24000,
+      "refundPercentage": 0,
+      "academicCredit": 3,
+      "courseCode": "HST103",
+      "registrationDate": "2025-02-17T16:22+0600",
+      "courseStatus": "ADDED",
+      "financialCredit": 3,
+      "retakeOrRepeat": "N/M",
+      "isStudioCourse": false,
+      "courseId": 1515
+     },
+     {
+      "courseTitle": "DELICT: LAW OF TORT",
+      "isPaid": false,
+      "amount": 24000,
+      "refundPercentage": 0,
+      "academicCredit": 3,
+      "courseCode": "LAW103",
+      "registrationDate": "2025-02-17T16:22+0600",
+      "courseStatus": "ADDED",
+      "financialCredit": 3,
+      "retakeOrRepeat": "N/M",
+      "isStudioCourse": false,
+      "courseId": 1384
+     }
+    ],
+    "program": "BACHELOR OF LAWS, LL.B (HONS.)",
+    "payslipGenerationDate": "2025-02-17T16:22+0600",
+    "studentId": "20000000",
+    "paySlipTitle": "Registration Payslip",
+    "presentAddress": "Example Address",
+    "lateAdvisingFee": 0,
+    "studentName": "Example Student",
+    "academicDegree": "UNDERGRADUATE",
+    "lateFee": 0,
+    "payslipNumber": "900000002",
+    "particulars": [
+     {
+      "amount": 120000,
+      "particular": "Course Fee",
+      "type": "NORMAL"
+     },
+     {
+      "amount": 12750,
+      "particular": "Semester Fee",
+      "type": "NORMAL"
+     },
+     {
+      "amount": 0,
+      "particular": "Previous Due",
+      "type": "NORMAL"
+     },
+     {
+      "amount": 0,
+      "particular": "Late Advising Fee",
+      "type": "NORMAL"
+     },
+     {
+      "amount": 132750,
+      "particular": "Gross Payable:",
+      "type": "AGGREGATION"
+     },
+     {
+      "particular": "Less:",
+      "type": "WORDS"
+     },
+     {
+      "amount": 0,
+      "particular": "Suf fund Waiver",
+      "type": "NORMAL"
+     },
+     {
+      "amount": 0,
+      "particular": "Scholarship-Merit",
+      "type": "NORMAL"
+     },
+     {
+      "amount": 0,
+      "particular": "Waiver",
+      "type": "NORMAL"
+     },
+     {
+      "amount": 0,
+      "particular": "Discount",
+      "type": "NORMAL"
+     },
+     {
+      "amount": 0,
+      "particular": "Late Fine Waiver ",
+      "type": "NORMAL"
+     },
+     {
+      "amount": 120000,
+      "particular": "Net payable:",
+      "type": "AGGREGATION"
+     },
+     {
+      "amount": 12750,
+      "particular": "Previous Advance",
+      "type": "NORMAL"
+     },
+     {
+      "particular": "In Words: Taka one lakh twenty thousand only.",
+      "type": "WORDS"
+     }
+    ],
+    "paySlipTypes": "REGISTRATION_FEE",
+    "programOrCourseName": "BACHELOR OF LAWS, LL.B (HONS.)",
+    "deadline": "2025-02-27T06:00+0600",
+    "isExpired": true,
+    "semesterSession": "Spring 2025",
+    "paymentStatus": "PAID",
+    "contactNo": "01000000000"
+   },
+   "connectPrintData": {
+    "copyForLabel": "Student",
+    "title": "Registration Payslip",
+    "subTitle": "Spring 2025 Undergraduate Programme",
+    "studentId": "20000000",
+    "payslipNo": "900000002",
+    "name": "Example Student",
+    "generationDate": "17-Feb-2025 04:22 PM",
+    "programCourseLabel": "Programme",
+    "programOrcourse": "BACHELOR OF LAWS, LL.B (HONS.)",
+    "contactNo": "01000000000",
+    "address": "Example Address",
+    "registrationSlipColumns": true,
+    "isCourseList": true,
+    "totalFinancialCredits": "15",
+    "totalAcademicCredits": "15",
+    "totalCourseAmount": "120,000",
+    "hasQuantity": false,
+    "payslipCourseList": [
+     {
+      "courseId": "SOC101",
+      "courseTitle": "INTRODUCTION TO SOCIOLOGY",
+      "academicCredits": "3",
+      "financialCredits": "3",
+      "regDate": "02/17/2025 04:22 PM",
+      "amount": "24,000",
+      "rpRt": "N/M"
+     },
+     {
+      "courseId": "LAW202",
+      "courseTitle": "MUSLIM FAMILY LAW AND REFORMS",
+      "academicCredits": "3",
+      "financialCredits": "3",
+      "regDate": "02/17/2025 04:22 PM",
+      "amount": "24,000",
+      "rpRt": "N/M"
+     },
+     {
+      "courseId": "POL101",
+      "courseTitle": "INTRODUCTION TO POLITICAL SCIENCE",
+      "academicCredits": "3",
+      "financialCredits": "3",
+      "regDate": "02/17/2025 04:22 PM",
+      "amount": "24,000",
+      "rpRt": "N/M"
+     },
+     {
+      "courseId": "HST103",
+      "courseTitle": "HISTORY OF BANGLADESH",
+      "academicCredits": "3",
+      "financialCredits": "3",
+      "regDate": "02/17/2025 04:22 PM",
+      "amount": "24,000",
+      "rpRt": "N/M"
+     },
+     {
+      "courseId": "LAW103",
+      "courseTitle": "DELICT: LAW OF TORT",
+      "academicCredits": "3",
+      "financialCredits": "3",
+      "regDate": "02/17/2025 04:22 PM",
+      "amount": "24,000",
+      "rpRt": "N/M"
+     }
+    ],
+    "particularsList": [
+     {
+      "className": "",
+      "colspan": 1,
+      "title": "Course Fee",
+      "amount": "120,000"
+     },
+     {
+      "className": "",
+      "colspan": 1,
+      "title": "Semester Fee",
+      "amount": "12,750"
+     },
+     {
+      "className": "font-bold",
+      "colspan": 1,
+      "title": "Gross Payable:",
+      "amount": "132,750"
+     },
+     {
+      "className": "font-bold",
+      "colspan": 2,
+      "title": "Less:"
+     },
+     {
+      "className": "",
+      "colspan": 1,
+      "title": "Previous Advance",
+      "amount": "12,750"
+     },
+     {
+      "className": "font-bold",
+      "colspan": 1,
+      "title": "Net payable:",
+      "amount": "120,000"
+     },
+     {
+      "className": "font-bold",
+      "colspan": 2,
+      "title": "In Words: Taka one lakh twenty thousand only."
+     }
+    ],
+    "bankingInformationHint": "Please deposit the net payable amount to any of the above mentioned banks. Please avoid Cheque, PO, Agent Banking, CDM, BEFTN, RTGS, NPSB.",
+    "bankingInformationList": [
+     {
+      "bankName": "Example Bank 1",
+      "accName": "Example University",
+      "accNo": "0000001"
+     },
+     {
+      "bankName": "Example Bank 2",
+      "accName": "Example University",
+      "accNo": "0000002"
+     },
+     {
+      "bankName": "Example Bank 3",
+      "accName": "Example University",
+      "accNo": "0000003"
+     },
+     {
+      "bankName": "Example Bank 4",
+      "accName": "Example University",
+      "accNo": "0000004"
+     },
+     {
+      "bankName": "Example Bank 5",
+      "accName": "Example University",
+      "accNo": "0000005"
+     },
+     {
+      "bankName": "Example Bank 6",
+      "accName": "Example University",
+      "accNo": "0000006"
+     },
+     {
+      "bankName": "Example Bank 7",
+      "accName": "Example University",
+      "accNo": "0000007"
+     }
+    ],
+    "deadLine": "27 February 2025",
+    "isPaid": true,
+    "expired": false
+   }
+  },
+  {
+   "detail": {
+    "isPayslipPayable": false,
+    "courseList": [
+     {
+      "courseTitle": "EQUITABLE PRINCIPLES AND SPECIFIC RELIEF",
+      "isPaid": false,
+      "amount": 24000,
+      "refundPercentage": 0,
+      "academicCredit": 3,
+      "courseCode": "LAW201",
+      "courseStatus": "ADDED",
+      "registrationDate": "2026-02-01T12:45+0600",
+      "financialCredit": 3,
+      "retakeOrRepeat": "N/M",
+      "isStudioCourse": false,
+      "courseId": 1307
+     },
+     {
+      "courseTitle": "LAW OF REGISTRATION AND LIMITATION",
+      "isPaid": false,
+      "amount": 24000,
+      "refundPercentage": 0,
+      "academicCredit": 3,
+      "courseCode": "LAW204",
+      "courseStatus": "ADDED",
+      "registrationDate": "2026-02-01T12:45+0600",
+      "financialCredit": 3,
+      "retakeOrRepeat": "N/M",
+      "isStudioCourse": false,
+      "courseId": 1017
+     },
+     {
+      "courseTitle": "INTRODUCTION TO ANTHROPOLOGY",
+      "isPaid": false,
+      "amount": 24000,
+      "refundPercentage": 0,
+      "academicCredit": 3,
+      "courseCode": "ANT101",
+      "courseStatus": "ADDED",
+      "registrationDate": "2026-02-01T12:45+0600",
+      "financialCredit": 3,
+      "retakeOrRepeat": "N/M",
+      "isStudioCourse": false,
+      "courseId": 1522
+     },
+     {
+      "courseTitle": "ELEMENTS OF ENVIRONMENTAL SCIENCES",
+      "isPaid": false,
+      "amount": 24000,
+      "refundPercentage": 0,
+      "academicCredit": 3,
+      "courseCode": "ENV103",
+      "courseStatus": "ADDED",
+      "registrationDate": "2026-02-01T12:45+0600",
+      "financialCredit": 3,
+      "retakeOrRepeat": "N/M",
+      "isStudioCourse": false,
+      "courseId": 1533
+     },
+     {
+      "courseTitle": "PROPERTY LAW AND TRANSFER",
+      "isPaid": false,
+      "amount": 24000,
+      "refundPercentage": 0,
+      "academicCredit": 3,
+      "courseCode": "LAW203",
+      "courseStatus": "ADDED",
+      "registrationDate": "2026-02-01T12:45+0600",
+      "financialCredit": 3,
+      "retakeOrRepeat": "N/M",
+      "isStudioCourse": false,
+      "courseId": 38
+     },
+     {
+      "courseTitle": "BUSINESS LAW",
+      "isPaid": false,
+      "amount": 24000,
+      "refundPercentage": 0,
+      "academicCredit": 3,
+      "courseCode": "LAW205",
+      "courseStatus": "ADDED",
+      "registrationDate": "2026-02-01T12:45+0600",
+      "financialCredit": 3,
+      "retakeOrRepeat": "N/M",
+      "isStudioCourse": false,
+      "courseId": 1380
+     }
+    ],
+    "program": "BACHELOR OF LAWS, LL.B (HONS.)",
+    "payslipGenerationDate": "2026-02-07T16:12+0600",
+    "studentId": "20000000",
+    "installmentNumber": 1,
+    "paySlipTitle": "Registration Payslip",
+    "presentAddress": "Example Address",
+    "lateAdvisingFee": 0,
+    "studentName": "Example Student",
+    "academicDegree": "UNDERGRADUATE",
+    "lateFee": 0,
+    "payslipNumber": "900000003",
+    "particulars": [
+     {
+      "amount": 48000,
+      "particular": "Course Fee",
+      "type": "NORMAL"
+     },
+     {
+      "amount": 4250,
+      "particular": "Semester Fee",
+      "type": "NORMAL"
+     },
+     {
+      "amount": 0,
+      "particular": "Previous Due",
+      "type": "NORMAL"
+     },
+     {
+      "amount": 52250,
+      "particular": "Gross Payable:",
+      "type": "AGGREGATION"
+     },
+     {
+      "particular": "Less:",
+      "type": "WORDS"
+     },
+     {
+      "amount": 0,
+      "particular": "Suf fund Waiver",
+      "type": "NORMAL"
+     },
+     {
+      "amount": 0,
+      "particular": "Scholarship-Merit",
+      "type": "NORMAL"
+     },
+     {
+      "amount": 0,
+      "particular": "Scholarship-Merit",
+      "type": "NORMAL"
+     },
+     {
+      "amount": 0,
+      "particular": "Discount",
+      "type": "NORMAL"
+     },
+     {
+      "amount": 0,
+      "particular": "Late Fine Waiver ",
+      "type": "NORMAL"
+     },
+     {
+      "amount": 0,
+      "particular": "Late Advising fee waiver",
+      "type": "NORMAL"
+     },
+     {
+      "amount": 52250,
+      "particular": "Net Payable:",
+      "type": "AGGREGATION"
+     },
+     {
+      "amount": 0,
+      "particular": "Previous Advance",
+      "type": "NORMAL"
+     },
+     {
+      "particular": "In Words: Taka fifty two thousand two hundred fifty only.",
+      "type": "WORDS"
+     }
+    ],
+    "paySlipTypes": "REGISTRATION_FEE",
+    "programOrCourseName": "BACHELOR OF LAWS, LL.B (HONS.)",
+    "deadline": "2026-02-17T06:00+0600",
+    "isExpired": true,
+    "semesterSession": "Spring 2026",
+    "paymentStatus": "PAID",
+    "contactNo": "01000000000"
+   },
+   "connectPrintData": {
+    "copyForLabel": "Student",
+    "title": "Registration Payslip",
+    "subTitle": "Spring 2026 Undergraduate Programme",
+    "studentId": "20000000",
+    "payslipNo": "900000003",
+    "name": "Example Student",
+    "generationDate": "7-Feb-2026 04:12 PM",
+    "programCourseLabel": "Programme",
+    "programOrcourse": "BACHELOR OF LAWS, LL.B (HONS.)",
+    "contactNo": "01000000000",
+    "address": "Example Address",
+    "registrationSlipColumns": true,
+    "isCourseList": true,
+    "totalFinancialCredits": "18",
+    "totalAcademicCredits": "18",
+    "totalCourseAmount": "144,000",
+    "hasQuantity": false,
+    "payslipCourseList": [
+     {
+      "courseId": "LAW201",
+      "courseTitle": "EQUITABLE PRINCIPLES AND SPECIFIC RELIEF",
+      "academicCredits": "3",
+      "financialCredits": "3",
+      "regDate": "02/07/2026 04:12 PM",
+      "amount": "24,000",
+      "rpRt": "N/M"
+     },
+     {
+      "courseId": "LAW204",
+      "courseTitle": "LAW OF REGISTRATION AND LIMITATION",
+      "academicCredits": "3",
+      "financialCredits": "3",
+      "regDate": "02/07/2026 04:12 PM",
+      "amount": "24,000",
+      "rpRt": "N/M"
+     },
+     {
+      "courseId": "ANT101",
+      "courseTitle": "INTRODUCTION TO ANTHROPOLOGY",
+      "academicCredits": "3",
+      "financialCredits": "3",
+      "regDate": "02/07/2026 04:12 PM",
+      "amount": "24,000",
+      "rpRt": "N/M"
+     },
+     {
+      "courseId": "ENV103",
+      "courseTitle": "ELEMENTS OF ENVIRONMENTAL SCIENCES",
+      "academicCredits": "3",
+      "financialCredits": "3",
+      "regDate": "02/07/2026 04:12 PM",
+      "amount": "24,000",
+      "rpRt": "N/M"
+     },
+     {
+      "courseId": "LAW203",
+      "courseTitle": "PROPERTY LAW AND TRANSFER",
+      "academicCredits": "3",
+      "financialCredits": "3",
+      "regDate": "02/07/2026 04:12 PM",
+      "amount": "24,000",
+      "rpRt": "N/M"
+     },
+     {
+      "courseId": "LAW205",
+      "courseTitle": "BUSINESS LAW",
+      "academicCredits": "3",
+      "financialCredits": "3",
+      "regDate": "02/07/2026 04:12 PM",
+      "amount": "24,000",
+      "rpRt": "N/M"
+     }
+    ],
+    "particularsList": [
+     {
+      "className": "",
+      "colspan": 1,
+      "title": "Course Fee",
+      "amount": "48,000"
+     },
+     {
+      "className": "",
+      "colspan": 1,
+      "title": "Semester Fee",
+      "amount": "4,250"
+     },
+     {
+      "className": "font-bold",
+      "colspan": 1,
+      "title": "Gross Payable:",
+      "amount": "52,250"
+     },
+     {
+      "className": "font-bold",
+      "colspan": 2,
+      "title": "Less:"
+     },
+     {
+      "className": "font-bold",
+      "colspan": 1,
+      "title": "Net Payable:",
+      "amount": "52,250"
+     },
+     {
+      "className": "font-bold",
+      "colspan": 2,
+      "title": "In Words: Taka fifty two thousand two hundred fifty only."
+     }
+    ],
+    "bankingInformationHint": "Please deposit the net payable amount to any of the above mentioned banks. Please avoid Cheque, PO, Agent Banking, CDM, BEFTN, RTGS, NPSB.",
+    "bankingInformationList": [
+     {
+      "bankName": "Example Bank 1",
+      "accName": "Example University",
+      "accNo": "0000001"
+     },
+     {
+      "bankName": "Example Bank 2",
+      "accName": "Example University",
+      "accNo": "0000002"
+     },
+     {
+      "bankName": "Example Bank 3",
+      "accName": "Example University",
+      "accNo": "0000003"
+     },
+     {
+      "bankName": "Example Bank 4",
+      "accName": "Example University",
+      "accNo": "0000004"
+     },
+     {
+      "bankName": "Example Bank 5",
+      "accName": "Example University",
+      "accNo": "0000005"
+     },
+     {
+      "bankName": "Example Bank 6",
+      "accName": "Example University",
+      "accNo": "0000006"
+     },
+     {
+      "bankName": "Example Bank 7",
+      "accName": "Example University",
+      "accNo": "0000007"
+     }
+    ],
+    "deadLine": "17 February 2026",
+    "isPaid": true,
+    "expired": false
+   }
+  },
+  {
+   "detail": {
+    "isPayslipPayable": false,
+    "courseList": [
+     {
+      "courseTitle": "EQUITABLE PRINCIPLES AND SPECIFIC RELIEF",
+      "isPaid": false,
+      "amount": 24000,
+      "refundPercentage": 0,
+      "academicCredit": 3,
+      "courseCode": "LAW201",
+      "courseStatus": "ADDED",
+      "registrationDate": "2026-02-01T12:45+0600",
+      "financialCredit": 3,
+      "retakeOrRepeat": "N/M",
+      "isStudioCourse": false,
+      "courseId": 1307
+     },
+     {
+      "courseTitle": "LAW OF REGISTRATION AND LIMITATION",
+      "isPaid": false,
+      "amount": 24000,
+      "refundPercentage": 0,
+      "academicCredit": 3,
+      "courseCode": "LAW204",
+      "courseStatus": "ADDED",
+      "registrationDate": "2026-02-01T12:45+0600",
+      "financialCredit": 3,
+      "retakeOrRepeat": "N/M",
+      "isStudioCourse": false,
+      "courseId": 1017
+     },
+     {
+      "courseTitle": "INTRODUCTION TO ANTHROPOLOGY",
+      "isPaid": false,
+      "amount": 24000,
+      "refundPercentage": 0,
+      "academicCredit": 3,
+      "courseCode": "ANT101",
+      "courseStatus": "ADDED",
+      "registrationDate": "2026-02-01T12:45+0600",
+      "financialCredit": 3,
+      "retakeOrRepeat": "N/M",
+      "isStudioCourse": false,
+      "courseId": 1522
+     },
+     {
+      "courseTitle": "ELEMENTS OF ENVIRONMENTAL SCIENCES",
+      "isPaid": false,
+      "amount": 24000,
+      "refundPercentage": 0,
+      "academicCredit": 3,
+      "courseCode": "ENV103",
+      "courseStatus": "ADDED",
+      "registrationDate": "2026-02-01T12:45+0600",
+      "financialCredit": 3,
+      "retakeOrRepeat": "N/M",
+      "isStudioCourse": false,
+      "courseId": 1533
+     },
+     {
+      "courseTitle": "PROPERTY LAW AND TRANSFER",
+      "isPaid": false,
+      "amount": 24000,
+      "refundPercentage": 0,
+      "academicCredit": 3,
+      "courseCode": "LAW203",
+      "courseStatus": "ADDED",
+      "registrationDate": "2026-02-01T12:45+0600",
+      "financialCredit": 3,
+      "retakeOrRepeat": "N/M",
+      "isStudioCourse": false,
+      "courseId": 38
+     },
+     {
+      "courseTitle": "BUSINESS LAW",
+      "isPaid": false,
+      "amount": 24000,
+      "refundPercentage": 0,
+      "academicCredit": 3,
+      "courseCode": "LAW205",
+      "courseStatus": "ADDED",
+      "registrationDate": "2026-02-01T12:45+0600",
+      "financialCredit": 3,
+      "retakeOrRepeat": "N/M",
+      "isStudioCourse": false,
+      "courseId": 1380
+     }
+    ],
+    "program": "BACHELOR OF LAWS, LL.B (HONS.)",
+    "payslipGenerationDate": "2026-02-07T16:12+0600",
+    "studentId": "20000000",
+    "installmentNumber": 3,
+    "paySlipTitle": "Registration Payslip",
+    "presentAddress": "Example Address",
+    "lateAdvisingFee": 0,
+    "studentName": "Example Student",
+    "academicDegree": "UNDERGRADUATE",
+    "lateFee": 0,
+    "payslipNumber": "900000004",
+    "particulars": [
+     {
+      "amount": 48000,
+      "particular": "Course Fee",
+      "type": "NORMAL"
+     },
+     {
+      "amount": 4250,
+      "particular": "Semester Fee",
+      "type": "NORMAL"
+     },
+     {
+      "amount": 0,
+      "particular": "Previous Due",
+      "type": "NORMAL"
+     },
+     {
+      "amount": 52250,
+      "particular": "Gross Payable:",
+      "type": "AGGREGATION"
+     },
+     {
+      "particular": "Less:",
+      "type": "WORDS"
+     },
+     {
+      "amount": 0,
+      "particular": "Suf fund Waiver",
+      "type": "NORMAL"
+     },
+     {
+      "amount": 0,
+      "particular": "Scholarship-Merit",
+      "type": "NORMAL"
+     },
+     {
+      "amount": 0,
+      "particular": "Scholarship-Merit",
+      "type": "NORMAL"
+     },
+     {
+      "amount": 0,
+      "particular": "Discount",
+      "type": "NORMAL"
+     },
+     {
+      "amount": 0,
+      "particular": "Late Fine Waiver ",
+      "type": "NORMAL"
+     },
+     {
+      "amount": 0,
+      "particular": "Late Advising fee waiver",
+      "type": "NORMAL"
+     },
+     {
+      "amount": 52250,
+      "particular": "Net Payable:",
+      "type": "AGGREGATION"
+     },
+     {
+      "amount": 0,
+      "particular": "Previous Advance",
+      "type": "NORMAL"
+     },
+     {
+      "particular": "In Words: Taka fifty two thousand two hundred fifty only.",
+      "type": "WORDS"
+     }
+    ],
+    "paySlipTypes": "REGISTRATION_FEE",
+    "programOrCourseName": "BACHELOR OF LAWS, LL.B (HONS.)",
+    "deadline": "2026-04-16T06:00+0600",
+    "isExpired": true,
+    "semesterSession": "Spring 2026",
+    "paymentStatus": "PAID",
+    "contactNo": "01000000000"
+   },
+   "connectPrintData": {
+    "copyForLabel": "Student",
+    "title": "Registration Payslip",
+    "subTitle": "Spring 2026 Undergraduate Programme",
+    "studentId": "20000000",
+    "payslipNo": "900000004",
+    "name": "Example Student",
+    "generationDate": "7-Feb-2026 04:12 PM",
+    "programCourseLabel": "Programme",
+    "programOrcourse": "BACHELOR OF LAWS, LL.B (HONS.)",
+    "contactNo": "01000000000",
+    "address": "Example Address",
+    "registrationSlipColumns": true,
+    "isCourseList": true,
+    "totalFinancialCredits": "18",
+    "totalAcademicCredits": "18",
+    "totalCourseAmount": "144,000",
+    "hasQuantity": false,
+    "payslipCourseList": [
+     {
+      "courseId": "LAW201",
+      "courseTitle": "EQUITABLE PRINCIPLES AND SPECIFIC RELIEF",
+      "academicCredits": "3",
+      "financialCredits": "3",
+      "regDate": "02/07/2026 04:12 PM",
+      "amount": "24,000",
+      "rpRt": "N/M"
+     },
+     {
+      "courseId": "LAW204",
+      "courseTitle": "LAW OF REGISTRATION AND LIMITATION",
+      "academicCredits": "3",
+      "financialCredits": "3",
+      "regDate": "02/07/2026 04:12 PM",
+      "amount": "24,000",
+      "rpRt": "N/M"
+     },
+     {
+      "courseId": "ANT101",
+      "courseTitle": "INTRODUCTION TO ANTHROPOLOGY",
+      "academicCredits": "3",
+      "financialCredits": "3",
+      "regDate": "02/07/2026 04:12 PM",
+      "amount": "24,000",
+      "rpRt": "N/M"
+     },
+     {
+      "courseId": "ENV103",
+      "courseTitle": "ELEMENTS OF ENVIRONMENTAL SCIENCES",
+      "academicCredits": "3",
+      "financialCredits": "3",
+      "regDate": "02/07/2026 04:12 PM",
+      "amount": "24,000",
+      "rpRt": "N/M"
+     },
+     {
+      "courseId": "LAW203",
+      "courseTitle": "PROPERTY LAW AND TRANSFER",
+      "academicCredits": "3",
+      "financialCredits": "3",
+      "regDate": "02/07/2026 04:12 PM",
+      "amount": "24,000",
+      "rpRt": "N/M"
+     },
+     {
+      "courseId": "LAW205",
+      "courseTitle": "BUSINESS LAW",
+      "academicCredits": "3",
+      "financialCredits": "3",
+      "regDate": "02/07/2026 04:12 PM",
+      "amount": "24,000",
+      "rpRt": "N/M"
+     }
+    ],
+    "particularsList": [
+     {
+      "className": "",
+      "colspan": 1,
+      "title": "Course Fee",
+      "amount": "48,000"
+     },
+     {
+      "className": "",
+      "colspan": 1,
+      "title": "Semester Fee",
+      "amount": "4,250"
+     },
+     {
+      "className": "font-bold",
+      "colspan": 1,
+      "title": "Gross Payable:",
+      "amount": "52,250"
+     },
+     {
+      "className": "font-bold",
+      "colspan": 2,
+      "title": "Less:"
+     },
+     {
+      "className": "font-bold",
+      "colspan": 1,
+      "title": "Net Payable:",
+      "amount": "52,250"
+     },
+     {
+      "className": "font-bold",
+      "colspan": 2,
+      "title": "In Words: Taka fifty two thousand two hundred fifty only."
+     }
+    ],
+    "bankingInformationHint": "Please deposit the net payable amount to any of the above mentioned banks. Please avoid Cheque, PO, Agent Banking, CDM, BEFTN, RTGS, NPSB.",
+    "bankingInformationList": [
+     {
+      "bankName": "Example Bank 1",
+      "accName": "Example University",
+      "accNo": "0000001"
+     },
+     {
+      "bankName": "Example Bank 2",
+      "accName": "Example University",
+      "accNo": "0000002"
+     },
+     {
+      "bankName": "Example Bank 3",
+      "accName": "Example University",
+      "accNo": "0000003"
+     },
+     {
+      "bankName": "Example Bank 4",
+      "accName": "Example University",
+      "accNo": "0000004"
+     },
+     {
+      "bankName": "Example Bank 5",
+      "accName": "Example University",
+      "accNo": "0000005"
+     },
+     {
+      "bankName": "Example Bank 6",
+      "accName": "Example University",
+      "accNo": "0000006"
+     },
+     {
+      "bankName": "Example Bank 7",
+      "accName": "Example University",
+      "accNo": "0000007"
+     }
+    ],
+    "deadLine": "16 April 2026",
+    "isPaid": true,
+    "expired": false
+   }
+  }
+ ]
+}

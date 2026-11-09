@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:preconnect/tools/string_utils.dart';
 import 'package:gap/gap.dart';
 import 'package:preconnect/api/api_client.dart';
 import 'package:preconnect/api/advising_service.dart';
@@ -1356,7 +1357,7 @@ class _AdvisingSeatStatusCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final textPrimary = AppPalette.textPrimary(context);
     final textSecondary = AppPalette.textSecondary(context);
-    final theoryLabel = seatTitleCase(courseType);
+    final theoryLabel = titleCaseWords(courseType);
     final courseHeader = '$courseCode - $sectionName';
     final facultyName = faculty?.staffName.trim() ?? '';
     final facultyEmail = faculty?.email.trim() ?? '';

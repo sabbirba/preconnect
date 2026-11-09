@@ -55,6 +55,8 @@ class PaymentInfo {
     required this.dueDate,
     required this.totalAmount,
     required this.semesterSessionId,
+    this.installmentEnabled = false,
+    this.installmentNumber = 0,
   });
 
   final String paymentStatus;
@@ -64,6 +66,8 @@ class PaymentInfo {
   final DateTime dueDate;
   final double totalAmount;
   final int semesterSessionId;
+  final bool installmentEnabled;
+  final int installmentNumber;
 
   factory PaymentInfo.fromJson(Map<String, dynamic> json) {
     return PaymentInfo(
@@ -78,6 +82,8 @@ class PaymentInfo {
           DateTime.fromMillisecondsSinceEpoch(0),
       totalAmount: (json['totalAmount'] as num?)?.toDouble() ?? 0,
       semesterSessionId: (json['semesterSessionId'] as num?)?.toInt() ?? 0,
+      installmentEnabled: json['installmentEnabled'] == true,
+      installmentNumber: (json['installmentNumber'] as num?)?.toInt() ?? 0,
     );
   }
 
@@ -89,5 +95,7 @@ class PaymentInfo {
     'dueDate': dueDate.toIso8601String(),
     'totalAmount': totalAmount,
     'semesterSessionId': semesterSessionId,
+    'installmentEnabled': installmentEnabled,
+    'installmentNumber': installmentNumber,
   };
 }

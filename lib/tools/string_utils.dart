@@ -159,3 +159,17 @@ bool looksLikePdf(List<int> bytes) {
 String formatAmount(num amount) {
   return NumberFormat.decimalPattern('en_IN').format(amount.round());
 }
+
+String titleCaseWords(String value) {
+  final cleaned = value
+      .replaceAll(RegExp(r'[^a-z0-9]+', caseSensitive: false), ' ')
+      .trim();
+  if (cleaned.isEmpty) return '';
+  return cleaned
+      .split(RegExp(r'\s+'))
+      .map((part) {
+        if (part.isEmpty) return part;
+        return part[0].toUpperCase() + part.substring(1).toLowerCase();
+      })
+      .join(' ');
+}

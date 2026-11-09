@@ -209,6 +209,18 @@ class AppTime {
     return DateFormat('d MMMM').format(date);
   }
 
+  static const Duration campusUtcOffset = Duration(hours: 6);
+
+  static DateTime toCampusTime(DateTime value) =>
+      value.isUtc ? value.add(campusUtcOffset) : value;
+
+  static String formatCampusTime(String? raw, String pattern) {
+    final parsed = DateTime.tryParse((raw ?? '').trim());
+    return parsed == null
+        ? ''
+        : DateFormat(pattern).format(toCampusTime(parsed));
+  }
+
   static String formatDayMonthYear(DateTime date) {
     return DateFormat('d MMMM y').format(date);
   }

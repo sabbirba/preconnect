@@ -5,6 +5,7 @@ import 'package:preconnect/pages/profile_sections/payslip_detail.dart';
 import 'package:preconnect/pages/shared_widgets/info_line.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/string_utils.dart';
+import 'package:preconnect/tools/time_utils.dart';
 
 class PaymentList extends StatefulWidget {
   const PaymentList({super.key, required this.payments});
@@ -21,13 +22,24 @@ class _PaymentListState extends State<PaymentList> {
   @override
   Widget build(BuildContext context) {
     final visiblePayments = widget.payments.take(_visibleCount).toList();
+    final installmentTotals = <String, int>{};
+    for (final payment in widget.payments) {
+      if (!payment.installmentEnabled) continue;
+      final key = '${payment.semesterSessionId}|${payment.paymentType}';
+      installmentTotals[key] = (installmentTotals[key] ?? 0) + 1;
+    }
 
     return Column(
       children: [
         ...visiblePayments.map((payment) {
           final textSecondary = AppPalette.textSecondary(context);
           final textPrimary = AppPalette.textPrimary(context);
-          final dueDate = formatDate(payment.dueDate.toIso8601String());
+          final dueDate = AppTime.formatCampusTime(
+            payment.dueDate.toIso8601String(),
+            'd MMMM, y',
+          );
+          final installmentTotal =
+              installmentTotals['${payment.semesterSessionId}|${payment.paymentType}'];
           final status = payment.paymentStatus;
           final isPaid = status == 'PAID';
           final amount = _formatAmount(payment.totalAmount);
@@ -38,7 +50,7 @@ class _PaymentListState extends State<PaymentList> {
           final semester = formatSemesterFromSessionIdInt(
             payment.semesterSessionId,
           );
-          final paymentType = _formatPaymentType(payment.paymentType);
+          final paymentType = titleCaseWords(payment.paymentType);
           final cardTint = Colors.transparent;
           final cardBorder = isPaid
               ? AppPalette.primary.withValues(alpha: 0.08)
@@ -158,10 +170,25 @@ class _PaymentListState extends State<PaymentList> {
                       valueFlex: 7,
                       valueWeight: FontWeight.w400,
                     ),
+                    if (installmentTotal != null) ...[
+                      const Gap(8),
+                      InfoLine(
+                        label: 'Installment',
+                        value:
+                            '${payment.installmentNumber} of $installmentTotal',
+                        isLabelBold: false,
+                        isValueBold: false,
+                        valueFlex: 7,
+                        valueWeight: FontWeight.w400,
+                      ),
+                    ],
                     const Gap(8),
                     InfoLine(
                       label: 'Requested',
-                      value: formatDate(payment.requestDate.toIso8601String()),
+                      value: AppTime.formatCampusTime(
+                        payment.requestDate.toIso8601String(),
+                        'd MMMM, y',
+                      ),
                       isLabelBold: false,
                       isValueBold: false,
                       valueFlex: 7,
@@ -202,19 +229,6 @@ class _PaymentListState extends State<PaymentList> {
       ],
     );
   }
-}
-
-String _formatPaymentType(String raw) {
-  final cleaned = raw.trim();
-  if (cleaned.isEmpty) return '';
-  final words = cleaned.split('_').where((w) => w.trim().isNotEmpty).toList();
-  if (words.isEmpty) return cleaned;
-  return words
-      .map((w) {
-        final lower = w.toLowerCase();
-        return lower[0].toUpperCase() + lower.substring(1);
-      })
-      .join(' ');
 }
 
 String _formatAmount(double amount) => '${formatAmount(amount)} Taka';

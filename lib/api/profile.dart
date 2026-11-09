@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
+import 'package:intl/intl.dart';
 import 'package:preconnect/tools/app_storage.dart';
 import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/api/api_client.dart';
@@ -10,6 +11,7 @@ import 'package:preconnect/tools/storage_keys.dart';
 import 'package:preconnect/tools/cache_durations.dart';
 import 'package:preconnect/tools/app_log.dart';
 import 'package:preconnect/tools/preload_cache.dart';
+import 'package:preconnect/tools/string_utils.dart';
 import 'package:preconnect/tools/time_utils.dart';
 
 part 'profile_sections/profile_models.dart';
@@ -843,80 +845,7 @@ class PaymentService {
         request.fields['template'] = 'finance';
         request.fields['driver'] = 'weasy';
 
-        String formatPdfAmount(double val) {
-          final s = val.toStringAsFixed(0);
-          final buf = StringBuffer();
-          final len = s.length;
-          for (int i = 0; i < len; i++) {
-            if (i > 0 && (len - i) % 3 == 0) {
-              buf.write(',');
-            }
-            buf.write(s[i]);
-          }
-          return buf.toString();
-        }
-
-        final dataMap = <String, dynamic>{
-          'copyForLabel': 'Student',
-          'title': detail.paySlipTitle,
-          'subTitle': '${detail.semesterSession} Undergraduate Programme',
-          'studentId': detail.studentId,
-          'payslipNo': detail.payslipNumber,
-          'name': detail.studentName,
-          'generationDate': detail.payslipGenerationDate ?? '',
-          'programCourseLabel': 'Programme',
-          'programOrcourse': detail.programOrCourseName,
-          'contactNo': detail.contactNo ?? '',
-          'address': detail.presentAddress ?? '',
-          'registrationSlipColumns': true,
-          'isCourseList': detail.courseList.isNotEmpty,
-          'totalFinancialCredits': detail.totalFinancialCredits.toString(),
-          'totalAcademicCredits': detail.totalAcademicCredits.toString(),
-          'totalCourseAmount': formatPdfAmount(detail.totalCourseAmount),
-          'hasQuantity': false,
-          'payslipCourseList': detail.courseList
-              .map(
-                (c) => <String, dynamic>{
-                  'courseId': c.courseCode,
-                  'courseTitle': c.courseTitle,
-                  'academicCredits': c.academicCredit.toString(),
-                  'financialCredits': c.financialCredit.toString(),
-                  'regDate': c.registrationDate ?? '',
-                  'amount': formatPdfAmount(c.amount),
-                  'rpRt': 'N/M',
-                },
-              )
-              .toList(),
-          'particularsList': detail.particulars.map((p) {
-            final m = <String, dynamic>{
-              'className': p.type == 'AGGREGATION' || p.type == 'WORDS'
-                  ? 'font-bold'
-                  : '',
-              'colspan': p.type == 'WORDS' ? 2 : 1,
-              'title': p.particular,
-            };
-            if (p.amount != null) {
-              m['amount'] = formatPdfAmount(p.amount!);
-            }
-            return m;
-          }).toList(),
-          'bankingInformationHint':
-              'Please deposit the net payable amount to any of the above mentioned banks. Please avoid Cheque, PO, Agent Banking, CDM, BEFTN, RTGS, NPSB.',
-          'bankingInformationList': banks
-              .map(
-                (b) => <String, dynamic>{
-                  'bankName': b.bankName,
-                  'accName': b.accountName,
-                  'accNo': b.accountNumber,
-                },
-              )
-              .toList(),
-          'deadLine': detail.deadlineFormatted,
-          'isPaid': detail.isPaid,
-          'expired': detail.isPaid ? false : detail.isExpired,
-        };
-
-        request.fields['data'] = jsonEncode(dataMap);
+        request.fields['data'] = jsonEncode(detail.printData(banks));
         return request.send();
       }
 
@@ -989,6 +918,7 @@ class PayslipCourseItem {
     required this.financialCredit,
     required this.amount,
     this.registrationDate,
+    this.retakeOrRepeat = 'N/M',
   });
 
   final String courseCode;
@@ -997,6 +927,7 @@ class PayslipCourseItem {
   final num financialCredit;
   final double amount;
   final String? registrationDate;
+  final String retakeOrRepeat;
 
   factory PayslipCourseItem.fromJson(Map<String, dynamic> json) {
     return PayslipCourseItem(
@@ -1006,6 +937,9 @@ class PayslipCourseItem {
       financialCredit: (json['financialCredit'] as num?) ?? 0,
       amount: (json['amount'] as num?)?.toDouble() ?? 0.0,
       registrationDate: json['registrationDate']?.toString(),
+      retakeOrRepeat: (json['retakeOrRepeat']?.toString().trim() ?? '').isEmpty
+          ? 'N/M'
+          : json['retakeOrRepeat'].toString().trim(),
     );
   }
 }
@@ -1076,6 +1010,8 @@ class PayslipDetail {
     this.contactNo,
     this.presentAddress,
     this.payslipGenerationDate,
+    this.academicDegree = '',
+    this.installmentNumber,
     required this.courseList,
     required this.particulars,
   });
@@ -1093,6 +1029,8 @@ class PayslipDetail {
   final String? contactNo;
   final String? presentAddress;
   final String? payslipGenerationDate;
+  final String academicDegree;
+  final int? installmentNumber;
   final List<PayslipCourseItem> courseList;
   final List<PayslipParticular> particulars;
 
@@ -1117,6 +1055,8 @@ class PayslipDetail {
       contactNo: json['contactNo']?.toString(),
       presentAddress: json['presentAddress']?.toString(),
       payslipGenerationDate: json['payslipGenerationDate']?.toString(),
+      academicDegree: json['academicDegree']?.toString() ?? '',
+      installmentNumber: (json['installmentNumber'] as num?)?.toInt(),
       courseList: coursesRaw is List
           ? coursesRaw
                 .whereType<Map<String, dynamic>>()
@@ -1141,13 +1081,94 @@ class PayslipDetail {
   double get totalCourseAmount =>
       courseList.fold(0.0, (sum, item) => sum + item.amount);
 
-  String get deadlineFormatted {
-    if (deadline == null || deadline!.isEmpty) return '';
-    try {
-      final dt = DateTime.parse(deadline!);
-      return AppTime.formatDayMonthYear(dt);
-    } catch (_) {
-      return deadline!;
-    }
+  String get deadlineFormatted =>
+      AppTime.formatCampusTime(deadline, 'd MMMM y');
+
+  static String _pdfAmount(num amount) =>
+      NumberFormat.decimalPattern('en_US').format(amount.round());
+
+  static bool _isNetPayable(PayslipParticular row) =>
+      row.particular.toLowerCase().startsWith('net payable');
+
+  List<Map<String, dynamic>> get printParticulars {
+    final shown = particulars
+        .where(
+          (p) =>
+              _isNetPayable(p) || !(p.type == 'NORMAL' && (p.amount ?? 0) == 0),
+        )
+        .toList();
+    final net = shown.where(_isNetPayable).lastOrNull;
+    final words = shown
+        .where((p) => p.type == 'WORDS' && p.particular.startsWith('In Words'))
+        .lastOrNull;
+    return <PayslipParticular>[
+      ...shown.where((p) => !identical(p, net) && !identical(p, words)),
+      ?net,
+      ?words,
+    ].map((p) {
+      return <String, dynamic>{
+        'className': p.type == 'NORMAL' && !_isNetPayable(p) ? '' : 'font-bold',
+        'colspan': p.type == 'WORDS' ? 2 : 1,
+        'title': p.particular,
+        if (p.amount != null) 'amount': _pdfAmount(p.amount!),
+      };
+    }).toList();
+  }
+
+  Map<String, dynamic> printData(List<BankConfig> banks) {
+    final degree = titleCaseWords(academicDegree);
+    final registeredOn = AppTime.formatCampusTime(
+      payslipGenerationDate,
+      'MM/dd/yyyy hh:mm a',
+    );
+    return <String, dynamic>{
+      'copyForLabel': 'Student',
+      'title': paySlipTitle,
+      'subTitle':
+          '$semesterSession ${degree.isEmpty ? 'Undergraduate' : degree} Programme',
+      'studentId': studentId,
+      'payslipNo': payslipNumber,
+      'name': studentName,
+      'generationDate': AppTime.formatCampusTime(
+        payslipGenerationDate,
+        'd-MMM-yyyy hh:mm a',
+      ),
+      'programCourseLabel': 'Programme',
+      'programOrcourse': programOrCourseName,
+      'contactNo': contactNo ?? '',
+      'address': presentAddress ?? '',
+      'registrationSlipColumns': true,
+      'isCourseList': courseList.isNotEmpty,
+      'totalFinancialCredits': totalFinancialCredits.toString(),
+      'totalAcademicCredits': totalAcademicCredits.toString(),
+      'totalCourseAmount': _pdfAmount(totalCourseAmount),
+      'hasQuantity': false,
+      'payslipCourseList': [
+        for (final course in courseList)
+          <String, dynamic>{
+            'courseId': course.courseCode,
+            'courseTitle': course.courseTitle,
+            'academicCredits': course.academicCredit.toString(),
+            'financialCredits': course.financialCredit.toString(),
+            'regDate': registeredOn,
+            'amount': _pdfAmount(course.amount),
+            'rpRt': course.retakeOrRepeat,
+          },
+      ],
+      'particularsList': printParticulars,
+      'bankingInformationHint':
+          'Please deposit the net payable amount to any of the above mentioned banks. Please avoid Cheque, PO, Agent Banking, CDM, BEFTN, RTGS, NPSB.',
+      'bankingInformationList': [
+        for (final bank in banks)
+          <String, dynamic>{
+            'bankName': bank.bankName,
+            'accName': bank.accountName,
+            'accNo': bank.accountNumber,
+          },
+      ],
+      'deadLine': deadlineFormatted,
+      'isPaid': isPaid,
+      'expired': isPaid ? false : isExpired,
+    };
   }
 }
