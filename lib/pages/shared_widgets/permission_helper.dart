@@ -144,6 +144,7 @@ class AppPermissionHelper {
       title: 'Permissions',
       subtitle:
           'Allow what you need now. You can change these anytime in Settings.',
+      actions: _skipAction,
       initialChildSize: 0.52,
       showClose: false,
       dismissible: false,
@@ -165,6 +166,7 @@ class AppPermissionHelper {
       context,
       title: 'Permissions',
       subtitle: 'Review what PreConnect can access.',
+      actions: _skipAction,
       initialChildSize: 0.7,
       showClose: false,
       dismissible: false,
@@ -175,6 +177,15 @@ class AppPermissionHelper {
 
     _initNotificationsIfGranted();
   }
+
+  static final List<Widget> _skipAction = [
+    Builder(
+      builder: (sheetContext) => AppHeaderTextAction(
+        label: 'Skip',
+        onTap: () => Navigator.of(sheetContext).pop(),
+      ),
+    ),
+  ];
 
   static void _initNotificationsIfGranted() {
     Permission.notification.status.then((status) {

@@ -395,108 +395,25 @@ extension _HomeDashboardView on _HomeDashboardState {
                                           title: 'Quick Access',
                                         ),
                                       ),
-                                      Row(
-                                        children: [
-                                          InkWell(
-                                            borderRadius: BorderRadius.circular(
-                                              8,
-                                            ),
-                                            onTap: () async {
-                                              await InAppReviewPrompt.rate();
-                                            },
-                                            child: Padding(
-                                              padding:
-                                                  const EdgeInsets.symmetric(
-                                                    horizontal: 6,
-                                                    vertical: 2,
-                                                  ),
-                                              child: Row(
-                                                mainAxisSize: MainAxisSize.min,
-                                                children: [
-                                                  SizedBox(
-                                                    width: 16,
-                                                    child: Icon(
-                                                      Icons.star_border_rounded,
-                                                      size: 17,
-                                                      color:
-                                                          AppPalette.textPrimary(
-                                                            context,
-                                                          ),
-                                                    ),
-                                                  ),
-                                                  const Gap(6),
-                                                  Text(
-                                                    'Rate',
-                                                    softWrap: false,
-                                                    style: TextStyle(
-                                                      fontSize: 16,
-                                                      fontWeight:
-                                                          FontWeight.w600,
-                                                      color:
-                                                          AppPalette.textPrimary(
-                                                            context,
-                                                          ),
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                            ),
+                                      AppHeaderTextAction(
+                                        label: 'Rate',
+                                        icon: Icons.star_border_rounded,
+                                        iconSize: 17,
+                                        onTap: InAppReviewPrompt.rate,
+                                      ),
+                                      const Gap(4),
+                                      AppHeaderTextAction(
+                                        label: 'Share',
+                                        icon: Icons.share_outlined,
+                                        onTap: () => SharePlus.instance.share(
+                                          ShareParams(
+                                            text:
+                                                'PreConnect • Prepare. Connect. Succeed.\n\n'
+                                                '${ApiConfig.storeLinksText}',
+                                            subject:
+                                                'PreConnect • Prepare. Connect. Succeed.',
                                           ),
-                                          const Gap(4),
-                                          InkWell(
-                                            borderRadius: BorderRadius.circular(
-                                              8,
-                                            ),
-                                            onTap: () async {
-                                              await SharePlus.instance.share(
-                                                ShareParams(
-                                                  text:
-                                                      'PreConnect • Prepare. Connect. Succeed.\n\n'
-                                                      '${ApiConfig.storeLinksText}',
-                                                  subject:
-                                                      'PreConnect • Prepare. Connect. Succeed.',
-                                                ),
-                                              );
-                                            },
-                                            child: Padding(
-                                              padding:
-                                                  const EdgeInsets.symmetric(
-                                                    horizontal: 6,
-                                                    vertical: 2,
-                                                  ),
-                                              child: Row(
-                                                mainAxisSize: MainAxisSize.min,
-                                                children: [
-                                                  SizedBox(
-                                                    width: 16,
-                                                    child: Icon(
-                                                      Icons.share_outlined,
-                                                      size: 14,
-                                                      color:
-                                                          AppPalette.textPrimary(
-                                                            context,
-                                                          ),
-                                                    ),
-                                                  ),
-                                                  const Gap(6),
-                                                  Text(
-                                                    'Share',
-                                                    softWrap: false,
-                                                    style: TextStyle(
-                                                      fontSize: 16,
-                                                      fontWeight:
-                                                          FontWeight.w600,
-                                                      color:
-                                                          AppPalette.textPrimary(
-                                                            context,
-                                                          ),
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                            ),
-                                          ),
-                                        ],
+                                        ),
                                       ),
                                     ],
                                   ),

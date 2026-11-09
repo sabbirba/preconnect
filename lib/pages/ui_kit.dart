@@ -915,32 +915,14 @@ class FundingShareButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final textPrimary = AppPalette.textPrimary(context);
-    return InkWell(
-      borderRadius: BorderRadius.circular(8),
+    return AppHeaderTextAction(
+      label: 'Share',
+      icon: Icons.share_outlined,
+      fontSize: 15,
       onTap: () => SharePlus.instance.share(
         ShareParams(
           uri: Uri.parse(ApiConfig.fundingUrl),
           subject: 'Support PreConnect',
-        ),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.share_outlined, size: 14, color: textPrimary),
-            const Gap(6),
-            Text(
-              'Share',
-              softWrap: false,
-              style: TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.w600,
-                color: textPrimary,
-              ),
-            ),
-          ],
         ),
       ),
     );

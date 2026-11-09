@@ -1448,3 +1448,53 @@ class _SlidingGradientTransform extends GradientTransform {
     );
   }
 }
+
+class AppHeaderTextAction extends StatelessWidget {
+  const AppHeaderTextAction({
+    super.key,
+    required this.label,
+    required this.onTap,
+    this.icon,
+    this.iconSize = 14,
+    this.fontSize = 16,
+  });
+
+  final String label;
+  final VoidCallback onTap;
+  final IconData? icon;
+  final double iconSize;
+  final double fontSize;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = AppPalette.textPrimary(context);
+    return InkWell(
+      borderRadius: BorderRadius.circular(8),
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (icon != null) ...[
+              SizedBox(
+                width: 16,
+                child: Icon(icon, size: iconSize, color: color),
+              ),
+              const Gap(6),
+            ],
+            Text(
+              label,
+              softWrap: false,
+              style: TextStyle(
+                fontSize: fontSize,
+                fontWeight: FontWeight.w600,
+                color: color,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
