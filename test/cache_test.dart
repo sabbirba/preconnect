@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -84,6 +85,41 @@ void main() {
       await client.authenticatedGet(url);
       await client.authenticatedGet(url, bypassCache: true);
       expect(requests, 4);
+    },
+  );
+
+  test(
+    'forced refreshes revalidate with ETags and keep non-Latin bodies on 304',
+    () async {
+      const body = '[{"title":"নোটিশ “Fall 2026”"}]';
+      final sentEtags = <String?>[];
+      final client = ApiClient.testing(
+        MockClient((request) async {
+          sentEtags.add(request.headers['If-None-Match']);
+          if (request.headers['If-None-Match'] == 'W/"v1"') {
+            return http.Response('', 304, headers: {'etag': 'W/"v1"'});
+          }
+          return http.Response.bytes(
+            utf8.encode(body),
+            200,
+            headers: {
+              'etag': 'W/"v1"',
+              'content-type': 'application/json; charset=utf-8',
+            },
+          );
+        }),
+      );
+      const url = 'https://api.preconnect.app/announcements.json';
+      expect((await client.publicGet(url)).body, body);
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+      final revalidated = await client.publicGet(
+        url,
+        cacheDuration: Duration.zero,
+      );
+      expect(sentEtags, [null, 'W/"v1"']);
+      expect(revalidated.statusCode, 200);
+      expect(revalidated.body, body);
+      expect(revalidated.headers['etag'], 'W/"v1"');
     },
   );
 

@@ -132,7 +132,7 @@ class MyApp extends StatefulWidget {
     unawaited(NotificationsPage.preloadData());
     DatasetSync.instance.startLive();
     if (hasToken) {
-      unawaited(MercureService().connect());
+      MercureService().connect();
     }
 
     return AppBootstrapState(
@@ -156,7 +156,7 @@ class MyApp extends StatefulWidget {
   static Future<void> _warmStartupCaches({bool forceRefresh = false}) async {
     try {
       unawaited(HttpUtils.warmConnections());
-      unawaited(MercureService().connect());
+      MercureService().connect();
       unawaited(fetchCampusMapData(forceRefresh: forceRefresh));
       unawaited(fetchTransportScheduleUrl(forceRefresh: forceRefresh));
       unawaited(FundingService.fetchStatus(forceRefresh: forceRefresh));
@@ -538,7 +538,7 @@ class _MyAppState extends State<MyApp>
     if (state == AppLifecycleState.resumed) {
       DatasetSync.instance.startLive();
       if (_initialLoggedIn) {
-        unawaited(MercureService().connect());
+        MercureService().connect();
       }
       unawaited(_consumePendingShortcutAction());
       unawaited(_refreshAndUnlockIfNeeded());
@@ -565,7 +565,7 @@ class _MyAppState extends State<MyApp>
         results.isNotEmpty && results.any((r) => r != ConnectivityResult.none);
     if (isOnline) {
       if (_initialLoggedIn) {
-        unawaited(MercureService().connect());
+        MercureService().connect();
       }
       unawaited(triggerAppRefresh(forceRefresh: true));
     }

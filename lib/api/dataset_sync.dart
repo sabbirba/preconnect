@@ -14,11 +14,10 @@ import 'package:preconnect/api/schedule.dart';
 import 'package:preconnect/model/section_info.dart';
 import 'package:preconnect/tools/app_log.dart';
 import 'package:preconnect/tools/app_storage.dart';
-import 'package:preconnect/tools/http/http_utils.dart';
-import 'package:preconnect/tools/reconnect_backoff.dart';
-import 'package:preconnect/tools/refresh_bus.dart';
 import 'package:preconnect/tools/holiday.dart';
 import 'package:preconnect/tools/ramadan.dart';
+import 'package:preconnect/tools/refresh_bus.dart';
+import 'package:preconnect/tools/sse_client.dart';
 import 'package:preconnect/tools/storage_keys.dart';
 
 class DatasetSync {
@@ -28,10 +27,12 @@ class DatasetSync {
   static const String manifestUrl =
       '${ApiConfig.realtimeApiBase}/sync/manifest';
   static const String streamUrl = '${ApiConfig.realtimeApiBase}/sync/stream';
-  static const String datasetUpdatedType = 'dataset_updated';
   static const int parallelDownloads = 4;
+  static const List<Duration> staleRetryDelays = <Duration>[
+    Duration(seconds: 1),
+    Duration(seconds: 2),
+  ];
   static const String _versionsKey = 'dataset_versions_v1';
-  static const Duration _streamSilence = Duration(seconds: 20);
 
   static const Map<String, String> datasetUrls = <String, String>{
     'announcements': ApiConfig.announcementFeedUrl,
@@ -57,36 +58,56 @@ class DatasetSync {
     'materials': 'materials',
   };
 
+  late final SseClient _live = SseClient(
+    name: 'Sync',
+    request: () async => http.Request('GET', Uri.parse(streamUrl)),
+    onEvent: (_, data) => unawaited(applyVersions(decodeVersions(data))),
+    silence: const Duration(seconds: 20),
+  );
   Future<void>? _manifestCheck;
   Future<void> _versionQueue = Future<void>.value();
-  int _liveGeneration = 0;
-  StreamSubscription<String>? _liveLines;
-  Completer<void>? _liveFinished;
+
+  void startLive() {
+    if (!kIsWeb) _live.start();
+  }
+
+  void stopLive() => _live.stop();
 
   Future<void> checkManifest() {
-    return _manifestCheck ??= _checkManifest().whenComplete(
-      () => _manifestCheck = null,
-    );
+    return _manifestCheck ??= ApiClient()
+        .tryPublicJson(manifestUrl, cacheDuration: Duration.zero)
+        .then((payload) => applyVersions(versionsFrom(payload)))
+        .whenComplete(() => _manifestCheck = null);
   }
 
-  Future<void> _checkManifest() async {
-    final payload = await ApiClient().tryPublicJson(
-      manifestUrl,
-      cacheDuration: Duration.zero,
-    );
-    if (payload is Map) await applyVersions(versionsFrom(payload));
+  Future<void> applyPush(Map<String, dynamic> data) async {
+    try {
+      final versions = decodeVersions('${data['manifest'] ?? ''}');
+      await (versions.isEmpty ? checkManifest() : applyVersions(versions));
+    } catch (error) {
+      unawaited(AppLog.write('Push sync failed: $error'));
+    }
   }
 
-  static Map<String, String> versionsFrom(Map<dynamic, dynamic> payload) {
-    final datasets = payload['datasets'];
-    if (datasets is! Map) return const <String, String>{};
-    return <String, String>{
-      for (final entry in datasets.entries)
-        if (entry.value case {
-          'version': final String version,
-        } when version.isNotEmpty)
-          '${entry.key}': version,
-    };
+  static Map<String, String> versionsFrom(Object? payload) {
+    if (payload case {'datasets': final Map<dynamic, dynamic> datasets}) {
+      return <String, String>{
+        for (final entry in datasets.entries)
+          if (entry.value case {
+            'version': final String version,
+          } when version.isNotEmpty)
+            '${entry.key}': version,
+      };
+    }
+    return const <String, String>{};
+  }
+
+  static Map<String, String> decodeVersions(String raw) {
+    try {
+      return versionsFrom(jsonDecode(raw));
+    } catch (_) {
+      return const <String, String>{};
+    }
   }
 
   static List<String> changedDatasets(
@@ -98,7 +119,14 @@ class DatasetSync {
         entry.key,
   ];
 
+  static String compactEtag(String? etag) =>
+      (etag ?? '').replaceFirst(RegExp(r'^W/'), '').replaceAll('"', '').trim();
+
+  static bool isFreshResponse(Map<String, String> headers, String version) =>
+      compactEtag(headers['etag']) == version;
+
   Future<void> applyVersions(Map<String, String> remote) {
+    if (remote.isEmpty) return Future<void>.value();
     final queued = _versionQueue.then((_) => _applyVersions(remote));
     _versionQueue = queued.catchError((Object _) {});
     return queued;
@@ -108,94 +136,79 @@ class DatasetSync {
     final known = await _knownVersions();
     final changed = changedDatasets(remote, known);
     if (changed.isEmpty) return;
-    final refreshed = await refresh(changed, expected: remote);
-    if (refreshed.isEmpty) return;
-    await _saveVersions(<String, String>{
-      ...known,
-      for (final dataset in refreshed) dataset: ?remote[dataset],
-    });
-  }
-
-  Future<Set<String>> refresh(
-    Iterable<String> datasets, {
-    Map<String, String> expected = const <String, String>{},
-  }) async {
-    final pending = datasets.where(datasetUrls.containsKey).toSet().toList();
     final fresh = <String>{};
-    await runInParallel(pending, parallelDownloads, (dataset) async {
-      if (await _downloadMatches(dataset, expected[dataset])) {
-        fresh.add(dataset);
-      }
+    await runInParallel(changed, parallelDownloads, (dataset) async {
+      if (await _download(dataset, remote[dataset]!)) fresh.add(dataset);
     });
+    if (fresh.isEmpty) return;
     await _refreshOwners(fresh);
-    for (final reason in fresh.map(_reasonFor).toSet()) {
+    for (final reason in fresh.map((d) => _refreshReasons[d] ?? 'datasets')) {
       RefreshBus.instance.notify(reason: reason);
     }
-    return fresh;
+    await RepositoryCache.instance.writeJson(_versionsKey, <String, String>{
+      ...known,
+      for (final dataset in fresh) dataset: remote[dataset]!,
+    });
   }
 
-  static String compactEtag(String? etag) =>
-      (etag ?? '').replaceFirst(RegExp(r'^W/'), '').replaceAll('"', '').trim();
-
-  static bool isFreshResponse(
-    Map<String, String> headers,
-    String? expectedVersion,
-  ) {
-    final version = compactEtag(headers['etag']);
-    if (version.isEmpty) return false;
-    return expectedVersion == null || version == expectedVersion;
+  Future<Map<String, String>> _knownVersions() async {
+    final saved = await RepositoryCache.instance.readJsonMap(_versionsKey);
+    return <String, String>{
+      for (final entry in (saved ?? const <String, dynamic>{}).entries)
+        if (entry.value is String) entry.key: entry.value as String,
+    };
   }
 
-  Future<bool> _downloadMatches(String dataset, String? expectedVersion) async {
-    try {
-      final response = await ApiClient().publicGet(
-        datasetUrls[dataset]!,
-        cacheDuration: Duration.zero,
-      );
-      final fresh = isFreshResponse(response.headers, expectedVersion);
-      if (!fresh) {
-        unawaited(AppLog.write('Dataset not fresh yet ($dataset)'));
+  Future<bool> _download(String dataset, String version) async {
+    for (var attempt = 0; ; attempt++) {
+      try {
+        final response = await ApiClient().publicGet(
+          datasetUrls[dataset]!,
+          cacheDuration: Duration.zero,
+        );
+        if (isFreshResponse(response.headers, version)) return true;
+        if (compactEtag(response.headers['etag']).isEmpty) return false;
+      } catch (error) {
+        unawaited(AppLog.write('Dataset refresh failed ($dataset): $error'));
+        return false;
       }
-      return fresh;
-    } catch (error) {
-      unawaited(AppLog.write('Dataset refresh failed ($dataset): $error'));
-      return false;
+      if (attempt == staleRetryDelays.length) return false;
+      await Future<void>.delayed(staleRetryDelays[attempt]);
     }
   }
-
-  static String _reasonFor(String dataset) =>
-      _refreshReasons[dataset] ?? 'dataset_$dataset';
 
   Future<void> _refreshOwners(Set<String> datasets) async {
-    final owners = <String, Future<void> Function()>{};
-    for (final dataset in datasets) {
-      switch (dataset) {
-        case 'announcements' || 'news':
-          owners['feed'] = () =>
-              NotificationService().getFeedItems(forceRefresh: true);
-        case 'holiday' || 'academic-dates':
-          owners['holiday'] = () =>
-              HolidayTiming.getTodayStatus(forceRefresh: true);
-        case 'ramadan':
-          owners[dataset] = () =>
-              RamadanTiming.getRamadanStatus(forceRefresh: true);
-        case 'map' || 'transport':
-          owners[dataset] = () =>
-              FeedService().refreshPublicFeed(datasetUrls[dataset]!);
-        case 'materials':
-          owners[dataset] = () =>
-              MaterialsService().loadSources(forceRefresh: true);
-        case 'exammap':
-          owners[dataset] = _refreshExamOverrides;
-      }
-    }
+    final owners = <String, Future<void> Function()>{
+      for (final dataset in datasets)
+        ...switch (dataset) {
+          'announcements' || 'news' => {
+            'feed': () =>
+                NotificationService().getFeedItems(forceRefresh: true),
+          },
+          'holiday' || 'academic-dates' => {
+            'holiday': () => HolidayTiming.getTodayStatus(forceRefresh: true),
+          },
+          'ramadan' => {
+            dataset: () => RamadanTiming.getRamadanStatus(forceRefresh: true),
+          },
+          'map' || 'transport' => {
+            dataset: () =>
+                FeedService().refreshPublicFeed(datasetUrls[dataset]!),
+          },
+          'materials' => {
+            dataset: () => MaterialsService().loadSources(forceRefresh: true),
+          },
+          'exammap' => {dataset: _refreshExamOverrides},
+          _ => const <String, Future<void> Function()>{},
+        },
+    };
     await Future.wait(
       owners.entries.map((owner) async {
         try {
           await owner.value();
         } catch (error) {
           unawaited(
-            AppLog.write('Dataset cache refresh failed (${owner.key}): $error'),
+            AppLog.write('Cache refresh failed (${owner.key}): $error'),
           );
         }
       }),
@@ -229,182 +242,5 @@ class DatasetSync {
     await Future.wait(<Future<void>>[
       for (var i = 0; i < math.min(limit, items.length); i++) worker(),
     ]);
-  }
-
-  Future<void> applyPush(Map<String, dynamic> data) async {
-    final type = _pushType(data);
-    if (type.isEmpty) return;
-    try {
-      if (type == datasetUpdatedType) {
-        final versions = pushVersions(data);
-        if (versions.isNotEmpty) {
-          await applyVersions(versions);
-          return;
-        }
-        await refresh(
-          '${data['datasets'] ?? ''}'
-              .split(',')
-              .map((dataset) => dataset.trim())
-              .where((dataset) => dataset.isNotEmpty),
-        );
-        return;
-      }
-      await _applyLegacyPush(type);
-    } catch (error) {
-      unawaited(AppLog.write('Background sync error ($type): $error'));
-    }
-  }
-
-  static Map<String, String> pushVersions(Map<String, dynamic> data) {
-    try {
-      final decoded = jsonDecode('${data['versions'] ?? ''}');
-      if (decoded is! Map) return const <String, String>{};
-      return <String, String>{
-        for (final entry in decoded.entries)
-          if (entry.value case final String version when version.isNotEmpty)
-            '${entry.key}': version,
-      };
-    } catch (_) {
-      return const <String, String>{};
-    }
-  }
-
-  static String _pushType(Map<String, dynamic> data) =>
-      (data['type'] ??
-              data['sync_type'] ??
-              data['event'] ??
-              data['category'] ??
-              data['module'] ??
-              data['source'] ??
-              data['topic'] ??
-              '')
-          .toString()
-          .trim()
-          .toLowerCase();
-
-  Future<void> _applyLegacyPush(String type) async {
-    if (type.contains('exam')) {
-      await refresh(const <String>['exammap']);
-    } else if (type.contains('material')) {
-      await refresh(const <String>['materials']);
-    } else if (type.contains('notice') ||
-        type.contains('announcement') ||
-        type.contains('news') ||
-        type.contains('notification')) {
-      await refresh(const <String>['announcements', 'news']);
-      await NotificationService().fetchRecentNotifications();
-      RefreshBus.instance.notify(reason: 'notices');
-    } else if (type.contains('holiday')) {
-      await refresh(const <String>['holiday', 'academic-dates']);
-    } else if (type.contains('prerequisite')) {
-      await refresh(const <String>['course-prerequisites']);
-    } else if (type.contains('bus')) {
-      RefreshBus.instance.notify(reason: 'bus');
-    } else if (type.contains('seat')) {
-      RefreshBus.instance.notify(reason: 'seat_status');
-    } else if (type.contains('wifi')) {
-      RefreshBus.instance.notify(reason: 'wifi');
-    } else if (type.contains('printer')) {
-      RefreshBus.instance.notify(reason: 'printer');
-    } else if (type.contains('general')) {
-      RefreshBus.instance.notify(reason: 'general');
-    } else if (type.contains('all') || type == 'sync') {
-      await RepositoryCache.instance.remove(StorageKeys.examMapIndex);
-      await refresh(datasetUrls.keys);
-      RefreshBus.instance.notify(reason: 'global_sync');
-    }
-  }
-
-  Future<Map<String, String>> _knownVersions() async {
-    final raw = await AppStorage.instance.getString(_versionsKey);
-    if (raw == null || raw.isEmpty) return <String, String>{};
-    try {
-      final decoded = jsonDecode(raw);
-      if (decoded is! Map) return <String, String>{};
-      return <String, String>{
-        for (final entry in decoded.entries)
-          if (entry.value is String) '${entry.key}': entry.value as String,
-      };
-    } catch (_) {
-      return <String, String>{};
-    }
-  }
-
-  Future<void> _saveVersions(Map<String, String> versions) {
-    return AppStorage.instance.setString(_versionsKey, jsonEncode(versions));
-  }
-
-  void startLive() {
-    if (kIsWeb) return;
-    stopLive();
-    unawaited(_runLive(_liveGeneration));
-  }
-
-  void stopLive() {
-    _liveGeneration++;
-    unawaited(_liveLines?.cancel());
-    _liveLines = null;
-    final finished = _liveFinished;
-    if (finished != null && !finished.isCompleted) finished.complete();
-    _liveFinished = null;
-  }
-
-  Future<void> _runLive(int generation) async {
-    final backoff = ReconnectBackoff(
-      min: const Duration(seconds: 1),
-      max: const Duration(seconds: 30),
-    );
-    while (generation == _liveGeneration) {
-      try {
-        final request = http.Request('GET', Uri.parse(streamUrl))
-          ..headers['accept'] = 'text/event-stream'
-          ..headers['cache-control'] = 'no-cache';
-        final response = await HttpUtils.client.send(request);
-        if (generation != _liveGeneration || response.statusCode != 200) {
-          await response.stream.listen(null).cancel();
-        } else {
-          backoff.reset();
-          await _consumeLive(response.stream, generation);
-        }
-      } catch (error) {
-        unawaited(AppLog.write('Dataset stream error: $error'));
-      }
-      if (generation != _liveGeneration) return;
-      await Future<void>.delayed(backoff.next());
-    }
-  }
-
-  Future<void> _consumeLive(Stream<List<int>> body, int generation) {
-    final finished = _liveFinished = Completer<void>();
-    _liveLines = body
-        .transform(utf8.decoder)
-        .transform(const LineSplitter())
-        .timeout(_streamSilence, onTimeout: (sink) => sink.close())
-        .listen(
-          (line) {
-            if (generation != _liveGeneration || !line.startsWith('data:')) {
-              return;
-            }
-            final versions = parseStreamVersions(line.substring(5).trim());
-            if (versions.isNotEmpty) unawaited(applyVersions(versions));
-          },
-          onError: (Object _) {
-            if (!finished.isCompleted) finished.complete();
-          },
-          onDone: () {
-            if (!finished.isCompleted) finished.complete();
-          },
-          cancelOnError: true,
-        );
-    return finished.future;
-  }
-
-  static Map<String, String> parseStreamVersions(String data) {
-    try {
-      final decoded = jsonDecode(data);
-      return decoded is Map ? versionsFrom(decoded) : const <String, String>{};
-    } catch (_) {
-      return const <String, String>{};
-    }
   }
 }

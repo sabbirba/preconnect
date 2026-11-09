@@ -52,6 +52,8 @@ class ApiClient {
   final Map<String, _CachedHttpResponse> _cachedResponses =
       <String, _CachedHttpResponse>{};
   static const Duration _requestTimeout = Duration(seconds: 12);
+  static const String _cachedJsonContentType =
+      'application/json; charset=utf-8';
   static const Duration _defaultGetCacheTtl = Duration(seconds: 2);
   static const Duration _accessTokenCacheTtl = Duration(seconds: 2);
 
@@ -434,7 +436,10 @@ class ApiClient {
           response = http.Response(
             cachedBody,
             200,
-            headers: response.headers,
+            headers: <String, String>{
+              ...response.headers,
+              'content-type': _cachedJsonContentType,
+            },
             request: response.request,
             isRedirect: response.isRedirect,
             persistentConnection: response.persistentConnection,
@@ -473,7 +478,9 @@ class ApiClient {
         return http.Response(
           cachedBody,
           200,
-          headers: const <String, String>{'content-type': 'application/json'},
+          headers: const <String, String>{
+            'content-type': _cachedJsonContentType,
+          },
           reasonPhrase: 'OK',
         );
       }

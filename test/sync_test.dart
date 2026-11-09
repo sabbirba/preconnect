@@ -23,14 +23,12 @@ void main() {
     expect(changed, ['holiday', 'map']);
   });
 
-  test('parses live stream events and tolerates broken data', () {
-    expect(
-      DatasetSync.parseStreamVersions(
-        '{"datasets":{"materials":{"version":"v3","updatedAt":"x"}}}',
-      ),
-      {'materials': 'v3'},
-    );
-    expect(DatasetSync.parseStreamVersions('not json'), isEmpty);
+  test('reads the same payload shape from the stream and the push', () {
+    const payload =
+        '{"datasets":{"materials":{"version":"v3","updatedAt":"x"}}}';
+    expect(DatasetSync.decodeVersions(payload), {'materials': 'v3'});
+    expect(DatasetSync.decodeVersions('not json'), isEmpty);
+    expect(DatasetSync.decodeVersions(''), isEmpty);
   });
 
   test('runs downloads in parallel without passing the limit', () async {
@@ -54,22 +52,9 @@ void main() {
     expect(DatasetSync.compactEtag('W/"abc123"'), 'abc123');
     expect(DatasetSync.isFreshResponse({'etag': 'W/"v2"'}, 'v2'), isTrue);
     expect(DatasetSync.isFreshResponse({'etag': 'W/"v1"'}, 'v2'), isFalse);
-    expect(DatasetSync.isFreshResponse({'etag': '"v1"'}, null), isTrue);
     expect(
-      DatasetSync.isFreshResponse({'content-type': 'application/json'}, null),
+      DatasetSync.isFreshResponse({'content-type': 'application/json'}, 'v2'),
       isFalse,
     );
-  });
-
-  test('reads dataset versions sent with a push', () {
-    expect(
-      DatasetSync.pushVersions({
-        'type': 'dataset_updated',
-        'versions': '{"holiday":"h2","news":""}',
-      }),
-      {'holiday': 'h2'},
-    );
-    expect(DatasetSync.pushVersions({'versions': 'broken'}), isEmpty);
-    expect(DatasetSync.pushVersions({'type': 'exam_updated'}), isEmpty);
   });
 }

@@ -3,9 +3,7 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 import 'package:preconnect/api/api_config.dart';
-import 'package:preconnect/tools/app_log.dart';
-import 'package:preconnect/tools/http/http_utils.dart';
-import 'package:preconnect/tools/reconnect_backoff.dart';
+import 'package:preconnect/tools/sse_client.dart';
 
 class SeatCount {
   const SeatCount({
@@ -22,83 +20,23 @@ class SeatCount {
 class SeatStream {
   SeatStream._() {
     _controller = StreamController<List<SeatCount>>.broadcast(
-      onListen: _open,
-      onCancel: _close,
+      onListen: _client.start,
+      onCancel: _client.stop,
     );
   }
 
   static final SeatStream instance = SeatStream._();
 
-  static const Duration _minDelay = Duration(seconds: 1);
-  static const Duration _maxDelay = Duration(seconds: 30);
-  static const Duration _silence = Duration(seconds: 20);
-
   late final StreamController<List<SeatCount>> _controller;
-  StreamSubscription<String>? _lines;
-  int _generation = 0;
+  late final SseClient _client = SseClient(
+    name: 'Seat',
+    request: () async =>
+        http.Request('GET', Uri.parse(ApiConfig.seatStreamUrl)),
+    onEvent: _dispatch,
+    silence: const Duration(seconds: 20),
+  );
 
   Stream<List<SeatCount>> get updates => _controller.stream;
-
-  void _open() {
-    final generation = ++_generation;
-    unawaited(_run(generation));
-  }
-
-  void _close() {
-    _generation++;
-    unawaited(_lines?.cancel());
-    _lines = null;
-  }
-
-  Future<void> _run(int generation) async {
-    final backoff = ReconnectBackoff(min: _minDelay, max: _maxDelay);
-    while (generation == _generation) {
-      try {
-        final request = http.Request('GET', Uri.parse(ApiConfig.seatStreamUrl))
-          ..headers['accept'] = 'text/event-stream'
-          ..headers['cache-control'] = 'no-cache';
-        final response = await HttpUtils.client.send(request);
-        if (generation != _generation) return;
-        if (response.statusCode == 200) {
-          backoff.reset();
-          await _consume(response.stream, generation);
-        }
-      } catch (error) {
-        unawaited(AppLog.write('Seat stream error: $error'));
-      }
-      if (generation != _generation) return;
-      await Future<void>.delayed(backoff.next());
-    }
-  }
-
-  Future<void> _consume(Stream<List<int>> body, int generation) {
-    final finished = Completer<void>();
-    var event = '';
-    _lines = body
-        .transform(utf8.decoder)
-        .transform(const LineSplitter())
-        .timeout(_silence, onTimeout: (sink) => sink.close())
-        .listen(
-          (line) {
-            if (generation != _generation) return;
-            if (line.startsWith('event:')) {
-              event = line.substring(6).trim();
-            } else if (line.startsWith('data:')) {
-              _dispatch(event, line.substring(5).trim());
-            } else if (line.isEmpty) {
-              event = '';
-            }
-          },
-          onError: (Object _) {
-            if (!finished.isCompleted) finished.complete();
-          },
-          onDone: () {
-            if (!finished.isCompleted) finished.complete();
-          },
-          cancelOnError: true,
-        );
-    return finished.future;
-  }
 
   void _dispatch(String event, String data) {
     final counts = parseSeatEvent(event, data);

@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+
 import 'package:http/http.dart' as http;
 import 'package:preconnect/api/api_client.dart';
 import 'package:preconnect/api/api_config.dart';
@@ -7,7 +8,7 @@ import 'package:preconnect/features/schedule/application/session_resolver.dart';
 import 'package:preconnect/tools/app_log.dart';
 import 'package:preconnect/tools/app_logout.dart';
 import 'package:preconnect/tools/http/http_utils.dart';
-import 'package:preconnect/tools/reconnect_backoff.dart';
+import 'package:preconnect/tools/sse_client.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
 
 class MercureService {
@@ -15,109 +16,47 @@ class MercureService {
   factory MercureService() => instance;
   MercureService._internal();
 
-  StreamSubscription<String>? _subscription;
-  http.Client? _client;
-  bool _isConnected = false;
-  bool _isConnecting = false;
-  Timer? _reconnectTimer;
-  final ReconnectBackoff _backoff = ReconnectBackoff(
-    min: const Duration(seconds: 3),
-    max: const Duration(seconds: 30),
+  late final SseClient _sse = SseClient(
+    name: 'Mercure',
+    request: _hubRequest,
+    onEvent: (_, data) => _handleData(data),
+    minDelay: const Duration(seconds: 3),
   );
 
-  Future<void> connect() async {
-    if (_isConnected || _isConnecting) return;
-    _isConnecting = true;
-    _reconnectTimer?.cancel();
+  void connect() => _sse.start();
 
+  void disconnect() => _sse.stop();
+
+  Future<http.BaseRequest?> _hubRequest() async {
+    final token = await ApiClient().getAccessToken();
+    if (token == null || token.isEmpty) return null;
+    String? cookieHeader;
     try {
-      final token = await ApiClient().getAccessToken();
-      if (token == null || token.isEmpty) {
-        _isConnecting = false;
-        return;
-      }
-
-      _client = HttpUtils.client;
-      String? cookieHeader;
-      try {
-        final loginResponse = await _client!.post(
-          AppLogout.mercureLoginUri,
-          headers: AppLogout.mercureLoginHeaders(accessToken: token),
-          body: '{}',
-        );
-        cookieHeader = loginResponse.headers['set-cookie'];
-      } catch (_) {}
-
-      final url = Uri.parse(ApiConfig.connectMercureHubUrl);
-      final request = http.Request('GET', url);
-      request.headers['accept'] = 'text/event-stream';
-      request.headers['authorization'] = 'Bearer $token';
-      request.headers['x-realm'] = 'bracu';
-      request.headers['x-source'] = '3';
-      request.headers['cache-control'] = 'no-cache';
-      if (cookieHeader != null && cookieHeader.isNotEmpty) {
-        request.headers['cookie'] = cookieHeader;
-        final match = RegExp(
-          r'mercureAuthorization=([^;]+)',
-        ).firstMatch(cookieHeader);
-        if (match != null) {
-          final jwt = match.group(1);
-          if (jwt != null && jwt.isNotEmpty) {
-            request.headers['authorization'] = 'Bearer $jwt';
-          }
-        }
-      }
-
-      final response = await _client!.send(request);
-
-      if (response.statusCode == 200) {
-        _isConnected = true;
-        _isConnecting = false;
-        _backoff.reset();
-        unawaited(AppLog.write('Mercure SSE: Hub connected successfully'));
-
-        _subscription = response.stream
-            .transform(utf8.decoder)
-            .transform(const LineSplitter())
-            .listen(
-              _handleSseLine,
-              onError: (error) {
-                unawaited(AppLog.write('Mercure SSE: Stream error ($error)'));
-                _handleDisconnect();
-              },
-              onDone: () {
-                unawaited(
-                  AppLog.write('Mercure SSE: Stream closed by remote hub'),
-                );
-                _handleDisconnect();
-              },
-              cancelOnError: true,
-            );
-      } else {
-        _isConnecting = false;
-        unawaited(
-          AppLog.write(
-            'Mercure SSE: Hub returned status ${response.statusCode}',
-          ),
-        );
-        _scheduleReconnect();
-      }
-    } catch (e) {
-      _isConnecting = false;
-      unawaited(AppLog.write('Mercure SSE Error: Failed to connect ($e)'));
-      _scheduleReconnect();
-    }
+      final loginResponse = await HttpUtils.client.post(
+        AppLogout.mercureLoginUri,
+        headers: AppLogout.mercureLoginHeaders(accessToken: token),
+        body: '{}',
+      );
+      cookieHeader = loginResponse.headers['set-cookie'];
+    } catch (_) {}
+    final jwt = cookieHeader == null
+        ? null
+        : RegExp(r'mercureAuthorization=([^;]+)').firstMatch(cookieHeader)?[1];
+    return http.Request('GET', Uri.parse(ApiConfig.connectMercureHubUrl))
+      ..headers.addAll(<String, String>{
+        'authorization': 'Bearer ${jwt == null || jwt.isEmpty ? token : jwt}',
+        'x-realm': 'bracu',
+        'x-source': '3',
+        if (cookieHeader != null && cookieHeader.isNotEmpty)
+          'cookie': cookieHeader,
+      });
   }
 
-  void _handleSseLine(String line) {
-    if (line.startsWith('data: ')) {
-      final dataStr = line.substring(6).trim();
-      if (dataStr.isEmpty) return;
-      try {
-        final data = jsonDecode(dataStr);
-        _processMercureEvent(data);
-      } catch (_) {}
-    }
+  void _handleData(String data) {
+    if (data.isEmpty) return;
+    try {
+      _processMercureEvent(jsonDecode(data));
+    } catch (_) {}
   }
 
   void _invalidateConnectData() {
@@ -155,30 +94,5 @@ class MercureService {
     }
     unawaited(AppLog.write('Mercure SSE: Received generic event'));
     RefreshBus.instance.notify(reason: 'mercure_event');
-  }
-
-  void _handleDisconnect() {
-    _isConnected = false;
-    _isConnecting = false;
-    _subscription?.cancel();
-    _subscription = null;
-    _scheduleReconnect();
-  }
-
-  void _scheduleReconnect() {
-    _reconnectTimer?.cancel();
-    _reconnectTimer = Timer(_backoff.next(), () {
-      connect();
-    });
-  }
-
-  void disconnect() {
-    _reconnectTimer?.cancel();
-    _backoff.reset();
-    _subscription?.cancel();
-    _subscription = null;
-    _client = null;
-    _isConnected = false;
-    _isConnecting = false;
   }
 }
