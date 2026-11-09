@@ -5,9 +5,13 @@ import 'package:flutter/services.dart';
 import 'package:gap/gap.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:preconnect/api/chat.dart';
+import 'package:preconnect/api/schedule.dart';
 import 'package:preconnect/model/chat.dart';
 import 'package:preconnect/pages/friend_sections/friend_header.dart';
+import 'package:preconnect/model/section_info.dart'
+    show parseSectionsFromScheduleJson;
 import 'package:preconnect/pages/ui_kit.dart';
+import 'package:preconnect/tools/string_utils.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:preconnect/tools/cached_image.dart';
 import 'package:preconnect/tools/image_cache.dart';
@@ -28,12 +32,12 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
   final ScrollController _scroll = ScrollController();
   final Map<String, ChatAuthor> _mentionPicks = <String, ChatAuthor>{};
 
-  List<ChatMessage> _messages = <ChatMessage>[];
-  List<ChatReaction> _reactions = <ChatReaction>[];
+  late List<ChatMessage> _messages = _chat.recent(_room.id).messages;
+  late List<ChatReaction> _reactions = _chat.recent(_room.id).reactions;
   Future<ChatWatch>? _watch;
   ChatMessage? _replyTo;
   List<Uint8List> _images = const <Uint8List>[];
-  bool _loading = true;
+  late bool _loading = !_chat.hasRecent(_room.id);
   bool _loadingOlder = false;
   bool _hasMore = true;
   bool _sending = false;
@@ -42,17 +46,79 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
 
   ChatRoom get _room => widget.room;
 
+  String _classInfo = '';
+
+  Future<void> _loadClassInfo() async {
+    if (_room.kind == ChatRoomKind.lounge) return;
+    final schedule = await ScheduleService().getStudentScheduleForSemester(
+      semesterSessionId: _room.semesterSessionId,
+    );
+    final info = _buildClassInfo(schedule);
+    if (mounted && info.isNotEmpty) setState(() => _classInfo = info);
+  }
+
+  String _buildClassInfo(String? schedule) {
+    final dash = _room.title.lastIndexOf('-');
+    final isSection = _room.kind == ChatRoomKind.section && dash > 0;
+    final code = isSection ? _room.title.substring(0, dash) : _room.title;
+    final name = isSection ? _room.title.substring(dash + 1) : '';
+    final match = parseSectionsFromScheduleJson(schedule).where(
+      (s) =>
+          (s.parentSectionId ?? 0) == 0 &&
+          normalizeCourseCode(s.courseCode) == code &&
+          (!isSection ||
+              normalizeSectionName(s.sectionName) ==
+                  normalizeSectionName(name)),
+    );
+    if (match.isEmpty) return '';
+    final classes = match.first.sectionSchedule.classSchedules;
+    if (classes.isEmpty) return '';
+    final start = classes.first.startTime;
+    final days = classes
+        .where((c) => c.startTime == start)
+        .map((c) => c.day)
+        .toList();
+    return <String>[
+      days
+          .map(formatWeekdayTitle)
+          .where((day) => day.length >= 3)
+          .map((day) => day.substring(0, 3))
+          .join(' '),
+      formatTime(start),
+      roomsForDays(match.first.roomNumber, days),
+    ].where((part) => part.isNotEmpty).join(' · ');
+  }
+
+  String _headerSubtitle() {
+    final current = _chat.rooms.value.where((room) => room.id == _room.id);
+    final count = current.isEmpty
+        ? _room.memberCount
+        : current.first.memberCount;
+    final members = count > 0
+        ? '${formatAmount(count)} ${count == 1 ? 'student' : 'students'}'
+        : '';
+    final parts = <String>[
+      if (_room.kind == ChatRoomKind.lounge) 'Everyone',
+      if (members.isNotEmpty) members,
+      if (_classInfo.isNotEmpty) _classInfo,
+    ];
+    if (parts.isNotEmpty) return parts.join(' · ');
+    return _room.kind == ChatRoomKind.course ? 'Course' : 'Section';
+  }
+
   @override
   void initState() {
     super.initState();
     _chat.activeRoomId = _room.id;
     _scroll.addListener(_onScroll);
     unawaited(_load());
+    unawaited(_loadClassInfo());
   }
 
   @override
   void dispose() {
     if (_chat.activeRoomId == _room.id) _chat.activeRoomId = null;
+    _chat.remember(_room.id, _messages, _reactions);
     _readTimer?.cancel();
     unawaited(_watch?.then((watch) => watch.cancel()));
     _scroll.dispose();
@@ -75,10 +141,7 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
       if (!mounted) return;
       final loaded = messages.map((m) => m.id).toSet();
       setState(() {
-        _messages = <ChatMessage>[
-          ...messages,
-          ..._messages.where((m) => !loaded.contains(m.id)),
-        ];
+        _messages = _merged(messages, _messages);
         _hasMore = messages.length >= ChatService.pageSize;
         _loading = false;
         _error = null;
@@ -102,6 +165,20 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
     } finally {
       if (mounted) setState(() => _loading = false);
     }
+  }
+
+  List<ChatMessage> _merged(
+    List<ChatMessage> fresh,
+    List<ChatMessage> current,
+  ) {
+    final byId = <String, ChatMessage>{
+      for (final message in current) message.id: message,
+      for (final message in fresh) message.id: message,
+    };
+    return byId.values.toList()..sort((a, b) {
+      final order = a.created.compareTo(b.created);
+      return order != 0 ? order : a.id.compareTo(b.id);
+    });
   }
 
   void _onIncoming(ChatMessage message) {
@@ -355,11 +432,7 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
   Widget build(BuildContext context) {
     return AppPageScaffold(
       title: _room.title,
-      subtitle: switch (_room.kind) {
-        ChatRoomKind.lounge => 'Everyone',
-        ChatRoomKind.course => 'Course',
-        ChatRoomKind.section => 'Section',
-      },
+      subtitle: _headerSubtitle(),
       icon: Icons.chat_bubble_outline_rounded,
       actions: [
         if (_room.kind != ChatRoomKind.lounge && _room.active)

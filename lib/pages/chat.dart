@@ -7,8 +7,8 @@ import 'package:preconnect/model/chat.dart';
 import 'package:preconnect/pages/chat_room.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/app_storage.dart';
-
-const String _rulesAcceptedKey = 'chat_rules_accepted_v1';
+import 'package:preconnect/tools/storage_keys.dart';
+import 'package:preconnect/tools/string_utils.dart';
 
 class ChatPage extends StatefulWidget {
   const ChatPage({super.key, this.openRoomId});
@@ -21,36 +21,34 @@ class ChatPage extends StatefulWidget {
 
 class _ChatPageState extends State<ChatPage> {
   final ChatService _chat = ChatService.instance;
-  bool? _rulesAccepted;
+  late bool _rulesAccepted = _chat.rulesAccepted;
   bool _loading = false;
   String? _error;
-
-  Future<ChatWatch>? _watch;
 
   @override
   void initState() {
     super.initState();
-    unawaited(_init());
-  }
-
-  @override
-  void dispose() {
-    unawaited(_watch?.then((watch) => watch.cancel()));
-    super.dispose();
-  }
-
-  Future<void> _init() async {
-    final accepted = await AppStorage.instance.getBool(_rulesAcceptedKey);
-    if (!mounted) return;
-    setState(() => _rulesAccepted = accepted == true);
-    if (accepted == true) await _load();
+    if (_rulesAccepted) {
+      unawaited(_load());
+    } else {
+      unawaited(_chat.preload());
+    }
   }
 
   Future<void> _acceptRules() async {
-    await AppStorage.instance.setBool(_rulesAcceptedKey, true);
-    if (!mounted) return;
     setState(() => _rulesAccepted = true);
+    final saved = AppStorage.instance.setBool(
+      ChatService.rulesAcceptedKey,
+      true,
+    );
     await _load();
+    try {
+      await saved;
+    } catch (_) {
+      if (mounted) {
+        showAppSnackBar(context, 'Chat rules could not be saved.');
+      }
+    }
   }
 
   Future<void> _load() async {
@@ -66,10 +64,7 @@ class _ChatPageState extends State<ChatPage> {
         final match = rooms.where((room) => room.id == target);
         if (match.isNotEmpty) unawaited(_openRoom(match.first));
       }
-      await (_watch ??= _chat.watchRooms()).catchError((Object error) {
-        _watch = null;
-        throw error;
-      });
+      await _chat.keepRoomsLive();
     } on ChatException catch (error) {
       if (mounted) setState(() => _error = error.message);
     } catch (_) {
@@ -90,15 +85,54 @@ class _ChatPageState extends State<ChatPage> {
 
   @override
   Widget build(BuildContext context) {
+    final semester = titleCaseWords(
+      AppStorage.instance.getStringSync(StorageKeys.currentSemester) ?? '',
+    );
     return AppPageScaffold(
       title: 'Chat',
-      subtitle: 'Lounge',
+      subtitle: semester.isEmpty ? 'Lounge' : semester,
       icon: Icons.chat_bubble_outline_rounded,
-      body: switch (_rulesAccepted) {
-        null => const AppLoading(),
-        false => _ChatRules(onAccept: _acceptRules),
-        true => _buildRooms(),
-      },
+      actions: [
+        if (_rulesAccepted)
+          ValueListenableBuilder<Map<String, int>>(
+            valueListenable: _chat.unread,
+            builder: (context, unread, _) => _HeaderButton(
+              tooltip: 'Mark All Read',
+              icon: Icons.done_all_rounded,
+              onPressed: unread.values.any((count) => count > 0)
+                  ? _markAllRead
+                  : null,
+            ),
+          ),
+        if (_rulesAccepted)
+          _HeaderButton(
+            tooltip: 'Chat Rules',
+            icon: Icons.info_outline_rounded,
+            onPressed: _showRules,
+          ),
+      ],
+      body: _rulesAccepted ? _buildRooms() : _ChatRules(onAccept: _acceptRules),
+    );
+  }
+
+  Future<void> _markAllRead() async {
+    try {
+      await _chat.markAllRead();
+    } catch (_) {
+      if (mounted) showAppSnackBar(context, 'Chats could not be marked read.');
+    }
+  }
+
+  Future<void> _showRules() {
+    return showAppBottomSheet<void>(
+      context,
+      title: 'Chat Rules',
+      draggable: false,
+      isScrollControlled: false,
+      builder: (sheetContext, textPrimary, textSecondary) => const Padding(
+        padding: EdgeInsets.only(bottom: 12),
+        child: _RuleList(),
+      ),
     );
   }
 
@@ -204,10 +238,37 @@ class _GroupLabel extends StatelessWidget {
   }
 }
 
-class _ChatRules extends StatelessWidget {
-  const _ChatRules({required this.onAccept});
+class _HeaderButton extends StatelessWidget {
+  const _HeaderButton({
+    required this.tooltip,
+    required this.icon,
+    required this.onPressed,
+  });
 
-  final Future<void> Function() onAccept;
+  final String tooltip;
+  final IconData icon;
+  final VoidCallback? onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return IconButton(
+      tooltip: tooltip,
+      onPressed: onPressed,
+      padding: EdgeInsets.zero,
+      constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+      visualDensity: VisualDensity.compact,
+      icon: Icon(
+        icon,
+        color: onPressed == null
+            ? AppPalette.textSecondary(context)
+            : AppPalette.primary,
+      ),
+    );
+  }
+}
+
+class _RuleList extends StatelessWidget {
+  const _RuleList();
 
   static const List<String> _rules = <String>[
     'Only signed-in BRACU students can join. You are added to the Lounge and to your own course and section rooms automatically.',
@@ -221,6 +282,45 @@ class _ChatRules extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final textSecondary = AppPalette.textSecondary(context);
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        for (final rule in _rules) ...[
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.only(top: 6),
+                child: Icon(Icons.circle, size: 6, color: AppPalette.primary),
+              ),
+              const Gap(10),
+              Expanded(
+                child: Text(
+                  rule,
+                  style: TextStyle(
+                    fontSize: 13,
+                    height: 1.4,
+                    color: textSecondary,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const Gap(10),
+        ],
+      ],
+    );
+  }
+}
+
+class _ChatRules extends StatelessWidget {
+  const _ChatRules({required this.onAccept});
+
+  final Future<void> Function() onAccept;
+
+  @override
+  Widget build(BuildContext context) {
     return ListView(
       padding: kPageListPadding,
       children: [
@@ -237,33 +337,7 @@ class _ChatRules extends StatelessWidget {
                 ),
               ),
               const Gap(12),
-              for (final rule in _rules) ...[
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.only(top: 6),
-                      child: Icon(
-                        Icons.circle,
-                        size: 6,
-                        color: AppPalette.primary,
-                      ),
-                    ),
-                    const Gap(10),
-                    Expanded(
-                      child: Text(
-                        rule,
-                        style: TextStyle(
-                          fontSize: 13,
-                          height: 1.4,
-                          color: textSecondary,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const Gap(10),
-              ],
+              const _RuleList(),
               const Gap(6),
               SizedBox(
                 width: double.infinity,

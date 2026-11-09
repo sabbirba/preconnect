@@ -18,6 +18,7 @@ import 'package:preconnect/features/auth/data/oauth_exchange.dart';
 import 'package:preconnect/features/auth/application/auth_bridge.dart';
 import 'package:preconnect/tools/app_storage.dart';
 import 'package:preconnect/api/auth.dart';
+import 'package:preconnect/api/chat.dart';
 import 'package:preconnect/libsync/auth_service.dart';
 import 'package:preconnect/api/api_client.dart';
 import 'package:preconnect/api/mercure_service.dart';
@@ -609,6 +610,9 @@ class _MyAppState extends State<MyApp>
           RefreshBus.instance.notify(reason: 'home_dashboard');
         }
         unawaited(NotificationsPage.preloadData(forceRefresh: forceRefresh));
+        if (ChatService.instance.rulesAccepted) {
+          unawaited(ChatService.instance.preload());
+        }
       }
     } catch (_) {
     } finally {

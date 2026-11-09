@@ -46,7 +46,9 @@ class ChatService {
   ];
   static const int pageSize = 50;
   static const int maxPhotos = 10;
+  static const String rulesAcceptedKey = 'chat_rules_accepted_v1';
   static const Duration _sessionLifetime = Duration(hours: 5);
+  static const Duration _preloadInterval = Duration(minutes: 5);
   static const Duration _fileTokenLifetime = Duration(minutes: 2);
   static const String _messageExpand = 'author,replyTo,replyTo.author';
 
@@ -71,6 +73,10 @@ class ChatService {
   DateTime? _fileTokenAt;
   final Map<String, String> _memberIds = <String, String>{};
   final Map<String, DateTime> _lastRead = <String, DateTime>{};
+  final Map<String, ChatRecent> _recent = <String, ChatRecent>{};
+  Future<List<ChatRoom>>? _roomsLoading;
+  Future<ChatWatch>? _roomsWatch;
+  DateTime? _preloadedAt;
   int _generation = 0;
   String? activeRoomId;
 
@@ -139,7 +145,55 @@ class ChatService {
     return 'Chat is unavailable right now.';
   }
 
-  Future<List<ChatRoom>> loadRooms() async {
+  bool get rulesAccepted =>
+      AppStorage.instance.getBoolSync(rulesAcceptedKey) == true;
+
+  ChatRecent recent(String roomId) => _recent[roomId] ?? ChatRecent.empty;
+
+  bool hasRecent(String roomId) => _recent.containsKey(roomId);
+
+  void remember(
+    String roomId,
+    List<ChatMessage> messages,
+    List<ChatReaction> reactions,
+  ) {
+    final kept = messages.length > pageSize
+        ? messages.sublist(messages.length - pageSize)
+        : messages;
+    final ids = kept.map((message) => message.id).toSet();
+    _recent[roomId] = ChatRecent(
+      kept,
+      reactions.where((r) => ids.contains(r.messageId)).toList(),
+    );
+  }
+
+  Future<void> preload() async {
+    final last = _preloadedAt;
+    if (last != null && DateTime.now().difference(last) < _preloadInterval) {
+      return;
+    }
+    _preloadedAt = DateTime.now();
+    try {
+      final list = await loadRooms();
+      unawaited(keepRoomsLive());
+      await Future.wait(list.map(_preloadRoom));
+    } catch (_) {
+      _preloadedAt = null;
+    }
+  }
+
+  Future<void> _preloadRoom(ChatRoom room) async {
+    final messages = await loadMessages(room.id);
+    final reactions = await loadReactions(
+      messages.map((message) => message.id).toList(),
+    );
+    remember(room.id, messages, reactions);
+  }
+
+  Future<List<ChatRoom>> loadRooms() =>
+      _roomsLoading ??= _loadRooms().whenComplete(() => _roomsLoading = null);
+
+  Future<List<ChatRoom>> _loadRooms() async {
     final pb = await _client();
     final (roomRecords, memberRecords, blockRecords) = await (
       pb
@@ -203,7 +257,13 @@ class ChatService {
     unread.value = <String, int>{...unread.value, roomId: count};
   }
 
-  Future<ChatWatch> watchRooms() async {
+  Future<ChatWatch> keepRoomsLive() =>
+      _roomsWatch ??= _watchRooms().catchError((Object error) {
+        _roomsWatch = null;
+        throw error;
+      });
+
+  Future<ChatWatch> _watchRooms() async {
     final pb = await _client();
     final stopMembers = await pb.collection('chat_members').subscribe('*', (
       event,
@@ -436,6 +496,18 @@ class ChatService {
     blocked.value = <String>{...blocked.value, studentId};
   }
 
+  Future<void> markAllRead() async {
+    final counts = unread.value;
+    await Future.wait(<Future<void>>[
+      for (final room in rooms.value)
+        if ((counts[room.id] ?? 0) > 0)
+          markRead(
+            room.id,
+            DateTime.fromMillisecondsSinceEpoch(room.lastMessageAt),
+          ),
+    ]);
+  }
+
   Future<void> markRead(String roomId, DateTime latest) async {
     final memberId = _memberIds[roomId];
     final read = _lastRead[roomId];
@@ -528,6 +600,9 @@ class ChatService {
     _fileTokenAt = null;
     _memberIds.clear();
     _lastRead.clear();
+    _recent.clear();
+    _roomsWatch = null;
+    _preloadedAt = null;
     activeRoomId = null;
     rooms.value = const <ChatRoom>[];
     unread.value = const <String, int>{};
