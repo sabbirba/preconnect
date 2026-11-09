@@ -234,22 +234,22 @@ class _AppNotificationsIconButtonState extends State<AppNotificationsIconButton>
             ),
             if (newCount > 0)
               Positioned(
-                top: 0,
-                right: 0,
+                left: widget.padding + widget.iconSize * 0.7,
+                top: widget.padding - 8,
                 child: Container(
                   constraints: const BoxConstraints(minWidth: 16),
                   height: 16,
-                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  padding: const EdgeInsets.symmetric(horizontal: 3),
                   alignment: Alignment.center,
                   decoration: BoxDecoration(
-                    color: AppPalette.danger,
+                    border: Border.all(color: AppPalette.danger, width: 1.3),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
                     unreadBadgeLabel(newCount),
                     style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 10,
+                      color: AppPalette.danger,
+                      fontSize: 9.5,
                       fontWeight: FontWeight.w700,
                       height: 1,
                     ),
