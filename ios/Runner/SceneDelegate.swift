@@ -3,7 +3,7 @@ import UIKit
 
 class SceneDelegate: FlutterSceneDelegate {
   private func cacheShortcutAction(_ type: String) {
-    UserDefaults.standard.set(type, forKey: preconnectPendingShortcutActionKey)
+    UserDefaults.standard.set(type, forKey: preConnectPendingShortcutActionKey)
   }
 
   override func scene(

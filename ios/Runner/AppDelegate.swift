@@ -4,7 +4,7 @@ import StoreKit
 import UIKit
 import home_widget
 
-let preconnectPendingShortcutActionKey = "flutter.pending_shortcut_action"
+let preConnectPendingShortcutActionKey = "flutter.pending_shortcut_action"
 
 @main
 @objc
@@ -15,7 +15,7 @@ class AppDelegate: FlutterAppDelegate, FlutterImplicitEngineDelegate,
   private var advisingBackgroundTask: UIBackgroundTaskIdentifier = .invalid
 
   private func cacheShortcutAction(_ type: String) {
-    UserDefaults.standard.set(type, forKey: preconnectPendingShortcutActionKey)
+    UserDefaults.standard.set(type, forKey: preConnectPendingShortcutActionKey)
   }
 
   override func application(
@@ -125,7 +125,7 @@ class AppDelegate: FlutterAppDelegate, FlutterImplicitEngineDelegate,
   func documentInteractionControllerViewControllerForPreview(
     _ controller: UIDocumentInteractionController
   ) -> UIViewController {
-    return UIApplication.preconnectTopViewController() ?? window?.rootViewController ?? UIViewController()
+    return UIApplication.preConnectTopViewController() ?? window?.rootViewController ?? UIViewController()
   }
 
   private func registerCalendarChannel(binaryMessenger: FlutterBinaryMessenger) {
@@ -604,7 +604,7 @@ private func resolvedEnvValue(forKey key: String) -> String? {
 }
 
 extension UIApplication {
-  fileprivate static func preconnectTopViewController(
+  fileprivate static func preConnectTopViewController(
     base: UIViewController? = UIApplication.shared.connectedScenes
       .compactMap { $0 as? UIWindowScene }
       .flatMap { $0.windows }
@@ -612,13 +612,13 @@ extension UIApplication {
       .rootViewController
   ) -> UIViewController? {
     if let navigation = base as? UINavigationController {
-      return preconnectTopViewController(base: navigation.visibleViewController)
+      return preConnectTopViewController(base: navigation.visibleViewController)
     }
     if let tab = base as? UITabBarController, let selected = tab.selectedViewController {
-      return preconnectTopViewController(base: selected)
+      return preConnectTopViewController(base: selected)
     }
     if let presented = base?.presentedViewController {
-      return preconnectTopViewController(base: presented)
+      return preConnectTopViewController(base: presented)
     }
     return base
   }
@@ -629,7 +629,7 @@ private func purgeLargeUserDefaultsEntries() {
   let maxBytes = 256 * 1024
   let whitelist: Set<String> = [
     "preconnect.quiet_mode_plan_v1",
-    preconnectPendingShortcutActionKey,
+    preConnectPendingShortcutActionKey,
   ]
   var removed = false
   for key in defaults.dictionaryRepresentation().keys {

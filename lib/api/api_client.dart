@@ -367,14 +367,14 @@ class ApiClient {
       );
     }
 
-    final isPreconnectUrl = Uri.tryParse(url)?.host == 'api.preconnect.app';
+    final isPreConnectUrl = Uri.tryParse(url)?.host == 'api.preconnect.app';
     final revision = _cacheRevision;
     final finalHeaders = Map<String, String>.from(headers);
     String? cachedEtag;
     String? cachedBody;
 
     final usePersistentValidation =
-        isPreconnectUrl &&
+        isPreConnectUrl &&
         !headers.keys.any(
           (key) =>
               const {'authorization', 'x-id-token'}.contains(key.toLowerCase()),

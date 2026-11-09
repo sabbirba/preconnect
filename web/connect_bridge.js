@@ -1,5 +1,5 @@
-if (!globalThis.__preconnectConnectBridgeInstalled) {
-  globalThis.__preconnectConnectBridgeInstalled = true;
+if (!globalThis.__preConnectConnectBridgeInstalled) {
+  globalThis.__preConnectConnectBridgeInstalled = true;
   chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     if (message?.type !== "preconnect.pageConnectRequest") return false;
     const url = new URL(message.url);
