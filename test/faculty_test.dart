@@ -2,7 +2,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:preconnect/api/seat_status.dart';
 import 'package:preconnect/model/section_info.dart';
 import 'package:preconnect/pages/shared_widgets/seat_card.dart';
-import 'package:preconnect/api/faculty_photos.dart';
 
 void main() {
   test('faculty keeps gender and designation from the feed', () {
@@ -29,13 +28,5 @@ void main() {
   test('faculty meta is empty when the feed has no details', () {
     expect(seatStatusFacultyMeta(SectionFaculty.tryParse('DEMO')), '');
     expect(seatStatusFacultyMeta(null), '');
-  });
-
-  test('photo index maps initials to mirrored photo urls', () {
-    final photos = parseFacultyPhotos(
-      '{"demo": "/faculty/DEMO/photo", "ABC": "https://other.example/a.jpg", "XYZ": 4}',
-      'https://api.example.com',
-    );
-    expect(photos, {'DEMO': 'https://api.example.com/faculty/DEMO/photo'});
   });
 }

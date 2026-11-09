@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
 import 'package:preconnect/api/seat_pins.dart';
 import 'package:preconnect/api/planner_state.dart';
-import 'package:preconnect/api/faculty_photos.dart';
 import 'package:preconnect/api/seat_status.dart';
 import 'package:preconnect/api/seat_stream.dart';
 import 'package:preconnect/pages/home_tab.dart';
@@ -86,7 +85,6 @@ class _SeatStatusPageState extends State<SeatStatusPage>
     unawaited(_loadArchiveSemesters());
     SeatPins.instance.addListener(_onPinsChanged);
     PlannerController.instance.addListener(_onPlannerChanged);
-    unawaited(FacultyPhotos.instance.load());
     unawaited(_loadPlanner());
     unawaited(_loadPins());
     unawaited(_refreshDetailsFromApi());

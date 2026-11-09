@@ -10,7 +10,6 @@ import 'package:preconnect/model/seat_timetable.dart';
 import 'package:preconnect/pages/friend_sections/friend_header.dart';
 import 'package:preconnect/pages/shared_widgets/seat_blocks.dart';
 import 'package:preconnect/pages/ui_kit.dart';
-import 'package:preconnect/api/faculty_photos.dart';
 import 'package:preconnect/pages/shared_widgets/exam_card.dart';
 
 String seatStatusFacultySummaryLabel(section.SectionFaculty? faculty) {
@@ -141,7 +140,7 @@ class SeatCard extends StatelessWidget {
                     ],
                     if (item.facultyInitial.trim().isNotEmpty ||
                         item.credits > 0) ...[
-                      const Gap(4),
+                      const Gap(2),
                       RichText(
                         text: TextSpan(
                           style: TextStyle(fontSize: 13, color: textSecondary),
@@ -181,52 +180,48 @@ class SeatCard extends StatelessWidget {
               if (onPlanTap != null || onPinTap != null)
                 Padding(
                   padding: const EdgeInsets.only(left: 8, top: 2),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          if (onPlanTap != null)
-                            _SeatIconButton(
-                              active: planned,
-                              activeColor: AppPalette.accent,
-                              icon: planned
-                                  ? Icons.remove_circle_outline_rounded
-                                  : Icons.add_circle_outline_rounded,
-                              tooltip: planned
-                                  ? 'Remove From Planner'
-                                  : 'Add To Planner',
-                              onTap: onPlanTap!,
-                            ),
-                          if (onPinTap != null)
-                            _SeatIconButton(
-                              active: pinned,
-                              icon: pinned
-                                  ? Icons.notifications_rounded
-                                  : Icons.notifications_none_rounded,
-                              tooltip: pinned
-                                  ? 'Stop Seat Alerts'
-                                  : 'Seat Alerts',
-                              onTap: onPinTap!,
-                            ),
-                        ],
-                      ),
-                      if (onPlanTap != null && item.lastUpdatedAt != null) ...[
-                        const Gap(6),
-                        SeatUpdatedText(updatedAt: item.lastUpdatedAt!),
-                      ],
+                      if (onPlanTap != null)
+                        _SeatIconButton(
+                          active: planned,
+                          activeColor: AppPalette.accent,
+                          icon: planned
+                              ? Icons.remove_circle_outline_rounded
+                              : Icons.add_circle_outline_rounded,
+                          tooltip: planned
+                              ? 'Remove From Planner'
+                              : 'Add To Planner',
+                          onTap: onPlanTap!,
+                        ),
+                      if (onPinTap != null)
+                        _SeatIconButton(
+                          active: pinned,
+                          icon: pinned
+                              ? Icons.notifications_rounded
+                              : Icons.notifications_none_rounded,
+                          tooltip: pinned ? 'Stop Seat Alerts' : 'Seat Alerts',
+                          onTap: onPinTap!,
+                        ),
                     ],
                   ),
                 ),
             ],
           ),
           if (seatStatusFacultyHasVisuals(faculty)) ...[
-            const Gap(10),
+            const Gap(12),
             Row(
               children: [
-                _FacultyAvatar(faculty: faculty!),
-                const Gap(12),
+                if (faculty!.imgUrl?.trim().isNotEmpty == true) ...[
+                  FriendAvatar(
+                    name: facultyName,
+                    photoUrl: faculty.imgUrl,
+                    size: 40,
+                    radius: 20,
+                  ),
+                  const Gap(12),
+                ],
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -257,15 +252,12 @@ class SeatCard extends StatelessWidget {
                         InkWell(
                           borderRadius: BorderRadius.circular(6),
                           onTap: () => openMailComposer(context, facultyEmail),
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 2),
-                            child: Text(
-                              facultyEmail,
-                              style: TextStyle(
-                                color: textSecondary,
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                              ),
+                          child: Text(
+                            facultyEmail,
+                            style: TextStyle(
+                              color: textSecondary,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
                             ),
                           ),
                         ),
@@ -292,7 +284,6 @@ class SeatCard extends StatelessWidget {
               theoryRoom: item.room,
               labRoom: item.labRoom,
             ),
-            const Gap(12),
           ],
           if (hasMidExam || hasFinalExam) ...[
             const Gap(12),
@@ -358,6 +349,10 @@ class SeatCard extends StatelessWidget {
                 ),
               ],
             ),
+            if (onPlanTap != null && item.lastUpdatedAt != null) ...[
+              const Gap(12),
+              SeatUpdatedText(updatedAt: item.lastUpdatedAt!),
+            ],
           ],
           if (footer.isNotEmpty) ...[const Gap(12), ...footer],
         ],
@@ -415,44 +410,6 @@ class _SeatIconButton extends StatelessWidget {
         size: 28,
         color: active ? activeColor : AppPalette.textSecondary(context),
       ),
-    );
-  }
-}
-
-class _FacultyAvatar extends StatelessWidget {
-  const _FacultyAvatar({required this.faculty});
-
-  final section.SectionFaculty faculty;
-
-  @override
-  Widget build(BuildContext context) {
-    return ValueListenableBuilder<Map<String, String>>(
-      valueListenable: FacultyPhotos.instance,
-      builder: (context, _, _) {
-        final photo =
-            faculty.imgUrl ??
-            FacultyPhotos.instance.photoFor(faculty.shortName);
-        final initial = faculty.shortName.trim();
-        final badge = SectionBadge(
-          label: initial.length > 2 ? initial.substring(0, 2) : initial,
-          color: AppPalette.primary,
-          size: 44,
-          borderRadius: 22,
-          formatLabel: false,
-        );
-        if (photo == null) return badge;
-        return Stack(
-          children: [
-            badge,
-            FriendAvatar(
-              name: faculty.staffName,
-              photoUrl: photo,
-              size: 44,
-              radius: 22,
-            ),
-          ],
-        );
-      },
     );
   }
 }
@@ -788,27 +745,16 @@ class _SeatUpdatedTextState extends State<SeatUpdatedText> {
     return Tooltip(
       message: AppTime.formatDateTime(widget.updatedAt),
       triggerMode: TooltipTriggerMode.tap,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          Text(
-            'Seat updated',
-            style: TextStyle(
-              color: textSecondary,
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
-            ),
+      child: Center(
+        child: Text(
+          'Seat updated ${seatUpdatedAgo(widget.updatedAt, DateTime.now())}',
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            color: textSecondary,
+            fontSize: 11,
+            fontWeight: FontWeight.w500,
           ),
-          Text(
-            seatUpdatedAgo(widget.updatedAt, DateTime.now()),
-            textAlign: TextAlign.right,
-            style: TextStyle(
-              color: textSecondary,
-              fontSize: 11,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
