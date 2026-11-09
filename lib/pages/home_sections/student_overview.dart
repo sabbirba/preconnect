@@ -223,12 +223,10 @@ class _SupportButtonState extends State<_SupportButton>
   List<String> _currentOptions() {
     final status = fundingStatus;
     return <String>[
-      'Support',
+      'Support Us',
       if (status != null && status.totalRaised > 0)
         '৳${formatAmount(status.totalRaised)} Raised',
       'Join Discord',
-      'GitHub Repo',
-      'Fork Repo',
       'Report Issue',
     ];
   }
@@ -246,20 +244,6 @@ class _SupportButtonState extends State<_SupportButton>
             context,
             kPreConnectDiscordUrl,
             failureMessage: 'Unable to open Discord.',
-          );
-          break;
-        case 'GitHub Repo':
-          await openExternalUrl(
-            context,
-            kPreConnectRepositoryUrl,
-            failureMessage: 'Unable to open GitHub repository.',
-          );
-          break;
-        case 'Fork Repo':
-          await openExternalUrl(
-            context,
-            '$kPreConnectRepositoryUrl/fork',
-            failureMessage: 'Unable to open GitHub fork.',
           );
           break;
         case 'Report Issue':
