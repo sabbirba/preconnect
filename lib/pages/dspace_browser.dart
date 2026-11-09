@@ -126,7 +126,11 @@ class DSpaceItem {
       subject: parseStringList(json['subject']),
       keywords: parseStringList(json['keywords']),
       language: json['language']?.toString() ?? '',
-      locked: const {'embargo', 'restricted'}.contains(json['access']),
+      locked: const {
+        'embargo',
+        'restricted',
+        'metadata.only',
+      }.contains(json['access']),
     );
   }
 }
@@ -755,7 +759,7 @@ class _DSpaceBrowserPageState extends State<DSpaceBrowserPage> {
                   child: ActionBannerCard(
                     title: file.name,
                     subtitle: item.locked
-                        ? 'Restricted by BRAC University • Opens in DSpace'
+                        ? 'Restricted • Opens in DSpace'
                         : '${file.sizeLabel} • $ext',
                     icon: item.locked
                         ? Icons.lock_outline_rounded

@@ -11,12 +11,16 @@ void main() {
     expect(category.url, 'https://api.preconnect.app/dspace/thesis.json');
   });
 
-  test('embargoed and restricted items are locked, open items are not', () {
-    bool locked(String? access) =>
-        DSpaceItem.fromJson({'uuid': 'u', 'access': ?access}).locked;
-    expect(locked('embargo'), isTrue);
-    expect(locked('restricted'), isTrue);
-    expect(locked('open.access'), isFalse);
-    expect(locked(null), isFalse);
-  });
+  test(
+    'embargoed, restricted and metadata-only items are locked, open items are not',
+    () {
+      bool locked(String? access) =>
+          DSpaceItem.fromJson({'uuid': 'u', 'access': ?access}).locked;
+      expect(locked('embargo'), isTrue);
+      expect(locked('restricted'), isTrue);
+      expect(locked('metadata.only'), isTrue);
+      expect(locked('open.access'), isFalse);
+      expect(locked(null), isFalse);
+    },
+  );
 }
