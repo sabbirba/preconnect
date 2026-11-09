@@ -54,6 +54,7 @@ class ApiConfig {
   static const String coursePrerequisitesUrl =
       '$realtimeApiBase/course-prerequisites.json';
   static const String materialsUrl = '$realtimeApiBase/materials';
+  static const String materialsIndexUrl = '$materialsUrl.json';
 
   static String materialsSourceUrl(String source) =>
       '$materialsUrl/${Uri.encodeComponent(source)}';

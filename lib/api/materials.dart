@@ -77,7 +77,7 @@ class MaterialsService {
     }
     try {
       final response = await _client.publicGet(
-        ApiConfig.materialsUrl,
+        ApiConfig.materialsIndexUrl,
         acceptedStatusCodes: const <int>{200},
         cacheDuration: forceRefresh
             ? Duration.zero

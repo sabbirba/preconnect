@@ -45,7 +45,7 @@ class DatasetSync {
     'map': ApiConfig.campusMapUrl,
     'transport': ApiConfig.transportUrl,
     'dspace': ApiConfig.dspaceDataUrl,
-    'materials': ApiConfig.materialsUrl,
+    'materials': ApiConfig.materialsIndexUrl,
   };
 
   static const Map<String, String> _refreshReasons = <String, String>{
