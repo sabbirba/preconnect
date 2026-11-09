@@ -8,6 +8,7 @@ import 'package:http/testing.dart';
 import 'package:preconnect/api/api_client.dart';
 import 'package:preconnect/api/notification.dart';
 import 'package:preconnect/api/repository_cache.dart';
+import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/app_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -68,5 +69,12 @@ void main() {
     expect(viewed..sort(), ['120', '200', '3']);
     expect(updated?.newCount, 0);
     expect(updated?.items.every((item) => item.seen), isTrue);
+  });
+
+  test('bell badge shows 1 to 9, then 9+', () {
+    expect(unreadBadgeLabel(1), '1');
+    expect(unreadBadgeLabel(9), '9');
+    expect(unreadBadgeLabel(10), '9+');
+    expect(unreadBadgeLabel(250), '9+');
   });
 }

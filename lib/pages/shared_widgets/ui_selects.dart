@@ -233,16 +233,25 @@ class _AppNotificationsIconButtonState extends State<AppNotificationsIconButton>
               ),
             ),
             if (newCount > 0)
-              const Positioned(
-                top: 4,
-                right: 4,
-                child: SizedBox(
-                  width: 8,
-                  height: 8,
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      color: AppPalette.danger,
-                      shape: BoxShape.circle,
+              Positioned(
+                top: 0,
+                right: 0,
+                child: Container(
+                  constraints: const BoxConstraints(minWidth: 16),
+                  height: 16,
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: AppPalette.danger,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    unreadBadgeLabel(newCount),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                      height: 1,
                     ),
                   ),
                 ),
@@ -253,6 +262,8 @@ class _AppNotificationsIconButtonState extends State<AppNotificationsIconButton>
     );
   }
 }
+
+String unreadBadgeLabel(int count) => count > 9 ? '9+' : '$count';
 
 class AppSearchField extends StatelessWidget {
   const AppSearchField({
