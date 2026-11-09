@@ -9,6 +9,10 @@ struct TodayWidgetItem {
   let subtitle: String
   let trailing: String
   let trailingSub: String
+  var startMinutes = -1
+  var endMinutes = -1
+
+  var hasTime: Bool { startMinutes >= 0 && startMinutes < endMinutes }
 }
 
 struct TodayWidgetEntry: TimelineEntry {
@@ -16,6 +20,19 @@ struct TodayWidgetEntry: TimelineEntry {
   let title: String
   let dateText: String
   let items: [TodayWidgetItem]
+
+  func isHighlighted(_ item: TodayWidgetItem) -> Bool {
+    guard item.hasTime else { return false }
+    let parts = Calendar.current.dateComponents([.hour, .minute], from: date)
+    let nowMinutes = (parts.hour ?? 0) * 60 + (parts.minute ?? 0)
+    let isRunning = { (slot: TodayWidgetItem) in
+      slot.hasTime && (slot.startMinutes..<slot.endMinutes).contains(nowMinutes)
+    }
+    if items.contains(where: isRunning) { return isRunning(item) }
+    let nextStart = items.filter { $0.hasTime && $0.startMinutes > nowMinutes }
+      .map(\.startMinutes).min()
+    return item.startMinutes == nextStart
+  }
 }
 
 struct TodayWidgetProvider: TimelineProvider {
@@ -42,9 +59,19 @@ struct TodayWidgetProvider: TimelineProvider {
   func getTimeline(in context: Context, completion: @escaping (Timeline<TodayWidgetEntry>) -> Void)
   {
     let entry = readEntry()
-    let nextRefresh = Calendar.current.date(byAdding: .minute, value: 5, to: Date()) ?? Date()
+    let now = Date()
+    let nextRefresh = Calendar.current.date(byAdding: .minute, value: 5, to: now) ?? now
       .addingTimeInterval(300)
-    completion(Timeline(entries: [entry], policy: .after(nextRefresh)))
+    let startOfDay = Calendar.current.startOfDay(for: now)
+    let classBoundaries = Set(entry.items.flatMap { [$0.startMinutes, $0.endMinutes] })
+      .filter { $0 >= 0 }
+      .compactMap { Calendar.current.date(byAdding: .minute, value: $0, to: startOfDay) }
+      .filter { $0 > now && $0 < nextRefresh }
+      .sorted()
+    let entries = [entry] + classBoundaries.map {
+      TodayWidgetEntry(date: $0, title: entry.title, dateText: entry.dateText, items: entry.items)
+    }
+    completion(Timeline(entries: entries, policy: .after(nextRefresh)))
   }
 
   private func readEntry() -> TodayWidgetEntry {
@@ -65,7 +92,9 @@ struct TodayWidgetProvider: TimelineProvider {
             title: itemTitle,
             subtitle: preferences?.string(forKey: "today_item\(slot)_subtitle") ?? "",
             trailing: preferences?.string(forKey: "today_item\(slot)_trailing") ?? "",
-            trailingSub: preferences?.string(forKey: "today_item\(slot)_trailing_sub") ?? ""
+            trailingSub: preferences?.string(forKey: "today_item\(slot)_trailing_sub") ?? "",
+            startMinutes: preferences?.object(forKey: "today_item\(slot)_start") as? Int ?? -1,
+            endMinutes: preferences?.object(forKey: "today_item\(slot)_end") as? Int ?? -1
           ))
       }
     }

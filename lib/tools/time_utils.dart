@@ -1,3 +1,4 @@
+import 'dart:math';
 import 'package:intl/intl.dart';
 
 class AppTime {
@@ -147,17 +148,33 @@ class AppTime {
     return hm.$1 * 60 + hm.$2;
   }
 
-  static bool isUpcomingOrCurrentSlot(
+  static bool isCurrentOrNextSlot(
     String? start,
-    String? end, {
+    String? end,
+    Iterable<(String?, String?)> daySlots, {
     DateTime? now,
   }) {
+    final current = now ?? DateTime.now();
+    final currentMinutes = current.hour * 60 + current.minute;
+    final slots = [
+      for (final (slotStart, slotEnd) in daySlots)
+        if ((toMinutes(slotStart), toMinutes(slotEnd)) case (
+          final int from,
+          final int to,
+        ) when from < to)
+          (from, to),
+    ];
     final startMinutes = toMinutes(start);
     final endMinutes = toMinutes(end);
     if (startMinutes == null || endMinutes == null) return false;
-    final current = now ?? DateTime.now();
-    final currentMinutes = current.hour * 60 + current.minute;
-    return startMinutes < endMinutes && currentMinutes < endMinutes;
+    bool isRunning((int, int) slot) =>
+        currentMinutes >= slot.$1 && currentMinutes < slot.$2;
+    if (slots.any(isRunning)) return isRunning((startMinutes, endMinutes));
+    final upcomingStarts = slots
+        .map((slot) => slot.$1)
+        .where((minutes) => minutes > currentMinutes);
+    return upcomingStarts.isNotEmpty &&
+        startMinutes == upcomingStarts.reduce(min);
   }
 
   static String format(String? raw) {

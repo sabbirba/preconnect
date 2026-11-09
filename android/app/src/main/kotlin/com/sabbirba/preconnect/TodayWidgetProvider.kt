@@ -11,6 +11,7 @@ import android.net.Uri
 import android.os.SystemClock
 import android.view.View
 import android.widget.RemoteViews
+import java.util.Calendar
 import es.antonborri.home_widget.HomeWidgetBackgroundIntent
 import es.antonborri.home_widget.HomeWidgetLaunchIntent
 import es.antonborri.home_widget.HomeWidgetProvider
@@ -35,6 +36,9 @@ class TodayWidgetProvider : HomeWidgetProvider() {
     ) {
         val title = widgetData.getString("today_title", null).orEmpty()
         val date = widgetData.getString("today_date", null).orEmpty()
+        val now = Calendar.getInstance()
+        val nowMinutes = now.get(Calendar.HOUR_OF_DAY) * 60 + now.get(Calendar.MINUTE)
+        val highlightedSlots = currentOrNextSlots(widgetData, nowMinutes)
         for (widgetId in appWidgetIds) {
             val views = RemoteViews(context.packageName, R.layout.today_widget)
             views.setTextViewText(R.id.today_title, title)
@@ -65,6 +69,11 @@ class TodayWidgetProvider : HomeWidgetProvider() {
 
                 views.setViewVisibility(row.container, View.VISIBLE)
                 views.setOnClickPendingIntent(row.container, openAppIntent)
+                views.setInt(
+                    row.container,
+                    "setBackgroundResource",
+                    if (slot in highlightedSlots) R.drawable.card_bg_highlight else R.drawable.card_bg,
+                )
                 views.setTextViewText(row.title, itemTitle)
                 views.setTextViewText(
                     row.subtitle,
@@ -93,6 +102,33 @@ class TodayWidgetProvider : HomeWidgetProvider() {
         scheduleRefresh(context)
         maybeRefreshFromCache(context, widgetData)
     }
+
+    private fun currentOrNextSlots(
+        widgetData: SharedPreferences,
+        nowMinutes: Int,
+    ): Set<Int> {
+        val slots =
+            (1..3).map { slot ->
+                Triple(
+                    slot,
+                    readMinutes(widgetData, "today_item${slot}_start"),
+                    readMinutes(widgetData, "today_item${slot}_end"),
+                )
+            }.filter { (_, start, end) -> start in 0 until end }
+        val running = slots.filter { (_, start, end) -> nowMinutes in start until end }
+        if (running.isNotEmpty()) return running.map { it.first }.toSet()
+        val nextStart = slots.map { it.second }.filter { it > nowMinutes }.minOrNull()
+        return slots.filter { it.second == nextStart }.map { it.first }.toSet()
+    }
+
+    private fun readMinutes(
+        widgetData: SharedPreferences,
+        key: String,
+    ): Int =
+        when (val value = widgetData.all[key]) {
+            is Number -> value.toInt()
+            else -> -1
+        }
 
     private fun scheduleRefresh(context: Context) {
         val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager

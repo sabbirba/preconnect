@@ -740,6 +740,8 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
                 subtitle: formatTimeRange(exam.startTime, exam.endTime),
                 trailing: (exam.room ?? '').trim(),
                 trailingSub: exam.faculties.trim(),
+                startMinutes: AppTime.toMinutes(exam.startTime) ?? -1,
+                endMinutes: AppTime.toMinutes(exam.endTime) ?? -1,
               ),
             )
             .toList(),
@@ -779,6 +781,8 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
               subtitle: formatTimeRange(entry.startTime, entry.endTime),
               trailing: (entry.roomNumber ?? '').trim(),
               trailingSub: (entry.faculties ?? '').trim(),
+              startMinutes: AppTime.toMinutes(entry.startTime) ?? -1,
+              endMinutes: AppTime.toMinutes(entry.endTime) ?? -1,
             ),
           )
           .toList(),

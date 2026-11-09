@@ -5,5 +5,6 @@
 
     <color name="widget_card_bg">#26FFFFFF</color>
     <color name="widget_card_border">#33FFFFFF</color>
+    <color name="widget_card_highlight">#E61E6BE3</color>
     <color name="widget_text_primary">#FFFFFFFF</color>
 </resources>

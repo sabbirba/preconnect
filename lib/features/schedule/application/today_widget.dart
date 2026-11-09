@@ -8,6 +8,8 @@ class TodayItem {
     required this.subtitle,
     this.trailing = '',
     this.trailingSub = '',
+    this.startMinutes = -1,
+    this.endMinutes = -1,
   });
 
   final String badge;
@@ -15,6 +17,8 @@ class TodayItem {
   final String subtitle;
   final String trailing;
   final String trailingSub;
+  final int startMinutes;
+  final int endMinutes;
 }
 
 class TodayWidgetData {
@@ -83,6 +87,12 @@ abstract final class TodayWidget {
                     'today_item${i}_trailing_sub',
                   ) ??
                   '',
+              startMinutes:
+                  await HomeWidget.getWidgetData<int>('today_item${i}_start') ??
+                  -1,
+              endMinutes:
+                  await HomeWidget.getWidgetData<int>('today_item${i}_end') ??
+                  -1,
             ),
           );
         }
@@ -131,6 +141,14 @@ abstract final class TodayWidget {
         await HomeWidget.saveWidgetData<String>(
           'today_item${slot}_trailing_sub',
           item?.trailingSub ?? '',
+        );
+        await HomeWidget.saveWidgetData<int>(
+          'today_item${slot}_start',
+          item?.startMinutes ?? -1,
+        );
+        await HomeWidget.saveWidgetData<int>(
+          'today_item${slot}_end',
+          item?.endMinutes ?? -1,
         );
       }
       await HomeWidget.updateWidget(

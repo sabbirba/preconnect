@@ -253,9 +253,15 @@ extension _HomeDashboardView on _HomeDashboardState {
                                               isFinal: exam.type == 'Final',
                                             ),
                                             isHighlighted:
-                                                AppTime.isUpcomingOrCurrentSlot(
+                                                AppTime.isCurrentOrNextSlot(
                                                   exam.startTime,
                                                   exam.endTime,
+                                                  todayExams.map(
+                                                    (item) => (
+                                                      item.startTime,
+                                                      item.endTime,
+                                                    ),
+                                                  ),
                                                 ),
                                           ),
                                         ),
@@ -306,9 +312,15 @@ extension _HomeDashboardView on _HomeDashboardState {
                                             ),
                                             color: _HomeDashboardState._primary,
                                             isHighlighted:
-                                                AppTime.isUpcomingOrCurrentSlot(
+                                                AppTime.isCurrentOrNextSlot(
                                                   entry.startTime,
                                                   entry.endTime,
+                                                  visibleEntries.map(
+                                                    (item) => (
+                                                      item.startTime,
+                                                      item.endTime,
+                                                    ),
+                                                  ),
                                                 ),
                                           ),
                                         ),

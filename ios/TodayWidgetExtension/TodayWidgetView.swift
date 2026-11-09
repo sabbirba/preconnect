@@ -3,6 +3,9 @@ import WidgetKit
 
 struct TodayWidgetCard: View {
   let item: TodayWidgetItem
+  var isHighlighted = false
+
+  private static let highlight = Color(red: 0x1E / 255, green: 0x6B / 255, blue: 0xE3 / 255)
 
   var body: some View {
     HStack(alignment: .center, spacing: 12) {
@@ -43,7 +46,9 @@ struct TodayWidgetCard: View {
     .background(Color(uiColor: .secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
     .overlay {
       RoundedRectangle(cornerRadius: 16)
-        .stroke(Color.primary.opacity(0.08), lineWidth: 1)
+        .stroke(
+          isHighlighted ? Self.highlight.opacity(0.9) : Color.primary.opacity(0.08),
+          lineWidth: isHighlighted ? 1.6 : 1)
     }
   }
 }
@@ -138,7 +143,7 @@ struct TodayWidgetEntryView: View {
 
         ForEach(Array(visibleItems.enumerated()), id: \.offset) { _, item in
           Link(destination: openAppURL) {
-            TodayWidgetCard(item: item)
+            TodayWidgetCard(item: item, isHighlighted: entry.isHighlighted(item))
           }
           .buttonStyle(.plain)
         }

@@ -231,6 +231,8 @@ class _ExtraClassesState extends State<ExtraClassesPage> {
   Widget _sectionCard(Section section, {ExtraClass? extra}) => Padding(
     padding: const EdgeInsets.only(bottom: 12),
     child: AppCard(
+      isHighlighted: extra != null,
+      highlightColor: AppPalette.accent,
       child: Row(
         children: [
           Expanded(

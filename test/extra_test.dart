@@ -303,8 +303,18 @@ void main() {
         expect(find.byType(Divider), findsOneWidget);
         expect(
           tester.getCenter(find.byTooltip('Remove Classes')).dx,
-          tester.getCenter(find.byTooltip('Add Classes')).dx,
+          closeTo(tester.getCenter(find.byTooltip('Add Classes')).dx, 1),
         );
+        final addedCard = tester.widget<AppCard>(
+          find
+              .ancestor(
+                of: find.byTooltip('Remove Classes'),
+                matching: find.byType(AppCard),
+              )
+              .first,
+        );
+        expect(addedCard.isHighlighted, isTrue);
+        expect(addedCard.highlightColor, AppPalette.accent);
         expect(section.sectionSchedule.classSchedules, hasLength(2));
         expect(tester.takeException(), isNull);
       },
