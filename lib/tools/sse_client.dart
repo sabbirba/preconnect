@@ -59,8 +59,11 @@ class SseClient {
         final response = await HttpUtils.client.send(next);
         if (generation != _generation || response.statusCode != 200) {
           await response.stream.listen(null).cancel();
-          if (generation == _generation) {
-            unawaited(AppLog.write('$name stream: ${response.statusCode}'));
+          if (generation != _generation) return;
+          unawaited(AppLog.write('$name stream: ${response.statusCode}'));
+          if (const <int>{401, 403}.contains(response.statusCode)) {
+            stop();
+            return;
           }
         } else {
           _backoff.reset();

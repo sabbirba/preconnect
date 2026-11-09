@@ -13,16 +13,33 @@ class AppLog {
     return _file!;
   }
 
+  static const int maxBytes = 1024 * 1024;
+  static const int maxMessageLength = 500;
+
   static Future<void> write(String message) async {
     try {
       final f = await getFile();
+      if (await f.exists()) await trim(f);
       final time = DateTime.now().toIso8601String();
       await f.writeAsString(
-        '[$time] $message\n',
+        '[$time] ${shorten(message)}\n',
         mode: FileMode.append,
         flush: true,
       );
     } catch (_) {}
+  }
+
+  static String shorten(String message) => message.length <= maxMessageLength
+      ? message
+      : '${message.substring(0, maxMessageLength)}…';
+
+  static Future<void> trim(File file) async {
+    final length = await file.length();
+    if (length <= maxBytes) return;
+    final tail = await file
+        .openRead(length - maxBytes ~/ 2)
+        .fold<List<int>>(<int>[], (kept, chunk) => kept..addAll(chunk));
+    await file.writeAsBytes(tail, flush: true);
   }
 
   static Future<String> read() async {
