@@ -1,39 +1,41 @@
 import 'dart:convert';
-
-typedef PushRequest =
-    Future<void> Function(
-      String method,
-      String url, {
-      String body,
-      Map<String, String> additionalHeaders,
-    });
+import 'package:http/http.dart' as http;
 
 class PushDeviceRegistry {
   const PushDeviceRegistry({
     required this.registerUrl,
     required this.unregisterUrl,
-    required PushRequest send,
-  }) : _send = send;
+    required http.Client client,
+    this.timeout = const Duration(seconds: 15),
+  }) : _client = client;
 
   final String registerUrl;
   final String unregisterUrl;
-  final PushRequest _send;
+  final http.Client _client;
+  final Duration timeout;
+
+  Future<void> post(String url, Map<String, dynamic> payload) async {
+    final response = await _client
+        .post(
+          Uri.parse(url),
+          headers: const {'Content-Type': 'application/json'},
+          body: jsonEncode(payload),
+        )
+        .timeout(timeout);
+    if (response.statusCode != 200) {
+      throw StateError('Push request failed with HTTP ${response.statusCode}');
+    }
+    final result = jsonDecode(response.body);
+    if (result is! Map || result['ok'] != true) {
+      throw StateError('Push request was not acknowledged');
+    }
+  }
 
   Future<void> register({required String token, required String platform}) {
-    return _send(
-      'POST',
-      registerUrl,
-      body: jsonEncode(<String, dynamic>{'token': token, 'platform': platform}),
-      additionalHeaders: const {'Content-Type': 'application/json'},
-    );
+    return post(registerUrl, {'token': token, 'platform': platform});
   }
 
   Future<void> unregister(String token) {
-    return _send(
-      'POST',
-      unregisterUrl,
-      body: jsonEncode(<String, dynamic>{'token': token}),
-      additionalHeaders: const {'Content-Type': 'application/json'},
-    );
+    return post(unregisterUrl, {'token': token});
   }
 }

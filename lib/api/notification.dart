@@ -411,34 +411,8 @@ class NotificationService {
       if (bTime == null) return -1;
       return bTime.compareTo(aTime);
     });
-    final oldFeed = await _readCachedFeedItems();
-    final oldIds = oldFeed?.map((item) => item.id).toSet() ?? {};
-
     await _writeCachedFeedItems(merged);
     _inMemoryFeedItems = merged;
-
-    if (oldFeed != null) {
-      for (final item in merged) {
-        if (!oldIds.contains(item.id)) {
-          final cleanedMessage = FCMService.cleanNotificationDescription(
-            item.message,
-            source: item.source,
-          );
-          unawaited(
-            FCMService.instance.showLocalNotificationDirect(
-              title: item.title,
-              body: cleanedMessage,
-              imageUrl: item.imageUrl,
-              data: <String, dynamic>{
-                if (item.url.isNotEmpty) 'url': item.url,
-                if (item.source.isNotEmpty) 'category': item.source,
-                if (cleanedMessage.isNotEmpty) 'description': cleanedMessage,
-              },
-            ),
-          );
-        }
-      }
-    }
     return merged;
   }
 

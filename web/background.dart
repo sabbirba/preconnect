@@ -681,14 +681,19 @@ Future<void> _configureAlarms() async {
 }
 
 Future<void> _refreshBadgeAndNotifyIfNeeded() async {
-  await _refreshBadge();
-  await _maybeNotifyUnreadChange();
+  final values = await chrome.storage.local.get(_cachedUnreadCountKey);
+  final previous = int.tryParse('${values[_cachedUnreadCountKey] ?? ''}') ?? 0;
+  final current = await _refreshBadge();
+  if (current != null && current > previous) {
+    await _maybeNotifyUnreadChange(current);
+  }
 }
 
-Future<void> _refreshBadge() async {
-  if (!chrome.action.isAvailable) return;
+Future<int?> _refreshBadge() async {
+  if (!chrome.action.isAvailable) return null;
   try {
     final count = await _fetchUnreadCount();
+    if (count == null) return null;
     await chrome.storage.local.set({_cachedUnreadCountKey: count});
     if (count > 0) {
       await chrome.action.setBadgeBackgroundColor(
@@ -707,23 +712,16 @@ Future<void> _refreshBadge() async {
       await chrome.action.setBadgeText(action.SetBadgeTextDetails(text: ''));
       await chrome.action.setTitle(action.SetTitleDetails(title: 'PreConnect'));
     }
+    return count;
   } catch (error, stackTrace) {
     _reportBackgroundError(error, stackTrace);
+    return null;
   }
 }
 
-Future<void> _maybeNotifyUnreadChange() async {
+Future<void> _maybeNotifyUnreadChange(int current) async {
   if (!chrome.notifications.isAvailable) return;
   try {
-    final values = await chrome.storage.local.get(_cachedUnreadCountKey);
-    final previous =
-        int.tryParse('${values[_cachedUnreadCountKey] ?? ''}') ?? 0;
-    final current = await _fetchUnreadCount();
-    if (current <= previous) {
-      await chrome.storage.local.set({_cachedUnreadCountKey: current});
-      return;
-    }
-    await chrome.storage.local.set({_cachedUnreadCountKey: current});
     final permission = await chrome.notifications.getPermissionLevel();
     if (permission != notifications.PermissionLevel.granted) return;
     await _createChromeNotification(
@@ -739,7 +737,7 @@ Future<void> _maybeNotifyUnreadChange() async {
   }
 }
 
-Future<int> _fetchUnreadCount() async {
+Future<int?> _fetchUnreadCount() async {
   try {
     final response = await _fetch(
       '${ApiConfig.connectApiBase}${ApiConfig.recentNotificationsPath}',
@@ -749,7 +747,7 @@ Future<int> _fetchUnreadCount() async {
         headers: Headers()..append('Accept', 'application/json'),
       ),
     ).toDart;
-    if (response.status != 200) return 0;
+    if (response.status != 200) return null;
     final text = await response.text().toDart;
     final decoded = jsonDecode(text.toDart);
     if (decoded is Map) {
@@ -760,7 +758,7 @@ Future<int> _fetchUnreadCount() async {
   } catch (error, stackTrace) {
     _reportBackgroundError(error, stackTrace);
   }
-  return 0;
+  return null;
 }
 
 Future<void> _restoreAppTabAfterStartup() async {
@@ -1441,19 +1439,22 @@ Future<Set<String>> _loadPinnedSeatTopics() async {
 }
 
 Future<void> _postPushJson(String path, Map<String, dynamic> body) async {
-  try {
-    await _fetch(
-      '${ApiConfig.realtimeApiBase}$path',
-      RequestInit(
-        method: 'POST',
-        headers: _headersFromMap(<String, String>{
-          'Content-Type': 'application/json',
-        }),
-        body: jsonEncode(body).toJS,
-      ),
-    ).toDart;
-  } catch (error, stackTrace) {
-    _reportBackgroundError(error, stackTrace);
+  final response = await _fetch(
+    '${ApiConfig.realtimeApiBase}$path',
+    RequestInit(
+      method: 'POST',
+      headers: _headersFromMap(<String, String>{
+        'Content-Type': 'application/json',
+      }),
+      body: jsonEncode(body).toJS,
+    ),
+  ).toDart.timeout(const Duration(seconds: 15));
+  if (response.status != 200) {
+    throw StateError('Push request failed with HTTP ${response.status}');
+  }
+  final payload = jsonDecode((await response.text().toDart).toDart);
+  if (payload is! Map || payload['ok'] != true) {
+    throw StateError('Push request was not acknowledged');
   }
 }
 

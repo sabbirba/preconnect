@@ -428,19 +428,7 @@ class FCMService {
           '${ApiConfig.realtimeApiBase}${PreConnectPushConfig.registerDevicePath}',
       unregisterUrl:
           '${ApiConfig.realtimeApiBase}${PreConnectPushConfig.unregisterDevicePath}',
-      send:
-          (
-            method,
-            url, {
-            body = '',
-            additionalHeaders = const <String, String>{},
-          }) async {
-            await HttpUtils.client.post(
-              Uri.parse(url),
-              headers: additionalHeaders,
-              body: body,
-            );
-          },
+      client: HttpUtils.client,
     );
   }
 
@@ -454,12 +442,10 @@ class FCMService {
 
   Future<void> _postTopicWeb(String path, String token, String topic) async {
     final url = '${ApiConfig.realtimeApiBase}$path';
-    final body = jsonEncode(<String, dynamic>{'token': token, 'topic': topic});
-    const headers = <String, String>{'Content-Type': 'application/json'};
-    await HttpUtils.client.post(Uri.parse(url), headers: headers, body: body);
+    await _deviceRegistry().post(url, {'token': token, 'topic': topic});
   }
 
-  Future<void> _subscribeToTopicWeb(String token, String topic) async {
+  Future<bool> _subscribeToTopicWeb(String token, String topic) async {
     try {
       await _postTopicWeb(
         PreConnectPushConfig.subscribeTopicPath,
@@ -467,12 +453,14 @@ class FCMService {
         topic,
       );
       unawaited(AppLog.write('FCM topic subscribed: $topic'));
+      return true;
     } catch (error) {
       unawaited(AppLog.write('FCM topic subscription failed ($topic): $error'));
+      return false;
     }
   }
 
-  Future<void> _unsubscribeFromTopicWeb(String token, String topic) async {
+  Future<bool> _unsubscribeFromTopicWeb(String token, String topic) async {
     try {
       await _postTopicWeb(
         PreConnectPushConfig.unsubscribeTopicPath,
@@ -480,10 +468,12 @@ class FCMService {
         topic,
       );
       unawaited(AppLog.write('FCM topic unsubscribed: $topic'));
+      return true;
     } catch (error) {
       unawaited(
         AppLog.write('FCM topic unsubscription failed ($topic): $error'),
       );
+      return false;
     }
   }
 
@@ -503,13 +493,12 @@ class FCMService {
 
     if (kIsWeb) {
       if (token == null) return false;
-      await _subscribeToTopicWeb(token, topic);
-      return true;
+      return _subscribeToTopicWeb(token, topic);
     }
     if ((defaultTargetPlatform == TargetPlatform.iOS ||
             defaultTargetPlatform == TargetPlatform.macOS) &&
         !_apnsAvailable) {
-      return true;
+      return false;
     }
 
     try {
@@ -517,6 +506,7 @@ class FCMService {
       await FirebaseMessaging.instance.subscribeToTopic(topic);
     } catch (error) {
       unawaited(AppLog.write('Native FCM topic subscription failed: $error'));
+      return false;
     }
     return true;
   }
@@ -537,13 +527,12 @@ class FCMService {
 
     if (kIsWeb) {
       if (token == null) return false;
-      await _unsubscribeFromTopicWeb(token, topic);
-      return true;
+      return _unsubscribeFromTopicWeb(token, topic);
     }
     if ((defaultTargetPlatform == TargetPlatform.iOS ||
             defaultTargetPlatform == TargetPlatform.macOS) &&
         !_apnsAvailable) {
-      return true;
+      return false;
     }
 
     try {
@@ -551,6 +540,7 @@ class FCMService {
       await FirebaseMessaging.instance.unsubscribeFromTopic(topic);
     } catch (error) {
       unawaited(AppLog.write('Native FCM topic unsubscription failed: $error'));
+      return false;
     }
     return true;
   }
