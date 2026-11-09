@@ -428,7 +428,7 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
         return ListView.builder(
           controller: _scroll,
           reverse: true,
-          padding: const EdgeInsets.fromLTRB(14, 8, 14, 8),
+          padding: const EdgeInsets.fromLTRB(12, 6, 12, 6),
           itemCount: visible.length + (_loadingOlder ? 1 : 0),
           itemBuilder: (context, index) {
             if (index == visible.length) return const AppLoading();
@@ -439,14 +439,13 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
             final newDay =
                 previous == null ||
                 !DateUtils.isSameDay(previous.created, message.created);
-            final grouped =
-                !newDay &&
-                previous.author.id == message.author.id &&
-                message.created.difference(previous.created).inMinutes < 5;
+            final next = index > 0 ? visible[visible.length - index] : null;
+            final grouped = previous != null && _sameGroup(previous, message);
             final bubble = _MessageBubble(
               message: message,
               isMine: message.author.id == me,
               showAuthor: !grouped,
+              showTime: next == null || !_sameGroup(message, next),
               reactions: _reactions
                   .where((r) => r.messageId == message.id)
                   .toList(),
@@ -467,6 +466,11 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
     );
   }
 
+  bool _sameGroup(ChatMessage earlier, ChatMessage later) =>
+      earlier.author.id == later.author.id &&
+      DateUtils.isSameDay(earlier.created, later.created) &&
+      later.created.difference(earlier.created).inMinutes < 5;
+
   Widget _buildComposer() {
     final textSecondary = AppPalette.textSecondary(context);
     return Padding(
@@ -482,12 +486,11 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
               onClear: () => setState(() => _replyTo = null),
             ),
           if (_images.isNotEmpty)
-            _ComposerBanner(
-              icon: Icons.image_outlined,
-              label: _images.length == 1
-                  ? '1 photo attached'
-                  : '${_images.length} photos attached',
-              onClear: () => setState(() => _images = const <Uint8List>[]),
+            _AttachedPhotos(
+              images: _images,
+              onRemove: (index) => setState(
+                () => _images = <Uint8List>[..._images]..removeAt(index),
+              ),
             ),
           Row(
             children: [
@@ -561,7 +564,7 @@ class _DayLabel extends StatelessWidget {
         ? 'Yesterday'
         : AppTime.formatLongDate(date);
     return Padding(
-      padding: const EdgeInsets.only(top: 14, bottom: 4),
+      padding: const EdgeInsets.only(top: 10, bottom: 2),
       child: Text(
         label,
         style: TextStyle(
@@ -613,6 +616,74 @@ class _ComposerBanner extends StatelessWidget {
   }
 }
 
+class _AttachedPhotos extends StatelessWidget {
+  const _AttachedPhotos({required this.images, required this.onRemove});
+
+  final List<Uint8List> images;
+  final ValueChanged<int> onRemove;
+
+  static const double _size = 56;
+
+  @override
+  Widget build(BuildContext context) {
+    final textPrimary = AppPalette.textPrimary(context);
+    final card = AppPalette.card(context);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 6),
+      child: Align(
+        alignment: Alignment.centerLeft,
+        child: Wrap(
+          spacing: 10,
+          runSpacing: 10,
+          children: [
+            for (var index = 0; index < images.length; index++)
+              Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(10),
+                    child: Image.memory(
+                      images[index],
+                      width: _size,
+                      height: _size,
+                      fit: BoxFit.cover,
+                      cacheWidth: (_size * 3).round(),
+                    ),
+                  ),
+                  Positioned(
+                    top: -6,
+                    right: -6,
+                    child: Semantics(
+                      button: true,
+                      label: 'Remove Photo',
+                      child: GestureDetector(
+                        onTap: () => onRemove(index),
+                        child: Container(
+                          width: 20,
+                          height: 20,
+                          decoration: BoxDecoration(
+                            color: textPrimary,
+                            shape: BoxShape.circle,
+                            border: Border.all(color: card, width: 1.5),
+                          ),
+                          child: Icon(
+                            Icons.close_rounded,
+                            size: 13,
+                            color: card,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _ReadOnlyNotice extends StatelessWidget {
   const _ReadOnlyNotice();
 
@@ -637,6 +708,7 @@ class _MessageBubble extends StatelessWidget {
     required this.message,
     required this.isMine,
     required this.showAuthor,
+    required this.showTime,
     required this.reactions,
     required this.myId,
     required this.onLongPress,
@@ -646,6 +718,7 @@ class _MessageBubble extends StatelessWidget {
   final ChatMessage message;
   final bool isMine;
   final bool showAuthor;
+  final bool showTime;
   final List<ChatReaction> reactions;
   final String myId;
   final VoidCallback onLongPress;
@@ -690,9 +763,9 @@ class _MessageBubble extends StatelessWidget {
               constraints: BoxConstraints(
                 maxWidth: MediaQuery.sizeOf(context).width * 0.72,
               ),
-              padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(14),
                 border: Border.all(color: borderColor),
               ),
               child: Column(
@@ -723,21 +796,14 @@ class _MessageBubble extends StatelessWidget {
                         color: textPrimary,
                       ),
                     ),
-                  const Gap(4),
-                  time,
                 ],
               ),
-            )
-          else
-            Padding(
-              padding: const EdgeInsets.fromLTRB(4, 4, 4, 0),
-              child: time,
             ),
         ],
       ),
     );
     return Padding(
-      padding: EdgeInsets.only(top: showAuthor ? 10 : 3),
+      padding: EdgeInsets.only(top: showAuthor ? 8 : 2),
       child: Row(
         mainAxisAlignment: isMine
             ? MainAxisAlignment.end
@@ -787,7 +853,7 @@ class _MessageBubble extends StatelessWidget {
               children: [
                 if (showAuthor && !isMine)
                   Padding(
-                    padding: const EdgeInsets.only(left: 4, bottom: 3),
+                    padding: const EdgeInsets.only(left: 4, bottom: 2),
                     child: Text(
                       message.author.name,
                       style: TextStyle(
@@ -800,7 +866,7 @@ class _MessageBubble extends StatelessWidget {
                 bubble,
                 if (counts.isNotEmpty)
                   Padding(
-                    padding: const EdgeInsets.only(top: 4),
+                    padding: const EdgeInsets.only(top: 3),
                     child: Wrap(
                       spacing: 4,
                       runSpacing: 4,
@@ -836,6 +902,11 @@ class _MessageBubble extends StatelessWidget {
                           ),
                       ],
                     ),
+                  ),
+                if (showTime)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(4, 3, 4, 0),
+                    child: time,
                   ),
               ],
             ),
