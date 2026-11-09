@@ -16,7 +16,6 @@ import 'package:preconnect/tools/runtime_stub.dart'
 import 'package:preconnect/tools/build_info.dart';
 import 'package:preconnect/pages/login.dart';
 import 'package:preconnect/pages/home.dart';
-import 'package:preconnect/libsync/libsync_page.dart';
 import 'package:preconnect/tools/pkce.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 
@@ -380,13 +379,6 @@ class _OnboardingPageState extends State<OnboardingPage> {
                                 color: const Color(0xFF22B573),
                                 onTap: () => _openOnboardingQuickPage(
                                   const FreeLabsPage(),
-                                ),
-                              ),
-                              _CompactQuickAccessCard(
-                                icon: Icons.local_library_outlined,
-                                color: const Color(0xFF1B8EFF),
-                                onTap: () => _openOnboardingQuickPage(
-                                  const LibSyncPage(),
                                 ),
                               ),
                               _CompactQuickAccessCard(

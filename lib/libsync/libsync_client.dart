@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:math';
 import 'package:preconnect/tools/token_storage.dart';
 import 'package:http/http.dart' as http;
 import 'libsync_config.dart';
@@ -308,8 +307,6 @@ class LibSyncApiClient extends http.BaseClient {
     headers['Accept-Language'] = 'en-US,en;q=0.9';
     headers['Referer'] = '${LibSyncConfig.apiBaseUrl}/login?next=%2Froom-book';
     headers['Origin'] ??= LibSyncConfig.apiBaseUrl;
-    headers['X-Forwarded-For'] ??=
-        '103.114.${Random().nextInt(250) + 1}.${Random().nextInt(250) + 1}';
   }
 
   Future<bool> _attemptTokenRefresh() async {

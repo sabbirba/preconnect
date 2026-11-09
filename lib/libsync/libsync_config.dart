@@ -10,6 +10,7 @@ class LibSyncConfig {
       '$apiBaseUrl/api/user/auth/social/google/';
   static const String userMeUrl = '$apiBaseUrl/api/user/me/';
   static const String tokenRefreshUrl = '$apiBaseUrl/api/user/token/refresh/';
+  static const String loginUrl = '$apiBaseUrl/login';
 
   static final String googleClientId = utf8.decode(
     base64.decode(

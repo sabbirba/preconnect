@@ -105,7 +105,7 @@ void main() {
     final client = _Client()..readCookies = () => pending.future;
     final auth = LibSyncAuthService.testing(client);
     final initialization = auth.initialize();
-    await auth.authenticateWithAccessToken('synthetic');
+    await auth.authenticateWithTokens(googleAccessToken: 'synthetic');
     pending.complete({});
     await initialization;
     expect(auth.state.value.status, LibSyncAuthStatus.authenticated);
@@ -115,7 +115,7 @@ void main() {
     final client = _Client()
       ..readProfile = () async => http.Response('{}', 401);
     final auth = LibSyncAuthService.testing(client);
-    await auth.authenticateWithAccessToken('synthetic');
+    await auth.authenticateWithTokens(googleAccessToken: 'synthetic');
     expect(auth.state.value.status, LibSyncAuthStatus.error);
     expect(auth.state.value.profile, isNull);
     expect(client.clears, 0);
@@ -124,10 +124,10 @@ void main() {
   test('profile persistence failure shows error and allows retry', () async {
     final client = _Client()..saveError = StateError('Keychain unavailable');
     final auth = LibSyncAuthService.testing(client);
-    await auth.authenticateWithAccessToken('synthetic');
+    await auth.authenticateWithTokens(googleAccessToken: 'synthetic');
     expect(auth.state.value.status, LibSyncAuthStatus.error);
     client.saveError = null;
-    await auth.authenticateWithAccessToken('synthetic');
+    await auth.authenticateWithTokens(googleAccessToken: 'synthetic');
     expect(auth.state.value.status, LibSyncAuthStatus.authenticated);
   });
 
@@ -142,7 +142,7 @@ void main() {
     final pending = Completer<http.Response>();
     final client = _Client()..readProfile = () => pending.future;
     final auth = LibSyncAuthService.testing(client);
-    final login = auth.authenticateWithAccessToken('synthetic');
+    final login = auth.authenticateWithTokens(googleAccessToken: 'synthetic');
     await Future<void>.delayed(Duration.zero);
     auth.failAuthentication('Sign-in cancelled');
     pending.complete(http.Response('{"fullname":"Synthetic account"}', 200));

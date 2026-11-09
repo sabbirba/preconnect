@@ -8,6 +8,7 @@ import 'package:preconnect/tools/refresh_bus.dart';
 import 'package:preconnect/api/preferences_store.dart';
 import 'package:preconnect/api/auth.dart';
 import 'package:preconnect/pages/shared_widgets/info_line.dart';
+import 'package:preconnect/pages/shared_widgets/preconnect_webview.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/pages/home_tab.dart';
 import 'package:preconnect/tools/time_utils.dart' show AppTime;
@@ -18,7 +19,6 @@ import 'package:preconnect/libsync/flow_stub.dart'
     if (dart.library.js_interop) 'package:preconnect/libsync/flow_web.dart';
 import 'package:preconnect/libsync/oauth_stub.dart'
     if (dart.library.js_interop) 'package:preconnect/libsync/oauth_web.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'auth_service.dart';
 import 'libsync_config.dart';
 import 'library_card.dart';
@@ -276,20 +276,53 @@ class _LibSyncPageState extends State<LibSyncPage>
     }
     try {
       if (!kIsWeb) {
-        final oauthUrl = LibSyncConfig.buildOAuthUrl();
-        final launched = await launchUrl(
-          oauthUrl,
-          mode: LaunchMode.externalApplication,
+        final controller = preConnectWebViewController();
+        controller.loadRequest(Uri.parse(LibSyncConfig.loginUrl));
+        var completed = false;
+        if (!context.mounted) return;
+        await Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (ctx) => PreConnectWebViewPage(
+              controller: controller,
+              onPageFinished: (url) async {
+                if (completed) return;
+                if (url.contains('/dashboard') || url.contains('/room-book')) {
+                  completed = true;
+                  try {
+                    final res = await controller.runJavaScriptReturningResult(
+                      "fetch('/api/user/me/', {credentials: 'include'}).then(r => r.text())",
+                    );
+                    final raw = res.toString();
+                    final unquoted = raw.startsWith('"') && raw.endsWith('"')
+                        ? jsonDecode(raw)
+                        : raw;
+                    final profile = jsonDecode(unquoted.toString());
+                    if (profile is Map<String, dynamic>) {
+                      await LibSyncAuthService.instance.saveProfile(profile);
+                    }
+                  } catch (e, st) {
+                    reportLibSyncError(
+                      'Extracting LibSync mobile session',
+                      e,
+                      st,
+                    );
+                  }
+                  if (ctx.mounted) Navigator.of(ctx).pop();
+                }
+              },
+            ),
+          ),
         );
-        if (!launched) throw Exception('Could not open the sign-in browser.');
         return;
       }
 
       final redirectUri = LibSyncConfig.googleRedirectUri;
-      final oauthUrl = LibSyncConfig.buildOAuthUrl(
-        redirectUri: redirectUri,
-        includeState: isChromeRuntimeAvailable(),
-      ).toString();
+      final oauthUrl = isChromeRuntimeAvailable()
+          ? LibSyncConfig.loginUrl
+          : LibSyncConfig.buildOAuthUrl(
+              redirectUri: redirectUri,
+              includeState: isChromeRuntimeAvailable(),
+            ).toString();
 
       final authCode = isChromeRuntimeAvailable()
           ? await openChromeExtensionOAuthFlow(oauthUrl, redirectUri)
@@ -299,6 +332,15 @@ class _LibSyncPageState extends State<LibSyncPage>
         if (authCode.startsWith('{')) {
           final decoded = jsonDecode(authCode);
           if (decoded is Map) {
+            if (decoded.containsKey('cookies')) {
+              final c = decoded['cookies'];
+              if (c is Map) {
+                await LibSyncAuthService.instance.authenticateWithCookies(
+                  c.map((k, v) => MapEntry(k.toString(), v.toString())),
+                );
+                return;
+              }
+            }
             await LibSyncAuthService.instance.authenticateWithTokens(
               googleAccessToken: decoded['access_token']?.toString() ?? '',
               googleRefreshToken: decoded['refresh_token']?.toString(),

@@ -1116,6 +1116,7 @@ Future<void> _processNavigation(int tabId, String url) async {
 
   if (_pendingLibsyncOauthTabId != null && tabId == _pendingLibsyncOauthTabId) {
     bool isRedirectMatch = false;
+    bool isLibSyncMatch = false;
     final parsedUrl = Uri.tryParse(url);
     if (parsedUrl != null) {
       final path = parsedUrl.path.endsWith('/')
@@ -1125,6 +1126,53 @@ Future<void> _processNavigation(int tabId, String url) async {
           (path == '/auth/callback' || path == '/api/auth/callback')) {
         isRedirectMatch = true;
       }
+      if (parsedUrl.host.contains('libsync.bracu.ac.bd') &&
+          (path == '/dashboard' ||
+              path == '/room-book' ||
+              path == '/profile')) {
+        isLibSyncMatch = true;
+      }
+    }
+    if (isLibSyncMatch && parsedUrl != null) {
+      final reqId = _pendingLibsyncOauthRequestId;
+      final tabToRemove = _pendingLibsyncOauthTabId;
+      _pendingLibsyncOauthTabId = null;
+      _pendingLibsyncOauthRequestId = null;
+      try {
+        await chrome.storage.local.remove([
+          'libsync.pendingTabId',
+          'libsync.pendingRedirectUri',
+          'libsync.pendingRequestId',
+        ]);
+      } catch (error, stackTrace) {
+        _reportBackgroundError(error, stackTrace);
+      }
+
+      if (tabToRemove != null) {
+        try {
+          await chrome.tabs.remove(tabToRemove);
+        } catch (error, stackTrace) {
+          _reportBackgroundError(error, stackTrace);
+        }
+      }
+
+      Map<String, String>? currentCookies;
+      if (chrome.cookies.isAvailable) {
+        final list = await chrome.cookies.getAll(
+          ck.GetAllDetails(url: 'https://libsync.bracu.ac.bd/'),
+        );
+        currentCookies = {for (final c in list) c.name: c.value};
+      }
+      if (currentCookies != null && currentCookies.isNotEmpty) {
+        unawaited(
+          _broadcastRuntimeMessage({
+            'type': 'preconnect.libsyncOauthResponse',
+            'requestId': reqId,
+            'cookies': jsonEncode(currentCookies),
+          }),
+        );
+      }
+      return;
     }
     if (isRedirectMatch && parsedUrl != null) {
       final code = parsedUrl.queryParameters['code'];

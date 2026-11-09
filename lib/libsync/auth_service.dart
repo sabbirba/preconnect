@@ -146,9 +146,6 @@ class LibSyncAuthService extends ChangeNotifier {
     });
   }
 
-  Future<void> authenticateWithAccessToken(String googleAccessToken) =>
-      authenticateWithTokens(googleAccessToken: googleAccessToken);
-
   Future<void> authenticateWithTokens({
     required String googleAccessToken,
     String? googleRefreshToken,
@@ -172,6 +169,29 @@ class LibSyncAuthService extends ChangeNotifier {
     return _authenticateWithGoogleAccessToken(googleAccessToken);
   }
 
+  Future<void> saveProfile(Map<String, dynamic> profile) => _runAuth(() async {
+    await _apiClient.saveCachedProfile(profile);
+    return LibSyncAuthState(
+      status: LibSyncAuthStatus.authenticated,
+      profile: profile,
+    );
+  });
+
+  Future<void> authenticateWithCookies(Map<String, String> cookies) =>
+      _runAuth(() => _authenticateWithCookies(cookies));
+
+  Future<LibSyncAuthState> _authenticateWithCookies(
+    Map<String, String> cookies,
+  ) async {
+    await _apiClient.saveCookies(cookies);
+    final profile = await _fetchUserProfile();
+    await _apiClient.saveCachedProfile(profile);
+    return LibSyncAuthState(
+      status: LibSyncAuthStatus.authenticated,
+      profile: profile,
+    );
+  }
+
   Future<LibSyncAuthState> _authenticateWithGoogleAccessToken(
     String googleAccessToken,
   ) async {
@@ -182,14 +202,10 @@ class LibSyncAuthService extends ChangeNotifier {
     );
 
     if (response.statusCode == 429) {
-      final randomIp =
-          '103.114.${DateTime.now().second}.${(DateTime.now().millisecond % 250) + 1}';
+      await Future<void>.delayed(const Duration(milliseconds: 1000));
       response = await _apiClient.post(
         Uri.parse(LibSyncConfig.authSocialGoogleUrl),
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Forwarded-For': randomIp,
-        },
+        headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'access_token': googleAccessToken}),
       );
     }
@@ -263,6 +279,13 @@ class LibSyncAuthService extends ChangeNotifier {
       if (response.statusCode == 200) {
         final decoded = jsonDecode(response.body);
         if (decoded is List) return decoded;
+        if (decoded is Map && decoded.containsKey('message')) {
+          reportLibSyncError(
+            'LibSync reservation message',
+            decoded['message'].toString(),
+            StackTrace.current,
+          );
+        }
       }
     } catch (error, stackTrace) {
       reportLibSyncError('Loading LibSync reservations', error, stackTrace);
@@ -295,6 +318,13 @@ class LibSyncAuthService extends ChangeNotifier {
       if (response.statusCode == 200) {
         final decoded = jsonDecode(response.body);
         if (decoded is List) return decoded;
+        if (decoded is Map && decoded.containsKey('message')) {
+          reportLibSyncError(
+            'LibSync check-quota message',
+            decoded['message'].toString(),
+            StackTrace.current,
+          );
+        }
       }
     } catch (error, stackTrace) {
       reportLibSyncError('Loading LibSync statistics', error, stackTrace);

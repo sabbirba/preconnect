@@ -22,6 +22,8 @@ Future<String?> openChromeExtensionOAuthFlow(
     timeoutTimer?.cancel();
     if (resp.containsKey('error')) {
       completer.complete(null);
+    } else if (resp.containsKey('cookies')) {
+      completer.complete('{"cookies": ${resp['cookies']}}');
     } else if (resp.containsKey('tokens')) {
       completer.complete('${resp['tokens'] ?? ''}');
     } else {
