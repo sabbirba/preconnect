@@ -4,15 +4,19 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:pocketbase/pocketbase.dart';
-import 'package:preconnect/api/api_client.dart';
 import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/api/auth.dart';
 import 'package:preconnect/api/fcm.dart';
+import 'package:preconnect/api/schedule.dart';
 import 'package:preconnect/model/chat.dart';
+import 'package:preconnect/model/section_info.dart'
+    show parseSectionsFromScheduleJson;
 import 'package:preconnect/tools/app_storage.dart';
 import 'package:preconnect/tools/http/http_utils.dart';
 import 'package:preconnect/tools/image_compress.dart';
+import 'package:preconnect/tools/preconnect_constants.dart';
 import 'package:preconnect/tools/storage_keys.dart';
+import 'package:preconnect/tools/token_storage.dart';
 
 class ChatException implements Exception {
   const ChatException(this.message);
@@ -97,16 +101,48 @@ class ChatService {
   }
 
   Future<http.Response> _requestSession() async {
-    final token = await ApiClient().getAccessToken();
-    if (token == null || token.isEmpty) {
+    final idToken = await TokenStorage.instance.read(
+      key: PreConnectStorageKeys.idToken,
+    );
+    if (idToken == null || idToken.isEmpty) {
       throw const ChatException('Sign in to use chat.');
     }
     return HttpUtils.client
         .post(
           Uri.parse(ApiConfig.chatSessionUrl),
-          headers: <String, String>{'Authorization': 'Bearer $token'},
+          headers: <String, String>{
+            'Authorization': 'Bearer $idToken',
+            'Content-Type': 'application/json',
+          },
+          body: jsonEncode(await _enrollment()),
         )
         .timeout(const Duration(seconds: 30));
+  }
+
+  Future<Map<String, Object?>> _enrollment() async {
+    final schedules = ScheduleService();
+    final sessions = await schedules.fetchSemesterSessions();
+    final semesterId = sessions.isEmpty ? 0 : sessions.first.semesterSessionId;
+    final sections = parseSectionsFromScheduleJson(
+      semesterId > 0
+          ? await schedules.fetchStudentScheduleForSemester(
+              semesterSessionId: semesterId,
+            )
+          : null,
+    );
+    return <String, Object?>{
+      'semesterId': semesterId,
+      'sections': [
+        for (final section in sections)
+          if ((section.parentSectionId ?? 0) == 0)
+            {
+              'courseCode': section.courseCode,
+              'sectionId': section.sectionId,
+              'sectionName': section.sectionName,
+            },
+      ],
+      'photo': AppStorage.instance.getStringSync(StorageKeys.photoFilePath),
+    };
   }
 
   Future<void> _start() async {
