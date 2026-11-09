@@ -228,21 +228,31 @@ class _AppNotificationsIconButtonState extends State<AppNotificationsIconButton>
                 child: Icon(
                   bellIcon,
                   size: widget.iconSize,
-                  color: newCount > 0 ? AppPalette.danger : AppPalette.primary,
+                  color: AppPalette.primary,
                 ),
               ),
             ),
             if (newCount > 0)
               Positioned(
-                left: widget.padding + widget.iconSize * 0.72,
-                top: widget.padding - 7,
-                child: Text(
-                  unreadBadgeLabel(newCount),
-                  style: const TextStyle(
+                left: widget.padding + widget.iconSize * 0.58,
+                top: widget.padding - 5,
+                child: Container(
+                  height: 16,
+                  constraints: const BoxConstraints(minWidth: 16),
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
                     color: AppPalette.danger,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w800,
-                    height: 1,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    unreadBadgeLabel(newCount),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                      height: 1,
+                    ),
                   ),
                 ),
               ),
