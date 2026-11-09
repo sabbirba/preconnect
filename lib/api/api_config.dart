@@ -195,6 +195,8 @@ class ApiConfig {
   }) => '/reg/v1/calendar/$calendarId?startDate=$startDate&endDate=$endDate';
 
   static String notificationViewPath(int id) => '/ns/notifications/view/$id';
+  static String userNotificationsPath(int offset, int limit) =>
+      '/ns/notifications/user?offset=$offset&limit=$limit';
 
   static const Map<String, String> apiHeaders = {
     'X-REALM': 'bracu',

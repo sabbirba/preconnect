@@ -27,6 +27,20 @@ void main() {
     ApiClient.testOverride = ApiClient.testing(
       MockClient((request) async {
         final path = request.url.path;
+        if (path.endsWith('/ns/notifications/user')) {
+          final offset = int.parse(request.url.queryParameters['offset']!);
+          final rows = [
+            for (var id = 1; id <= 150; id++)
+              {'id': id, 'seen': id != 3 && id != 120},
+          ];
+          return http.Response(
+            jsonEncode({
+              'rows': rows.skip(offset).take(100).toList(),
+              'lastRow': rows.length,
+            }),
+            200,
+          );
+        }
         if (path.contains('/ns/notifications/view/')) {
           viewed.add(path.split('/').last);
           return http.Response(jsonEncode({'id': 0, 'title': 'Seen'}), 200);
@@ -41,17 +55,17 @@ void main() {
     await directory.delete(recursive: true);
   });
 
-  test('mark all seen reads every unseen Connect notification', () async {
+  test('mark all seen reads every unseen notification on every page', () async {
     await RepositoryCache.instance.writeJson('RecentNotificationsFeed', {
-      'new': 2,
+      'new': 3,
       'items': [
         {'id': 1, 'title': 'Old', 'seen': true},
-        {'id': 2, 'title': 'New one', 'seen': false},
-        {'id': 3, 'title': 'New two', 'seen': false},
+        {'id': 3, 'title': 'New', 'seen': false},
+        {'id': 200, 'title': 'Newest', 'seen': false},
       ],
     });
     final updated = await NotificationService().markAllSeen();
-    expect(viewed..sort(), ['2', '3']);
+    expect(viewed..sort(), ['120', '200', '3']);
     expect(updated?.newCount, 0);
     expect(updated?.items.every((item) => item.seen), isTrue);
   });

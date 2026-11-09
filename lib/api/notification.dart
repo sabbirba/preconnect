@@ -585,10 +585,11 @@ class NotificationService {
   Future<NotificationsFeed?> markAllSeen() async {
     final cached = await _readCachedFeed();
     if (cached == null) return null;
-    final unseen = <int>[
+    final unseen = <int>{
       for (final item in cached.items)
         if (!item.seen) item.id,
-    ];
+      ...await _unseenNotificationIds(),
+    }.toList();
     await runInParallel(unseen, 4, (id) async {
       try {
         await fetchNotificationDetail(id);
@@ -617,6 +618,33 @@ class NotificationService {
     _inMemoryFeed = updated;
     await _repo.writeJson(_recentFeedKey, updated.toJson());
     return updated;
+  }
+
+  Future<List<int>> _unseenNotificationIds() async {
+    const pageSize = 100;
+    final unseen = <int>[];
+    try {
+      for (var offset = 0; ; offset += pageSize) {
+        final response = await _client.authenticatedGet(
+          '${ApiConfig.connectApiBase}${ApiConfig.userNotificationsPath(offset, pageSize)}',
+          cacheDuration: Duration.zero,
+          bypassCache: true,
+        );
+        final page = jsonDecode(response.body);
+        if (page is! Map) break;
+        final rows = (page['rows'] as List?)?.whereType<Map>().toList() ?? [];
+        for (final row in rows) {
+          if (row['seen'] != true && row['id'] is num) {
+            unseen.add((row['id'] as num).toInt());
+          }
+        }
+        final total = (page['lastRow'] as num?)?.toInt() ?? 0;
+        if (rows.isEmpty || offset + rows.length >= total) break;
+      }
+    } catch (error) {
+      unawaited(AppLog.write('Notification list failed: $error'));
+    }
+    return unseen;
   }
 
   Future<NotificationsFeed?> _readCachedFeed() async {
