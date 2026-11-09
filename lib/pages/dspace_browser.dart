@@ -25,7 +25,8 @@ class DSpaceCategory {
   factory DSpaceCategory.fromJson(Map<String, dynamic> json) {
     return DSpaceCategory(
       category: json['category']?.toString() ?? '',
-      url: json['url']?.toString() ?? '',
+      url:
+          '${ApiConfig.realtimeApiBase}/dspace/${Uri.parse('${json['url']}').pathSegments.last}',
       count: json['count'] is int ? json['count'] as int : 0,
     );
   }
@@ -77,6 +78,7 @@ class DSpaceItem {
     required this.subject,
     required this.keywords,
     required this.language,
+    required this.locked,
   });
 
   final String uuid;
@@ -93,6 +95,7 @@ class DSpaceItem {
   final List<String> subject;
   final List<String> keywords;
   final String language;
+  final bool locked;
 
   factory DSpaceItem.fromJson(Map<String, dynamic> json) {
     final filesList = json['files'] is List
@@ -123,6 +126,7 @@ class DSpaceItem {
       subject: parseStringList(json['subject']),
       keywords: parseStringList(json['keywords']),
       language: json['language']?.toString() ?? '',
+      locked: const {'embargo', 'restricted'}.contains(json['access']),
     );
   }
 }
@@ -328,27 +332,6 @@ class _DSpaceBrowserPageState extends State<DSpaceBrowserPage> {
         });
       }
     } catch (e) {
-      try {
-        final catQuery = category.category.trim().toLowerCase();
-        final fallbackResponse = await _client.publicGet(
-          '${ApiConfig.realtimeApiBase}/dspace/search?category=$catQuery&limit=200',
-          acceptedStatusCodes: const <int>{200},
-          cacheDuration: const Duration(hours: 12),
-        );
-        final parsed = _parseDSpaceItems(
-          await computeJsonDecode(fallbackResponse.body),
-        );
-
-        if (mounted) {
-          setState(() {
-            _items = parsed;
-            _filterItems();
-            _isLoadingItems = false;
-          });
-          return;
-        }
-      } catch (_) {}
-
       if (mounted) {
         setState(() {
           _itemsError = 'Failed to load items: $e';
@@ -771,11 +754,20 @@ class _DSpaceBrowserPageState extends State<DSpaceBrowserPage> {
                   padding: const EdgeInsets.only(bottom: 12),
                   child: ActionBannerCard(
                     title: file.name,
-                    subtitle: '${file.sizeLabel} • $ext',
-                    icon: Icons.description_rounded,
+                    subtitle: item.locked
+                        ? 'Restricted by BRAC University • Opens in DSpace'
+                        : '${file.sizeLabel} • $ext',
+                    icon: item.locked
+                        ? Icons.lock_outline_rounded
+                        : Icons.description_rounded,
                     iconColor: AppPalette.primary,
                     showTrailingIcon: true,
-                    onTap: () => openExternalUrl(context, file.url),
+                    onTap: () => openExternalUrl(
+                      context,
+                      item.locked
+                          ? ApiConfig.dspaceItemUrl(item.handle)
+                          : file.url,
+                    ),
                   ),
                 );
               }),

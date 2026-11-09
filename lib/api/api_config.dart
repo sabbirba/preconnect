@@ -46,6 +46,8 @@ class ApiConfig {
   static const String busDataUrl = '$realtimeApiBase/bus.json';
   static const String freeLabsDataUrl = '$realtimeApiBase/freelabs.json';
   static const String dspaceDataUrl = '$realtimeApiBase/dspace.json';
+  static String dspaceItemUrl(String handle) =>
+      'https://dspace.bracu.ac.bd/handle/$handle';
   static const String examMapIndexUrl = '$realtimeApiBase/exammap.json';
   static const String announcementFeedUrl =
       '$realtimeApiBase/announcements.json';
