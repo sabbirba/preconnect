@@ -1,195 +1,137 @@
-import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
-import 'package:webview_flutter/webview_flutter.dart';
 import 'package:preconnect/pages/ui_kit.dart';
+import 'package:preconnect/tools/token_storage.dart';
+import 'package:webview_flutter/webview_flutter.dart';
+
+bool get _isMobile =>
+    !kIsWeb &&
+    (defaultTargetPlatform == TargetPlatform.android ||
+        defaultTargetPlatform == TargetPlatform.iOS);
+
+WebViewController preConnectWebViewController() {
+  final controller = WebViewController()
+    ..setJavaScriptMode(JavaScriptMode.unrestricted)
+    ..enableZoom(true);
+  if (_isMobile) {
+    controller
+      ..setUserAgent(kPreConnectUserAgent)
+      ..setBackgroundColor(Colors.transparent);
+  }
+  return controller;
+}
 
 class PreConnectWebViewPage extends StatefulWidget {
   const PreConnectWebViewPage({
     super.key,
-    required this.initialUrl,
-    this.userAgent,
+    this.url,
+    this.controller,
+    this.onBack,
     this.onNavigationRequest,
     this.onPageStarted,
     this.onPageFinished,
-    this.onBackPress,
-    this.enablePullToRefresh = true,
-    this.preloadedController,
-    this.delayLoadUntilTransition = false,
+    this.onSslAuthError,
   });
 
-  final String initialUrl;
-  final String? userAgent;
+  final Uri? url;
+  final WebViewController? controller;
+  final Future<void> Function()? onBack;
   final NavigationDecision Function(NavigationRequest request)?
   onNavigationRequest;
   final void Function(String url)? onPageStarted;
   final void Function(String url)? onPageFinished;
-  final Future<void> Function(
-    BuildContext context,
-    WebViewController controller,
-  )?
-  onBackPress;
-  final bool enablePullToRefresh;
-  final WebViewController? preloadedController;
-  final bool delayLoadUntilTransition;
+  final void Function(SslAuthError error)? onSslAuthError;
 
   @override
   State<PreConnectWebViewPage> createState() => _PreConnectWebViewPageState();
 }
 
 class _PreConnectWebViewPageState extends State<PreConnectWebViewPage> {
-  late final WebViewController _controller;
-  bool _loading = true;
+  late final WebViewController _controller =
+      widget.controller ?? preConnectWebViewController();
+  late bool _loading = widget.controller == null;
 
   @override
   void initState() {
     super.initState();
-    if (widget.preloadedController != null) {
-      _controller = widget.preloadedController!;
-      _loading = false;
-    } else {
-      _controller = WebViewController()
-        ..setJavaScriptMode(JavaScriptMode.unrestricted)
-        ..enableZoom(true);
+    if (widget.controller != null) return;
+    _controller.setNavigationDelegate(
+      NavigationDelegate(
+        onNavigationRequest: (request) =>
+            widget.onNavigationRequest?.call(request) ??
+            NavigationDecision.navigate,
+        onPageStarted: (url) {
+          if (mounted) setState(() => _loading = true);
+          widget.onPageStarted?.call(url);
+        },
+        onPageFinished: (url) {
+          if (mounted) setState(() => _loading = false);
+          widget.onPageFinished?.call(url);
+        },
+        onSslAuthError: widget.onSslAuthError,
+      ),
+    );
+    _controller.loadRequest(widget.url!);
+  }
 
-      if (widget.userAgent != null) {
-        _controller.setUserAgent(widget.userAgent);
-      }
-
-      try {
-        _controller.setBackgroundColor(Colors.transparent);
-      } catch (_) {}
-    }
-
-    if (widget.preloadedController == null) {
-      _controller.setNavigationDelegate(
-        NavigationDelegate(
-          onNavigationRequest: (request) {
-            if (widget.onNavigationRequest != null) {
-              return widget.onNavigationRequest!(request);
-            }
-            return NavigationDecision.navigate;
-          },
-          onPageStarted: (url) {
-            if (mounted) setState(() => _loading = true);
-            if (widget.onPageStarted != null) widget.onPageStarted!(url);
-          },
-          onPageFinished: (url) {
-            if (mounted) setState(() => _loading = false);
-            if (widget.onPageFinished != null) widget.onPageFinished!(url);
-          },
-        ),
-      );
-    }
-
-    if (widget.preloadedController == null) {
-      if (widget.delayLoadUntilTransition) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (!mounted) return;
-          final route = ModalRoute.of(context);
-          if (route == null) {
-            _controller.loadRequest(Uri.parse(widget.initialUrl));
-            return;
-          }
-          if (route.animation?.isCompleted == true) {
-            _controller.loadRequest(Uri.parse(widget.initialUrl));
-          } else {
-            void listener(AnimationStatus status) {
-              if (status == AnimationStatus.completed) {
-                route.animation?.removeStatusListener(listener);
-                if (mounted) {
-                  _controller.loadRequest(Uri.parse(widget.initialUrl));
-                }
-              }
-            }
-
-            route.animation?.addStatusListener(listener);
-          }
-        });
-      } else {
-        _controller.loadRequest(Uri.parse(widget.initialUrl));
-      }
-    }
+  Future<void> _back() async {
+    if (widget.onBack != null) return widget.onBack!();
+    final navigator = Navigator.of(context);
+    if (await _controller.canGoBack()) return _controller.goBack();
+    if (mounted) navigator.pop();
   }
 
   @override
   Widget build(BuildContext context) {
-    final iconColor = Theme.of(context).brightness == Brightness.dark
-        ? Colors.white
-        : Colors.black87;
-
-    final popScopeChild = Stack(
-      children: [
-        Positioned.fill(
-          child: WebViewWidget(
-            controller: _controller,
-            gestureRecognizers: const <Factory<OneSequenceGestureRecognizer>>{
-              Factory<OneSequenceGestureRecognizer>(EagerGestureRecognizer.new),
-            },
-          ),
-        ),
-        Positioned(
-          top: 0,
-          left: 0,
-          right: 0,
-          child: Container(
-            height: 48,
-            color: Colors.transparent,
-            padding: const EdgeInsets.symmetric(horizontal: 4),
-            child: Row(
-              children: [
-                IconButton(
-                  icon: Icon(Icons.arrow_back_rounded, color: iconColor),
-                  onPressed: () async {
-                    final navigator = Navigator.of(context);
-                    if (widget.onBackPress != null) {
-                      await widget.onBackPress!(context, _controller);
-                    } else if (await _controller.canGoBack()) {
-                      await _controller.goBack();
-                    } else {
-                      if (mounted) {
-                        navigator.pop();
-                      }
-                    }
-                  },
-                ),
-                const Spacer(),
-                AppRefreshButton(
-                  onPressed: () => _controller.reload(),
-                  isLoading: _loading,
-                  color: iconColor,
-                  icon: Icons.refresh_rounded,
-                ),
-              ],
-            ),
-          ),
-        ),
-      ],
-    );
-
-    final innerContent = PopScope(
+    return PopScope(
       canPop: false,
-      onPopInvokedWithResult: (didPop, result) async {
-        if (didPop) return;
-        final navigator = Navigator.of(context);
-        if (widget.onBackPress != null) {
-          await widget.onBackPress!(context, _controller);
-        } else if (await _controller.canGoBack()) {
-          await _controller.goBack();
-        } else {
-          if (mounted) {
-            navigator.pop();
-          }
-        }
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) _back();
       },
-      child: popScopeChild,
-    );
-
-    return Scaffold(
-      backgroundColor: Colors.transparent,
-      resizeToAvoidBottomInset: false,
-      body: SafeArea(child: innerContent),
+      child: Scaffold(
+        body: SafeArea(
+          child: Stack(
+            children: [
+              WebViewWidget(
+                controller: _controller,
+                gestureRecognizers: {
+                  const Factory<OneSequenceGestureRecognizer>(
+                    EagerGestureRecognizer.new,
+                  ),
+                },
+              ),
+              Positioned(
+                right: 12,
+                bottom: 12,
+                child: AppGlassContainer(
+                  borderRadius: BorderRadius.circular(24),
+                  blurSigma: 18,
+                  isHighlighted: true,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(
+                        tooltip: 'Back',
+                        icon: const Icon(
+                          Icons.arrow_back_rounded,
+                          color: AppPalette.primary,
+                        ),
+                        onPressed: _back,
+                      ),
+                      AppRefreshButton(
+                        onPressed: _controller.reload,
+                        isLoading: _loading,
+                        icon: Icons.refresh_rounded,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

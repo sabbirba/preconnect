@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:preconnect/pages/shared_widgets/preconnect_webview.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/api/profile.dart';
 import 'package:preconnect/tools/network_assist.dart';
@@ -11,7 +12,6 @@ import 'package:preconnect/tools/token_storage.dart';
 import 'package:preconnect/tools/app_storage.dart';
 import 'package:preconnect/tools/storage_keys.dart';
 import 'package:preconnect/tools/polling_timer.dart';
-import 'package:webview_flutter/webview_flutter.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:preconnect/libsync/flow_stub.dart'
     if (dart.library.js_interop) 'package:preconnect/libsync/flow_web.dart';
@@ -1283,43 +1283,19 @@ class CaptivePortalWebView extends StatefulWidget {
 }
 
 class _CaptivePortalWebViewState extends State<CaptivePortalWebView> {
-  late final WebViewController _controller;
-  bool _loading = true;
   bool _successHandled = false;
 
   @override
   void initState() {
     super.initState();
     unawaited(CaptiveWifiHttp.acquireWifiBinding());
-    _controller = WebViewController()
-      ..setJavaScriptMode(JavaScriptMode.unrestricted)
-      ..enableZoom(true)
-      ..setNavigationDelegate(
-        NavigationDelegate(
-          onPageStarted: (String url) {
-            if (mounted) {
-              setState(() {
-                _loading = true;
-              });
-            }
-          },
-          onPageFinished: (String url) {
-            if (mounted) {
-              setState(() {
-                _loading = false;
-              });
-            }
-            if (url.contains('/portalpage/')) {
-              unawaited(CaptiveLoginStore.instance.saveLastPortalUrl(url));
-            }
-            unawaited(_checkForLoginSuccess());
-          },
-          onSslAuthError: (SslAuthError error) {
-            unawaited(error.proceed());
-          },
-        ),
-      )
-      ..loadRequest(widget.portalUrl);
+  }
+
+  void _onPageFinished(String url) {
+    if (url.contains('/portalpage/')) {
+      unawaited(CaptiveLoginStore.instance.saveLastPortalUrl(url));
+    }
+    unawaited(_checkForLoginSuccess());
   }
 
   Future<void> _checkForLoginSuccess() async {
@@ -1346,39 +1322,11 @@ class _CaptivePortalWebViewState extends State<CaptivePortalWebView> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      body: SafeArea(
-        child: Stack(
-          children: [
-            Positioned.fill(child: WebViewWidget(controller: _controller)),
-            Positioned(
-              top: 0,
-              left: 0,
-              right: 0,
-              child: Container(
-                height: 48,
-                color: Colors.transparent,
-                padding: const EdgeInsets.symmetric(horizontal: 4),
-                child: Row(
-                  children: [
-                    IconButton(
-                      icon: const Icon(Icons.arrow_back_rounded),
-                      onPressed: () => Navigator.of(context).pop(),
-                    ),
-                    const Spacer(),
-                    AppRefreshButton(
-                      onPressed: () => _controller.reload(),
-                      isLoading: _loading,
-                      color: AppPalette.textPrimary(context),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
+    return PreConnectWebViewPage(
+      url: widget.portalUrl,
+      onBack: () async => Navigator.of(context).pop(),
+      onPageFinished: _onPageFinished,
+      onSslAuthError: (error) => unawaited(error.proceed()),
     );
   }
 }

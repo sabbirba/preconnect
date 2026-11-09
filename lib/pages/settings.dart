@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:preconnect/app.dart';
 import 'package:preconnect/pages/captive_wifi.dart';
 import 'package:preconnect/pages/device_diagnostics.dart';
+import 'package:preconnect/pages/login.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/pages/shared_widgets/export_sheet.dart';
 import 'package:preconnect/pages/shared_widgets/permission_helper.dart';
@@ -410,6 +411,14 @@ class _SettingsPageState extends State<SettingsPage>
               value: _appLockEnabled,
               onChanged: _setAppLock,
             ),
+          ),
+          const Gap(_sectionGap),
+          ActionBannerCard(
+            icon: Icons.shield_rounded,
+            title: 'Account Security',
+            subtitle: 'Devices, sessions and two-factor sign in',
+            showTrailingIcon: true,
+            onTap: () => LoginPage.openAccountSecurity(context),
           ),
 
           if (AppPermissionHelper.isSupported) ...[

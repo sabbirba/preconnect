@@ -18,12 +18,6 @@ import 'package:preconnect/pages/onboarding.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:preconnect/pages/shared_widgets/preconnect_webview.dart';
 
-bool get _shouldUseMobileUserAgent {
-  if (kIsWeb) return false;
-  return defaultTargetPlatform == TargetPlatform.android ||
-      defaultTargetPlatform == TargetPlatform.iOS;
-}
-
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key, this.customAuthUrl});
 
@@ -38,6 +32,20 @@ class LoginPage extends StatefulWidget {
       final manager = WebViewCookieManager();
       await manager.clearCookies();
     } catch (_) {}
+  }
+
+  static Future<void> openAccountSecurity(BuildContext context) {
+    if (kIsWeb) {
+      return openExternalUrl(context, ApiConfig.accountSecurityUrl);
+    }
+    return Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => PreConnectWebViewPage(
+          url: Uri.parse(ApiConfig.accountSecurityUrl),
+          onBack: () async => Navigator.of(context).pop(),
+        ),
+      ),
+    );
   }
 
   static Future<void> openLogoutWebView(
@@ -98,9 +106,7 @@ class _MobileLogoutWebViewPageState extends State<_MobileLogoutWebViewPage> {
   @override
   Widget build(BuildContext context) {
     return PreConnectWebViewPage(
-      initialUrl: widget.logoutUrl.toString(),
-      userAgent: _shouldUseMobileUserAgent ? kPreConnectUserAgent : null,
-      enablePullToRefresh: false,
+      url: widget.logoutUrl,
       onNavigationRequest: (request) {
         if (AppLogout.isConnectLogoutRedirect(request.url)) {
           _complete();
@@ -136,14 +142,7 @@ class _LoginPageState extends State<LoginPage> {
   WebViewController _buildMobileWebView() {
     LoginPage.pkceVerifier ??= generatePkceVerifier();
     final codeChallenge = codeChallengeS256(LoginPage.pkceVerifier!);
-    final controller = WebViewController()
-      ..setJavaScriptMode(JavaScriptMode.unrestricted);
-    try {
-      controller.setBackgroundColor(Colors.transparent);
-    } catch (_) {}
-    if (_shouldUseMobileUserAgent) {
-      controller.setUserAgent(kPreConnectUserAgent);
-    }
+    final controller = preConnectWebViewController();
     final url =
         widget.customAuthUrl ?? ApiConfig.authUrlWithPkce(codeChallenge);
     controller.loadRequest(Uri.parse(url));
@@ -256,18 +255,15 @@ class _LoginPageState extends State<LoginPage> {
     }
 
     return PreConnectWebViewPage(
-      initialUrl: widget.customAuthUrl ?? '',
-      preloadedController: _webViewController,
-      onBackPress: (context, ctrl) async {
-        final navigator = Navigator.of(context);
-        if (await ctrl.canGoBack()) {
-          await ctrl.goBack();
-        } else {
-          navigator.pushAndRemoveUntil(
-            MaterialPageRoute(builder: (context) => const OnboardingPage()),
-            (route) => false,
-          );
-        }
+      controller: _webViewController,
+      onBack: () async {
+        final controller = _webViewController!;
+        if (await controller.canGoBack()) return controller.goBack();
+        if (!mounted) return;
+        Navigator.of(this.context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (context) => const OnboardingPage()),
+          (route) => false,
+        );
       },
     );
   }

@@ -10,8 +10,10 @@ const bool _kIsWeb = identical(0, 0.0);
 class ApiConfig {
   ApiConfig._();
 
-  static const String ssoBase =
-      'https://sso.bracu.ac.bd/realms/bracu/protocol/openid-connect';
+  static const String ssoRealm = 'https://sso.bracu.ac.bd/realms/bracu';
+  static const String ssoBase = '$ssoRealm/protocol/openid-connect';
+  static const String accountSecurityUrl =
+      '$ssoRealm/account/account-security/device-activity';
   static String get _webProxyBase {
     final origin = getWebAppOrigin();
     if (origin.contains('localhost') || origin.contains('127.0.0.1')) {
