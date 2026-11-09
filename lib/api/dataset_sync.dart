@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
@@ -15,6 +14,7 @@ import 'package:preconnect/model/section_info.dart';
 import 'package:preconnect/tools/app_log.dart';
 import 'package:preconnect/tools/app_storage.dart';
 import 'package:preconnect/tools/holiday.dart';
+import 'package:preconnect/tools/parallel.dart';
 import 'package:preconnect/tools/ramadan.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
 import 'package:preconnect/tools/sse_client.dart';
@@ -237,22 +237,5 @@ class DatasetSync {
       semesterSessionId: sessionId,
       forceRefresh: true,
     );
-  }
-
-  static Future<void> runInParallel<T>(
-    List<T> items,
-    int limit,
-    Future<void> Function(T item) task,
-  ) async {
-    var next = 0;
-    Future<void> worker() async {
-      while (next < items.length) {
-        await task(items[next++]);
-      }
-    }
-
-    await Future.wait(<Future<void>>[
-      for (var i = 0; i < math.min(limit, items.length); i++) worker(),
-    ]);
   }
 }

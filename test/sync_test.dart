@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:preconnect/api/dataset_sync.dart';
+import 'package:preconnect/tools/parallel.dart';
 
 void main() {
   test('reads dataset versions from the manifest and ignores bad entries', () {
@@ -35,9 +36,7 @@ void main() {
     var running = 0;
     var peak = 0;
     final finished = <int>[];
-    await DatasetSync.runInParallel(List<int>.generate(10, (i) => i), 4, (
-      item,
-    ) async {
+    await runInParallel(List<int>.generate(10, (i) => i), 4, (item) async {
       running++;
       peak = running > peak ? running : peak;
       await Future<void>.delayed(const Duration(milliseconds: 5));

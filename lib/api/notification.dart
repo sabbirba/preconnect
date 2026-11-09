@@ -7,6 +7,7 @@ import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/api/repository_cache.dart';
 import 'package:preconnect/api/fcm.dart';
 import 'package:preconnect/tools/app_log.dart';
+import 'package:preconnect/tools/parallel.dart';
 import 'package:preconnect/tools/url_utils.dart';
 import 'package:preconnect/tools/cache_durations.dart';
 
@@ -584,6 +585,17 @@ class NotificationService {
   Future<NotificationsFeed?> markAllSeen() async {
     final cached = await _readCachedFeed();
     if (cached == null) return null;
+    final unseen = <int>[
+      for (final item in cached.items)
+        if (!item.seen) item.id,
+    ];
+    await runInParallel(unseen, 4, (id) async {
+      try {
+        await fetchNotificationDetail(id);
+      } catch (error) {
+        unawaited(AppLog.write('Notification mark seen failed ($id): $error'));
+      }
+    });
     final updated = cached.copyWith(
       newCount: 0,
       items: cached.items
