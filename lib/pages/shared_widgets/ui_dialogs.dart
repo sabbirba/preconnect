@@ -110,16 +110,11 @@ Future<T?> showAppBottomSheet<T>(
                       ),
                     ),
                     const Gap(8),
-                    if (actions.isNotEmpty) ...[...actions, const Gap(6)],
+                    ...actions,
+                    if (actions.isNotEmpty && showClose) const Gap(6),
                     if (showClose)
-                      IconButton(
+                      AppSheetCloseButton(
                         onPressed: () => Navigator.of(sheetContext).maybePop(),
-                        icon: const Icon(Icons.close_rounded, size: 20),
-                        style: IconButton.styleFrom(
-                          padding: EdgeInsets.zero,
-                          minimumSize: const Size(36, 36),
-                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                        ),
                       ),
                   ],
                 ),
@@ -990,4 +985,23 @@ void showAppLoadingDialog(BuildContext context) {
       ),
     ),
   );
+}
+
+class AppSheetCloseButton extends StatelessWidget {
+  const AppSheetCloseButton({super.key, required this.onPressed});
+
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return IconButton(
+      onPressed: onPressed,
+      icon: const Icon(Icons.close_rounded, size: 20),
+      style: IconButton.styleFrom(
+        padding: EdgeInsets.zero,
+        minimumSize: const Size(36, 36),
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      ),
+    );
+  }
 }
