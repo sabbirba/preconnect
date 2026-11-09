@@ -27,6 +27,10 @@ class ChatException implements Exception {
   String toString() => message;
 }
 
+class ChatCooldownException extends ChatException {
+  const ChatCooldownException() : super('');
+}
+
 class ChatWatch {
   ChatWatch(this._cancel);
 
@@ -458,15 +462,15 @@ class ChatService {
           );
       return ChatMessage.fromJson(record.toJson());
     } on ClientException catch (error) {
+      if (error.statusCode == 400 && room.slowSeconds > 0) {
+        throw const ChatCooldownException();
+      }
       throw ChatException(_sendError(room, error));
     }
   }
 
   String _sendError(ChatRoom room, ClientException error) {
     if (!room.active) return 'This room is read-only now.';
-    if (error.statusCode == 400 && room.kind == ChatRoomKind.lounge) {
-      return 'Please wait a few seconds before sending again.';
-    }
     final message = error.response['message'];
     if (message is String && message.isNotEmpty && error.statusCode == 400) {
       return message == 'Failed to create record.'

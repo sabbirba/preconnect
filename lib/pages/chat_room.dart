@@ -5,11 +5,8 @@ import 'package:flutter/services.dart';
 import 'package:gap/gap.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:preconnect/api/chat.dart';
-import 'package:preconnect/api/schedule.dart';
 import 'package:preconnect/model/chat.dart';
 import 'package:preconnect/pages/friend_sections/friend_header.dart';
-import 'package:preconnect/model/section_info.dart'
-    show parseSectionsFromScheduleJson;
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/string_utils.dart';
 import 'package:share_plus/share_plus.dart';
@@ -43,43 +40,19 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
   bool _sending = false;
   String? _error;
   Timer? _readTimer;
+  Timer? _cooldownTimer;
+  bool _coolingDown = false;
 
   ChatRoom get _room => widget.room;
 
-  String _roomNumber = '';
-
-  Future<void> _loadRoomNumber() async {
-    if (_room.kind == ChatRoomKind.lounge) return;
-    final schedule = await ScheduleService().getStudentScheduleForSemester(
-      semesterSessionId: _room.semesterSessionId,
-    );
-    final number = _buildRoomNumber(schedule);
-    if (mounted && number.isNotEmpty) setState(() => _roomNumber = number);
-  }
-
-  String _buildRoomNumber(String? schedule) {
-    final dash = _room.title.lastIndexOf('-');
-    final isSection = _room.kind == ChatRoomKind.section && dash > 0;
-    final code = isSection ? _room.title.substring(0, dash) : _room.title;
-    final name = isSection ? _room.title.substring(dash + 1) : '';
-    final match = parseSectionsFromScheduleJson(schedule).where(
-      (s) =>
-          (s.parentSectionId ?? 0) == 0 &&
-          normalizeCourseCode(s.courseCode) == code &&
-          (!isSection ||
-              normalizeSectionName(s.sectionName) ==
-                  normalizeSectionName(name)),
-    );
-    if (match.isEmpty) return '';
-    final section = match.first;
-    return roomsForDays(
-      section.roomNumber,
-      section.sectionSchedule.classSchedules.map((c) => c.day),
-    );
-  }
-
   String _headerSubtitle() {
-    if (_roomNumber.isNotEmpty) return _roomNumber;
+    final current = _chat.rooms.value.where((room) => room.id == _room.id);
+    final count = current.isEmpty
+        ? _room.memberCount
+        : current.first.memberCount;
+    if (count > 0) {
+      return '${formatAmount(count)} ${count == 1 ? 'student' : 'students'}';
+    }
     return switch (_room.kind) {
       ChatRoomKind.lounge => 'Everyone',
       ChatRoomKind.course => 'Course',
@@ -93,7 +66,6 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
     _chat.activeRoomId = _room.id;
     _scroll.addListener(_onScroll);
     unawaited(_load());
-    unawaited(_loadRoomNumber());
   }
 
   @override
@@ -101,6 +73,7 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
     if (_chat.activeRoomId == _room.id) _chat.activeRoomId = null;
     _chat.remember(_room.id, _messages, _reactions);
     _readTimer?.cancel();
+    _cooldownTimer?.cancel();
     unawaited(_watch?.then((watch) => watch.cancel()));
     _scroll.dispose();
     _input.dispose();
@@ -239,9 +212,24 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
       .map((entry) => entry.key)
       .toList();
 
+  bool _canSend(TextEditingValue value) =>
+      !_sending &&
+      !_coolingDown &&
+      _room.active &&
+      (value.text.trim().isNotEmpty || _images.isNotEmpty);
+
+  void _startCooldown() {
+    if (_room.slowSeconds <= 0 || !mounted) return;
+    _cooldownTimer?.cancel();
+    setState(() => _coolingDown = true);
+    _cooldownTimer = Timer(Duration(seconds: _room.slowSeconds), () {
+      if (mounted) setState(() => _coolingDown = false);
+    });
+  }
+
   Future<void> _send() async {
     final text = _input.text.trim();
-    if (_sending || (text.isEmpty && _images.isEmpty)) return;
+    if (!_canSend(_input.value)) return;
     setState(() => _sending = true);
     try {
       final sent = await _chat.send(
@@ -260,6 +248,9 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
       });
       _onIncoming(sent);
       if (_scroll.hasClients) _scroll.jumpTo(0);
+      _startCooldown();
+    } on ChatCooldownException {
+      _startCooldown();
     } on ChatException catch (error) {
       if (mounted) showAppSnackBar(context, error.message);
     } on FormatException catch (error) {
@@ -550,7 +541,10 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
             children: [
               IconButton(
                 tooltip: 'Add Photos',
-                onPressed: _sending || _images.length >= ChatService.maxPhotos
+                onPressed:
+                    _sending ||
+                        !_room.active ||
+                        _images.length >= ChatService.maxPhotos
                     ? null
                     : _pickImages,
                 icon: Icon(Icons.image_outlined, color: textSecondary),
@@ -580,20 +574,21 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
                   ),
                 ),
               ),
-              IconButton(
-                tooltip: 'Send',
-                onPressed: _sending ? null : _send,
-                icon: _sending
-                    ? const AppSpinner(size: 20)
-                    : ValueListenableBuilder<TextEditingValue>(
-                        valueListenable: _input,
-                        builder: (context, value, _) => Icon(
-                          Icons.send_rounded,
-                          color: value.text.trim().isEmpty && _images.isEmpty
-                              ? textSecondary
-                              : AppPalette.primary,
-                        ),
-                      ),
+              ValueListenableBuilder<TextEditingValue>(
+                valueListenable: _input,
+                builder: (context, value, _) {
+                  final canSend = _canSend(value);
+                  return IconButton(
+                    tooltip: 'Send',
+                    onPressed: canSend ? _send : null,
+                    icon: _sending
+                        ? const AppSpinner(size: 20)
+                        : Icon(
+                            Icons.send_rounded,
+                            color: canSend ? AppPalette.primary : textSecondary,
+                          ),
+                  );
+                },
               ),
             ],
           ),
