@@ -9,6 +9,7 @@ Future<T?> showAppBottomSheet<T>(
   double initialChildSize = 0.80,
   bool draggable = true,
   bool isScrollControlled = true,
+  bool fitContent = false,
   bool showClose = true,
   bool dismissible = true,
   required Widget Function(
@@ -41,7 +42,7 @@ Future<T?> showAppBottomSheet<T>(
           padding: const EdgeInsets.fromLTRB(18, 6, 18, 10),
           child: ClipRect(
             child: Column(
-              mainAxisSize: isScrollControlled
+              mainAxisSize: isScrollControlled && !fitContent
                   ? MainAxisSize.max
                   : MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -120,7 +121,7 @@ Future<T?> showAppBottomSheet<T>(
                   ],
                 ),
                 const Gap(4),
-                if (isScrollControlled)
+                if (isScrollControlled && !fitContent)
                   Expanded(
                     child: builder(sheetContext, textPrimary, textSecondary),
                   )

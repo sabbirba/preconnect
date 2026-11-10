@@ -41,6 +41,7 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
   Future<ChatWatch>? _watch;
   ChatMessage? _replyTo;
   List<Uint8List> _images = const <Uint8List>[];
+  List<_StagedPdf> _pdfs = const <_StagedPdf>[];
   late bool _loading = !_chat.hasRecent(_room.id);
   bool _loadingOlder = false;
   bool _hasMore = true;
@@ -356,7 +357,7 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
   bool _canSend(TextEditingValue value) =>
       !_coolingDown &&
       _room.active &&
-      (value.text.trim().isNotEmpty || _images.isNotEmpty);
+      (value.text.trim().isNotEmpty || _images.isNotEmpty || _pdfs.isNotEmpty);
 
   void _startCooldown() {
     if (_room.slowSeconds <= 0 || !mounted) return;
@@ -370,7 +371,17 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
   void _send() {
     if (!_canSend(_input.value)) return;
     final text = _input.text.trim();
-    _post(text, images: _images, mentions: _mentionIds(text));
+    final mentions = _mentionIds(text);
+    if (_pdfs.isEmpty) {
+      _post(text, images: _images, mentions: mentions);
+      return;
+    }
+    _post(
+      text,
+      mentions: mentions,
+      fileNames: [for (final pdf in _pdfs) pdf.name],
+      files: [for (final pdf in _pdfs) pdf.bytes],
+    );
   }
 
   void _post(
@@ -413,6 +424,7 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
     setState(() {
       _messages = <ChatMessage>[..._messages, optimistic];
       _images = const <Uint8List>[];
+      _pdfs = const <_StagedPdf>[];
       _replyTo = null;
     });
     _startCooldown();
@@ -555,6 +567,10 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
                   action(Icons.flag_outlined, 'Report', () {
                     unawaited(_report(message));
                   }),
+                if (isMine)
+                  action(Icons.delete_outline_rounded, 'Unsend', () {
+                    unawaited(_confirmUnsend(message));
+                  }),
                 if (_canPin && message.text.isNotEmpty)
                   action(Icons.push_pin_outlined, 'Pin', () {
                     unawaited(_setPin(message.text));
@@ -585,6 +601,7 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
       title: 'Report Message',
       draggable: false,
       isScrollControlled: true,
+      fitContent: true,
       builder: (sheetContext, textPrimary, textSecondary) => _ReportSheet(
         onSubmit: (reason) async {
           Navigator.of(sheetContext).pop();
@@ -709,6 +726,35 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
     }
   }
 
+  Future<void> _confirmUnsend(ChatMessage message) {
+    return showAppConfirmationWithActionDialog(
+      context,
+      icon: Icons.delete_outline_rounded,
+      title: 'Unsend Message',
+      message: 'Remove this message for everyone in the room?',
+      confirmLabel: 'Unsend',
+      confirmColor: AppPalette.danger,
+      onConfirm: () => _unsend(message),
+    );
+  }
+
+  Future<void> _unsend(ChatMessage message) async {
+    final before = _messages;
+    setState(
+      () => _messages = _messages.where((m) => m.id != message.id).toList(),
+    );
+    try {
+      await _chat.unsend(message.id);
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _messages = before);
+      showAppSnackBar(
+        context,
+        error is ChatException ? error.message : 'Message could not be unsent.',
+      );
+    }
+  }
+
   Future<void> _confirmUnpin() {
     return showAppConfirmationWithActionDialog(
       context,
@@ -723,6 +769,7 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
 
   Future<void> _showAttachMenu() {
     final photosFull = _images.length >= _chat.settings.value.maxPhotos;
+    final attached = _images.isNotEmpty || _pdfs.isNotEmpty;
     return showAppBottomSheet<void>(
       context,
       title: 'Share',
@@ -738,26 +785,28 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
           _AttachOption(
             icon: Icons.photo_library_outlined,
             label: 'Photos',
-            onTap: photosFull ? null : () => pick(_pickImages),
+            onTap: photosFull || _pdfs.isNotEmpty
+                ? null
+                : () => pick(_pickImages),
           ),
           _AttachOption(
             icon: Icons.picture_as_pdf_outlined,
             label: 'PDF',
-            onTap: _images.isEmpty ? () => pick(_pickPdf) : null,
+            onTap: _images.isEmpty && _pdfs.length < ChatService.maxFiles
+                ? () => pick(_pickPdf)
+                : null,
           ),
           _AttachOption(
             icon: Icons.poll_outlined,
             label: 'Poll',
-            onTap: _images.isEmpty ? () => pick(_createPoll) : null,
+            onTap: attached ? null : () => pick(_createPoll),
           ),
           if (_canShareEvents)
             for (final kind in ChatEvent.kinds)
               _AttachOption(
                 icon: _eventIcon(kind),
                 label: personalSchedulesKindLabel(kind),
-                onTap: _images.isEmpty
-                    ? () => pick(() => _createEvent(kind))
-                    : null,
+                onTap: attached ? null : () => pick(() => _createEvent(kind)),
               ),
         ];
         return Padding(
@@ -787,31 +836,31 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
       ],
     );
     if (picked.isEmpty || !mounted) return;
-    final chosen = picked.take(ChatService.maxFiles).toList();
+    final room = ChatService.maxFiles - _pdfs.length;
+    final chosen = picked.take(room).toList();
     final contents = await Future.wait(
       chosen.map((file) => file.readAsBytes()),
     );
     if (!mounted) return;
-    final names = <String>[];
-    final files = <Uint8List>[];
+    final staged = <_StagedPdf>[];
     for (var i = 0; i < chosen.length; i++) {
       if (contents[i].length > ChatService.maxFileBytes) continue;
       final name = chosen[i].name.toLowerCase().endsWith('.pdf')
           ? chosen[i].name
           : '${chosen[i].name}.pdf';
-      names.add(name.replaceAll(RegExp(r'[^A-Za-z0-9._ -]'), '_'));
-      files.add(contents[i]);
+      staged.add((
+        name: name.replaceAll(RegExp(r'[^A-Za-z0-9._ ()-]'), '_'),
+        bytes: contents[i],
+      ));
     }
-    if (names.length < picked.length) {
+    if (staged.length < picked.length) {
       showAppSnackBar(
         context,
         'Up to ${ChatService.maxFiles} PDFs of 10 MB each can be sent at once.',
       );
     }
-    if (names.isEmpty) return;
-    _startCooldown();
-    _post(_input.text.trim(), fileNames: names, files: files);
-    _input.clear();
+    if (staged.isEmpty) return;
+    setState(() => _pdfs = <_StagedPdf>[..._pdfs, ...staged]);
   }
 
   Future<void> _createEvent(String kind) {
@@ -820,6 +869,7 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
       title: 'Share ${personalSchedulesKindLabel(kind)}',
       draggable: false,
       isScrollControlled: true,
+      fitContent: true,
       builder: (sheetContext, textPrimary, textSecondary) => _EventSheet(
         kind: kind,
         onShare: (event) {
@@ -837,6 +887,7 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
       title: 'New Poll',
       draggable: false,
       isScrollControlled: true,
+      fitContent: true,
       builder: (sheetContext, textPrimary, textSecondary) => _PollSheet(
         onCreate: (question, options) {
           Navigator.of(sheetContext).pop();
@@ -979,6 +1030,13 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
               images: _images,
               onRemove: (index) => setState(
                 () => _images = <Uint8List>[..._images]..removeAt(index),
+              ),
+            ),
+          if (_pdfs.isNotEmpty)
+            _AttachedFiles(
+              files: _pdfs,
+              onRemove: (index) => setState(
+                () => _pdfs = <_StagedPdf>[..._pdfs]..removeAt(index),
               ),
             ),
           Row(
@@ -1402,6 +1460,68 @@ class _AttachedPhotos extends StatelessWidget {
   }
 }
 
+typedef _StagedPdf = ({String name, Uint8List bytes});
+
+class _AttachedFiles extends StatelessWidget {
+  const _AttachedFiles({required this.files, required this.onRemove});
+
+  final List<_StagedPdf> files;
+  final ValueChanged<int> onRemove;
+
+  @override
+  Widget build(BuildContext context) {
+    final textSecondary = AppPalette.textSecondary(context);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
+      child: SizedBox(
+        height: 36,
+        child: ListView.separated(
+          scrollDirection: Axis.horizontal,
+          itemCount: files.length,
+          separatorBuilder: (context, index) => const Gap(8),
+          itemBuilder: (context, index) => Container(
+            padding: const EdgeInsets.only(left: 10),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: textSecondary.withValues(alpha: 0.3)),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(
+                  Icons.picture_as_pdf_outlined,
+                  size: 16,
+                  color: AppPalette.danger,
+                ),
+                const Gap(6),
+                ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 160),
+                  child: Text(
+                    files[index].name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: AppPalette.textPrimary(context),
+                    ),
+                  ),
+                ),
+                IconButton(
+                  tooltip: 'Remove PDF',
+                  visualDensity: VisualDensity.compact,
+                  iconSize: 16,
+                  onPressed: () => onRemove(index),
+                  icon: Icon(Icons.close_rounded, color: textSecondary),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _ReadOnlyNotice extends StatelessWidget {
   const _ReadOnlyNotice();
 
@@ -1456,9 +1576,26 @@ class _MessageBubble extends StatelessWidget {
   static const double _inset = 12;
   static const EdgeInsets _metaPadding = EdgeInsets.fromLTRB(
     _inset,
-    4,
+    3,
     _inset,
-    2,
+    0,
+  );
+
+  Widget _fileCards() => Column(
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      for (var i = 0; i < message.fileNames.length; i++) ...[
+        if (i > 0) const Gap(4),
+        _FileCard(
+          message: message,
+          name: message.fileNames[i],
+          title: message.fileTitle(i),
+          bytes: i < message.localFiles.length
+              ? message.localFiles[i].length
+              : null,
+        ),
+      ],
+    ],
   );
 
   @override
@@ -1478,7 +1615,9 @@ class _MessageBubble extends StatelessWidget {
         .toSet();
     final hasReply =
         message.replyToId.isNotEmpty && message.replyText.isNotEmpty;
-    final hasText = hasReply || message.text.isNotEmpty || message.hasFile;
+    final filesOnly = message.hasFile && !hasReply && message.text.isEmpty;
+    final hasText =
+        !filesOnly && (hasReply || message.text.isNotEmpty || message.hasFile);
     final bubble = GestureDetector(
       onTap: onTap,
       onLongPress: onLongPress,
@@ -1490,6 +1629,7 @@ class _MessageBubble extends StatelessWidget {
         children: [
           if (message.hasImage) _ChatPhotos(message: message),
           if (message.hasImage && hasText) const Gap(4),
+          if (filesOnly) _fileCards(),
           if (hasText)
             Container(
               constraints: BoxConstraints(maxWidth: _bubbleMaxWidth(context)),
@@ -1520,17 +1660,7 @@ class _MessageBubble extends StatelessWidget {
                         style: TextStyle(fontSize: 12, color: textSecondary),
                       ),
                     ),
-                  for (var i = 0; i < message.fileNames.length; i++) ...[
-                    if (i > 0) const Gap(6),
-                    _FileCard(
-                      message: message,
-                      name: message.fileNames[i],
-                      title: message.fileTitle(i),
-                      bytes: i < message.localFiles.length
-                          ? message.localFiles[i].length
-                          : null,
-                    ),
-                  ],
+                  if (message.hasFile) _fileCards(),
                   if (message.hasFile && message.text.isNotEmpty) const Gap(8),
                   if (message.event != null)
                     _EventCard(
@@ -1562,7 +1692,7 @@ class _MessageBubble extends StatelessWidget {
       ),
     );
     return Padding(
-      padding: EdgeInsets.only(top: showAuthor ? 12 : 3),
+      padding: EdgeInsets.only(top: showAuthor ? 10 : 2),
       child: Row(
         mainAxisAlignment: isMine
             ? MainAxisAlignment.end
@@ -1612,7 +1742,7 @@ class _MessageBubble extends StatelessWidget {
               children: [
                 if (showAuthor && !isMine)
                   Padding(
-                    padding: const EdgeInsets.only(left: _inset, bottom: 4),
+                    padding: const EdgeInsets.only(left: _inset, bottom: 3),
                     child: Text(
                       message.author.name,
                       style: TextStyle(
@@ -1623,46 +1753,19 @@ class _MessageBubble extends StatelessWidget {
                     ),
                   ),
                 bubble,
-                if (isMine && message.status == ChatMessageStatus.sending)
+                if (counts.isNotEmpty ||
+                    showTime ||
+                    showFullTime ||
+                    (isMine && message.isPending))
                   Padding(
                     padding: _metaPadding,
-                    child: Icon(
-                      Icons.schedule_rounded,
-                      size: 12,
-                      color: textSecondary,
-                    ),
-                  ),
-                if (isMine && message.status == ChatMessageStatus.failed)
-                  Padding(
-                    padding: _metaPadding,
-                    child: InkWell(
-                      onTap: onRetry,
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(
-                            Icons.error_outline_rounded,
-                            size: 12,
-                            color: AppPalette.danger,
-                          ),
-                          const Gap(4),
-                          Text(
-                            'Not Sent · Tap to Retry',
-                            style: const TextStyle(
-                              fontSize: 11,
-                              color: AppPalette.danger,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                if (counts.isNotEmpty)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 4),
                     child: Wrap(
-                      spacing: 4,
+                      spacing: 6,
                       runSpacing: 4,
+                      alignment: isMine
+                          ? WrapAlignment.end
+                          : WrapAlignment.start,
+                      crossAxisAlignment: WrapCrossAlignment.center,
                       children: [
                         for (final entry in counts.entries)
                           InkWell(
@@ -1670,8 +1773,8 @@ class _MessageBubble extends StatelessWidget {
                             onTap: () => onReact(entry.key),
                             child: Container(
                               padding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 3,
+                                horizontal: 7,
+                                vertical: 2,
                               ),
                               decoration: BoxDecoration(
                                 borderRadius: BorderRadius.circular(12),
@@ -1693,17 +1796,47 @@ class _MessageBubble extends StatelessWidget {
                               ),
                             ),
                           ),
+                        if (showTime || showFullTime)
+                          Text(
+                            showFullTime
+                                ? '${AppTime.formatLongDate(message.created.toLocal())} · ${AppTime.formatDateTime(message.created)}'
+                                : AppTime.formatDateTime(message.created),
+                            style: TextStyle(
+                              fontSize: 10,
+                              color: textSecondary,
+                            ),
+                          ),
+                        if (isMine &&
+                            message.status == ChatMessageStatus.sending)
+                          Icon(
+                            Icons.schedule_rounded,
+                            size: 12,
+                            color: textSecondary,
+                          ),
+                        if (isMine &&
+                            message.status == ChatMessageStatus.failed)
+                          InkWell(
+                            onTap: onRetry,
+                            child: const Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.error_outline_rounded,
+                                  size: 12,
+                                  color: AppPalette.danger,
+                                ),
+                                Gap(4),
+                                Text(
+                                  'Not Sent · Tap to Retry',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: AppPalette.danger,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
                       ],
-                    ),
-                  ),
-                if (showTime || showFullTime)
-                  Padding(
-                    padding: _metaPadding,
-                    child: Text(
-                      showFullTime
-                          ? '${AppTime.formatLongDate(message.created.toLocal())} · ${AppTime.formatDateTime(message.created)}'
-                          : AppTime.formatDateTime(message.created),
-                      style: TextStyle(fontSize: 10, color: textSecondary),
                     ),
                   ),
               ],
@@ -2094,72 +2227,83 @@ class _EventSheetState extends State<_EventSheet> {
       ),
       child: ValueListenableBuilder<TextEditingValue>(
         valueListenable: _title,
-        builder: (context, value, _) => Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            TextField(
-              controller: _title,
-              maxLength: 120,
-              textCapitalization: TextCapitalization.sentences,
-              decoration: appInputDecoration(
-                context,
-                hintText: '$label title',
-                counterText: '',
-              ),
-            ),
-            const Gap(10),
-            TextField(
-              controller: _notes,
-              minLines: 2,
-              maxLines: 4,
-              maxLength: 500,
-              textCapitalization: TextCapitalization.sentences,
-              decoration: appInputDecoration(
-                context,
-                hintText: 'Notes (optional)',
-                counterText: '',
-              ),
-            ),
-            const Gap(10),
-            Row(
-              children: [
-                Expanded(
-                  child: AppActionButton(
-                    label: AppTime.formatDayMonth(_at),
-                    icon: Icons.event_outlined,
-                    onPressed: _pickDate,
-                  ),
+        builder: (context, value, _) {
+          final upcoming = _at.isAfter(DateTime.now());
+          return Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              TextField(
+                controller: _title,
+                maxLength: 120,
+                textCapitalization: TextCapitalization.sentences,
+                decoration: appInputDecoration(
+                  context,
+                  hintText: '$label title',
+                  counterText: '',
                 ),
-                const Gap(10),
-                Expanded(
-                  child: AppActionButton(
-                    label: AppTime.formatDateTime(_at),
-                    icon: Icons.schedule_rounded,
-                    onPressed: _pickTime,
-                  ),
+              ),
+              const Gap(10),
+              TextField(
+                controller: _notes,
+                minLines: 2,
+                maxLines: 4,
+                maxLength: 500,
+                textCapitalization: TextCapitalization.sentences,
+                decoration: appInputDecoration(
+                  context,
+                  hintText: 'Notes (optional)',
+                  counterText: '',
                 ),
-              ],
-            ),
-            const Gap(16),
-            AppActionButton(
-              label: 'Share $label',
-              outlined: false,
-              backgroundColor: AppPalette.primary,
-              foregroundColor: Colors.white,
-              onPressed: value.text.trim().isEmpty
-                  ? null
-                  : () => widget.onShare(
-                      ChatEvent(
-                        kind: widget.kind,
-                        title: value.text.trim(),
-                        at: _at,
-                        notes: _notes.text.trim(),
-                      ),
+              ),
+              const Gap(10),
+              Row(
+                children: [
+                  Expanded(
+                    child: AppActionButton(
+                      label: AppTime.formatDayMonth(_at),
+                      icon: Icons.event_outlined,
+                      onPressed: _pickDate,
                     ),
-            ),
-          ],
-        ),
+                  ),
+                  const Gap(10),
+                  Expanded(
+                    child: AppActionButton(
+                      label: AppTime.formatDateTime(_at),
+                      icon: Icons.schedule_rounded,
+                      onPressed: _pickTime,
+                    ),
+                  ),
+                ],
+              ),
+              if (!upcoming)
+                const Padding(
+                  padding: EdgeInsets.only(top: 8, left: 4),
+                  child: Text(
+                    'Pick a time that has not passed yet.',
+                    style: TextStyle(fontSize: 12, color: AppPalette.danger),
+                  ),
+                ),
+              const Gap(16),
+              AppActionButton(
+                label: 'Share $label',
+                outlined: false,
+                backgroundColor: AppPalette.primary,
+                foregroundColor: Colors.white,
+                onPressed: value.text.trim().isEmpty || !upcoming
+                    ? null
+                    : () => widget.onShare(
+                        ChatEvent(
+                          kind: widget.kind,
+                          title: value.text.trim(),
+                          at: _at,
+                          notes: _notes.text.trim(),
+                        ),
+                      ),
+              ),
+            ],
+          );
+        },
       ),
     );
   }
@@ -2348,7 +2492,7 @@ class _FileCardState extends State<_FileCard> {
       onTap: pending || _opening ? null : _open,
       child: Container(
         width: _cardWidth(context),
-        padding: const EdgeInsets.all(10),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(_ChatPhotos.radius - 4),
           border: Border.all(color: textSecondary.withValues(alpha: 0.25)),
@@ -2644,7 +2788,8 @@ class _PollCard extends StatelessWidget {
               ),
             ),
           Text(
-            total == 1 ? '1 vote' : '${formatAmount(total)} votes',
+            '${total == 1 ? '1 vote' : '${formatAmount(total)} votes'}'
+            '${mine != null && onVote != null ? ' · Tap your choice again to remove your vote' : ''}',
             style: TextStyle(fontSize: 11, color: textSecondary),
           ),
         ],
@@ -2742,6 +2887,7 @@ class _PollSheet extends StatefulWidget {
 }
 
 class _PollSheetState extends State<_PollSheet> {
+  static const int _minOptions = 2;
   static const int _maxOptions = 6;
   final TextEditingController _question = TextEditingController();
   final List<TextEditingController> _options = <TextEditingController>[
@@ -2763,10 +2909,18 @@ class _PollSheetState extends State<_PollSheet> {
       .where((text) => text.isNotEmpty)
       .toList();
 
+  void _removeOption(int index) {
+    final removed = _options[index];
+    setState(() => _options.removeAt(index));
+    WidgetsBinding.instance.addPostFrameCallback((_) => removed.dispose());
+  }
+
+  bool get _duplicate => _filled.toSet().length != _filled.length;
+
   bool get _ready =>
       _question.text.trim().isNotEmpty &&
-      _filled.length >= 2 &&
-      _filled.toSet().length == _filled.length;
+      _filled.length >= _minOptions &&
+      !_duplicate;
 
   @override
   Widget build(BuildContext context) {
@@ -2793,6 +2947,7 @@ class _PollSheetState extends State<_PollSheet> {
             const Gap(10),
             for (var index = 0; index < _options.length; index++) ...[
               TextField(
+                key: ObjectKey(_options[index]),
                 controller: _options[index],
                 maxLength: 80,
                 textCapitalization: TextCapitalization.sentences,
@@ -2800,10 +2955,30 @@ class _PollSheetState extends State<_PollSheet> {
                   context,
                   hintText: 'Option ${index + 1}',
                   counterText: '',
+                  suffixIcon: _options.length > _minOptions
+                      ? IconButton(
+                          tooltip: 'Remove Option',
+                          visualDensity: VisualDensity.compact,
+                          onPressed: () => _removeOption(index),
+                          icon: Icon(
+                            Icons.close_rounded,
+                            size: 18,
+                            color: AppPalette.textSecondary(context),
+                          ),
+                        )
+                      : null,
                 ),
               ),
               const Gap(8),
             ],
+            if (_duplicate)
+              const Padding(
+                padding: EdgeInsets.only(left: 4, bottom: 4),
+                child: Text(
+                  'Each option must be different.',
+                  style: TextStyle(fontSize: 12, color: AppPalette.danger),
+                ),
+              ),
             if (_options.length < _maxOptions)
               Align(
                 alignment: Alignment.centerLeft,

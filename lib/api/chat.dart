@@ -1008,11 +1008,18 @@ class ChatService {
     <String, dynamic>{'review': reviewId},
   );
 
+  Future<void> unsend(String messageId) =>
+      _postAction('/api/chat/unsend', <String, dynamic>{'message': messageId});
+
   Future<void> _reviewAction(String path, Map<String, dynamic> body) async {
+    await _postAction(path, body);
+    _facultyLoadedAt = null;
+  }
+
+  Future<void> _postAction(String path, Map<String, dynamic> body) async {
     final pb = await _client();
     try {
       await pb.send(path, method: 'POST', body: body);
-      _facultyLoadedAt = null;
     } on ClientException catch (error) {
       throw ChatException(
         _serverMessage(error.response['message'], 'Please try again.'),
