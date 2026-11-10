@@ -741,9 +741,13 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
         ];
         return Padding(
           padding: const EdgeInsets.only(bottom: 12),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [for (final option in options) Expanded(child: option)],
+          child: SizedBox(
+            width: double.infinity,
+            child: Wrap(
+              alignment: WrapAlignment.spaceEvenly,
+              runSpacing: 12,
+              children: options,
+            ),
           ),
         );
       },
@@ -1972,7 +1976,8 @@ class _AttachOption extends StatelessWidget {
     final color = enabled
         ? AppPalette.primary
         : AppPalette.textSecondary(context);
-    return Center(
+    return SizedBox(
+      width: 84,
       child: InkWell(
         borderRadius: BorderRadius.circular(16),
         onTap: onTap,
@@ -1992,8 +1997,7 @@ class _AttachOption extends StatelessWidget {
               const Gap(6),
               Text(
                 label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 12,
                   color: enabled
