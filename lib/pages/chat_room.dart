@@ -506,6 +506,11 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
       subtitle: _headerSubtitle(),
       icon: Icons.chat_bubble_outline_rounded,
       actions: [
+        HeaderActionButton(
+          tooltip: 'Chat Rules',
+          icon: Icons.info_outline_rounded,
+          onTap: _showRules,
+        ),
         if (_room.kind != ChatRoomKind.lounge && _room.active)
           ValueListenableBuilder<Set<String>>(
             valueListenable: _chat.muted,
@@ -526,6 +531,19 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
           Expanded(child: _buildMessages()),
           if (_room.active) _buildComposer() else const _ReadOnlyNotice(),
         ],
+      ),
+    );
+  }
+
+  Future<void> _showRules() {
+    return showAppBottomSheet<void>(
+      context,
+      title: 'Chat Rules',
+      draggable: false,
+      isScrollControlled: false,
+      builder: (sheetContext, textPrimary, textSecondary) => const Padding(
+        padding: EdgeInsets.only(bottom: 12),
+        child: _RuleList(),
       ),
     );
   }
@@ -696,6 +714,53 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _RuleList extends StatelessWidget {
+  const _RuleList();
+
+  static const List<String> _rules = <String>[
+    'Only signed-in BRACU students can join. You are added to the Lounge and to your own course and section rooms automatically.',
+    'Your BRACU name and profile photo are shown with your messages.',
+    'Messages and photos are kept for 180 days, then deleted automatically. They cannot be edited or deleted before then.',
+    'Be respectful. No harassment, hate, spam or sharing other people\'s private information.',
+    'Report messages that break these rules. Messages reported by several students are hidden, and moderators can mute or ban students.',
+    'PreConnect is a student-run project and is not affiliated with BRAC University.',
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    final textSecondary = AppPalette.textSecondary(context);
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        for (final rule in _rules) ...[
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.only(top: 6),
+                child: Icon(Icons.circle, size: 6, color: AppPalette.primary),
+              ),
+              const Gap(10),
+              Expanded(
+                child: Text(
+                  rule,
+                  style: TextStyle(
+                    fontSize: 13,
+                    height: 1.4,
+                    color: textSecondary,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const Gap(10),
+        ],
+      ],
     );
   }
 }
