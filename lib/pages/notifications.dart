@@ -240,12 +240,6 @@ class _NotificationsPageState extends State<NotificationsPage>
     );
 
     RefreshBus.instance.notify(reason: 'notifications');
-    showAppSnackBar(
-      context,
-      updated == null
-          ? 'No notifications available to mark as seen.'
-          : 'All notifications marked as seen.',
-    );
   }
 
   Future<void> _openConnectNotification(RecentConnectNotification item) async {
@@ -326,7 +320,13 @@ class _NotificationsPageState extends State<NotificationsPage>
       subtitle: 'Recent Alerts',
       icon: Icons.notifications_outlined,
       actions: [
-        HeaderActionButton(icon: Icons.done_all_rounded, onTap: _markAllSeen),
+        HeaderActionButton(
+          icon: Icons.done_all_rounded,
+          tooltip: 'Mark All Seen',
+          onTap: _combinedItemsFor(_lastData).any((item) => !item.seen)
+              ? _markAllSeen
+              : null,
+        ),
       ],
       body: FutureBuilder<NotificationsViewData>(
         future: _future,

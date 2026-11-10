@@ -99,25 +99,25 @@ class _ChatPageState extends State<ChatPage> {
         if (_rulesAccepted)
           ValueListenableBuilder<Map<String, int>>(
             valueListenable: _chat.unread,
-            builder: (context, unread, _) => _HeaderButton(
+            builder: (context, unread, _) => HeaderActionButton(
               tooltip: 'Mark All Read',
               icon: Icons.done_all_rounded,
-              onPressed: unread.values.any((count) => count > 0)
+              onTap: unread.values.any((count) => count > 0)
                   ? _markAllRead
                   : null,
             ),
           ),
         if (_rulesAccepted)
-          _HeaderButton(
+          HeaderActionButton(
             tooltip: 'Blocked Students',
             icon: Icons.block_rounded,
-            onPressed: _openBlocked,
+            onTap: _openBlocked,
           ),
         if (_rulesAccepted)
-          _HeaderButton(
+          HeaderActionButton(
             tooltip: 'Chat Rules',
             icon: Icons.info_outline_rounded,
-            onPressed: _showRules,
+            onTap: _showRules,
           ),
       ],
       body: _rulesAccepted ? _buildRooms() : _ChatRules(onAccept: _acceptRules),
@@ -380,35 +380,6 @@ class _RoomTile extends StatelessWidget {
             ],
           ),
         ),
-      ),
-    );
-  }
-}
-
-class _HeaderButton extends StatelessWidget {
-  const _HeaderButton({
-    required this.tooltip,
-    required this.icon,
-    required this.onPressed,
-  });
-
-  final String tooltip;
-  final IconData icon;
-  final VoidCallback? onPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    return IconButton(
-      tooltip: tooltip,
-      onPressed: onPressed,
-      padding: EdgeInsets.zero,
-      constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
-      visualDensity: VisualDensity.compact,
-      icon: Icon(
-        icon,
-        color: onPressed == null
-            ? AppPalette.textSecondary(context)
-            : AppPalette.primary,
       ),
     );
   }

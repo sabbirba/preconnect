@@ -42,36 +42,6 @@ class NotificationListItem {
   final RecentConnectNotification? connectItem;
 }
 
-class HeaderActionButton extends StatelessWidget {
-  const HeaderActionButton({
-    super.key,
-    required this.icon,
-    required this.onTap,
-  });
-
-  final IconData icon;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(left: 10),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: Colors.transparent,
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Icon(icon, size: 20, color: AppPalette.primary),
-        ),
-      ),
-    );
-  }
-}
-
 class NotificationCardItem extends StatelessWidget {
   const NotificationCardItem({
     super.key,
