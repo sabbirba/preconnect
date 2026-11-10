@@ -78,6 +78,33 @@ void main() {
     expect(message.hasImage, isFalse);
   });
 
+  test('message reads its poll and link preview and saves them again', () {
+    final message = ChatMessage.fromJson(<String, dynamic>{
+      'id': 'm1',
+      'room': 'r1',
+      'author': 'a1',
+      'text': 'Class at 8 or 9?',
+      'created': '2026-11-10 10:00:00.000Z',
+      'poll': <String, dynamic>{
+        'options': <String>['8 AM', '9 AM'],
+      },
+      'preview': <String, dynamic>{
+        'url': 'https://example.com/a',
+        'host': 'example.com',
+        'title': 'Example',
+        'description': 'About',
+        'image': '',
+      },
+    });
+    expect(message.isPoll, isTrue);
+    expect(message.pollOptions, <String>['8 AM', '9 AM']);
+    expect(message.preview?.host, 'example.com');
+    final restored = ChatMessage.fromJson(message.toJson());
+    expect(restored.pollOptions, message.pollOptions);
+    expect(restored.preview?.title, 'Example');
+    expect(ChatVote.fromJson(<String, dynamic>{'option': 1}).option, 1);
+  });
+
   test('message without expand keeps the author id', () {
     final message = ChatMessage.fromJson({
       'id': 'm3',

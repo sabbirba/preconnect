@@ -68,6 +68,7 @@ class ChatRoom {
     required this.memberCount,
     required this.slowSeconds,
     this.moderatedAt = 0,
+    this.pinned = '',
   });
 
   factory ChatRoom.fromJson(Map<String, dynamic> json) => ChatRoom(
@@ -81,6 +82,7 @@ class ChatRoom {
     memberCount: _int(json['memberCount']),
     slowSeconds: _int(json['slowSeconds']),
     moderatedAt: _int(json['moderatedAt']),
+    pinned: _string(json['pinned']),
   );
 
   final String id;
@@ -93,6 +95,7 @@ class ChatRoom {
   final int memberCount;
   final int slowSeconds;
   final int moderatedAt;
+  final String pinned;
 
   Map<String, dynamic> toJson() => <String, dynamic>{
     'id': id,
@@ -105,6 +108,7 @@ class ChatRoom {
     'memberCount': memberCount,
     'slowSeconds': slowSeconds,
     'moderatedAt': moderatedAt,
+    'pinned': pinned,
   };
 }
 
@@ -123,6 +127,8 @@ class ChatMessage {
     this.nonce = '',
     this.status = ChatMessageStatus.sent,
     this.localImages = const <Uint8List>[],
+    this.pollOptions = const <String>[],
+    this.preview,
   });
 
   factory ChatMessage.fromJson(Map<String, dynamic> json) {
@@ -145,6 +151,14 @@ class ChatMessage {
           : (_string(reply['text']).isEmpty ? 'Photo' : _string(reply['text'])),
       mentions: _strings(json['mentions']),
       nonce: _string(json['clientNonce']),
+      pollOptions: json['poll'] is Map
+          ? _strings((json['poll'] as Map)['options'])
+          : const <String>[],
+      preview: json['preview'] is Map
+          ? ChatLinkPreview.fromJson(
+              (json['preview'] as Map).cast<String, dynamic>(),
+            )
+          : null,
     );
   }
 
@@ -161,7 +175,10 @@ class ChatMessage {
   final String nonce;
   final ChatMessageStatus status;
   final List<Uint8List> localImages;
+  final List<String> pollOptions;
+  final ChatLinkPreview? preview;
 
+  bool get isPoll => pollOptions.isNotEmpty;
   bool get hasImage => images.isNotEmpty || localImages.isNotEmpty;
   bool get isPending => status != ChatMessageStatus.sent;
 
@@ -175,6 +192,8 @@ class ChatMessage {
     'replyTo': replyToId,
     'mentions': mentions,
     'clientNonce': nonce,
+    if (isPoll) 'poll': <String, dynamic>{'options': pollOptions},
+    if (preview != null) 'preview': preview!.toJson(),
     'expand': <String, dynamic>{
       'author': author.toJson(),
       if (replyToId.isNotEmpty)
@@ -205,7 +224,63 @@ class ChatMessage {
     nonce: nonce,
     status: status ?? this.status,
     localImages: localImages ?? this.localImages,
+    pollOptions: pollOptions,
+    preview: preview,
   );
+}
+
+class ChatLinkPreview {
+  const ChatLinkPreview({
+    required this.url,
+    required this.host,
+    required this.title,
+    this.description = '',
+    this.image = '',
+  });
+
+  factory ChatLinkPreview.fromJson(Map<String, dynamic> json) =>
+      ChatLinkPreview(
+        url: _string(json['url']),
+        host: _string(json['host']),
+        title: _string(json['title']),
+        description: _string(json['description']),
+        image: _string(json['image']),
+      );
+
+  final String url;
+  final String host;
+  final String title;
+  final String description;
+  final String image;
+
+  Map<String, dynamic> toJson() => <String, dynamic>{
+    'url': url,
+    'host': host,
+    'title': title,
+    'description': description,
+    'image': image,
+  };
+}
+
+class ChatVote {
+  const ChatVote({
+    required this.id,
+    required this.messageId,
+    required this.studentId,
+    required this.option,
+  });
+
+  factory ChatVote.fromJson(Map<String, dynamic> json) => ChatVote(
+    id: _string(json['id']),
+    messageId: _string(json['message']),
+    studentId: _string(json['student']),
+    option: _int(json['option']),
+  );
+
+  final String id;
+  final String messageId;
+  final String studentId;
+  final int option;
 }
 
 class ChatReaction {

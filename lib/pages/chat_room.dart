@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:gap/gap.dart';
@@ -42,6 +43,9 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
   Timer? _cooldownTimer;
   bool _coolingDown = false;
   String? _timeShownFor;
+  List<ChatVote> _votes = const <ChatVote>[];
+  final Map<String, String> _typing = <String, String>{};
+  final Map<String, Timer> _typingTimers = <String, Timer>{};
   late int _moderatedAt = _room.moderatedAt;
 
   ChatRoom get _room => widget.room;
@@ -62,6 +66,7 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
     _chat.activeRoomId = _room.id;
     _scroll.addListener(_onScroll);
     _chat.rooms.addListener(_onRoomsChanged);
+    _input.addListener(_onInputChanged);
     unawaited(_load());
   }
 
@@ -77,6 +82,9 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
     if (_readTimer?.isActive ?? false) _markLatestRead();
     _readTimer?.cancel();
     _cooldownTimer?.cancel();
+    for (final timer in _typingTimers.values) {
+      timer.cancel();
+    }
     unawaited(_watch?.then((watch) => watch.cancel()));
     _scroll.dispose();
     _input.dispose();
@@ -101,6 +109,8 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
         _room.id,
         onMessage: _onIncoming,
         onReaction: _onReaction,
+        onVote: _onVote,
+        onTyping: _onTyping,
       );
       unawaited(watch.then((_) {}, onError: (Object _) => _watch = null));
       final sent = _messages.where((m) => !m.isPending).toList();
@@ -122,13 +132,17 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
           .where((m) => !m.isPending)
           .map((m) => m.id)
           .toSet();
-      final reactions = await _chat.loadReactions(visible.toList());
+      final (reactions, votes) = await (
+        _chat.loadReactions(visible.toList()),
+        _chat.loadVotes(_pollIds(_messages)),
+      ).wait;
       if (!mounted) return;
       setState(() {
         _reactions = <ChatReaction>[
           ...reactions,
           ..._reactions.where((r) => !visible.contains(r.messageId)),
         ];
+        _votes = votes;
       });
     } on ChatException catch (error) {
       if (mounted) setState(() => _error = error.message);
@@ -176,8 +190,75 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
     setState(() => _messages = _merged(<ChatMessage>[message], without));
   }
 
+  List<String> _pollIds(List<ChatMessage> messages) => [
+    for (final message in messages)
+      if (message.isPoll && !message.isPending) message.id,
+  ];
+
+  void _onInputChanged() {
+    if (_room.active && _input.text.trim().isNotEmpty) {
+      _chat.sendTyping(_room.id);
+    }
+  }
+
+  void _onTyping(String studentId, String name) {
+    if (!mounted || studentId.isEmpty) return;
+    _typingTimers[studentId]?.cancel();
+    _typingTimers[studentId] = Timer(
+      ChatService.typingInterval + const Duration(seconds: 2),
+      () => _stopTyping(studentId),
+    );
+    setState(() => _typing[studentId] = name);
+  }
+
+  void _stopTyping(String studentId) {
+    _typingTimers.remove(studentId)?.cancel();
+    if (mounted && _typing.containsKey(studentId)) {
+      setState(() => _typing.remove(studentId));
+    }
+  }
+
+  void _onVote(ChatVote vote, bool removed) {
+    if (!mounted) return;
+    setState(() {
+      _votes = <ChatVote>[
+        ..._votes.where(
+          (v) =>
+              v.id != vote.id &&
+              !(v.messageId == vote.messageId && v.studentId == vote.studentId),
+        ),
+        if (!removed) vote,
+      ];
+    });
+  }
+
+  Future<void> _vote(ChatMessage message, int option) async {
+    final me = _chat.me?.id ?? '';
+    final current = _votes;
+    final mine = current
+        .where((v) => v.messageId == message.id && v.studentId == me)
+        .firstOrNull;
+    _onVote(
+      ChatVote(
+        id: mine?.id ?? '',
+        messageId: message.id,
+        studentId: me,
+        option: option,
+      ),
+      mine?.option == option,
+    );
+    try {
+      await _chat.vote(message.id, option, current);
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _votes = current);
+      showAppSnackBar(context, 'Your vote could not be saved.');
+    }
+  }
+
   void _onIncoming(ChatMessage message) {
     if (!mounted) return;
+    _stopTyping(message.author.id);
     _upsert(message);
     _scheduleRead();
   }
@@ -221,13 +302,15 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
     setState(() => _loadingOlder = true);
     try {
       final older = await _chat.loadMessages(_room.id, before: _messages.first);
-      final reactions = await _chat.loadReactions(
-        older.map((m) => m.id).toList(),
-      );
+      final (reactions, votes) = await (
+        _chat.loadReactions(older.map((m) => m.id).toList()),
+        _chat.loadVotes(_pollIds(older)),
+      ).wait;
       if (!mounted) return;
       setState(() {
         _messages = <ChatMessage>[...older, ..._messages];
         _reactions = <ChatReaction>[...reactions, ..._reactions];
+        _votes = <ChatVote>[...votes, ..._votes];
         _hasMore = older.length >= ChatService.pageSize;
         _loadingOlder = false;
       });
@@ -272,13 +355,20 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
   }
 
   void _send() {
-    final text = _input.text.trim();
     if (!_canSend(_input.value)) return;
+    final text = _input.text.trim();
+    _post(text, images: _images, mentions: _mentionIds(text));
+  }
+
+  void _post(
+    String text, {
+    List<Uint8List> images = const <Uint8List>[],
+    List<String> mentions = const <String>[],
+    List<String> pollOptions = const <String>[],
+  }) {
     final me = _chat.me;
     if (me == null) return;
-    final images = _images;
     final replyTo = _replyTo;
-    final mentions = _mentionIds(text);
     final nonce = '${me.id}-${DateTime.now().microsecondsSinceEpoch}';
     final optimistic = ChatMessage(
       id: nonce,
@@ -296,6 +386,7 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
       nonce: nonce,
       status: ChatMessageStatus.sending,
       localImages: images,
+      pollOptions: pollOptions,
     );
     _input.clear();
     _mentionPicks.clear();
@@ -318,6 +409,7 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
             images: pending.localImages,
             replyToId: pending.replyToId,
             mentions: pending.mentions,
+            pollOptions: pending.pollOptions,
             nonce: pending.nonce,
           )
           .then(
@@ -528,9 +620,39 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
       ],
       body: Column(
         children: [
+          ValueListenableBuilder<List<ChatRoom>>(
+            valueListenable: _chat.rooms,
+            builder: (context, rooms, _) {
+              final pinned =
+                  rooms
+                      .where((room) => room.id == _room.id)
+                      .firstOrNull
+                      ?.pinned ??
+                  _room.pinned;
+              return pinned.isEmpty
+                  ? const SizedBox.shrink()
+                  : _PinnedNote(text: pinned);
+            },
+          ),
           Expanded(child: _buildMessages()),
           if (_room.active) _buildComposer() else const _ReadOnlyNotice(),
         ],
+      ),
+    );
+  }
+
+  Future<void> _createPoll() {
+    return showAppBottomSheet<void>(
+      context,
+      title: 'New Poll',
+      draggable: false,
+      isScrollControlled: true,
+      builder: (sheetContext, textPrimary, textSecondary) => _PollSheet(
+        onCreate: (question, options) {
+          Navigator.of(sheetContext).pop();
+          _startCooldown();
+          _post(question, pollOptions: options);
+        },
       ),
     );
   }
@@ -581,6 +703,10 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
           );
         }
         final me = _chat.me?.id;
+        final votesByMessage = <String, List<ChatVote>>{};
+        for (final vote in _votes) {
+          (votesByMessage[vote.messageId] ??= <ChatVote>[]).add(vote);
+        }
         final reactionsByMessage = <String, List<ChatReaction>>{};
         for (final reaction in _reactions) {
           (reactionsByMessage[reaction.messageId] ??= <ChatReaction>[]).add(
@@ -617,6 +743,8 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
               reactions:
                   reactionsByMessage[message.id] ?? const <ChatReaction>[],
               myId: me ?? '',
+              votes: votesByMessage[message.id] ?? const <ChatVote>[],
+              onVote: (option) => _vote(message, option),
               onLongPress: message.isPending
                   ? null
                   : () => _showActions(message),
@@ -648,6 +776,7 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
+          if (_typing.isNotEmpty) _TypingLine(names: _typing.values.toList()),
           if (_replyTo != null)
             _ComposerBanner(
               icon: Icons.reply_rounded,
@@ -671,6 +800,13 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
                     ? null
                     : _pickImages,
                 icon: Icon(Icons.image_outlined, color: textSecondary),
+              ),
+              IconButton(
+                tooltip: 'New Poll',
+                onPressed: _images.isEmpty && !_coolingDown
+                    ? _createPoll
+                    : null,
+                icon: Icon(Icons.poll_outlined, color: textSecondary),
               ),
               Expanded(
                 child: CallbackShortcuts(
@@ -1127,6 +1263,8 @@ class _MessageBubble extends StatelessWidget {
     required this.showFullTime,
     required this.onTap,
     required this.reactions,
+    required this.votes,
+    required this.onVote,
     required this.myId,
     required this.onLongPress,
     required this.onReact,
@@ -1140,6 +1278,8 @@ class _MessageBubble extends StatelessWidget {
   final bool showFullTime;
   final VoidCallback onTap;
   final List<ChatReaction> reactions;
+  final List<ChatVote> votes;
+  final ValueChanged<int> onVote;
   final String myId;
   final VoidCallback? onLongPress;
   final void Function(String emoji) onReact;
@@ -1215,15 +1355,24 @@ class _MessageBubble extends StatelessWidget {
                         style: TextStyle(fontSize: 12, color: textSecondary),
                       ),
                     ),
-                  if (message.text.isNotEmpty)
-                    Text(
-                      message.text,
+                  if (message.isPoll)
+                    _PollCard(
+                      message: message,
+                      votes: votes,
+                      myId: myId,
+                      onVote: message.isPending ? null : onVote,
+                    )
+                  else if (message.text.isNotEmpty)
+                    _LinkText(
+                      text: message.text,
                       style: TextStyle(
                         fontSize: 14,
                         height: 1.35,
                         color: textPrimary,
                       ),
                     ),
+                  if (message.preview != null)
+                    _LinkPreviewCard(preview: message.preview!),
                 ],
               ),
             ),
@@ -1587,6 +1736,474 @@ class _ChatImageState extends State<_ChatImage> {
           ),
         );
       },
+    );
+  }
+}
+
+class _PinnedNote extends StatelessWidget {
+  const _PinnedNote({required this.text});
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 4, 12, 4),
+      child: AppCard(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Icon(
+              Icons.push_pin_outlined,
+              size: 16,
+              color: AppPalette.primary,
+            ),
+            const Gap(10),
+            Expanded(
+              child: _LinkText(
+                text: text,
+                maxLines: 3,
+                style: TextStyle(
+                  fontSize: 13,
+                  height: 1.35,
+                  color: AppPalette.textPrimary(context),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _TypingLine extends StatelessWidget {
+  const _TypingLine({required this.names});
+
+  final List<String> names;
+
+  @override
+  Widget build(BuildContext context) {
+    final first = names
+        .map((name) => name.split(' ').where((p) => p.length > 1).firstOrNull)
+        .whereType<String>()
+        .toList();
+    final label = switch (first.length) {
+      0 => 'Someone is typing…',
+      1 => '${first.first} is typing…',
+      2 => '${first[0]} and ${first[1]} are typing…',
+      _ => 'Several people are typing…',
+    };
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
+      child: Align(
+        alignment: Alignment.centerLeft,
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 12,
+            fontStyle: FontStyle.italic,
+            color: AppPalette.textSecondary(context),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _LinkText extends StatefulWidget {
+  const _LinkText({required this.text, required this.style, this.maxLines});
+
+  final String text;
+  final TextStyle style;
+  final int? maxLines;
+
+  @override
+  State<_LinkText> createState() => _LinkTextState();
+}
+
+class _LinkTextState extends State<_LinkText> {
+  static final RegExp _link = RegExp(
+    r'https?://[^\s<>"]+',
+    caseSensitive: false,
+  );
+  final List<TapGestureRecognizer> _recognizers = <TapGestureRecognizer>[];
+
+  void _clearRecognizers() {
+    for (final recognizer in _recognizers) {
+      recognizer.dispose();
+    }
+    _recognizers.clear();
+  }
+
+  @override
+  void dispose() {
+    _clearRecognizers();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    _clearRecognizers();
+    final spans = <TextSpan>[];
+    var start = 0;
+    for (final match in _link.allMatches(widget.text)) {
+      final url = match.group(0)!.replaceAll(RegExp(r'[.,!?)]+$'), '');
+      final end = match.start + url.length;
+      if (match.start > start) {
+        spans.add(TextSpan(text: widget.text.substring(start, match.start)));
+      }
+      final recognizer = TapGestureRecognizer()
+        ..onTap = () => openExternalUrl(context, url);
+      _recognizers.add(recognizer);
+      spans.add(
+        TextSpan(
+          text: url,
+          recognizer: recognizer,
+          style: const TextStyle(
+            color: AppPalette.primary,
+            decoration: TextDecoration.underline,
+            decorationColor: AppPalette.primary,
+          ),
+        ),
+      );
+      start = end;
+    }
+    if (start < widget.text.length) {
+      spans.add(TextSpan(text: widget.text.substring(start)));
+    }
+    return Text.rich(
+      TextSpan(style: widget.style, children: spans),
+      maxLines: widget.maxLines,
+      overflow: widget.maxLines == null ? null : TextOverflow.ellipsis,
+    );
+  }
+}
+
+class _LinkPreviewCard extends StatelessWidget {
+  const _LinkPreviewCard({required this.preview});
+
+  final ChatLinkPreview preview;
+
+  @override
+  Widget build(BuildContext context) {
+    final textSecondary = AppPalette.textSecondary(context);
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: GestureDetector(
+        onTap: () => openExternalUrl(context, preview.url),
+        child: Container(
+          width: 240,
+          clipBehavior: Clip.antiAlias,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(_ChatPhotos.radius - 4),
+            border: Border.all(color: textSecondary.withValues(alpha: 0.25)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (preview.image.isNotEmpty)
+                CachedImage(
+                  url: preview.image,
+                  width: 240,
+                  height: 126,
+                  fit: BoxFit.cover,
+                  placeholder: const SizedBox(height: 126),
+                  error: const SizedBox.shrink(),
+                ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      preview.host,
+                      style: TextStyle(fontSize: 11, color: textSecondary),
+                    ),
+                    const Gap(2),
+                    Text(
+                      preview.title,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: AppPalette.textPrimary(context),
+                      ),
+                    ),
+                    if (preview.description.isNotEmpty) ...[
+                      const Gap(2),
+                      Text(
+                        preview.description,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(fontSize: 12, color: textSecondary),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _PollCard extends StatelessWidget {
+  const _PollCard({
+    required this.message,
+    required this.votes,
+    required this.myId,
+    required this.onVote,
+  });
+
+  final ChatMessage message;
+  final List<ChatVote> votes;
+  final String myId;
+  final ValueChanged<int>? onVote;
+
+  @override
+  Widget build(BuildContext context) {
+    final textPrimary = AppPalette.textPrimary(context);
+    final textSecondary = AppPalette.textSecondary(context);
+    final counts = List<int>.filled(message.pollOptions.length, 0);
+    for (final vote in votes) {
+      if (vote.option >= 0 && vote.option < counts.length) {
+        counts[vote.option]++;
+      }
+    }
+    final mine = votes.where((v) => v.studentId == myId).firstOrNull?.option;
+    final total = votes.length;
+    return SizedBox(
+      width: 240,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(
+                Icons.poll_outlined,
+                size: 14,
+                color: AppPalette.primary,
+              ),
+              const Gap(6),
+              Text(
+                'Poll',
+                style: TextStyle(fontSize: 11, color: textSecondary),
+              ),
+            ],
+          ),
+          const Gap(4),
+          Text(
+            message.text,
+            style: TextStyle(
+              fontSize: 14,
+              height: 1.35,
+              fontWeight: FontWeight.w600,
+              color: textPrimary,
+            ),
+          ),
+          const Gap(8),
+          for (var index = 0; index < counts.length; index++)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 6),
+              child: _PollOption(
+                label: message.pollOptions[index],
+                share: total == 0 ? 0 : counts[index] / total,
+                selected: mine == index,
+                onTap: onVote == null ? null : () => onVote!(index),
+              ),
+            ),
+          Text(
+            total == 1 ? '1 vote' : '${formatAmount(total)} votes',
+            style: TextStyle(fontSize: 11, color: textSecondary),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PollOption extends StatelessWidget {
+  const _PollOption({
+    required this.label,
+    required this.share,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final double share;
+  final bool selected;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final textSecondary = AppPalette.textSecondary(context);
+    final radius = BorderRadius.circular(10);
+    return InkWell(
+      borderRadius: radius,
+      onTap: onTap,
+      child: Container(
+        height: 36,
+        clipBehavior: Clip.antiAlias,
+        decoration: BoxDecoration(
+          borderRadius: radius,
+          border: Border.all(
+            color: selected
+                ? AppPalette.primary
+                : textSecondary.withValues(alpha: 0.25),
+          ),
+        ),
+        child: Stack(
+          alignment: AlignmentDirectional.centerStart,
+          children: [
+            FractionallySizedBox(
+              widthFactor: share,
+              heightFactor: 1,
+              child: ColoredBox(
+                color: AppPalette.primary.withValues(alpha: 0.16),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 10),
+              child: Row(
+                children: [
+                  if (selected)
+                    const Padding(
+                      padding: EdgeInsets.only(right: 6),
+                      child: Icon(
+                        Icons.check_circle_rounded,
+                        size: 14,
+                        color: AppPalette.primary,
+                      ),
+                    ),
+                  Expanded(
+                    child: Text(
+                      label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: AppPalette.textPrimary(context),
+                      ),
+                    ),
+                  ),
+                  Text(
+                    '${(share * 100).round()}%',
+                    style: TextStyle(fontSize: 12, color: textSecondary),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _PollSheet extends StatefulWidget {
+  const _PollSheet({required this.onCreate});
+
+  final void Function(String question, List<String> options) onCreate;
+
+  @override
+  State<_PollSheet> createState() => _PollSheetState();
+}
+
+class _PollSheetState extends State<_PollSheet> {
+  static const int _maxOptions = 6;
+  final TextEditingController _question = TextEditingController();
+  final List<TextEditingController> _options = <TextEditingController>[
+    TextEditingController(),
+    TextEditingController(),
+  ];
+
+  @override
+  void dispose() {
+    _question.dispose();
+    for (final option in _options) {
+      option.dispose();
+    }
+    super.dispose();
+  }
+
+  List<String> get _filled => _options
+      .map((option) => option.text.trim())
+      .where((text) => text.isNotEmpty)
+      .toList();
+
+  bool get _ready =>
+      _question.text.trim().isNotEmpty &&
+      _filled.length >= 2 &&
+      _filled.toSet().length == _filled.length;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.viewInsetsOf(context).bottom + 12,
+      ),
+      child: ListenableBuilder(
+        listenable: Listenable.merge([_question, ..._options]),
+        builder: (context, _) => Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            TextField(
+              controller: _question,
+              maxLength: 200,
+              textCapitalization: TextCapitalization.sentences,
+              decoration: appInputDecoration(
+                context,
+                hintText: 'Question',
+                counterText: '',
+              ),
+            ),
+            const Gap(10),
+            for (var index = 0; index < _options.length; index++) ...[
+              TextField(
+                controller: _options[index],
+                maxLength: 80,
+                textCapitalization: TextCapitalization.sentences,
+                decoration: appInputDecoration(
+                  context,
+                  hintText: 'Option ${index + 1}',
+                  counterText: '',
+                ),
+              ),
+              const Gap(8),
+            ],
+            if (_options.length < _maxOptions)
+              Align(
+                alignment: Alignment.centerLeft,
+                child: TextButton.icon(
+                  style: TextButton.styleFrom(
+                    foregroundColor: AppPalette.primary,
+                  ),
+                  onPressed: () =>
+                      setState(() => _options.add(TextEditingController())),
+                  icon: const Icon(Icons.add_rounded, size: 18),
+                  label: const Text('Add Option'),
+                ),
+              ),
+            const Gap(8),
+            AppActionButton(
+              label: 'Create Poll',
+              outlined: false,
+              backgroundColor: AppPalette.primary,
+              foregroundColor: Colors.white,
+              onPressed: _ready
+                  ? () => widget.onCreate(_question.text.trim(), _filled)
+                  : null,
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

@@ -202,7 +202,10 @@ String _roomSubtitle(ChatRoom room) {
               (part) => part.length > 1 && !part.endsWith('.'),
               orElse: () => last.author.name,
             );
-  return '$sender: ${last.text.isEmpty ? 'Photo' : last.text}';
+  final body = last.isPoll
+      ? 'Poll: ${last.text}'
+      : (last.text.isEmpty ? 'Photo' : last.text);
+  return '$sender: $body';
 }
 
 String _roomTime(int lastMessageAt) {

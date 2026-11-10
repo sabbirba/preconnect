@@ -57,6 +57,7 @@ class ChatService {
   static const Duration _sessionLifetime = Duration(hours: 5);
   static const Duration _preloadInterval = Duration(minutes: 5);
   static const Duration _fileTokenLifetime = Duration(minutes: 2);
+  static const Duration typingInterval = Duration(seconds: 3);
   static const String _messageExpand = 'author,replyTo,replyTo.author';
 
   final ValueNotifier<List<ChatRoom>> rooms = ValueNotifier<List<ChatRoom>>(
@@ -87,6 +88,7 @@ class ChatService {
   DateTime? _preloadedAt;
   DateTime? _roomsLoadedAt;
   Timer? _persistTimer;
+  DateTime? _typingSentAt;
   int _generation = 0;
   String? activeRoomId;
 
@@ -540,6 +542,7 @@ class ChatService {
     List<Uint8List> images = const <Uint8List>[],
     String replyToId = '',
     List<String> mentions = const <String>[],
+    List<String> pollOptions = const <String>[],
     String nonce = '',
   }) async {
     final pb = await _client();
@@ -559,6 +562,8 @@ class ChatService {
               if (replyToId.isNotEmpty) 'replyTo': replyToId,
               if (mentions.isNotEmpty) 'mentions': mentions,
               if (nonce.isNotEmpty) 'clientNonce': nonce,
+              if (pollOptions.isNotEmpty)
+                'poll': <String, dynamic>{'options': pollOptions},
             },
             files: files,
             expand: _messageExpand,
@@ -579,6 +584,65 @@ class ChatService {
             : 'Message could not be sent. Check your connection.',
       );
     }
+  }
+
+  Future<List<ChatVote>> loadVotes(List<String> messageIds) async {
+    if (messageIds.isEmpty) return const <ChatVote>[];
+    final pb = await _client();
+    final params = <String, dynamic>{};
+    final parts = <String>[];
+    for (var i = 0; i < messageIds.length; i++) {
+      params['m$i'] = messageIds[i];
+      parts.add('message = {:m$i}');
+    }
+    final records = await pb
+        .collection('chat_votes')
+        .getFullList(filter: pb.filter(parts.join(' || '), params));
+    return records.map((r) => ChatVote.fromJson(r.toJson())).toList();
+  }
+
+  Future<void> vote(
+    String messageId,
+    int option,
+    List<ChatVote> current,
+  ) async {
+    final pb = await _client();
+    final me = _me?.id ?? '';
+    final mine = current
+        .where((v) => v.messageId == messageId && v.studentId == me)
+        .firstOrNull;
+    final votes = pb.collection('chat_votes');
+    if (mine == null) {
+      await votes.create(
+        body: <String, dynamic>{
+          'message': messageId,
+          'student': me,
+          'option': option,
+        },
+      );
+    } else if (mine.option == option) {
+      await votes.delete(mine.id);
+    } else {
+      await votes.update(mine.id, body: <String, dynamic>{'option': option});
+    }
+  }
+
+  void sendTyping(String roomId) {
+    final last = _typingSentAt;
+    final now = DateTime.now();
+    if (last != null && now.difference(last) < typingInterval) return;
+    _typingSentAt = now;
+    unawaited(
+      _client()
+          .then(
+            (pb) => pb.send(
+              '/api/chat/typing',
+              method: 'POST',
+              body: <String, dynamic>{'room': roomId},
+            ),
+          )
+          .catchError((Object _) => null),
+    );
   }
 
   Future<void> toggleReaction(
@@ -742,9 +806,12 @@ class ChatService {
     String roomId, {
     required void Function(ChatMessage message) onMessage,
     required void Function(ChatReaction reaction, bool added) onReaction,
+    required void Function(ChatVote vote, bool removed) onVote,
+    required void Function(String studentId, String name) onTyping,
   }) async {
     final pb = await _client();
-    final (stopMessages, stopReactions) = await (
+    final inRoom = pb.filter('message.room = {:room}', {'room': roomId});
+    final (stopMessages, stopReactions, stopVotes, stopTyping) = await (
       pb
           .collection('chat_messages')
           .subscribe(
@@ -765,11 +832,22 @@ class ChatService {
           ChatReaction.fromJson(record.toJson()),
           event.action == 'create',
         );
-      }, filter: pb.filter('message.room = {:room}', {'room': roomId})),
+      }, filter: inRoom),
+      pb.collection('chat_votes').subscribe('*', (event) {
+        final record = event.record;
+        if (record == null) return;
+        onVote(ChatVote.fromJson(record.toJson()), event.action == 'delete');
+      }, filter: inRoom),
+      pb.realtime.subscribe('chat_typing/$roomId', (event) {
+        final data = event.jsonData();
+        onTyping('${data['id'] ?? ''}', '${data['name'] ?? ''}');
+      }),
     ).wait;
     return ChatWatch(() async {
       await stopMessages();
       await stopReactions();
+      await stopVotes();
+      await stopTyping();
     });
   }
 
