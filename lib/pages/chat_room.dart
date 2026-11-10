@@ -37,7 +37,6 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
   late bool _loading = !_chat.hasRecent(_room.id);
   bool _loadingOlder = false;
   bool _hasMore = true;
-  bool _sending = false;
   String? _error;
   Timer? _readTimer;
   Timer? _cooldownTimer;
@@ -71,7 +70,11 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
   @override
   void dispose() {
     if (_chat.activeRoomId == _room.id) _chat.activeRoomId = null;
-    _chat.remember(_room.id, _messages, _reactions);
+    _chat.remember(
+      _room.id,
+      _messages.where((m) => !m.isPending).toList(),
+      _reactions,
+    );
     _readTimer?.cancel();
     _cooldownTimer?.cancel();
     unawaited(_watch?.then((watch) => watch.cancel()));
@@ -129,15 +132,40 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
       for (final message in current) message.id: message,
       for (final message in fresh) message.id: message,
     };
-    return byId.values.toList()..sort((a, b) {
+    final sentNonces = <String>{
+      for (final message in byId.values)
+        if (message.nonce.isNotEmpty && !message.isPending) message.nonce,
+    };
+    final result = byId.values.where((message) {
+      final isTemp = message.isPending && message.nonce.isNotEmpty;
+      return !(isTemp && sentNonces.contains(message.nonce));
+    }).toList();
+    result.sort((a, b) {
       final order = a.created.compareTo(b.created);
       return order != 0 ? order : a.id.compareTo(b.id);
     });
+    return result;
+  }
+
+  void _upsert(ChatMessage message) {
+    if (!mounted) return;
+    final without = _messages
+        .where(
+          (m) =>
+              m.id != message.id &&
+              !(message.nonce.isNotEmpty && m.nonce == message.nonce),
+        )
+        .toList();
+    setState(() => _messages = _merged(<ChatMessage>[message], without));
   }
 
   void _onIncoming(ChatMessage message) {
-    if (!mounted || _messages.any((m) => m.id == message.id)) return;
-    setState(() => _messages = <ChatMessage>[..._messages, message]);
+    if (!mounted) return;
+    _upsert(message);
+    _scheduleRead();
+  }
+
+  void _scheduleRead() {
     _readTimer?.cancel();
     _readTimer = Timer(const Duration(seconds: 2), _markLatestRead);
   }
@@ -213,7 +241,6 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
       .toList();
 
   bool _canSend(TextEditingValue value) =>
-      !_sending &&
       !_coolingDown &&
       _room.active &&
       (value.text.trim().isNotEmpty || _images.isNotEmpty);
@@ -227,37 +254,113 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
     });
   }
 
-  Future<void> _send() async {
+  void _send() {
     final text = _input.text.trim();
     if (!_canSend(_input.value)) return;
-    setState(() => _sending = true);
+    final me = _chat.me;
+    if (me == null) return;
+    final images = _images;
+    final replyTo = _replyTo;
+    final mentions = _mentionIds(text);
+    final nonce = '${me.id}-${DateTime.now().microsecondsSinceEpoch}';
+    final optimistic = ChatMessage(
+      id: nonce,
+      roomId: _room.id,
+      author: me,
+      text: text,
+      images: const <String>[],
+      created: DateTime.now(),
+      replyToId: replyTo?.id ?? '',
+      replyAuthorName: replyTo?.author.name ?? '',
+      replyText: replyTo == null
+          ? ''
+          : (replyTo.text.isEmpty ? 'Photo' : replyTo.text),
+      mentions: mentions,
+      nonce: nonce,
+      status: ChatMessageStatus.sending,
+      localImages: images,
+    );
+    _input.clear();
+    _mentionPicks.clear();
+    setState(() {
+      _messages = <ChatMessage>[..._messages, optimistic];
+      _images = const <Uint8List>[];
+      _replyTo = null;
+    });
+    if (_scroll.hasClients) _scroll.jumpTo(0);
+    _startCooldown();
+    unawaited(
+      _deliver(
+        optimistic,
+        text: text,
+        images: images,
+        replyTo: replyTo,
+        mentions: mentions,
+        nonce: nonce,
+      ),
+    );
+  }
+
+  Future<void> _deliver(
+    ChatMessage optimistic, {
+    required String text,
+    required List<Uint8List> images,
+    required ChatMessage? replyTo,
+    required List<String> mentions,
+    required String nonce,
+  }) async {
     try {
       final sent = await _chat.send(
         _room,
         text: text,
-        images: _images,
-        replyTo: _replyTo,
-        mentions: _mentionIds(text),
+        images: images,
+        replyTo: replyTo,
+        mentions: mentions,
+        nonce: nonce,
       );
-      if (!mounted) return;
-      _input.clear();
-      _mentionPicks.clear();
-      setState(() {
-        _images = const <Uint8List>[];
-        _replyTo = null;
-      });
-      _onIncoming(sent);
-      if (_scroll.hasClients) _scroll.jumpTo(0);
-      _startCooldown();
+      _upsert(sent);
+      _markLatestRead();
     } on ChatCooldownException {
-      _startCooldown();
+      _upsert(optimistic.copyWith(status: ChatMessageStatus.failed));
     } on ChatException catch (error) {
+      _upsert(optimistic.copyWith(status: ChatMessageStatus.failed));
       if (mounted) showAppSnackBar(context, error.message);
     } on FormatException catch (error) {
+      _upsert(optimistic.copyWith(status: ChatMessageStatus.failed));
       if (mounted) showAppSnackBar(context, error.message);
-    } finally {
-      if (mounted) setState(() => _sending = false);
     }
+  }
+
+  void _retry(ChatMessage message) {
+    if (message.status != ChatMessageStatus.failed) return;
+    final retried = message.copyWith(status: ChatMessageStatus.sending);
+    setState(
+      () => _messages = <ChatMessage>[
+        ..._messages.where((m) => m.id != message.id),
+        retried,
+      ],
+    );
+    if (_scroll.hasClients) _scroll.jumpTo(0);
+    final replyStub = message.replyToId.isEmpty
+        ? null
+        : ChatMessage(
+            id: message.replyToId,
+            roomId: _room.id,
+            author: const ChatAuthor(id: '', name: '', photo: ''),
+            text: '',
+            images: const <String>[],
+            created: message.created,
+          );
+    unawaited(
+      _deliver(
+        retried,
+        text: message.text,
+        images: message.localImages,
+        replyTo: replyStub,
+        mentions: message.mentions,
+        nonce: message.nonce,
+      ),
+    );
   }
 
   void _mention(ChatAuthor author) {
@@ -495,8 +598,11 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
                   .where((r) => r.messageId == message.id)
                   .toList(),
               myId: me ?? '',
-              onLongPress: () => _showActions(message),
+              onLongPress: message.isPending
+                  ? null
+                  : () => _showActions(message),
               onReact: (emoji) => _toggleReaction(message, emoji),
+              onRetry: () => _retry(message),
             );
             if (!newDay) return bubble;
             return Column(
@@ -542,9 +648,7 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
               IconButton(
                 tooltip: 'Add Photos',
                 onPressed:
-                    _sending ||
-                        !_room.active ||
-                        _images.length >= ChatService.maxPhotos
+                    !_room.active || _images.length >= ChatService.maxPhotos
                     ? null
                     : _pickImages,
                 icon: Icon(Icons.image_outlined, color: textSecondary),
@@ -552,8 +656,7 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
               Expanded(
                 child: CallbackShortcuts(
                   bindings: <ShortcutActivator, VoidCallback>{
-                    const SingleActivator(LogicalKeyboardKey.enter): () =>
-                        unawaited(_send()),
+                    const SingleActivator(LogicalKeyboardKey.enter): _send,
                   },
                   child: TextField(
                     controller: _input,
@@ -581,12 +684,10 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
                   return IconButton(
                     tooltip: 'Send',
                     onPressed: canSend ? _send : null,
-                    icon: _sending
-                        ? const AppSpinner(size: 20)
-                        : Icon(
-                            Icons.send_rounded,
-                            color: canSend ? AppPalette.primary : textSecondary,
-                          ),
+                    icon: Icon(
+                      Icons.send_rounded,
+                      color: canSend ? AppPalette.primary : textSecondary,
+                    ),
                   );
                 },
               ),
@@ -669,11 +770,15 @@ class _PhotoViewer extends StatefulWidget {
   const _PhotoViewer({
     required this.urls,
     required this.thumbs,
+    required this.urlKeys,
+    required this.thumbKeys,
     required this.page,
   });
 
   final List<String> urls;
   final List<String> thumbs;
+  final List<String> urlKeys;
+  final List<String> thumbKeys;
   final ValueNotifier<int> page;
 
   @override
@@ -706,6 +811,7 @@ class _PhotoViewerState extends State<_PhotoViewer> {
               child: Center(
                 child: CachedImage(
                   url: widget.urls[index],
+                  cacheKey: widget.urlKeys[index],
                   fit: BoxFit.contain,
                 ),
               ),
@@ -749,6 +855,7 @@ class _PhotoViewerState extends State<_PhotoViewer> {
                             opacity: index == current ? 1 : 0.55,
                             child: CachedImage(
                               url: widget.thumbs[index],
+                              cacheKey: widget.thumbKeys[index],
                               fit: BoxFit.cover,
                               width: _thumbSize,
                               height: _thumbSize,
@@ -864,6 +971,7 @@ class _MessageBubble extends StatelessWidget {
     required this.myId,
     required this.onLongPress,
     required this.onReact,
+    required this.onRetry,
   });
 
   final ChatMessage message;
@@ -872,8 +980,9 @@ class _MessageBubble extends StatelessWidget {
   final bool showTime;
   final List<ChatReaction> reactions;
   final String myId;
-  final VoidCallback onLongPress;
+  final VoidCallback? onLongPress;
   final void Function(String emoji) onReact;
+  final VoidCallback onRetry;
 
   static const double _avatarSize = 32;
 
@@ -1015,6 +1124,40 @@ class _MessageBubble extends StatelessWidget {
                     ),
                   ),
                 bubble,
+                if (isMine && message.status == ChatMessageStatus.sending)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(4, 3, 4, 0),
+                    child: Icon(
+                      Icons.schedule_rounded,
+                      size: 12,
+                      color: textSecondary,
+                    ),
+                  ),
+                if (isMine && message.status == ChatMessageStatus.failed)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(4, 3, 4, 0),
+                    child: InkWell(
+                      onTap: onRetry,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(
+                            Icons.error_outline_rounded,
+                            size: 12,
+                            color: AppPalette.danger,
+                          ),
+                          const Gap(4),
+                          Text(
+                            'Not Sent · Tap to Retry',
+                            style: const TextStyle(
+                              fontSize: 11,
+                              color: AppPalette.danger,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
                 if (counts.isNotEmpty)
                   Padding(
                     padding: const EdgeInsets.only(top: 3),
@@ -1078,17 +1221,46 @@ class _ChatPhotos extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final single = message.images.length == 1;
-    final size = single ? _width : (_width - _gap) / 2;
+    final local = message.isPending && message.localImages.isNotEmpty;
+    final count = local ? message.localImages.length : message.images.length;
+    final size = count == 1 ? _width : (_width - _gap) / 2;
     return SizedBox(
       width: _width,
       child: Wrap(
         spacing: _gap,
         runSpacing: _gap,
         children: [
-          for (final name in message.images)
-            _ChatImage(message: message, name: name, size: size),
+          if (local)
+            for (final bytes in message.localImages)
+              _LocalImage(bytes: bytes, size: size)
+          else
+            for (final name in message.images)
+              _ChatImage(message: message, name: name, size: size),
         ],
+      ),
+    );
+  }
+}
+
+class _LocalImage extends StatelessWidget {
+  const _LocalImage({required this.bytes, required this.size});
+
+  final Uint8List bytes;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(12),
+      child: Opacity(
+        opacity: 0.7,
+        child: Image.memory(
+          bytes,
+          width: size,
+          height: size,
+          fit: BoxFit.cover,
+          cacheWidth: (size * MediaQuery.devicePixelRatioOf(context)).round(),
+        ),
       ),
     );
   }
@@ -1114,6 +1286,10 @@ class _ChatImageState extends State<_ChatImage> {
     widget.message,
     widget.name,
   );
+  late final String _thumbKey = ChatService.instance.imageKey(
+    widget.message,
+    widget.name,
+  );
 
   Future<void> _openFull() async {
     final message = widget.message;
@@ -1126,6 +1302,13 @@ class _ChatImageState extends State<_ChatImage> {
       ),
       Future.wait(message.images.map((name) => chat.imageUrl(message, name))),
     ).wait;
+    final urlKeys = <String>[
+      for (final name in message.images)
+        chat.imageKey(message, name, thumb: false),
+    ];
+    final thumbKeys = <String>[
+      for (final name in message.images) chat.imageKey(message, name),
+    ];
     if (!mounted) return;
     final page = ValueNotifier<int>(message.images.indexOf(widget.name));
     final title = ValueNotifier<String>('');
@@ -1151,13 +1334,19 @@ class _ChatImageState extends State<_ChatImage> {
             onPressed: () => _save(
               buttonContext,
               urls[page.value],
+              urlKeys[page.value],
               message.images[page.value],
             ),
           ),
         ),
       ],
-      builder: (sheetContext, textPrimary, textSecondary) =>
-          _PhotoViewer(urls: urls, thumbs: thumbs, page: page),
+      builder: (sheetContext, textPrimary, textSecondary) => _PhotoViewer(
+        urls: urls,
+        thumbs: thumbs,
+        urlKeys: urlKeys,
+        thumbKeys: thumbKeys,
+        page: page,
+      ),
     );
     page.dispose();
     title.dispose();
@@ -1166,6 +1355,7 @@ class _ChatImageState extends State<_ChatImage> {
   Future<void> _save(
     BuildContext buttonContext,
     String url,
+    String cacheKey,
     String name,
   ) async {
     final box = buttonContext.findRenderObject() as RenderBox?;
@@ -1173,7 +1363,10 @@ class _ChatImageState extends State<_ChatImage> {
         ? null
         : box.localToGlobal(Offset.zero) & box.size;
     try {
-      final file = await AppImageCache.instance.getSingleFile(url);
+      final file = await AppImageCache.instance.getSingleFile(
+        url,
+        key: cacheKey,
+      );
       final bytes = await file.readAsBytes();
       await SharePlus.instance.share(
         ShareParams(
@@ -1210,7 +1403,11 @@ class _ChatImageState extends State<_ChatImage> {
                 height: widget.size,
                 child: url == null
                     ? const Center(child: AppSpinner(size: 20))
-                    : CachedImage(url: url, fit: BoxFit.cover),
+                    : CachedImage(
+                        url: url,
+                        cacheKey: _thumbKey,
+                        fit: BoxFit.cover,
+                      ),
               ),
             ),
           ),

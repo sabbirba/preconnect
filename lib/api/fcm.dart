@@ -225,73 +225,57 @@ class FCMService {
     categories: [category, module, source],
   );
 
+  static String _notificationCategory(Map<String, dynamic> data) =>
+      (data['category'] ?? data['module'] ?? data['source'] ?? '')
+          .toString()
+          .trim();
+
+  static String _firstClean(List<Object?> values, String category) {
+    for (final value in values) {
+      final cleaned = cleanNotificationDescription(
+        '${value ?? ''}'.trim(),
+        category: category,
+      );
+      if (cleaned.isNotEmpty) return cleaned;
+    }
+    return '';
+  }
+
   static (String, String) _resolveNotificationTitleAndBody(
     RemoteNotification? notification,
     Map<String, dynamic> data,
   ) {
-    var title = (data['title'] ?? notification?.title ?? '').toString().trim();
-    final category =
-        (data['category'] ?? data['module'] ?? data['source'] ?? '')
-            .toString()
-            .trim();
-
-    final descCandidate =
-        (data['description'] ??
-                data['details'] ??
-                data['content'] ??
-                data['text'] ??
-                '')
-            .toString()
-            .trim();
-    final bodyCandidate =
-        (data['body'] ??
-                data['message'] ??
-                data['alert'] ??
-                data['headline'] ??
-                notification?.body ??
-                '')
-            .toString()
-            .trim();
-
-    var body = cleanNotificationDescription(descCandidate, category: category);
-    if (body.isEmpty) {
-      body = cleanNotificationDescription(bodyCandidate, category: category);
-    }
-
-    final cleanedTitle = cleanNotificationDescription(
-      title,
-      category: category,
-    );
-    if (cleanedTitle.isNotEmpty) {
-      title = cleanedTitle;
-    }
-
-    if (title.isEmpty && body.isNotEmpty) {
-      title = category.isNotEmpty ? category : 'PreConnect';
-    }
-
-    if (body.toLowerCase() == title.toLowerCase()) {
-      body = '';
-    }
-
+    final category = _notificationCategory(data);
+    final title = _firstClean([data['title'], notification?.title], category);
+    final body = _firstClean([
+      data['description'],
+      data['details'],
+      data['content'],
+      data['text'],
+      data['body'],
+      data['message'],
+      data['alert'],
+      data['headline'],
+      notification?.body,
+    ], category);
     return (title, body);
   }
 
   static Future<void> _handleIncomingMessage(RemoteMessage message) async {
     RefreshBus.instance.notify(reason: 'push_notification');
-    if (message.data['type'] == 'chat_message' &&
-        ChatService.instance.isViewing('${message.data['roomId'] ?? ''}')) {
-      return;
-    }
+    final data = message.data;
+    final isChatForActiveRoom =
+        data['type'] == 'chat_message' &&
+        ChatService.instance.isViewing('${data['roomId'] ?? ''}');
     final (title, body) = _resolveNotificationTitleAndBody(
       message.notification,
-      message.data,
+      data,
     );
-    if (title.isNotEmpty) {
+    if (!isChatForActiveRoom && (title.isNotEmpty || body.isNotEmpty)) {
       final imageUrl =
-          (message.data['image'] ??
-                  message.data['imageUrl'] ??
-                  message.data['image_url'] ??
+          (data['image'] ??
+                  data['imageUrl'] ??
+                  data['image_url'] ??
                   message.notification?.android?.imageUrl ??
                   message.notification?.apple?.imageUrl)
               ?.toString()
@@ -300,10 +284,10 @@ class FCMService {
         title: title,
         body: body,
         imageUrl: (imageUrl != null && imageUrl.isNotEmpty) ? imageUrl : null,
-        data: message.data,
+        data: data,
       );
     }
-    await DatasetSync.instance.applyPush(message.data);
+    await DatasetSync.instance.applyPush(data);
   }
 
   Future<String> _firebaseRegistration() {
@@ -745,101 +729,105 @@ class FCMService {
     await ensureLocalNotificationsInitialized();
   }
 
+  static DarwinNotificationDetails _darwinDetails([
+    List<DarwinNotificationAttachment>? attachments,
+  ]) => DarwinNotificationDetails(
+    presentAlert: true,
+    presentBadge: true,
+    presentSound: true,
+    presentBanner: true,
+    presentList: true,
+    interruptionLevel: InterruptionLevel.timeSensitive,
+    attachments: attachments,
+  );
+
+  static NotificationDetails _notificationDetails({
+    StyleInformation? androidStyle,
+    List<DarwinNotificationAttachment>? darwinAttachments,
+  }) => NotificationDetails(
+    android: AndroidNotificationDetails(
+      'high_importance_channel',
+      'High Importance Notifications',
+      importance: Importance.max,
+      priority: Priority.max,
+      icon: 'status_icon',
+      playSound: true,
+      enableVibration: true,
+      channelShowBadge: true,
+      visibility: NotificationVisibility.public,
+      category: AndroidNotificationCategory.event,
+      styleInformation: androidStyle,
+    ),
+    iOS: _darwinDetails(darwinAttachments),
+    macOS: _darwinDetails(darwinAttachments),
+  );
+
+  Future<(StyleInformation?, List<DarwinNotificationAttachment>?)>
+  _imageAttachments(String imageUrl) async {
+    try {
+      final response = await HttpUtils.client
+          .get(Uri.parse(imageUrl))
+          .timeout(const Duration(seconds: 5));
+      if (response.statusCode != 200) return (null, null);
+      if (defaultTargetPlatform == TargetPlatform.android) {
+        return (
+          BigPictureStyleInformation(
+            ByteArrayAndroidBitmap(response.bodyBytes),
+            hideExpandedLargeIcon: true,
+          ),
+          null,
+        );
+      }
+      final tempDir = await AppPaths.temporaryDirectory();
+      final tempFile = File('${tempDir.path}/${imageUrl.hashCode}.png');
+      await tempFile.writeAsBytes(response.bodyBytes);
+      return (null, [DarwinNotificationAttachment(tempFile.path)]);
+    } catch (error) {
+      unawaited(AppLog.write('Notification image attachment failed: $error'));
+      return (null, null);
+    }
+  }
+
   Future<void> showLocalNotificationDirect({
     required String title,
     required String body,
     String? imageUrl,
     Map<String, dynamic> data = const {},
+    int? id,
   }) async {
     if (kIsWeb) return;
     await ensureLocalNotificationsInitialized();
-    final category =
-        (data['category'] ?? data['module'] ?? data['source'] ?? '')
-            .toString()
-            .trim();
-    var resolvedBody = cleanNotificationDescription(body, category: category);
-    if (resolvedBody.isEmpty && data['description'] != null) {
-      resolvedBody = cleanNotificationDescription(
-        data['description'].toString(),
-        category: category,
-      );
-    }
-    if (resolvedBody.isEmpty && data['details'] != null) {
-      resolvedBody = cleanNotificationDescription(
-        data['details'].toString(),
-        category: category,
-      );
-    }
-    final notifId = (title.hashCode ^ resolvedBody.hashCode) & 0x7FFFFFFF;
-    if (imageUrl == null || imageUrl.isEmpty) {
-      await showNotificationStatic(
-        id: notifId,
-        title: title,
-        body: resolvedBody,
-        payload: jsonEncode(data),
-      );
-      return;
-    }
-    StyleInformation? styleInformation;
-    List<DarwinNotificationAttachment>? darwinAttachments;
-    try {
-      final response = await HttpUtils.client
-          .get(Uri.parse(imageUrl))
-          .timeout(const Duration(seconds: 5));
-      if (response.statusCode == 200) {
-        if (defaultTargetPlatform == TargetPlatform.android) {
-          styleInformation = BigPictureStyleInformation(
-            ByteArrayAndroidBitmap(response.bodyBytes),
-            hideExpandedLargeIcon: true,
-          );
-        } else if (defaultTargetPlatform == TargetPlatform.iOS ||
-            defaultTargetPlatform == TargetPlatform.macOS) {
-          final tempDir = await AppPaths.temporaryDirectory();
-          final tempFile = File('${tempDir.path}/${imageUrl.hashCode}.png');
-          await tempFile.writeAsBytes(response.bodyBytes);
-          darwinAttachments = [DarwinNotificationAttachment(tempFile.path)];
-        }
-      }
-    } catch (error) {
-      unawaited(AppLog.write('Notification image attachment failed: $error'));
-    }
+    final category = _notificationCategory(data);
+    final resolvedTitle = cleanNotificationDescription(
+      title.trim(),
+      category: category,
+    );
+    final shownTitle = resolvedTitle.isNotEmpty
+        ? resolvedTitle
+        : (category.isNotEmpty ? category : 'PreConnect');
+    final resolvedBody = cleanNotificationDescription(
+      body.trim(),
+      category: category,
+    );
+    final shownBody = resolvedBody.isNotEmpty
+        ? resolvedBody
+        : (category.isNotEmpty ? category : 'Open PreConnect for details.');
+    final notifId =
+        id ?? ((shownTitle.hashCode ^ shownBody.hashCode) & 0x7FFFFFFF);
+    final (
+      androidStyle,
+      darwinAttachments,
+    ) = (imageUrl != null && imageUrl.isNotEmpty)
+        ? await _imageAttachments(imageUrl)
+        : (null, null);
     await _localNotifications.show(
       id: notifId,
-      title: title,
-      body: resolvedBody,
+      title: shownTitle,
+      body: shownBody,
       payload: jsonEncode(data),
-      notificationDetails: NotificationDetails(
-        android: AndroidNotificationDetails(
-          'high_importance_channel',
-          'High Importance Notifications',
-          importance: Importance.max,
-          priority: Priority.max,
-          icon: 'status_icon',
-          playSound: true,
-          enableVibration: true,
-          channelShowBadge: true,
-          visibility: NotificationVisibility.public,
-          category: AndroidNotificationCategory.event,
-          styleInformation: styleInformation,
-        ),
-        iOS: DarwinNotificationDetails(
-          presentAlert: true,
-          presentBadge: true,
-          presentSound: true,
-          presentBanner: true,
-          presentList: true,
-          interruptionLevel: InterruptionLevel.timeSensitive,
-          attachments: darwinAttachments,
-        ),
-        macOS: DarwinNotificationDetails(
-          presentAlert: true,
-          presentBadge: true,
-          presentSound: true,
-          presentBanner: true,
-          presentList: true,
-          interruptionLevel: InterruptionLevel.timeSensitive,
-          attachments: darwinAttachments,
-        ),
+      notificationDetails: _notificationDetails(
+        androidStyle: androidStyle,
+        darwinAttachments: darwinAttachments,
       ),
     );
   }
@@ -904,7 +892,7 @@ class FCMService {
   ) async {
     if (!isSupported) return;
     try {
-      await showNotificationStatic(
+      await showLocalNotificationDirect(
         id: Object.hash(courseCode, sectionName) & 0x7fffffff,
         title: 'Seat Alerts Enabled',
         body:
@@ -913,72 +901,5 @@ class FCMService {
     } catch (error) {
       unawaited(AppLog.write('Confirmation notification send failed: $error'));
     }
-  }
-
-  static Future<void> showNotificationStatic({
-    required int id,
-    required String title,
-    required String body,
-    String? payload,
-  }) async {
-    if (kIsWeb) return;
-    await ensureLocalNotificationsInitialized();
-    String? category;
-    if (payload != null && payload.isNotEmpty) {
-      try {
-        final decoded = jsonDecode(payload);
-        if (decoded is Map) {
-          category =
-              (decoded['category'] ??
-                      decoded['module'] ??
-                      decoded['source'] ??
-                      '')
-                  .toString()
-                  .trim();
-          if (body.trim().isEmpty ||
-              body.trim().toLowerCase() == category.toLowerCase()) {
-            body = (decoded['description'] ?? decoded['details'] ?? '')
-                .toString();
-          }
-        }
-      } catch (_) {}
-    }
-    final resolvedBody = cleanNotificationDescription(body, category: category);
-    await _localNotifications.show(
-      id: id,
-      title: title,
-      body: resolvedBody,
-      payload: payload,
-      notificationDetails: const NotificationDetails(
-        android: AndroidNotificationDetails(
-          'high_importance_channel',
-          'High Importance Notifications',
-          importance: Importance.max,
-          priority: Priority.max,
-          icon: 'status_icon',
-          playSound: true,
-          enableVibration: true,
-          channelShowBadge: true,
-          visibility: NotificationVisibility.public,
-          category: AndroidNotificationCategory.event,
-        ),
-        iOS: DarwinNotificationDetails(
-          presentAlert: true,
-          presentBadge: true,
-          presentSound: true,
-          presentBanner: true,
-          presentList: true,
-          interruptionLevel: InterruptionLevel.timeSensitive,
-        ),
-        macOS: DarwinNotificationDetails(
-          presentAlert: true,
-          presentBadge: true,
-          presentSound: true,
-          presentBanner: true,
-          presentList: true,
-          interruptionLevel: InterruptionLevel.timeSensitive,
-        ),
-      ),
-    );
   }
 }

@@ -10,6 +10,7 @@ class CachedImage extends StatefulWidget {
   const CachedImage({
     super.key,
     required this.url,
+    this.cacheKey,
     this.fit,
     this.alignment = Alignment.center,
     this.width,
@@ -20,6 +21,7 @@ class CachedImage extends StatefulWidget {
   });
 
   final String url;
+  final String? cacheKey;
   final BoxFit? fit;
   final AlignmentGeometry alignment;
   final double? width;
@@ -68,7 +70,15 @@ class _CachedImageState extends State<CachedImage> {
   @override
   void didUpdateWidget(CachedImage oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.url != widget.url) _loadHeaders();
+    if (oldWidget.url != widget.url || oldWidget.cacheKey != widget.cacheKey) {
+      _loadHeaders();
+    }
+  }
+
+  String? get _storeKey {
+    final key = widget.cacheKey;
+    if (key != null && key.isNotEmpty) return normalizeImageUrl(key);
+    return normalizeImageUrl(widget.url);
   }
 
   Future<void> _loadHeaders() async {
@@ -84,10 +94,11 @@ class _CachedImageState extends State<CachedImage> {
       }
       return;
     }
+    final key = _storeKey ?? normalized;
     setState(() {
       _headers = null;
       _localFile =
-          _fileMemoryCache[normalized] ??
+          _fileMemoryCache[key] ??
           ProfileImageCache.instance.getFromMemory(normalized);
       _loading = _localFile == null;
     });
@@ -95,11 +106,11 @@ class _CachedImageState extends State<CachedImage> {
     try {
       final localFile = uri.host == 'connect.bracu.ac.bd'
           ? await ProfileImageCache.instance.getProfileImage(normalized)
-          : (await AppImageCache.instance.getFileFromCache(normalized))?.file;
+          : (await AppImageCache.instance.getFileFromCache(key))?.file;
       if (localFile != null &&
           await localFile.exists() &&
           await looksLikeImageFile(localFile)) {
-        _fileMemoryCache[normalized] = localFile;
+        _fileMemoryCache[key] = localFile;
         if (mounted && version == _loadVersion) {
           setState(() {
             _localFile = localFile;
@@ -179,6 +190,7 @@ class _CachedImageState extends State<CachedImage> {
 
     return CachedNetworkImage(
       imageUrl: normalized,
+      cacheKey: _storeKey,
       cacheManager: AppImageCache.instance,
       httpHeaders: _headers,
       width: widget.width,

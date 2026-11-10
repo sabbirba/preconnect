@@ -1,4 +1,8 @@
+import 'dart:typed_data';
+
 enum ChatRoomKind { lounge, course, section }
+
+enum ChatMessageStatus { sending, sent, failed }
 
 ChatRoomKind _roomKind(String value) => switch (value) {
   'course' => ChatRoomKind.course,
@@ -80,6 +84,18 @@ class ChatRoom {
   final int semesterSessionId;
   final int memberCount;
   final int slowSeconds;
+
+  Map<String, dynamic> toJson() => <String, dynamic>{
+    'id': id,
+    'kind': kind.name,
+    'title': title,
+    'active': active,
+    'pushTopic': pushTopic,
+    'lastMessageAt': lastMessageAt,
+    'semesterSessionId': semesterSessionId,
+    'memberCount': memberCount,
+    'slowSeconds': slowSeconds,
+  };
 }
 
 class ChatMessage {
@@ -94,6 +110,9 @@ class ChatMessage {
     this.replyAuthorName = '',
     this.replyText = '',
     this.mentions = const <String>[],
+    this.nonce = '',
+    this.status = ChatMessageStatus.sent,
+    this.localImages = const <Uint8List>[],
   });
 
   factory ChatMessage.fromJson(Map<String, dynamic> json) {
@@ -115,6 +134,7 @@ class ChatMessage {
           ? ''
           : (_string(reply['text']).isEmpty ? 'Photo' : _string(reply['text'])),
       mentions: _strings(json['mentions']),
+      nonce: _string(json['clientNonce']),
     );
   }
 
@@ -128,8 +148,32 @@ class ChatMessage {
   final String replyAuthorName;
   final String replyText;
   final List<String> mentions;
+  final String nonce;
+  final ChatMessageStatus status;
+  final List<Uint8List> localImages;
 
-  bool get hasImage => images.isNotEmpty;
+  bool get hasImage => images.isNotEmpty || localImages.isNotEmpty;
+  bool get isPending => status != ChatMessageStatus.sent;
+
+  ChatMessage copyWith({
+    String? id,
+    ChatMessageStatus? status,
+    List<Uint8List>? localImages,
+  }) => ChatMessage(
+    id: id ?? this.id,
+    roomId: roomId,
+    author: author,
+    text: text,
+    images: images,
+    created: created,
+    replyToId: replyToId,
+    replyAuthorName: replyAuthorName,
+    replyText: replyText,
+    mentions: mentions,
+    nonce: nonce,
+    status: status ?? this.status,
+    localImages: localImages ?? this.localImages,
+  );
 }
 
 class ChatReaction {

@@ -54,6 +54,7 @@ class StorageKeys {
   static const String paymentPortfolios = 'payment_portfolios';
   static const String examMapIndex = 'exammap_index_v1';
   static const String chatPushTopics = 'chat_push_topics';
+  static const String chatRoomsSnapshot = 'chat_rooms_snapshot_v1';
   static String examMapParsed(int semesterSessionId) =>
       'exammap_parsed_${semesterSessionId}_v1';
   static String examMapMid(int semesterSessionId) =>

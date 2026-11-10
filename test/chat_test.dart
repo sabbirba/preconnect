@@ -106,6 +106,62 @@ void main() {
     expect(ChatRoom.fromJson({'kind': 'other'}).kind, ChatRoomKind.lounge);
   });
 
+  test('rooms survive a snapshot round-trip', () {
+    final room = ChatRoom.fromJson({
+      'id': 'r1',
+      'kind': 'course',
+      'title': 'ACT201',
+      'active': true,
+      'pushTopic': 'chatr_x',
+      'lastMessageAt': 1794200000000,
+      'semesterSessionId': 627,
+      'memberCount': 42,
+      'slowSeconds': 0,
+    });
+    final restored = ChatRoom.fromJson(room.toJson());
+    expect(restored.id, 'r1');
+    expect(restored.kind, ChatRoomKind.course);
+    expect(restored.title, 'ACT201');
+    expect(restored.active, isTrue);
+    expect(restored.lastMessageAt, 1794200000000);
+    expect(restored.memberCount, 42);
+  });
+
+  test('messages default to sent and read the client nonce', () {
+    final message = ChatMessage.fromJson({
+      'id': 'm1',
+      'room': 'r1',
+      'author': 's1',
+      'text': 'hi',
+      'clientNonce': 's1-123',
+    });
+    expect(message.status, ChatMessageStatus.sent);
+    expect(message.isPending, isFalse);
+    expect(message.nonce, 's1-123');
+  });
+
+  test('a pending message carries local image bytes and can fail', () {
+    final pending = ChatMessage(
+      id: 's1-1',
+      roomId: 'r1',
+      author: const ChatAuthor(id: 's1', name: 'A', photo: ''),
+      text: 'hi',
+      images: const <String>[],
+      created: DateTime.utc(2026, 11, 10),
+      nonce: 's1-1',
+      status: ChatMessageStatus.sending,
+      localImages: <Uint8List>[
+        Uint8List.fromList(<int>[1, 2, 3]),
+      ],
+    );
+    expect(pending.isPending, isTrue);
+    expect(pending.hasImage, isTrue);
+    final failed = pending.copyWith(status: ChatMessageStatus.failed);
+    expect(failed.status, ChatMessageStatus.failed);
+    expect(failed.nonce, 's1-1');
+    expect(failed.localImages, pending.localImages);
+  });
+
   test('chat photos are resized, compressed and stripped of location', () {
     final source = img.Image(width: 3200, height: 1600);
     img.fill(source, color: img.ColorRgb8(30, 120, 220));

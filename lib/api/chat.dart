@@ -207,7 +207,33 @@ class ChatService {
     );
   }
 
+  void restoreRooms() {
+    if (rooms.value.isNotEmpty) return;
+    final raw = AppStorage.instance.getStringSync(
+      StorageKeys.chatRoomsSnapshot,
+    );
+    if (raw == null || raw.isEmpty) return;
+    try {
+      final decoded = jsonDecode(raw);
+      if (decoded is! List) return;
+      rooms.value = decoded
+          .whereType<Map>()
+          .map((item) => ChatRoom.fromJson(item.cast<String, dynamic>()))
+          .toList();
+    } catch (_) {}
+  }
+
+  void _persistRooms(List<ChatRoom> list) {
+    unawaited(
+      AppStorage.instance.setString(
+        StorageKeys.chatRoomsSnapshot,
+        jsonEncode([for (final room in list) room.toJson()]),
+      ),
+    );
+  }
+
   Future<void> preload() async {
+    restoreRooms();
     final last = _preloadedAt;
     if (last != null && DateTime.now().difference(last) < _preloadInterval) {
       return;
@@ -256,16 +282,22 @@ class ChatService {
         .map((record) => record.getStringValue('blocked'))
         .toSet();
     rooms.value = list;
+    _persistRooms(list);
     unawaited(_syncTopics(list));
     unawaited(refreshUnread());
     return list;
   }
 
   Future<void> refreshUnread() async {
-    final ids = rooms.value.map((room) => room.id).toList();
-    final counts = await Future.wait(ids.map(_countUnread));
+    final pb = await _client();
+    final result = await pb.send('/api/chat/unread');
+    final counts = result is Map ? result['counts'] : null;
+    if (counts is! Map) return;
     unread.value = <String, int>{
-      for (var i = 0; i < ids.length; i++) ids[i]: counts[i],
+      for (final entry in counts.entries)
+        '${entry.key}': entry.value is num
+            ? (entry.value as num).toInt()
+            : int.tryParse('${entry.value}') ?? 0,
     };
   }
 
@@ -439,6 +471,7 @@ class ChatService {
     List<Uint8List> images = const <Uint8List>[],
     ChatMessage? replyTo,
     List<String> mentions = const <String>[],
+    String nonce = '',
   }) async {
     final pb = await _client();
     final compressed = await Future.wait(images.map(compressChatImage));
@@ -456,6 +489,7 @@ class ChatService {
               'text': text.trim(),
               if (replyTo != null) 'replyTo': replyTo.id,
               if (mentions.isNotEmpty) 'mentions': mentions,
+              if (nonce.isNotEmpty) 'clientNonce': nonce,
             },
             files: files,
             expand: _messageExpand,
@@ -565,6 +599,13 @@ class ChatService {
     unread.value = <String, int>{...unread.value, roomId: 0};
   }
 
+  String imageKey(ChatMessage message, String name, {bool thumb = true}) {
+    final base =
+        '${ApiConfig.pocketBaseUrl}/api/files/chat_messages/'
+        '${message.id}/${Uri.encodeComponent(name)}';
+    return thumb ? '$base?thumb=320x0' : base;
+  }
+
   Future<String> imageUrl(
     ChatMessage message,
     String name, {
@@ -578,12 +619,9 @@ class ChatService {
       _fileToken = await pb.files.getToken();
       _fileTokenAt = DateTime.now();
     }
-    final query = <String>[
-      if (thumb) 'thumb=320x0',
-      'token=${Uri.encodeQueryComponent(_fileToken!)}',
-    ].join('&');
-    return '${ApiConfig.pocketBaseUrl}/api/files/chat_messages/'
-        '${message.id}/${Uri.encodeComponent(name)}?$query';
+    final key = imageKey(message, name, thumb: thumb);
+    final separator = key.contains('?') ? '&' : '?';
+    return '$key${separator}token=${Uri.encodeQueryComponent(_fileToken!)}';
   }
 
   Future<ChatWatch> watchRoom(
