@@ -177,18 +177,23 @@ class LibSyncAuthService extends ChangeNotifier {
     );
   });
 
-  Future<void> authenticateWithCookies(Map<String, String> cookies) =>
-      _runAuth(() => _authenticateWithCookies(cookies));
+  Future<void> authenticateWithCookies(
+    Map<String, String> cookies, {
+    Map<String, dynamic>? profile,
+  }) => _runAuth(() => _authenticateWithCookies(cookies, profile: profile));
 
   Future<LibSyncAuthState> _authenticateWithCookies(
-    Map<String, String> cookies,
-  ) async {
+    Map<String, String> cookies, {
+    Map<String, dynamic>? profile,
+  }) async {
     await _apiClient.saveCookies(cookies);
-    final profile = await _fetchUserProfile();
-    await _apiClient.saveCachedProfile(profile);
+    final userProfile = (profile != null && profile.isNotEmpty)
+        ? profile
+        : await _fetchUserProfile();
+    await _apiClient.saveCachedProfile(userProfile);
     return LibSyncAuthState(
       status: LibSyncAuthStatus.authenticated,
-      profile: profile,
+      profile: userProfile,
     );
   }
 

@@ -9,6 +9,7 @@ import 'package:preconnect/api/preferences_store.dart';
 import 'package:preconnect/api/auth.dart';
 import 'package:preconnect/pages/shared_widgets/info_line.dart';
 import 'package:preconnect/pages/shared_widgets/preconnect_webview.dart';
+import 'package:webview_flutter/webview_flutter.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/pages/home_tab.dart';
 import 'package:preconnect/tools/time_utils.dart' show AppTime;
@@ -276,41 +277,94 @@ class _LibSyncPageState extends State<LibSyncPage>
     }
     try {
       if (!kIsWeb) {
-        final controller = preConnectWebViewController();
-        controller.loadRequest(Uri.parse(LibSyncConfig.loginUrl));
+        final controller = preConnectWebViewController()
+          ..setUserAgent(LibSyncConfig.browserUserAgent);
+        Map<String, dynamic>? capturedProfile;
+        controller.addJavaScriptChannel(
+          'LibSyncChannel',
+          onMessageReceived: (message) {
+            try {
+              final decoded = jsonDecode(message.message);
+              if (decoded is Map<String, dynamic> &&
+                  decoded.containsKey('id')) {
+                capturedProfile = decoded;
+              }
+            } catch (_) {}
+          },
+        );
         var completed = false;
+        Future<void> handleSession(String url, BuildContext ctx) async {
+          if (completed) return;
+          final uri = Uri.tryParse(url);
+          if (uri == null || !uri.host.contains('libsync.bracu.ac.bd')) return;
+          final path = uri.path;
+          if (path.contains('/dashboard') ||
+              path.contains('/room-book') ||
+              path.contains('/profile')) {
+            completed = true;
+            try {
+              unawaited(
+                controller.runJavaScript(
+                  "(function(){fetch('/api/user/me/',{credentials:'include'}).then(function(r){return r.json();}).then(function(d){if(window.LibSyncChannel){window.LibSyncChannel.postMessage(JSON.stringify(d));}}).catch(function(){});})();",
+                ),
+              );
+              await Future<void>.delayed(const Duration(milliseconds: 350));
+              final cookieList = await WebViewCookieManager().getCookies(
+                domain: Uri.parse(LibSyncConfig.apiBaseUrl),
+              );
+              final cookies = {for (final c in cookieList) c.name: c.value};
+              if (!cookies.containsKey('sessionid')) {
+                final fallbackList = await WebViewCookieManager().getCookies(
+                  domain: Uri.parse('${LibSyncConfig.apiBaseUrl}/'),
+                );
+                for (final c in fallbackList) {
+                  cookies[c.name] = c.value;
+                }
+              }
+              try {
+                final jsResult = await controller.runJavaScriptReturningResult(
+                  'document.cookie',
+                );
+                final raw = jsResult.toString().replaceAll('"', '').trim();
+                for (final part in raw.split(';')) {
+                  final eq = part.indexOf('=');
+                  if (eq != -1) {
+                    final k = part.substring(0, eq).trim();
+                    final v = part.substring(eq + 1).trim();
+                    if (k.isNotEmpty && !cookies.containsKey(k)) {
+                      cookies[k] = v;
+                    }
+                  }
+                }
+              } catch (_) {}
+              if (cookies.isNotEmpty) {
+                await LibSyncAuthService.instance.authenticateWithCookies(
+                  cookies,
+                  profile: capturedProfile,
+                );
+              }
+            } catch (e, st) {
+              reportLibSyncError('Extracting LibSync mobile session', e, st);
+            }
+            if (ctx.mounted) Navigator.of(ctx).pop();
+          }
+        }
+
+        controller.loadRequest(Uri.parse(LibSyncConfig.loginUrl));
         if (!context.mounted) return;
         await Navigator.of(context).push(
           MaterialPageRoute(
-            builder: (ctx) => PreConnectWebViewPage(
-              controller: controller,
-              onPageFinished: (url) async {
-                if (completed) return;
-                if (url.contains('/dashboard') || url.contains('/room-book')) {
-                  completed = true;
-                  try {
-                    final res = await controller.runJavaScriptReturningResult(
-                      "fetch('/api/user/me/', {credentials: 'include'}).then(r => r.text())",
-                    );
-                    final raw = res.toString();
-                    final unquoted = raw.startsWith('"') && raw.endsWith('"')
-                        ? jsonDecode(raw)
-                        : raw;
-                    final profile = jsonDecode(unquoted.toString());
-                    if (profile is Map<String, dynamic>) {
-                      await LibSyncAuthService.instance.saveProfile(profile);
-                    }
-                  } catch (e, st) {
-                    reportLibSyncError(
-                      'Extracting LibSync mobile session',
-                      e,
-                      st,
-                    );
-                  }
-                  if (ctx.mounted) Navigator.of(ctx).pop();
-                }
-              },
-            ),
+            builder: (ctx) {
+              controller.setNavigationDelegate(
+                NavigationDelegate(
+                  onPageFinished: (url) => handleSession(url, ctx),
+                ),
+              );
+              return PreConnectWebViewPage(
+                controller: controller,
+                onPageFinished: (url) => handleSession(url, ctx),
+              );
+            },
           ),
         );
         return;

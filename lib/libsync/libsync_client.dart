@@ -301,8 +301,7 @@ class LibSyncApiClient extends http.BaseClient {
   }
 
   void _injectBrowserHeaders(Map<String, String> headers) {
-    headers['User-Agent'] =
-        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36';
+    headers['User-Agent'] = LibSyncConfig.browserUserAgent;
     headers['Accept'] ??= 'application/json, text/plain, */*';
     headers['Accept-Language'] = 'en-US,en;q=0.9';
     headers['Referer'] = '${LibSyncConfig.apiBaseUrl}/login?next=%2Froom-book';

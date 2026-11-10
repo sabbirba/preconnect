@@ -11,6 +11,8 @@ class LibSyncConfig {
   static const String userMeUrl = '$apiBaseUrl/api/user/me/';
   static const String tokenRefreshUrl = '$apiBaseUrl/api/user/token/refresh/';
   static const String loginUrl = '$apiBaseUrl/login';
+  static const String browserUserAgent =
+      'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Mobile Safari/537.36';
 
   static final String googleClientId = utf8.decode(
     base64.decode(
