@@ -355,12 +355,28 @@ class ChatService {
     blocked.value = blockRecords
         .map((record) => record.getStringValue('blocked'))
         .toSet();
+    _dropModerated(list);
     rooms.value = list;
     _roomsLoadedAt = DateTime.now();
     _persistRooms(list);
     unawaited(_syncTopics(list));
     unawaited(refreshUnread());
     return list;
+  }
+
+  bool _dropModerated(List<ChatRoom> next) {
+    final before = {for (final room in rooms.value) room.id: room.moderatedAt};
+    final dropped = next
+        .where(
+          (room) =>
+              room.moderatedAt > (before[room.id] ?? 0) &&
+              _recent.remove(room.id) != null,
+        )
+        .toList();
+    if (dropped.isEmpty) return false;
+    recentVersion.value++;
+    _persistRecentSoon();
+    return true;
   }
 
   Future<void> refreshUnread() async {
@@ -404,8 +420,9 @@ class ChatService {
       final index = list.indexWhere((room) => room.id == updated.id);
       if (index < 0) return;
       final previous = list[index];
+      final moderated = _dropModerated([updated]);
       rooms.value = [...list]..[index] = updated;
-      if (updated.lastMessageAt > previous.lastMessageAt &&
+      if ((moderated || updated.lastMessageAt > previous.lastMessageAt) &&
           !isViewing(updated.id)) {
         unawaited(refreshUnread().catchError((Object _) {}));
         unawaited(_sync(updated.id).catchError((Object _) {}));

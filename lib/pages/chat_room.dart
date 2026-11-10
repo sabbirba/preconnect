@@ -42,6 +42,7 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
   Timer? _cooldownTimer;
   bool _coolingDown = false;
   String? _timeShownFor;
+  late int _moderatedAt = _room.moderatedAt;
 
   ChatRoom get _room => widget.room;
 
@@ -60,12 +61,14 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
     super.initState();
     _chat.activeRoomId = _room.id;
     _scroll.addListener(_onScroll);
+    _chat.rooms.addListener(_onRoomsChanged);
     unawaited(_load());
   }
 
   @override
   void dispose() {
     if (_chat.activeRoomId == _room.id) _chat.activeRoomId = null;
+    _chat.rooms.removeListener(_onRoomsChanged);
     _chat.remember(
       _room.id,
       _messages.where((m) => !m.isPending).toList(),
@@ -78,6 +81,18 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
     _scroll.dispose();
     _input.dispose();
     super.dispose();
+  }
+
+  void _onRoomsChanged() {
+    final current = _chat.rooms.value.where((room) => room.id == _room.id);
+    final moderatedAt = current.firstOrNull?.moderatedAt ?? 0;
+    if (moderatedAt <= _moderatedAt || !mounted) return;
+    _moderatedAt = moderatedAt;
+    setState(() {
+      _messages = _messages.where((m) => m.isPending).toList();
+      _reactions = const <ChatReaction>[];
+    });
+    unawaited(_load());
   }
 
   Future<void> _load() async {
@@ -1066,6 +1081,13 @@ class _MessageBubble extends StatelessWidget {
   final VoidCallback onRetry;
 
   static const double _avatarSize = 32;
+  static const double _inset = 12;
+  static const EdgeInsets _metaPadding = EdgeInsets.fromLTRB(
+    _inset,
+    4,
+    _inset,
+    2,
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -1101,9 +1123,12 @@ class _MessageBubble extends StatelessWidget {
               constraints: BoxConstraints(
                 maxWidth: MediaQuery.sizeOf(context).width * 0.72,
               ),
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              padding: const EdgeInsets.symmetric(
+                horizontal: _inset,
+                vertical: 8,
+              ),
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(14),
+                borderRadius: BorderRadius.circular(_ChatPhotos.radius),
                 border: Border.all(color: borderColor),
               ),
               child: Column(
@@ -1141,7 +1166,7 @@ class _MessageBubble extends StatelessWidget {
       ),
     );
     return Padding(
-      padding: EdgeInsets.only(top: showAuthor ? 8 : 2),
+      padding: EdgeInsets.only(top: showAuthor ? 12 : 3),
       child: Row(
         mainAxisAlignment: isMine
             ? MainAxisAlignment.end
@@ -1191,12 +1216,12 @@ class _MessageBubble extends StatelessWidget {
               children: [
                 if (showAuthor && !isMine)
                   Padding(
-                    padding: const EdgeInsets.only(left: 4, bottom: 2),
+                    padding: const EdgeInsets.only(left: _inset, bottom: 4),
                     child: Text(
                       message.author.name,
                       style: TextStyle(
                         fontSize: 12,
-                        fontWeight: FontWeight.w700,
+                        fontWeight: FontWeight.w600,
                         color: textSecondary,
                       ),
                     ),
@@ -1204,7 +1229,7 @@ class _MessageBubble extends StatelessWidget {
                 bubble,
                 if (isMine && message.status == ChatMessageStatus.sending)
                   Padding(
-                    padding: const EdgeInsets.fromLTRB(4, 3, 4, 0),
+                    padding: _metaPadding,
                     child: Icon(
                       Icons.schedule_rounded,
                       size: 12,
@@ -1213,7 +1238,7 @@ class _MessageBubble extends StatelessWidget {
                   ),
                 if (isMine && message.status == ChatMessageStatus.failed)
                   Padding(
-                    padding: const EdgeInsets.fromLTRB(4, 3, 4, 0),
+                    padding: _metaPadding,
                     child: InkWell(
                       onTap: onRetry,
                       child: Row(
@@ -1238,7 +1263,7 @@ class _MessageBubble extends StatelessWidget {
                   ),
                 if (counts.isNotEmpty)
                   Padding(
-                    padding: const EdgeInsets.only(top: 3),
+                    padding: const EdgeInsets.only(top: 4),
                     child: Wrap(
                       spacing: 4,
                       runSpacing: 4,
@@ -1277,7 +1302,7 @@ class _MessageBubble extends StatelessWidget {
                   ),
                 if (showTime || showFullTime)
                   Padding(
-                    padding: const EdgeInsets.fromLTRB(4, 3, 4, 0),
+                    padding: _metaPadding,
                     child: Text(
                       showFullTime
                           ? '${AppTime.formatLongDate(message.created.toLocal())} · ${AppTime.formatDateTime(message.created)}'
@@ -1301,6 +1326,7 @@ class _ChatPhotos extends StatelessWidget {
 
   static const double _width = 220;
   static const double _gap = 4;
+  static const double radius = 16;
 
   @override
   Widget build(BuildContext context) {
@@ -1334,7 +1360,7 @@ class _LocalImage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ClipRRect(
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(_ChatPhotos.radius),
       child: Opacity(
         opacity: 0.7,
         child: Image.memory(
@@ -1474,13 +1500,13 @@ class _ChatImageState extends State<_ChatImage> {
           onTap: url == null ? null : _openFull,
           child: Container(
             foregroundDecoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(_ChatPhotos.radius),
               border: Border.all(
                 color: AppPalette.textSecondary(context).withValues(alpha: 0.3),
               ),
             ),
             child: ClipRRect(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(_ChatPhotos.radius),
               child: SizedBox(
                 width: widget.size,
                 height: widget.size,

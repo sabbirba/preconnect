@@ -67,6 +67,7 @@ class ChatRoom {
     required this.semesterSessionId,
     required this.memberCount,
     required this.slowSeconds,
+    this.moderatedAt = 0,
   });
 
   factory ChatRoom.fromJson(Map<String, dynamic> json) => ChatRoom(
@@ -79,6 +80,7 @@ class ChatRoom {
     semesterSessionId: _int(json['semesterSessionId']),
     memberCount: _int(json['memberCount']),
     slowSeconds: _int(json['slowSeconds']),
+    moderatedAt: _int(json['moderatedAt']),
   );
 
   final String id;
@@ -90,6 +92,7 @@ class ChatRoom {
   final int semesterSessionId;
   final int memberCount;
   final int slowSeconds;
+  final int moderatedAt;
 
   Map<String, dynamic> toJson() => <String, dynamic>{
     'id': id,
@@ -101,6 +104,7 @@ class ChatRoom {
     'semesterSessionId': semesterSessionId,
     'memberCount': memberCount,
     'slowSeconds': slowSeconds,
+    'moderatedAt': moderatedAt,
   };
 }
 

@@ -375,7 +375,7 @@ class _RuleList extends StatelessWidget {
     'Your BRACU name and profile photo are shown with your messages.',
     'Messages and photos are kept for 180 days, then deleted automatically. They cannot be edited or deleted before then.',
     'Be respectful. No harassment, hate, spam or sharing other people\'s private information.',
-    'Report messages that break these rules. Reported students can be blocked from posting.',
+    'Report messages that break these rules. Messages reported by several students are hidden, and moderators can mute or ban students.',
     'PreConnect is a student-run project and is not affiliated with BRAC University.',
   ];
 
