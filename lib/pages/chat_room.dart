@@ -64,19 +64,11 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
             .firstOrNull
             ?.memberCount ??
         _room.memberCount;
-    final students =
-        '${formatAmount(count)} ${count == 1 ? 'student' : 'students'}';
-    final section = _sectionName;
-    return section.isEmpty
-        ? students
-        : 'Section ${formatSectionBadge(section)} · $students';
+    return '${formatAmount(count)} ${count == 1 ? 'student' : 'students'}';
   }
 
   int get _sectionDash =>
       _room.kind == ChatRoomKind.section ? _room.title.lastIndexOf('-') : -1;
-
-  String get _sectionName =>
-      _sectionDash > 0 ? _room.title.substring(_sectionDash + 1) : '';
 
   String get _headerTitle =>
       _sectionDash > 0 ? _room.title.substring(0, _sectionDash) : _room.title;
@@ -388,8 +380,8 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
     List<String> mentions = const <String>[],
     List<String> pollOptions = const <String>[],
     ChatEvent? event,
-    String fileName = '',
-    Uint8List? file,
+    List<String> fileNames = const <String>[],
+    List<Uint8List> files = const <Uint8List>[],
   }) {
     final me = _chat.me;
     if (me == null) return;
@@ -413,8 +405,8 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
       localImages: images,
       pollOptions: pollOptions,
       event: event,
-      fileName: fileName,
-      localFile: file,
+      fileNames: fileNames,
+      localFiles: files,
     );
     _input.clear();
     _mentionPicks.clear();
@@ -439,8 +431,8 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
             mentions: pending.mentions,
             pollOptions: pending.pollOptions,
             event: pending.event,
-            fileName: pending.fileName,
-            file: pending.localFile,
+            pdfNames: pending.fileNames,
+            pdfs: pending.localFiles,
             nonce: pending.nonce,
           )
           .then(
@@ -681,7 +673,7 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
 
   bool get _canPin => _room.kind == ChatRoomKind.section && _room.active;
 
-  bool get _canShareEvents => _room.kind != ChatRoomKind.lounge && _room.active;
+  bool get _canShareEvents => _canPin;
 
   Future<void> _setPin(String text) async {
     try {
@@ -763,7 +755,7 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
   }
 
   Future<void> _pickPdf() async {
-    final picked = await openFile(
+    final picked = await openFiles(
       acceptedTypeGroups: const <XTypeGroup>[
         XTypeGroup(
           label: 'PDF',
@@ -773,22 +765,31 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
         ),
       ],
     );
-    if (picked == null || !mounted) return;
-    final bytes = await picked.readAsBytes();
-    if (!mounted) return;
-    if (bytes.length > ChatService.maxFileBytes) {
-      showAppSnackBar(context, 'PDFs can be up to 10 MB.');
-      return;
-    }
-    final name = picked.name.toLowerCase().endsWith('.pdf')
-        ? picked.name
-        : '${picked.name}.pdf';
-    _startCooldown();
-    _post(
-      _input.text.trim(),
-      fileName: name.replaceAll(RegExp(r'[^A-Za-z0-9._ -]'), '_'),
-      file: bytes,
+    if (picked.isEmpty || !mounted) return;
+    final chosen = picked.take(ChatService.maxFiles).toList();
+    final contents = await Future.wait(
+      chosen.map((file) => file.readAsBytes()),
     );
+    if (!mounted) return;
+    final names = <String>[];
+    final files = <Uint8List>[];
+    for (var i = 0; i < chosen.length; i++) {
+      if (contents[i].length > ChatService.maxFileBytes) continue;
+      final name = chosen[i].name.toLowerCase().endsWith('.pdf')
+          ? chosen[i].name
+          : '${chosen[i].name}.pdf';
+      names.add(name.replaceAll(RegExp(r'[^A-Za-z0-9._ -]'), '_'));
+      files.add(contents[i]);
+    }
+    if (names.length < picked.length) {
+      showAppSnackBar(
+        context,
+        'Up to ${ChatService.maxFiles} PDFs of 10 MB each can be sent at once.',
+      );
+    }
+    if (names.isEmpty) return;
+    _startCooldown();
+    _post(_input.text.trim(), fileNames: names, files: files);
     _input.clear();
   }
 
@@ -1508,10 +1509,17 @@ class _MessageBubble extends StatelessWidget {
                         style: TextStyle(fontSize: 12, color: textSecondary),
                       ),
                     ),
-                  if (message.hasFile) ...[
-                    _FileCard(message: message),
-                    if (message.text.isNotEmpty) const Gap(8),
+                  for (var i = 0; i < message.fileNames.length; i++) ...[
+                    if (i > 0) const Gap(6),
+                    _FileCard(
+                      message: message,
+                      name: message.fileNames[i],
+                      bytes: i < message.localFiles.length
+                          ? message.localFiles[i].length
+                          : null,
+                    ),
                   ],
+                  if (message.hasFile && message.text.isNotEmpty) const Gap(8),
                   if (message.event != null)
                     _EventCard(
                       event: message.event!,
@@ -2283,9 +2291,15 @@ double _bubbleMaxWidth(BuildContext context) =>
     math.min(MediaQuery.sizeOf(context).width * 0.78, 340);
 
 class _FileCard extends StatefulWidget {
-  const _FileCard({required this.message});
+  const _FileCard({
+    required this.message,
+    required this.name,
+    required this.bytes,
+  });
 
   final ChatMessage message;
+  final String name;
+  final int? bytes;
 
   @override
   State<_FileCard> createState() => _FileCardState();
@@ -2300,18 +2314,18 @@ class _FileCardState extends State<_FileCard> {
     setState(() => _opening = true);
     try {
       final file = await AppImageCache.instance.getSingleFile(
-        await chat.fileUrl(message),
-        key: chat.fileKey(message),
+        await chat.fileUrl(message, widget.name),
+        key: chat.fileKey(message, widget.name),
       );
       if (kIsWeb) {
         await openPdfInBrowser(
           bytes: await file.readAsBytes(),
-          fileName: message.fileName,
+          fileName: widget.name,
         );
       } else {
         final named = File(
           '${(await AppPaths.temporaryDirectory()).path}/'
-          '${_displayName(message.fileName)}',
+          '${_displayName(widget.name)}',
         );
         if (!await named.exists() ||
             await named.length() != await file.length()) {
@@ -2333,7 +2347,7 @@ class _FileCardState extends State<_FileCard> {
     final message = widget.message;
     final pending = message.isPending;
     final textSecondary = AppPalette.textSecondary(context);
-    final size = message.localFile?.length;
+    final size = widget.bytes;
     return InkWell(
       borderRadius: BorderRadius.circular(_ChatPhotos.radius - 4),
       onTap: pending || _opening ? null : _open,
@@ -2364,7 +2378,7 @@ class _FileCardState extends State<_FileCard> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    _displayName(message.fileName),
+                    _displayName(widget.name),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(

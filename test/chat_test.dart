@@ -117,7 +117,7 @@ void main() {
         'sectionName': '05',
         'notes': 'Chapters 3 and 4',
       },
-      'file': 'notes_ab12cd34ef.pdf',
+      'file': <String>['notes_ab12cd34ef.pdf', 'slides_ab12cd34ef.pdf'],
     });
     final event = message.event!;
     expect(event.kind, 'quiz');
@@ -126,7 +126,10 @@ void main() {
     expect(restored.event?.sectionName, '05');
     expect(restored.event?.notes, 'Chapters 3 and 4');
     expect(restored.hasFile, isTrue);
-    expect(restored.fileName, 'notes_ab12cd34ef.pdf');
+    expect(restored.fileNames, <String>[
+      'notes_ab12cd34ef.pdf',
+      'slides_ab12cd34ef.pdf',
+    ]);
     final settings = ChatSettings.fromJson(<String, dynamic>{
       'rules': <String>['Be kind.'],
       'reportReasonMin': 50,

@@ -130,8 +130,8 @@ class ChatMessage {
     this.pollOptions = const <String>[],
     this.preview,
     this.event,
-    this.fileName = '',
-    this.localFile,
+    this.fileNames = const <String>[],
+    this.localFiles = const <Uint8List>[],
   });
 
   factory ChatMessage.fromJson(Map<String, dynamic> json) {
@@ -165,7 +165,7 @@ class ChatMessage {
       event: json['event'] is Map
           ? ChatEvent.fromJson((json['event'] as Map).cast<String, dynamic>())
           : null,
-      fileName: _string(json['file']),
+      fileNames: _strings(json['file']),
     );
   }
 
@@ -185,10 +185,10 @@ class ChatMessage {
   final List<String> pollOptions;
   final ChatLinkPreview? preview;
   final ChatEvent? event;
-  final String fileName;
-  final Uint8List? localFile;
+  final List<String> fileNames;
+  final List<Uint8List> localFiles;
 
-  bool get hasFile => fileName.isNotEmpty;
+  bool get hasFile => fileNames.isNotEmpty;
 
   bool get isPoll => pollOptions.isNotEmpty;
   bool get hasImage => images.isNotEmpty || localImages.isNotEmpty;
@@ -207,7 +207,7 @@ class ChatMessage {
     if (isPoll) 'poll': <String, dynamic>{'options': pollOptions},
     if (preview != null) 'preview': preview!.toJson(),
     if (event != null) 'event': event!.toJson(),
-    if (hasFile) 'file': fileName,
+    if (hasFile) 'file': fileNames,
     'expand': <String, dynamic>{
       'author': author.toJson(),
       if (replyToId.isNotEmpty)
@@ -241,8 +241,8 @@ class ChatMessage {
     pollOptions: pollOptions,
     preview: preview,
     event: event,
-    fileName: fileName,
-    localFile: localFile,
+    fileNames: fileNames,
+    localFiles: localFiles,
   );
 }
 

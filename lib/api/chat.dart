@@ -56,6 +56,7 @@ class ChatService {
   ];
   static const int pageSize = 50;
   static const int maxFileBytes = 10 * 1024 * 1024;
+  static const int maxFiles = 10;
   static const int _scheduledLimit = 500;
   static const Duration scheduleReminderLead = Duration(hours: 1);
   static const Duration _sessionLifetime = Duration(hours: 5);
@@ -658,8 +659,8 @@ class ChatService {
     List<String> mentions = const <String>[],
     List<String> pollOptions = const <String>[],
     ChatEvent? event,
-    String fileName = '',
-    Uint8List? file,
+    List<String> pdfNames = const <String>[],
+    List<Uint8List> pdfs = const <Uint8List>[],
     String nonce = '',
   }) async {
     final pb = await _client();
@@ -667,8 +668,8 @@ class ChatService {
     final files = <http.MultipartFile>[
       for (final photo in compressed)
         http.MultipartFile.fromBytes('image', photo, filename: 'photo.jpg'),
-      if (file != null)
-        http.MultipartFile.fromBytes('file', file, filename: fileName),
+      for (var i = 0; i < pdfs.length; i++)
+        http.MultipartFile.fromBytes('file', pdfs[i], filename: pdfNames[i]),
     ];
     try {
       final record = await pb
@@ -910,11 +911,11 @@ class ChatService {
     unread.value = <String, int>{...unread.value, roomId: 0};
   }
 
-  String fileKey(ChatMessage message) =>
-      imageKey(message, message.fileName, thumb: false);
+  String fileKey(ChatMessage message, String name) =>
+      imageKey(message, name, thumb: false);
 
-  Future<String> fileUrl(ChatMessage message) =>
-      imageUrl(message, message.fileName, thumb: false);
+  Future<String> fileUrl(ChatMessage message, String name) =>
+      imageUrl(message, name, thumb: false);
 
   String imageKey(ChatMessage message, String name, {bool thumb = true}) {
     final base =

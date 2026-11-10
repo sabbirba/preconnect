@@ -204,7 +204,8 @@ String _roomSubtitle(ChatRoom room) {
   final body = event != null
       ? '${personalSchedulesKindLabel(event.kind)}: ${last.text}'
       : last.hasFile
-      ? 'PDF${last.text.isEmpty ? '' : ': ${last.text}'}'
+      ? '${last.fileNames.length == 1 ? 'PDF' : '${last.fileNames.length} PDFs'}'
+            '${last.text.isEmpty ? '' : ': ${last.text}'}'
       : last.isPoll
       ? 'Poll: ${last.text}'
       : (last.text.isEmpty ? 'Photo' : last.text);
