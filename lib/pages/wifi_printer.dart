@@ -1086,12 +1086,6 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
         ),
         IconButton(
           onPressed: () => _showHelpBottomSheet(context),
-          style: appCompactIconButtonStyle(
-            foregroundColor: AppPalette.primary,
-            borderColor: Colors.transparent,
-            padding: EdgeInsets.zero,
-            borderRadius: 12,
-          ),
           icon: const Icon(
             Icons.help_outline_rounded,
             color: AppPalette.primary,

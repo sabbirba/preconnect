@@ -259,8 +259,19 @@ class _PageHeader extends StatelessWidget {
             ],
           ),
         ),
-
-        ...actions,
+        if (actions.isNotEmpty)
+          IconButtonTheme(
+            data: IconButtonThemeData(
+              style: IconButton.styleFrom(
+                padding: EdgeInsets.zero,
+                fixedSize: const Size.square(HeaderActionButton.size),
+                minimumSize: const Size.square(HeaderActionButton.size),
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                iconSize: HeaderActionButton.iconSize,
+              ),
+            ),
+            child: Row(mainAxisSize: MainAxisSize.min, children: actions),
+          ),
       ],
     );
     if (onHeaderTap == null) return row;
@@ -433,28 +444,28 @@ class HeaderActionButton extends StatelessWidget {
     required this.onTap,
   });
 
+  static const double size = 40;
+  static const double iconSize = 24;
+
   final IconData icon;
   final String tooltip;
   final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(left: 10),
-      child: Tooltip(
-        message: tooltip,
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(12),
-          child: Padding(
-            padding: const EdgeInsets.all(8),
-            child: Icon(
-              icon,
-              size: 24,
-              color: onTap == null
-                  ? AppPalette.textSecondary(context)
-                  : AppPalette.primary,
-            ),
+    return Tooltip(
+      message: tooltip,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(size / 2),
+        child: SizedBox.square(
+          dimension: size,
+          child: Icon(
+            icon,
+            size: iconSize,
+            color: onTap == null
+                ? AppPalette.textSecondary(context)
+                : AppPalette.primary,
           ),
         ),
       ),

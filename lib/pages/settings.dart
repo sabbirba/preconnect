@@ -226,9 +226,6 @@ class _SettingsPageState extends State<SettingsPage>
                 context,
                 isDark ? ThemeMode.light : ThemeMode.dark,
               ),
-              padding: EdgeInsets.zero,
-              constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
-              visualDensity: VisualDensity.compact,
               icon: Icon(
                 isDark ? Icons.wb_sunny_outlined : Icons.dark_mode_outlined,
                 color: AppPalette.primary,
