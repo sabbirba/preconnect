@@ -141,7 +141,6 @@ class _AllCoursesPageState extends State<AllCoursesPage> {
               isMandatory: course.isMandatory,
               isPinned: isPinned,
               onTogglePin: () => _togglePin(course.code),
-              codeFontFamily: 'Outfit',
             );
           },
         ),

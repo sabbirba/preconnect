@@ -840,7 +840,6 @@ class _AppTimePickerSheetState extends State<_AppTimePickerSheet> {
                             fontWeight: isSelected
                                 ? FontWeight.bold
                                 : FontWeight.normal,
-                            fontFamily: 'Outfit',
                           ),
                         ),
                       ),
@@ -886,7 +885,6 @@ class _AppTimePickerSheetState extends State<_AppTimePickerSheet> {
                             fontWeight: isSelected
                                 ? FontWeight.bold
                                 : FontWeight.normal,
-                            fontFamily: 'Outfit',
                           ),
                         ),
                       ),
@@ -926,7 +924,6 @@ class _AppTimePickerSheetState extends State<_AppTimePickerSheet> {
                             fontWeight: isSelected
                                 ? FontWeight.bold
                                 : FontWeight.normal,
-                            fontFamily: 'Outfit',
                           ),
                         ),
                       ),

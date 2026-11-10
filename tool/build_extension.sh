@@ -98,7 +98,6 @@ flutter build web \
 
 for f in \
   manifest.json \
-  favicon.ico \
   favicon.png \
   touch_icon.png \
   auto_logout.js \

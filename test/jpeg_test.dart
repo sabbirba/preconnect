@@ -129,7 +129,7 @@ void main() {
 
   group('photo printing', () {
     Future<img.Image> print(Uint8List bytes) async =>
-        img.decodeJpg(await printableImageJpeg(bytes))!;
+        img.decodeJpg((await printablePhoto(bytes)).jpeg)!;
 
     test(
       'landscape photo turns clockwise so its top left goes top right',

@@ -124,9 +124,6 @@ Float64List exifTransform(int orientation, double width, double height) {
   ]);
 }
 
-Future<Uint8List> printableImageJpeg(Uint8List bytes) async =>
-    (await printablePhoto(bytes)).jpeg;
-
 Future<JpegPage> printablePhoto(Uint8List bytes) async {
   const unreadable = PrintComposeException('This image could not be read');
   final ui.Image source;

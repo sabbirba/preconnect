@@ -15,19 +15,6 @@ void main() {
     });
   });
 
-  group('course and section names', () {
-    test('course codes are trimmed and upper case', () {
-      expect(normalizeCourseCode(' cse111 '), 'CSE111');
-    });
-
-    test('numeric sections lose leading zeros, others are upper case', () {
-      expect(normalizeSectionName('01'), '1');
-      expect(normalizeSectionName(' 12 '), '12');
-      expect(normalizeSectionName('a'), 'A');
-      expect(normalizeSectionName(''), '');
-    });
-  });
-
   group('looksLikePdf', () {
     test('finds the header at the start or within the first kilobyte', () {
       expect(looksLikePdf(utf8.encode('%PDF-1.7\nrest')), isTrue);

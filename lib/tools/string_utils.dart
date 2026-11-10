@@ -132,16 +132,6 @@ String roomsForDays(String roomStr, Iterable<String> days) {
   return rooms.isEmpty ? roomStr.trim() : rooms.join(', ');
 }
 
-String normalizeCourseCode(String code) => code.trim().toUpperCase();
-
-String normalizeSectionName(String section) {
-  final raw = section.trim();
-  if (raw.isEmpty) return '';
-  final parsed = int.tryParse(raw);
-  if (parsed != null) return parsed.toString();
-  return raw.toUpperCase();
-}
-
 bool looksLikePdf(List<int> bytes) {
   if (bytes.length < 4) return false;
   final limit = bytes.length < 1024 ? bytes.length - 3 : 1021;

@@ -211,14 +211,14 @@ void main() {
     }
 
     test('landscape photo is turned upright and flattened to RGB', () async {
-      final jpeg = await printableImageJpeg(png(400, 300));
+      final jpeg = (await printablePhoto(png(400, 300))).jpeg;
       final decoded = img.decodeJpg(jpeg)!;
       expect(decoded.height, greaterThan(decoded.width));
     });
 
     test('transparent pixels turn white instead of black', () async {
       final decoded = img.decodeJpg(
-        await printableImageJpeg(png(200, 300, alpha: true)),
+        (await printablePhoto(png(200, 300, alpha: true))).jpeg,
       )!;
       final pixel = decoded.getPixel(100, 150);
       expect(pixel.r, greaterThan(240));
@@ -228,7 +228,7 @@ void main() {
 
     test('unreadable image fails with a print error', () async {
       await expectLater(
-        printableImageJpeg(Uint8List.fromList(utf8.encode('nope'))),
+        printablePhoto(Uint8List.fromList(utf8.encode('nope'))),
         throwsA(isA<PrintComposeException>()),
       );
     });

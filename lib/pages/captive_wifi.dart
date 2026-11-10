@@ -650,7 +650,6 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
                             readOnly: true,
                             style: TextStyle(
                               color: AppPalette.textPrimary(context),
-                              fontFamily: 'Outfit',
                             ),
                             decoration: appInputDecoration(
                               context,
@@ -663,7 +662,6 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
                             controller: _studentIdController,
                             style: TextStyle(
                               color: AppPalette.textPrimary(context),
-                              fontFamily: 'Outfit',
                             ),
                             decoration: appInputDecoration(
                               context,
@@ -680,7 +678,6 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
                             ],
                             style: TextStyle(
                               color: AppPalette.textPrimary(context),
-                              fontFamily: 'Outfit',
                             ),
                             decoration: appInputDecoration(
                               context,

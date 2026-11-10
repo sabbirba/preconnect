@@ -15,7 +15,6 @@ class CourseTile extends StatelessWidget {
     this.gradeLabel,
     this.statusLabel,
     this.statusColor,
-    this.codeFontFamily,
     this.bottomPadding = 12,
   });
 
@@ -28,7 +27,6 @@ class CourseTile extends StatelessWidget {
   final String? gradeLabel;
   final String? statusLabel;
   final Color? statusColor;
-  final String? codeFontFamily;
   final double bottomPadding;
 
   @override
@@ -90,7 +88,6 @@ class CourseTile extends StatelessWidget {
                             color: AppPalette.textPrimary(context),
                             fontSize: 13,
                             fontWeight: FontWeight.w700,
-                            fontFamily: codeFontFamily,
                           ),
                         ),
                       ),

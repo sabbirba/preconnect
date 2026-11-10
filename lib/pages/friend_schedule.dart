@@ -392,7 +392,7 @@ class _FriendSchedulePageState extends State<FriendSchedulePage>
             TextField(
               controller: controller,
               autofocus: true,
-              style: TextStyle(color: textPrimary, fontFamily: 'Outfit'),
+              style: TextStyle(color: textPrimary),
               decoration: appInputDecoration(
                 context,
                 hintText: item.friend.name.isEmpty

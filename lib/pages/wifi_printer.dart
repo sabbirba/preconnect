@@ -2594,10 +2594,7 @@ class _PageRangeSheetState extends State<_PageRangeSheet> {
           inputFormatters: [
             FilteringTextInputFormatter.allow(RegExp(r'[0-9,\-\s]')),
           ],
-          style: TextStyle(
-            color: AppPalette.textPrimary(context),
-            fontFamily: 'Outfit',
-          ),
+          style: TextStyle(color: AppPalette.textPrimary(context)),
           decoration: appInputDecoration(
             context,
             hintText: '1-5, 8, 11-13',
