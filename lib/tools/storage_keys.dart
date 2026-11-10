@@ -58,6 +58,7 @@ class StorageKeys {
   static const String chatRecent = 'chat_recent_v2';
   static const String chatSettings = 'chat_settings_v1';
   static const String chatScheduled = 'chat_scheduled_v1';
+  static const String drafts = 'drafts_v1';
   static String examMapParsed(int semesterSessionId) =>
       'exammap_parsed_${semesterSessionId}_v1';
   static String examMapMid(int semesterSessionId) =>

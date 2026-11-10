@@ -2,11 +2,14 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:image/image.dart' as img;
 import 'package:preconnect/api/chat.dart';
 import 'package:preconnect/model/chat.dart';
+import 'package:preconnect/model/section_info.dart';
 import 'package:preconnect/tools/app_storage.dart';
+import 'package:preconnect/tools/drafts.dart';
 import 'package:preconnect/tools/image_compress.dart';
 import 'package:preconnect/tools/storage_keys.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -32,6 +35,34 @@ void main() {
     });
     await ChatService.instance.reset();
     expect(await ChatService.savedPushTopics(), isEmpty);
+  });
+
+  test('drafts survive a restart and clear when sent', () async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.linux;
+    addTearDown(() => debugDefaultTargetPlatformOverride = null);
+    final directory = await Directory.systemTemp.createTemp(
+      'preconnect_draft_',
+    );
+    addTearDown(() => directory.delete(recursive: true));
+    SharedPreferences.setMockInitialValues({});
+    await AppStorage.initialize(cacheDirectory: directory);
+    Drafts.instance.reset();
+    final input = TextEditingController();
+    addTearDown(input.dispose);
+    Drafts.instance.bind(input, ChatService.draftKey('r1'));
+    input.text = 'See you at the lab';
+    await Future<void>.delayed(const Duration(milliseconds: 400));
+    Drafts.instance.reset();
+    expect(
+      Drafts.instance.read(ChatService.draftKey('r1')),
+      'See you at the lab',
+    );
+    final restored = TextEditingController();
+    addTearDown(restored.dispose);
+    Drafts.instance.bind(restored, ChatService.draftKey('r1'));
+    expect(restored.text, 'See you at the lab');
+    restored.clear();
+    expect(Drafts.instance.read(ChatService.draftKey('r1')), isEmpty);
   });
 
   test('message keeps every photo name in order', () {
@@ -184,6 +215,9 @@ void main() {
       'fileTitles': <String>['A.pdf', 'Contract Law.pdf'],
     });
     expect(shared.lastFileTitle, 'Contract Law.pdf');
+    expect(facultyDisplayName('moz', 'MOZ'), 'MOZ');
+    expect(facultyDisplayName('MOZ', ''), 'MOZ');
+    expect(facultyDisplayName('MOZ', 'Dr. Moz Rahman'), 'Dr. Moz Rahman (MOZ)');
     expect(
       const ChatSettings(
         rules: <String>[],

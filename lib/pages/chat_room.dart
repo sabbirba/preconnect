@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
@@ -18,6 +19,7 @@ import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/string_utils.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:preconnect/tools/cached_image.dart';
+import 'package:preconnect/tools/drafts.dart';
 import 'package:preconnect/tools/image_cache.dart';
 import 'package:preconnect/tools/time_utils.dart';
 
@@ -79,6 +81,7 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
     _chat.activeRoomId = _room.id;
     _scroll.addListener(_onScroll);
     _chat.rooms.addListener(_onRoomsChanged);
+    Drafts.instance.bind(_input, ChatService.draftKey(_room.id));
     _input.addListener(_onInputChanged);
     unawaited(_load());
   }
@@ -523,29 +526,30 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
         return Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 8),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  for (final emoji in ChatService.reactionEmojis)
-                    InkWell(
-                      borderRadius: BorderRadius.circular(20),
-                      onTap: () {
-                        Navigator.of(sheetContext).pop();
-                        unawaited(_toggleReaction(message, emoji));
-                      },
-                      child: Padding(
-                        padding: const EdgeInsets.all(6),
-                        child: Text(
-                          emoji,
-                          style: const TextStyle(fontSize: 26),
+            if (!isMine)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    for (final emoji in ChatService.reactionEmojis)
+                      InkWell(
+                        borderRadius: BorderRadius.circular(20),
+                        onTap: () {
+                          Navigator.of(sheetContext).pop();
+                          unawaited(_toggleReaction(message, emoji));
+                        },
+                        child: Padding(
+                          padding: const EdgeInsets.all(6),
+                          child: Text(
+                            emoji,
+                            style: const TextStyle(fontSize: 26),
+                          ),
                         ),
                       ),
-                    ),
-                ],
+                  ],
+                ),
               ),
-            ),
             Row(
               children: [
                 if (_room.active)
@@ -603,6 +607,7 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
       isScrollControlled: true,
       fitContent: true,
       builder: (sheetContext, textPrimary, textSecondary) => _ReportSheet(
+        draftKey: 'report:${message.id}',
         onSubmit: (reason) async {
           Navigator.of(sheetContext).pop();
           try {
@@ -872,6 +877,7 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
       fitContent: true,
       builder: (sheetContext, textPrimary, textSecondary) => _EventSheet(
         kind: kind,
+        draftKey: 'event:${_room.id}:$kind',
         onShare: (event) {
           Navigator.of(sheetContext).pop();
           _startCooldown();
@@ -889,6 +895,7 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
       isScrollControlled: true,
       fitContent: true,
       builder: (sheetContext, textPrimary, textSecondary) => _PollSheet(
+        draftKey: 'poll:${_room.id}',
         onCreate: (question, options) {
           Navigator.of(sheetContext).pop();
           _startCooldown();
@@ -1137,8 +1144,9 @@ class _RuleList extends StatelessWidget {
 }
 
 class _ReportSheet extends StatefulWidget {
-  const _ReportSheet({required this.onSubmit});
+  const _ReportSheet({required this.draftKey, required this.onSubmit});
 
+  final String draftKey;
   final Future<void> Function(String reason) onSubmit;
 
   @override
@@ -1148,6 +1156,12 @@ class _ReportSheet extends StatefulWidget {
 class _ReportSheetState extends State<_ReportSheet> {
   final TextEditingController _reason = TextEditingController();
   bool _busy = false;
+
+  @override
+  void initState() {
+    super.initState();
+    Drafts.instance.bind(_reason, widget.draftKey);
+  }
 
   @override
   void dispose() {
@@ -1204,7 +1218,9 @@ class _ReportSheetState extends State<_ReportSheet> {
                         ? null
                         : () async {
                             setState(() => _busy = true);
-                            await widget.onSubmit(_reason.text.trim());
+                            final reason = _reason.text.trim();
+                            Drafts.instance.clear(widget.draftKey);
+                            await widget.onSubmit(reason);
                           },
                   ),
                 ],
@@ -1770,7 +1786,7 @@ class _MessageBubble extends StatelessWidget {
                         for (final entry in counts.entries)
                           InkWell(
                             borderRadius: BorderRadius.circular(12),
-                            onTap: () => onReact(entry.key),
+                            onTap: isMine ? null : () => onReact(entry.key),
                             child: Container(
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 7,
@@ -2159,9 +2175,14 @@ class _AttachOption extends StatelessWidget {
 }
 
 class _EventSheet extends StatefulWidget {
-  const _EventSheet({required this.kind, required this.onShare});
+  const _EventSheet({
+    required this.kind,
+    required this.draftKey,
+    required this.onShare,
+  });
 
   final String kind;
+  final String draftKey;
   final ValueChanged<ChatEvent> onShare;
 
   @override
@@ -2175,6 +2196,26 @@ class _EventSheetState extends State<_EventSheet> {
     final tomorrow = DateTime.now().add(const Duration(days: 1));
     return DateTime(tomorrow.year, tomorrow.month, tomorrow.day, 9);
   }();
+
+  @override
+  void initState() {
+    super.initState();
+    Drafts.instance.bind(_title, '${widget.draftKey}:title');
+    Drafts.instance.bind(_notes, '${widget.draftKey}:notes');
+  }
+
+  void _share(String title) {
+    Drafts.instance.clear('${widget.draftKey}:title');
+    Drafts.instance.clear('${widget.draftKey}:notes');
+    widget.onShare(
+      ChatEvent(
+        kind: widget.kind,
+        title: title,
+        at: _at,
+        notes: _notes.text.trim(),
+      ),
+    );
+  }
 
   @override
   void dispose() {
@@ -2292,14 +2333,7 @@ class _EventSheetState extends State<_EventSheet> {
                 foregroundColor: Colors.white,
                 onPressed: value.text.trim().isEmpty || !upcoming
                     ? null
-                    : () => widget.onShare(
-                        ChatEvent(
-                          kind: widget.kind,
-                          title: value.text.trim(),
-                          at: _at,
-                          notes: _notes.text.trim(),
-                        ),
-                      ),
+                    : () => _share(value.text.trim()),
               ),
             ],
           );
@@ -2373,31 +2407,11 @@ class _EventCardState extends State<_EventCard> {
   Widget build(BuildContext context) {
     final event = widget.event;
     final textSecondary = AppPalette.textSecondary(context);
-    final section = _chat.sectionFor(event);
-    final course = <String>[
-      event.courseCode,
-      if (section.isNotEmpty) formatSectionBadge(section),
-    ].where((part) => part.isNotEmpty).join(' · ');
     return SizedBox(
       width: _cardWidth(context),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Icon(_eventIcon(event.kind), size: 14, color: AppPalette.primary),
-              const Gap(6),
-              Expanded(
-                child: Text(
-                  course.isEmpty
-                      ? personalSchedulesKindLabel(event.kind)
-                      : '${personalSchedulesKindLabel(event.kind)} · $course',
-                  style: TextStyle(fontSize: 11, color: textSecondary),
-                ),
-              ),
-            ],
-          ),
-          const Gap(4),
           Text(
             event.title,
             style: TextStyle(
@@ -2409,6 +2423,7 @@ class _EventCardState extends State<_EventCard> {
           ),
           const Gap(2),
           Text(
+            '${personalSchedulesKindLabel(event.kind)} · '
             '${AppTime.formatDayMonth(event.at)} · ${AppTime.formatDateTime(event.at)}',
             style: TextStyle(fontSize: 12, color: textSecondary),
           ),
@@ -2427,6 +2442,9 @@ class _EventCardState extends State<_EventCard> {
           SizedBox(
             width: double.infinity,
             child: AppActionButton(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              fontSize: 13,
+              iconSize: 16,
               label: _added ? 'Remove from Schedule' : 'Add to Schedule',
               icon: _added
                   ? Icons.event_busy_outlined
@@ -2500,14 +2518,15 @@ class _FileCardState extends State<_FileCard> {
         child: Row(
           children: [
             Container(
-              width: 40,
-              height: 40,
+              width: 34,
+              height: 34,
               decoration: BoxDecoration(
                 color: AppPalette.danger.withValues(alpha: 0.14),
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(9),
               ),
               child: const Icon(
                 Icons.picture_as_pdf_outlined,
+                size: 20,
                 color: AppPalette.danger,
               ),
             ),
@@ -2526,13 +2545,13 @@ class _FileCardState extends State<_FileCard> {
                       color: AppPalette.textPrimary(context),
                     ),
                   ),
-                  const Gap(2),
-                  Text(
-                    size == null
-                        ? 'PDF · Tap to open'
-                        : 'PDF · ${(size / 1048576).toStringAsFixed(1)} MB',
-                    style: TextStyle(fontSize: 11, color: textSecondary),
-                  ),
+                  if (size != null) ...[
+                    const Gap(2),
+                    Text(
+                      '${(size / 1048576).toStringAsFixed(1)} MB',
+                      style: TextStyle(fontSize: 11, color: textSecondary),
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -2752,21 +2771,6 @@ class _PollCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              const Icon(
-                Icons.poll_outlined,
-                size: 14,
-                color: AppPalette.primary,
-              ),
-              const Gap(6),
-              Text(
-                'Poll',
-                style: TextStyle(fontSize: 11, color: textSecondary),
-              ),
-            ],
-          ),
-          const Gap(4),
           Text(
             message.text,
             style: TextStyle(
@@ -2878,8 +2882,9 @@ class _PollOption extends StatelessWidget {
 }
 
 class _PollSheet extends StatefulWidget {
-  const _PollSheet({required this.onCreate});
+  const _PollSheet({required this.draftKey, required this.onCreate});
 
+  final String draftKey;
   final void Function(String question, List<String> options) onCreate;
 
   @override
@@ -2890,10 +2895,62 @@ class _PollSheetState extends State<_PollSheet> {
   static const int _minOptions = 2;
   static const int _maxOptions = 6;
   final TextEditingController _question = TextEditingController();
-  final List<TextEditingController> _options = <TextEditingController>[
-    TextEditingController(),
-    TextEditingController(),
-  ];
+  final List<TextEditingController> _options = <TextEditingController>[];
+
+  @override
+  void initState() {
+    super.initState();
+    final (question, options) = _restoredDraft();
+    _question.text = question;
+    for (final option in options) {
+      _options.add(_optionController(option));
+    }
+    while (_options.length < _minOptions) {
+      _options.add(_optionController(''));
+    }
+    _question.addListener(_saveDraft);
+  }
+
+  (String, List<String>) _restoredDraft() {
+    final raw = Drafts.instance.read(widget.draftKey);
+    if (raw.isEmpty) return ('', const <String>[]);
+    try {
+      final data = jsonDecode(raw);
+      if (data is! Map) return ('', const <String>[]);
+      final options = data['options'];
+      return (
+        '${data['question'] ?? ''}',
+        options is List
+            ? options.take(_maxOptions).map((option) => '$option').toList()
+            : const <String>[],
+      );
+    } on FormatException {
+      return ('', const <String>[]);
+    }
+  }
+
+  TextEditingController _optionController(String text) =>
+      TextEditingController(text: text)..addListener(_saveDraft);
+
+  void _saveDraft() {
+    final empty =
+        _question.text.trim().isEmpty &&
+        _options.every((option) => option.text.trim().isEmpty);
+    Drafts.instance.write(
+      widget.draftKey,
+      empty
+          ? ''
+          : jsonEncode(<String, Object>{
+              'question': _question.text,
+              'options': [for (final option in _options) option.text],
+            }),
+    );
+  }
+
+  void _addOption() {
+    setState(() => _options.add(_optionController('')));
+    _saveDraft();
+  }
 
   @override
   void dispose() {
@@ -2912,6 +2969,7 @@ class _PollSheetState extends State<_PollSheet> {
   void _removeOption(int index) {
     final removed = _options[index];
     setState(() => _options.removeAt(index));
+    _saveDraft();
     WidgetsBinding.instance.addPostFrameCallback((_) => removed.dispose());
   }
 
@@ -2986,8 +3044,7 @@ class _PollSheetState extends State<_PollSheet> {
                   style: TextButton.styleFrom(
                     foregroundColor: AppPalette.primary,
                   ),
-                  onPressed: () =>
-                      setState(() => _options.add(TextEditingController())),
+                  onPressed: _addOption,
                   icon: const Icon(Icons.add_rounded, size: 18),
                   label: const Text('Add Option'),
                 ),
@@ -2999,7 +3056,10 @@ class _PollSheetState extends State<_PollSheet> {
               backgroundColor: AppPalette.primary,
               foregroundColor: Colors.white,
               onPressed: _ready
-                  ? () => widget.onCreate(_question.text.trim(), _filled)
+                  ? () {
+                      Drafts.instance.clear(widget.draftKey);
+                      widget.onCreate(_question.text.trim(), _filled);
+                    }
                   : null,
             ),
           ],

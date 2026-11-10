@@ -1008,6 +1008,8 @@ class ChatService {
     <String, dynamic>{'review': reviewId},
   );
 
+  static String draftKey(String roomId) => 'chat:$roomId';
+
   Future<void> unsend(String messageId) =>
       _postAction('/api/chat/unsend', <String, dynamic>{'message': messageId});
 

@@ -13,6 +13,7 @@ import 'package:preconnect/tools/app_paths.dart';
 import 'package:preconnect/tools/app_storage.dart';
 import 'package:preconnect/tools/app_log.dart';
 import 'package:preconnect/tools/token_refresh.dart';
+import 'package:preconnect/tools/drafts.dart';
 import 'package:preconnect/tools/web_shared.dart';
 import 'package:preconnect/tools/token_storage.dart';
 import 'package:preconnect/libsync/auth_service.dart';
@@ -222,6 +223,7 @@ class AuthService {
 
   Future<void> _clearLocalCaches() async {
     await ChatService.instance.reset();
+    Drafts.instance.reset();
     await AppStorage.instance.clear();
     await ProfileImageCache.instance.clear();
     CachedImage.clearMemoryCache();

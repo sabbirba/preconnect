@@ -8,6 +8,7 @@ import 'package:preconnect/pages/chat_room.dart';
 import 'package:preconnect/model/custom_schedule.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/app_storage.dart';
+import 'package:preconnect/tools/drafts.dart';
 import 'package:preconnect/tools/storage_keys.dart';
 import 'package:preconnect/tools/string_utils.dart';
 import 'package:preconnect/tools/time_utils.dart';
@@ -128,6 +129,7 @@ class _ChatPageState extends State<ChatPage> {
             _chat.muted,
             _chat.blocked,
             _chat.recentVersion,
+            Drafts.instance.version,
           ]),
           builder: (context, _) {
             final unread = _chat.unread.value;
@@ -181,6 +183,8 @@ class _ChatPageState extends State<ChatPage> {
 }
 
 String _roomSubtitle(ChatRoom room) {
+  final draft = Drafts.instance.read(ChatService.draftKey(room.id)).trim();
+  if (draft.isNotEmpty) return 'Draft: ${draft.replaceAll('\n', ' ')}';
   final chat = ChatService.instance;
   final blocked = chat.blocked.value;
   final visible = chat

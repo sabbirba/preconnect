@@ -353,6 +353,13 @@ int? _nullableIntValue(Map<String, dynamic> json, String key) {
   return int.tryParse(value.toString());
 }
 
+String facultyDisplayName(String initial, String name) {
+  final code = initial.trim().toUpperCase();
+  final full = name.trim();
+  if (full.isEmpty || full.toUpperCase() == code) return code;
+  return code.isEmpty ? full : '$full ($code)';
+}
+
 String facultyLabel(dynamic value) {
   if (value is Map) {
     final map = value.cast<String, dynamic>();

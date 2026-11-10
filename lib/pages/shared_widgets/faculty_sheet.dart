@@ -57,9 +57,10 @@ Future<void> showFacultyScheduleSheet(
     return minA.compareTo(minB);
   });
 
-  final displayTitle = staffName != null && staffName.trim().isNotEmpty
-      ? '${staffName.trim()} (${facultyInitial.trim().toUpperCase()})'
-      : facultyInitial.trim().toUpperCase();
+  final displayTitle = section.facultyDisplayName(
+    facultyInitial,
+    staffName ?? '',
+  );
 
   await showAppBottomSheet<void>(
     context,

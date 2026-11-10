@@ -4,7 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
 import 'package:preconnect/api/chat.dart';
 import 'package:preconnect/model/chat.dart';
+import 'package:preconnect/model/section_info.dart';
 import 'package:preconnect/pages/ui_kit.dart';
+import 'package:preconnect/tools/drafts.dart';
 import 'package:preconnect/tools/time_utils.dart';
 
 const Map<String, String> _questionLabels = <String, String>{
@@ -20,10 +22,11 @@ Future<void> showFacultyReviews(
   String roomId = '',
   bool canReview = false,
 }) {
-  final title = name.isEmpty || name == initial ? initial : '$name ($initial)';
+  final title = ValueNotifier<String>(facultyDisplayName(initial, name));
   return showAppBottomSheet<void>(
     context,
-    title: title,
+    title: title.value,
+    liveTitle: title,
     subtitle: 'Faculty Reviews',
     initialChildSize: 0.9,
     builder: (sheetContext, textPrimary, textSecondary) => _ReviewsSheet(
@@ -31,8 +34,12 @@ Future<void> showFacultyReviews(
       roomId: roomId,
       canReview: canReview,
       scrollController: bottomSheetScrollController(sheetContext),
+      onFaculty: (faculty) => title.value = facultyDisplayName(
+        initial,
+        faculty.name.isEmpty ? name : faculty.name,
+      ),
     ),
-  );
+  ).whenComplete(title.dispose);
 }
 
 class FacultyRatingBadge extends StatefulWidget {
@@ -95,12 +102,14 @@ class _ReviewsSheet extends StatefulWidget {
     required this.roomId,
     required this.canReview,
     required this.scrollController,
+    required this.onFaculty,
   });
 
   final String initial;
   final String roomId;
   final bool canReview;
   final ScrollController? scrollController;
+  final ValueChanged<ChatFaculty> onFaculty;
 
   @override
   State<_ReviewsSheet> createState() => _ReviewsSheetState();
@@ -117,8 +126,20 @@ class _ReviewsSheetState extends State<_ReviewsSheet> {
   @override
   void initState() {
     super.initState();
-    _comment.addListener(() => setState(() {}));
+    _comment.addListener(_onComment);
     unawaited(_load());
+  }
+
+  String get _draftKey => 'review:${widget.roomId}';
+
+  void _onComment() {
+    setState(() {});
+    if (!widget.canReview || _data == null) return;
+    final saved = _data?.mine?.comment ?? '';
+    Drafts.instance.write(
+      _draftKey,
+      _comment.text == saved ? '' : _comment.text,
+    );
   }
 
   @override
@@ -135,6 +156,7 @@ class _ReviewsSheetState extends State<_ReviewsSheet> {
       );
       if (!mounted) return;
       final mine = data.mine;
+      final draft = widget.canReview ? Drafts.instance.read(_draftKey) : '';
       setState(() {
         _data = data;
         _error = null;
@@ -142,9 +164,11 @@ class _ReviewsSheetState extends State<_ReviewsSheet> {
           for (final field in ChatRatings.fields) {
             _ratings[field] = mine.ratings[field].round();
           }
-          _comment.text = mine.comment;
         }
+        _comment.text = draft.isNotEmpty ? draft : mine?.comment ?? '';
       });
+      final faculty = data.faculty;
+      if (faculty != null) widget.onFaculty(faculty);
     } on ChatException catch (error) {
       if (mounted) setState(() => _error = error.message);
     } catch (_) {
