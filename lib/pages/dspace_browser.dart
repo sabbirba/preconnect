@@ -10,6 +10,7 @@ import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/pages/home_tab.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/app_storage.dart';
+import 'package:preconnect/tools/string_utils.dart';
 
 class DSpaceCategory {
   const DSpaceCategory({
@@ -51,15 +52,7 @@ class DSpaceFile {
     );
   }
 
-  String get sizeLabel {
-    if (sizeBytes <= 0) return '0 KB';
-    final kb = sizeBytes / 1024;
-    if (kb < 1024) {
-      return '${kb.toStringAsFixed(1)} KB';
-    }
-    final mb = kb / 1024;
-    return '${mb.toStringAsFixed(1)} MB';
-  }
+  String get sizeLabel => formatFileSize(sizeBytes);
 }
 
 class DSpaceItem {

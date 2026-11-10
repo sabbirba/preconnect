@@ -1507,7 +1507,7 @@ class _AttachedFiles extends StatelessWidget {
                 const Icon(
                   Icons.picture_as_pdf_outlined,
                   size: 16,
-                  color: AppPalette.danger,
+                  color: AppPalette.primary,
                 ),
                 const Gap(6),
                 ConstrainedBox(
@@ -2521,13 +2521,13 @@ class _FileCardState extends State<_FileCard> {
               width: 34,
               height: 34,
               decoration: BoxDecoration(
-                color: AppPalette.danger.withValues(alpha: 0.14),
+                color: AppPalette.primary.withValues(alpha: 0.14),
                 borderRadius: BorderRadius.circular(9),
               ),
               child: const Icon(
                 Icons.picture_as_pdf_outlined,
                 size: 20,
-                color: AppPalette.danger,
+                color: AppPalette.primary,
               ),
             ),
             const Gap(10),
@@ -2548,7 +2548,7 @@ class _FileCardState extends State<_FileCard> {
                   if (size != null) ...[
                     const Gap(2),
                     Text(
-                      '${(size / 1048576).toStringAsFixed(1)} MB',
+                      formatFileSize(size),
                       style: TextStyle(fontSize: 11, color: textSecondary),
                     ),
                   ],

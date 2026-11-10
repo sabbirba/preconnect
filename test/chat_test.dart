@@ -12,6 +12,7 @@ import 'package:preconnect/tools/app_storage.dart';
 import 'package:preconnect/tools/drafts.dart';
 import 'package:preconnect/tools/image_compress.dart';
 import 'package:preconnect/tools/storage_keys.dart';
+import 'package:preconnect/tools/string_utils.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
@@ -217,6 +218,8 @@ void main() {
     expect(shared.lastFileTitle, 'Contract Law.pdf');
     expect(facultyDisplayName('moz', 'MOZ'), 'MOZ');
     expect(facultyDisplayName('MOZ', ''), 'MOZ');
+    expect(formatFileSize(2048), '2.0 KB');
+    expect(formatFileSize(3 * 1048576), '3.0 MB');
     expect(facultyDisplayName('MOZ', 'Dr. Moz Rahman'), 'Dr. Moz Rahman (MOZ)');
     expect(
       const ChatSettings(

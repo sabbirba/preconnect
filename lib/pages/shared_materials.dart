@@ -5,11 +5,13 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
 import 'package:preconnect/api/chat.dart';
+import 'package:preconnect/api/materials.dart';
 import 'package:preconnect/model/chat.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/app_paths.dart';
 import 'package:preconnect/tools/file_open.dart';
 import 'package:preconnect/tools/image_cache.dart';
+import 'package:preconnect/tools/string_utils.dart';
 import 'package:preconnect/tools/time_utils.dart';
 
 Future<void> openCachedPdf(
@@ -56,6 +58,8 @@ class _SharedMaterialsPageState extends State<SharedMaterialsPage> {
   List<ChatMaterial> _materials = const <ChatMaterial>[];
   Map<String, String> _votes = const <String, String>{};
   final Set<String> _opening = <String>{};
+  String? _course;
+  late final Map<String, String> _courseTitles = _cachedCourseTitles();
   bool _loading = true;
   String? _error;
 
@@ -99,16 +103,38 @@ class _SharedMaterialsPageState extends State<SharedMaterialsPage> {
         room.title.split('-').first.toUpperCase(),
   };
 
-  Map<String, List<ChatMaterial>> get _grouped {
+  static Map<String, String> _cachedCourseTitles() {
+    final service = MaterialsService();
+    final sources = service.getCachedSourcesSync();
+    final titles = <String, String>{};
+    for (final source in [
+      ...?sources?.repositories,
+      ...?sources?.organizations,
+    ]) {
+      for (final collection
+          in service.getCachedCollectionsSync(source) ?? const []) {
+        if (collection.title.isEmpty) continue;
+        titles.putIfAbsent(
+          collection.code.toUpperCase(),
+          () => collection.title,
+        );
+      }
+    }
+    return titles;
+  }
+
+  bool _matches(ChatMaterial material, String query) =>
+      query.isEmpty ||
+      material.name.toLowerCase().contains(query) ||
+      material.courseCode.toLowerCase().contains(query) ||
+      (_courseTitles[material.courseCode] ?? '').toLowerCase().contains(query);
+
+  Map<String, List<ChatMaterial>> get _byCourse {
     final query = _search.text.trim().toLowerCase();
     final mine = _myCourses;
     final groups = <String, List<ChatMaterial>>{};
     for (final material in _materials) {
-      final matches =
-          query.isEmpty ||
-          material.name.toLowerCase().contains(query) ||
-          material.courseCode.toLowerCase().contains(query);
-      if (matches) {
+      if (_matches(material, query)) {
         (groups[material.courseCode] ??= <ChatMaterial>[]).add(material);
       }
     }
@@ -120,6 +146,22 @@ class _SharedMaterialsPageState extends State<SharedMaterialsPage> {
     return <String, List<ChatMaterial>>{
       for (final code in codes) code: groups[code]!,
     };
+  }
+
+  List<ChatMaterial> get _courseFiles {
+    final query = _search.text.trim().toLowerCase();
+    return _materials
+        .where(
+          (material) =>
+              material.courseCode == _course &&
+              (query.isEmpty || material.name.toLowerCase().contains(query)),
+        )
+        .toList();
+  }
+
+  void _openCourse(String? code) {
+    _search.clear();
+    setState(() => _course = code);
   }
 
   Future<void> _toggleHelpful(ChatMaterial material) async {
@@ -167,11 +209,18 @@ class _SharedMaterialsPageState extends State<SharedMaterialsPage> {
 
   @override
   Widget build(BuildContext context) {
-    return AppPageScaffold(
-      title: 'From Classmates',
-      subtitle: 'Materials',
-      icon: Icons.groups_outlined,
-      body: _buildBody(),
+    final course = _course;
+    return PopScope(
+      canPop: course == null,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) _openCourse(null);
+      },
+      child: AppPageScaffold(
+        title: course ?? 'From Classmates',
+        subtitle: course == null ? 'Course Materials' : 'From Classmates',
+        icon: Icons.groups_outlined,
+        body: _buildBody(),
+      ),
     );
   }
 
@@ -184,36 +233,63 @@ class _SharedMaterialsPageState extends State<SharedMaterialsPage> {
         onRetry: _load,
       );
     }
-    final grouped = _grouped;
     return AppRefreshList(
       onRefresh: _load,
       children: [
         AppSearchField(controller: _search),
         const Gap(12),
-        if (grouped.isEmpty)
-          const AppEmptyState(
-            message:
-                'PDFs shared in your course and section chats appear here.',
-            icon: Icons.picture_as_pdf_outlined,
-          ),
-        for (final entry in grouped.entries) ...[
-          Padding(
-            padding: const EdgeInsets.fromLTRB(4, 8, 4, 8),
-            child: AppSectionTitle(title: entry.key),
-          ),
-          for (final material in entry.value) ...[
-            _MaterialTile(
-              material: material,
-              helpful: _votes.containsKey(material.id),
-              opening: _opening.contains(material.id),
-              onOpen: () => _open(material),
-              onHelpful: () => _toggleHelpful(material),
-            ),
-            const Gap(8),
-          ],
-        ],
+        ...(_course == null ? _courseCards() : _fileTiles()),
       ],
     );
+  }
+
+  List<Widget> _courseCards() {
+    final courses = _byCourse;
+    if (courses.isEmpty) {
+      return const [
+        AppEmptyState(
+          message: 'Files shared in your course and section chats appear here.',
+          icon: Icons.folder_outlined,
+        ),
+      ];
+    }
+    final textSecondary = AppPalette.textSecondary(context);
+    return [
+      for (final entry in courses.entries) ...[
+        AppActionCard(
+          title: entry.key,
+          subtitle: _courseTitles[entry.key],
+          leadingIcon: Icons.folder_outlined,
+          trailing: Icon(Icons.chevron_right_rounded, color: textSecondary),
+          onTap: () => _openCourse(entry.key),
+        ),
+        const Gap(12),
+      ],
+    ];
+  }
+
+  List<Widget> _fileTiles() {
+    final files = _courseFiles;
+    if (files.isEmpty) {
+      return const [
+        AppEmptyState(
+          message: 'No files match your search.',
+          icon: Icons.search_off_rounded,
+        ),
+      ];
+    }
+    return [
+      for (final material in files) ...[
+        _MaterialTile(
+          material: material,
+          helpful: _votes.containsKey(material.id),
+          opening: _opening.contains(material.id),
+          onOpen: () => _open(material),
+          onHelpful: () => _toggleHelpful(material),
+        ),
+        const Gap(8),
+      ],
+    ];
   }
 }
 
@@ -248,14 +324,14 @@ class _MaterialTile extends StatelessWidget {
                 width: 40,
                 height: 40,
                 decoration: BoxDecoration(
-                  color: AppPalette.danger.withValues(alpha: 0.14),
+                  color: AppPalette.primary.withValues(alpha: 0.14),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: opening
                     ? const Center(child: AppSpinner(size: 18))
                     : const Icon(
                         Icons.picture_as_pdf_outlined,
-                        color: AppPalette.danger,
+                        color: AppPalette.primary,
                       ),
               ),
               const Gap(10),
@@ -275,7 +351,7 @@ class _MaterialTile extends StatelessWidget {
                     ),
                     const Gap(2),
                     Text(
-                      '${(material.size / 1048576).toStringAsFixed(1)} MB · '
+                      '${formatFileSize(material.size)} · '
                       '${AppTime.formatDayMonth(material.created.toLocal())}',
                       style: TextStyle(fontSize: 12, color: textSecondary),
                     ),

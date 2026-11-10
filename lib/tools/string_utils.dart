@@ -156,6 +156,13 @@ bool looksLikePdf(List<int> bytes) {
   return false;
 }
 
+String formatFileSize(int bytes) {
+  if (bytes <= 0) return '0 KB';
+  final kb = bytes / 1024;
+  if (kb < 1024) return '${kb.toStringAsFixed(1)} KB';
+  return '${(kb / 1024).toStringAsFixed(1)} MB';
+}
+
 String formatAmount(num amount) {
   return NumberFormat.decimalPattern('en_IN').format(amount.round());
 }

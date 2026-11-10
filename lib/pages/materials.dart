@@ -278,13 +278,13 @@ class _MaterialsPageState extends State<MaterialsPage> {
     final String subtitle;
     if (selectedCol != null) {
       title = selectedCol.code;
-      subtitle = selectedSrc ?? 'Materials';
+      subtitle = selectedSrc ?? 'Course Materials';
     } else if (selectedSrc != null) {
       title = selectedSrc;
-      subtitle = 'Materials';
+      subtitle = 'Course Materials';
     } else {
       title = 'Sources';
-      subtitle = 'Materials';
+      subtitle = 'Course Materials';
     }
     return AppBackScope(
       canGoBack: true,
@@ -331,7 +331,7 @@ class _MaterialsPageState extends State<MaterialsPage> {
               if (selectedSrc == null) ...[
                 AppActionCard(
                   title: 'From Classmates',
-                  subtitle: 'PDFs shared in your course and section chats',
+                  subtitle: 'Shared in your course and section chats',
                   leadingIcon: Icons.groups_outlined,
                   trailing: Icon(
                     Icons.chevron_right_rounded,
