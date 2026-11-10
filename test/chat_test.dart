@@ -219,6 +219,27 @@ void main() {
     expect(facultyDisplayName('moz', 'MOZ'), 'MOZ');
     expect(facultyDisplayName('MOZ', ''), 'MOZ');
     expect(formatFileSize(2048), '2.0 KB');
+    final switches = ChatSettings.fromJson(<String, dynamic>{
+      'maxFiles': 3,
+      'maxFileMB': 2,
+      'maxTextLength': 10000,
+      'pollsEnabled': false,
+      'unsendEnabled': false,
+    });
+    expect(switches.maxFileBytes, 2 * 1024 * 1024);
+    expect(switches.maxFiles, 3);
+    expect(switches.maxTextLength, 10000);
+    expect(switches.pollsEnabled, isFalse);
+    expect(switches.unsendEnabled, isFalse);
+    expect(switches.pdfsEnabled, isTrue);
+    expect(
+      ChatRoom.fromJson(<String, dynamic>{
+        'id': 'r',
+        'active': true,
+        'closed': true,
+      }).active,
+      isFalse,
+    );
     expect(formatFileSize(3 * 1048576), '3.0 MB');
     expect(facultyDisplayName('MOZ', 'Dr. Moz Rahman'), 'Dr. Moz Rahman (MOZ)');
     expect(

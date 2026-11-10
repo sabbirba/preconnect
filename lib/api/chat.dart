@@ -55,8 +55,7 @@ class ChatService {
     '🙏',
   ];
   static const int pageSize = 50;
-  static const int maxFileBytes = 10 * 1024 * 1024;
-  static const int maxFiles = 10;
+  static const int pinMaxLength = 500;
   static const int _scheduledLimit = 500;
   static const Duration scheduleReminderLead = Duration(hours: 1);
   static const Duration _sessionLifetime = Duration(hours: 5);
@@ -700,7 +699,10 @@ class ChatService {
           );
       return ChatMessage.fromJson(record.toJson());
     } on ClientException catch (error) {
-      if (error.statusCode == 400 && room.slowSeconds > 0) {
+      final ruleRejected = '${error.response['message']}'.startsWith(
+        'Failed to create',
+      );
+      if (error.statusCode == 400 && room.slowSeconds > 0 && ruleRejected) {
         throw const ChatCooldownException();
       }
       throw ChatException(
@@ -775,6 +777,7 @@ class ChatService {
   void sendTyping(String roomId) {
     final last = _typingSentAt;
     final now = DateTime.now();
+    if (!settings.value.typingEnabled) return;
     if (last != null && now.difference(last) < typingInterval) return;
     _typingSentAt = now;
     unawaited(
@@ -950,12 +953,12 @@ class ChatService {
     return record.id;
   }
 
-  String materialKey(ChatMaterial material) =>
-      '${ApiConfig.pocketBaseUrl}/api/files/chat_materials/'
-      '${material.id}/${Uri.encodeComponent(material.file)}';
+  String materialUrl(ChatMaterial material) =>
+      '${ApiConfig.pocketBaseUrl}/api/chat/material/${material.id}';
 
-  Future<String> materialUrl(ChatMaterial material) async =>
-      _withFileToken(await _client(), materialKey(material));
+  Future<Map<String, String>> authHeaders() async => <String, String>{
+    'Authorization': (await _client()).authStore.token,
+  };
 
   Future<void> loadFacultyRatings({bool force = false}) async {
     final loaded = _facultyLoadedAt;

@@ -63,6 +63,7 @@ class _FacultyRatingBadgeState extends State<FacultyRatingBadge> {
 
   @override
   Widget build(BuildContext context) {
+    if (!_chat.settings.value.reviewsEnabled) return const SizedBox.shrink();
     return ValueListenableBuilder<Map<String, ChatFaculty>>(
       valueListenable: _chat.facultyRatings,
       builder: (context, ratings, _) {

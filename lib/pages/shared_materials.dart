@@ -19,9 +19,14 @@ Future<void> openCachedPdf(
   required String url,
   required String cacheKey,
   required String fileName,
+  Map<String, String>? headers,
 }) async {
   try {
-    final file = await AppImageCache.instance.getSingleFile(url, key: cacheKey);
+    final file = await AppImageCache.instance.getSingleFile(
+      url,
+      key: cacheKey,
+      headers: headers,
+    );
     if (kIsWeb) {
       await openPdfInBrowser(
         bytes: await file.readAsBytes(),
@@ -180,7 +185,6 @@ class _SharedMaterialsPageState extends State<SharedMaterialsPage> {
                     id: item.id,
                     courseCode: item.courseCode,
                     name: item.name,
-                    file: item.file,
                     size: item.size,
                     helpful: item.helpful + (vote == null ? -1 : 1),
                     semesterSessionId: item.semesterSessionId,
@@ -196,13 +200,15 @@ class _SharedMaterialsPageState extends State<SharedMaterialsPage> {
 
   Future<void> _open(ChatMaterial material) async {
     setState(() => _opening.add(material.id));
-    final url = await _chat.materialUrl(material);
+    final headers = await _chat.authHeaders();
     if (!mounted) return;
+    final url = _chat.materialUrl(material);
     await openCachedPdf(
       context,
       url: url,
-      cacheKey: _chat.materialKey(material),
+      cacheKey: url,
       fileName: material.name,
+      headers: headers,
     );
     if (mounted) setState(() => _opening.remove(material.id));
   }

@@ -7,6 +7,7 @@ import 'package:preconnect/model/materials.dart';
 import 'package:preconnect/pages/home_tab.dart';
 import 'package:preconnect/pages/shared_materials.dart';
 import 'package:preconnect/pages/ui_kit.dart';
+import 'package:preconnect/api/chat.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class MaterialsPage extends StatefulWidget {
@@ -328,7 +329,8 @@ class _MaterialsPageState extends State<MaterialsPage> {
             children: [
               AppSearchField(controller: _searchController),
               const Gap(12),
-              if (selectedSrc == null) ...[
+              if (selectedSrc == null &&
+                  ChatService.instance.settings.value.materialsEnabled) ...[
                 AppActionCard(
                   title: 'From Classmates',
                   subtitle: 'Shared in your course and section chats',

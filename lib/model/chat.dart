@@ -77,7 +77,7 @@ class ChatRoom {
     id: _string(json['id']),
     kind: _roomKind(_string(json['kind'])),
     title: _string(json['title']),
-    active: json['active'] == true,
+    active: json['active'] == true && json['closed'] != true,
     pushTopic: _string(json['pushTopic']),
     lastMessageAt: _int(json['lastMessageAt']),
     semesterSessionId: _int(json['semesterSessionId']),
@@ -311,24 +311,47 @@ class ChatSettings {
     required this.maxPhotos,
     this.reviewMinimum = 3,
     this.reviewCommentMin = 100,
+    this.maxFiles = 5,
+    this.maxFileMB = 5,
+    this.maxTextLength = 10000,
+    this.pollMaxOptions = 6,
+    this.pollsEnabled = true,
+    this.pdfsEnabled = true,
+    this.typingEnabled = true,
+    this.reviewsEnabled = true,
+    this.materialsEnabled = true,
+    this.unsendEnabled = true,
   });
 
-  factory ChatSettings.fromJson(Map<String, dynamic> json) => ChatSettings(
-    rules: _strings(json['rules']),
-    reportReasonMin: _int(json['reportReasonMin']),
-    maxPhotos: _int(json['maxPhotos']),
-    reviewMinimum: _int(json['reviewMinimum']) > 0
-        ? _int(json['reviewMinimum'])
-        : 3,
-    reviewCommentMin: json['reviewCommentMin'] is num
-        ? _int(json['reviewCommentMin'])
-        : 100,
-  );
+  factory ChatSettings.fromJson(Map<String, dynamic> json) {
+    int positive(String key, int fallback) =>
+        _int(json[key]) > 0 ? _int(json[key]) : fallback;
+    bool on(String key) => json[key] != false;
+    return ChatSettings(
+      rules: _strings(json['rules']),
+      reportReasonMin: _int(json['reportReasonMin']),
+      maxPhotos: positive('maxPhotos', 4),
+      reviewMinimum: positive('reviewMinimum', 3),
+      reviewCommentMin: json['reviewCommentMin'] is num
+          ? _int(json['reviewCommentMin'])
+          : 100,
+      maxFiles: positive('maxFiles', 5),
+      maxFileMB: positive('maxFileMB', 5),
+      maxTextLength: positive('maxTextLength', 10000),
+      pollMaxOptions: positive('pollMaxOptions', 6),
+      pollsEnabled: on('pollsEnabled'),
+      pdfsEnabled: on('pdfsEnabled'),
+      typingEnabled: on('typingEnabled'),
+      reviewsEnabled: on('reviewsEnabled'),
+      materialsEnabled: on('materialsEnabled'),
+      unsendEnabled: on('unsendEnabled'),
+    );
+  }
 
   static const ChatSettings initial = ChatSettings(
     rules: <String>[],
     reportReasonMin: 100,
-    maxPhotos: 10,
+    maxPhotos: 4,
   );
 
   final List<String> rules;
@@ -336,6 +359,18 @@ class ChatSettings {
   final int maxPhotos;
   final int reviewMinimum;
   final int reviewCommentMin;
+  final int maxFiles;
+  final int maxFileMB;
+  final int maxTextLength;
+  final int pollMaxOptions;
+  final bool pollsEnabled;
+  final bool pdfsEnabled;
+  final bool typingEnabled;
+  final bool reviewsEnabled;
+  final bool materialsEnabled;
+  final bool unsendEnabled;
+
+  int get maxFileBytes => maxFileMB * 1024 * 1024;
 
   Map<String, dynamic> toJson() => <String, dynamic>{
     'rules': rules,
@@ -343,6 +378,16 @@ class ChatSettings {
     'maxPhotos': maxPhotos,
     'reviewMinimum': reviewMinimum,
     'reviewCommentMin': reviewCommentMin,
+    'maxFiles': maxFiles,
+    'maxFileMB': maxFileMB,
+    'maxTextLength': maxTextLength,
+    'pollMaxOptions': pollMaxOptions,
+    'pollsEnabled': pollsEnabled,
+    'pdfsEnabled': pdfsEnabled,
+    'typingEnabled': typingEnabled,
+    'reviewsEnabled': reviewsEnabled,
+    'materialsEnabled': materialsEnabled,
+    'unsendEnabled': unsendEnabled,
   };
 }
 
@@ -464,7 +509,6 @@ class ChatMaterial {
     required this.id,
     required this.courseCode,
     required this.name,
-    required this.file,
     required this.size,
     required this.helpful,
     required this.semesterSessionId,
@@ -475,7 +519,6 @@ class ChatMaterial {
     id: _string(json['id']),
     courseCode: _string(json['courseCode']),
     name: _string(json['name']),
-    file: _string(json['file']),
     size: _int(json['size']),
     helpful: _int(json['helpful']),
     semesterSessionId: _int(json['semesterSessionId']),
@@ -485,7 +528,6 @@ class ChatMaterial {
   final String id;
   final String courseCode;
   final String name;
-  final String file;
   final int size;
   final int helpful;
   final int semesterSessionId;

@@ -3,9 +3,9 @@ import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
 import 'package:image/image.dart' as img;
 
-const int chatImageMaxSide = 1600;
-const int chatImageQuality = 80;
-const int chatImageMaxBytes = 1024 * 1024;
+const int chatImageMaxSide = 1280;
+const int chatImageQuality = 75;
+const int chatImageMaxBytes = 600 * 1024;
 
 Future<Uint8List> compressChatImage(Uint8List bytes) =>
     compute(shrinkChatImage, bytes);
@@ -39,23 +39,32 @@ img.Image _decode(Uint8List bytes) {
   throw const FormatException('This file is not a supported image.');
 }
 
+img.Image _fitWithin(img.Image image, int maxSide) {
+  final longest = math.max(image.width, image.height);
+  if (longest <= maxSide) return image;
+  return img.copyResize(
+    image,
+    width: image.width >= image.height ? maxSide : null,
+    height: image.height > image.width ? maxSide : null,
+    interpolation: img.Interpolation.average,
+  );
+}
+
 Uint8List shrinkChatImage(Uint8List bytes) {
-  final decoded = _decode(bytes);
-  final upright = img.bakeOrientation(decoded);
-  final longest = math.max(upright.width, upright.height);
-  final resized = longest <= chatImageMaxSide
-      ? upright
-      : img.copyResize(
-          upright,
-          width: upright.width >= upright.height ? chatImageMaxSide : null,
-          height: upright.height > upright.width ? chatImageMaxSide : null,
-          interpolation: img.Interpolation.average,
-        );
+  final upright = img.bakeOrientation(_decode(bytes));
+  var side = chatImageMaxSide;
+  var resized = _fitWithin(upright, side);
   resized.exif = img.ExifData();
   var quality = chatImageQuality;
   var encoded = img.encodeJpg(resized, quality: quality);
-  while (encoded.length > chatImageMaxBytes && quality > 40) {
-    quality -= 10;
+  while (encoded.length > chatImageMaxBytes) {
+    if (quality > 45) {
+      quality -= 10;
+    } else {
+      side = (side * 0.8).round();
+      resized = _fitWithin(upright, side);
+      resized.exif = img.ExifData();
+    }
     encoded = img.encodeJpg(resized, quality: quality);
   }
   return encoded;

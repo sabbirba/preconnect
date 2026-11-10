@@ -571,7 +571,7 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
                   action(Icons.flag_outlined, 'Report', () {
                     unawaited(_report(message));
                   }),
-                if (isMine)
+                if (isMine && _chat.settings.value.unsendEnabled)
                   action(Icons.delete_outline_rounded, 'Unsend', () {
                     unawaited(_confirmUnsend(message));
                   }),
@@ -647,7 +647,8 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
       subtitle: _headerSubtitle(),
       icon: Icons.chat_bubble_outline_rounded,
       actions: [
-        if (_room.kind == ChatRoomKind.section)
+        if (_room.kind == ChatRoomKind.section &&
+            _chat.settings.value.reviewsEnabled)
           ValueListenableBuilder<List<ChatRoom>>(
             valueListenable: _chat.rooms,
             builder: (context, rooms, _) {
@@ -714,10 +715,21 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
   bool get _canShareEvents => _canPin;
 
   Future<void> _setPin(String text) async {
+    final trimmed = text.length > ChatService.pinMaxLength;
     try {
-      await _chat.pin(_room.id, text);
+      await _chat.pin(
+        _room.id,
+        trimmed ? text.substring(0, ChatService.pinMaxLength) : text,
+      );
       if (mounted) {
-        showAppSnackBar(context, text.isEmpty ? 'Unpinned.' : 'Pinned.');
+        showAppSnackBar(
+          context,
+          text.isEmpty
+              ? 'Unpinned.'
+              : trimmed
+              ? 'Pinned the first ${ChatService.pinMaxLength} characters.'
+              : 'Pinned.',
+        );
       }
     } on ChatException catch (error) {
       if (mounted) showAppSnackBar(context, error.message);
@@ -768,7 +780,8 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
   }
 
   Future<void> _showAttachMenu() {
-    final photosFull = _images.length >= _chat.settings.value.maxPhotos;
+    final settings = _chat.settings.value;
+    final photosFull = _images.length >= settings.maxPhotos;
     final attached = _images.isNotEmpty || _pdfs.isNotEmpty;
     return showAppBottomSheet<void>(
       context,
@@ -789,18 +802,22 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
                 ? null
                 : () => pick(_pickImages),
           ),
-          _AttachOption(
-            icon: Icons.picture_as_pdf_outlined,
-            label: 'PDF',
-            onTap: _images.isEmpty && _pdfs.length < ChatService.maxFiles
-                ? () => pick(_pickPdf)
-                : null,
-          ),
-          _AttachOption(
-            icon: Icons.poll_outlined,
-            label: 'Poll',
-            onTap: attached ? null : () => pick(_createPoll),
-          ),
+          if (settings.pdfsEnabled)
+            _AttachOption(
+              icon: Icons.picture_as_pdf_outlined,
+              label: 'PDF',
+              onTap:
+                  _images.isEmpty &&
+                      _pdfs.length < _chat.settings.value.maxFiles
+                  ? () => pick(_pickPdf)
+                  : null,
+            ),
+          if (settings.pollsEnabled)
+            _AttachOption(
+              icon: Icons.poll_outlined,
+              label: 'Poll',
+              onTap: attached ? null : () => pick(_createPoll),
+            ),
           if (_canShareEvents)
             for (final kind in ChatEvent.kinds)
               _AttachOption(
@@ -836,7 +853,7 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
       ],
     );
     if (picked.isEmpty || !mounted) return;
-    final room = ChatService.maxFiles - _pdfs.length;
+    final room = _chat.settings.value.maxFiles - _pdfs.length;
     final chosen = picked.take(room).toList();
     final contents = await Future.wait(
       chosen.map((file) => file.readAsBytes()),
@@ -844,7 +861,7 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
     if (!mounted) return;
     final staged = <_StagedPdf>[];
     for (var i = 0; i < chosen.length; i++) {
-      if (contents[i].length > ChatService.maxFileBytes) continue;
+      if (contents[i].length > _chat.settings.value.maxFileBytes) continue;
       final name = chosen[i].name.toLowerCase().endsWith('.pdf')
           ? chosen[i].name
           : '${chosen[i].name}.pdf';
@@ -856,7 +873,8 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
     if (staged.length < picked.length) {
       showAppSnackBar(
         context,
-        'Up to ${ChatService.maxFiles} PDFs of 10 MB each can be sent at once.',
+        'Up to ${_chat.settings.value.maxFiles} PDFs of '
+        '${_chat.settings.value.maxFileMB} MB each can be sent at once.',
       );
     }
     if (staged.isEmpty) return;
@@ -1048,7 +1066,7 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
                     controller: _input,
                     minLines: 1,
                     maxLines: 5,
-                    maxLength: 2000,
+                    maxLength: _chat.settings.value.maxTextLength,
                     textCapitalization: TextCapitalization.sentences,
                     decoration: appInputDecoration(
                       context,
@@ -2170,7 +2188,7 @@ class _EventSheetState extends State<_EventSheet> {
     final picked = await showAppDatePicker(
       context,
       initialDate: _at,
-      dayCount: 120,
+      dayCount: 366,
     );
     if (picked == null || !mounted) return;
     setState(
@@ -2835,7 +2853,7 @@ class _PollSheet extends StatefulWidget {
 
 class _PollSheetState extends State<_PollSheet> {
   static const int _minOptions = 2;
-  static const int _maxOptions = 6;
+  int get _maxOptions => ChatService.instance.settings.value.pollMaxOptions;
   final TextEditingController _question = TextEditingController();
   final List<TextEditingController> _options = <TextEditingController>[];
 
