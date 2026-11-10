@@ -92,8 +92,26 @@ class _ChatPageState extends State<ChatPage> {
           icon: Icons.block_rounded,
           onTap: _openBlocked,
         ),
+        HeaderActionButton(
+          tooltip: 'Chat Rules',
+          icon: Icons.info_outline_rounded,
+          onTap: _showRules,
+        ),
       ],
       body: _buildRooms(),
+    );
+  }
+
+  Future<void> _showRules() {
+    return showAppBottomSheet<void>(
+      context,
+      title: 'Chat Rules',
+      draggable: false,
+      isScrollControlled: false,
+      builder: (sheetContext, textPrimary, textSecondary) => Padding(
+        padding: const EdgeInsets.only(bottom: 12),
+        child: _RuleList(rules: _chat.settings.value.rules),
+      ),
     );
   }
 
@@ -437,6 +455,46 @@ class _BlockedStudentsPageState extends State<_BlockedStudentsPage> {
           );
         },
       ),
+    );
+  }
+}
+
+class _RuleList extends StatelessWidget {
+  const _RuleList({required this.rules});
+
+  final List<String> rules;
+
+  @override
+  Widget build(BuildContext context) {
+    final textSecondary = AppPalette.textSecondary(context);
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        for (final rule in rules) ...[
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.only(top: 6),
+                child: Icon(Icons.circle, size: 6, color: AppPalette.primary),
+              ),
+              const Gap(10),
+              Expanded(
+                child: Text(
+                  rule,
+                  style: TextStyle(
+                    fontSize: 13,
+                    height: 1.4,
+                    color: textSecondary,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const Gap(10),
+        ],
+      ],
     );
   }
 }
