@@ -54,7 +54,6 @@ class ChatService {
   ];
   static const int pageSize = 50;
   static const int maxPhotos = 10;
-  static const String rulesAcceptedKey = 'chat_rules_accepted_v1';
   static const Duration _sessionLifetime = Duration(hours: 5);
   static const Duration _preloadInterval = Duration(minutes: 5);
   static const Duration _fileTokenLifetime = Duration(minutes: 2);
@@ -187,9 +186,6 @@ class ChatService {
     } catch (_) {}
     return 'Chat is unavailable right now.';
   }
-
-  bool get rulesAccepted =>
-      AppStorage.instance.getBoolSync(rulesAcceptedKey) == true;
 
   ChatRecent recent(String roomId) => _recent[roomId] ?? ChatRecent.empty;
 

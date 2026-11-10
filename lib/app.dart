@@ -610,9 +610,7 @@ class _MyAppState extends State<MyApp>
           RefreshBus.instance.notify(reason: 'home_dashboard');
         }
         unawaited(NotificationsPage.preloadData(forceRefresh: forceRefresh));
-        if (ChatService.instance.rulesAccepted) {
-          unawaited(ChatService.instance.preload());
-        }
+        unawaited(ChatService.instance.preload());
       }
     } catch (_) {
     } finally {

@@ -22,34 +22,13 @@ class ChatPage extends StatefulWidget {
 
 class _ChatPageState extends State<ChatPage> {
   final ChatService _chat = ChatService.instance;
-  late bool _rulesAccepted = _chat.rulesAccepted;
   bool _loading = false;
   String? _error;
 
   @override
   void initState() {
     super.initState();
-    if (_rulesAccepted) {
-      unawaited(_load());
-    } else {
-      unawaited(_chat.preload());
-    }
-  }
-
-  Future<void> _acceptRules() async {
-    setState(() => _rulesAccepted = true);
-    final saved = AppStorage.instance.setBool(
-      ChatService.rulesAcceptedKey,
-      true,
-    );
-    await _load();
-    try {
-      await saved;
-    } catch (_) {
-      if (mounted) {
-        showAppSnackBar(context, 'Chat rules could not be saved.');
-      }
-    }
+    unawaited(_load());
   }
 
   Future<void> _load({bool force = false}) async {
@@ -96,31 +75,28 @@ class _ChatPageState extends State<ChatPage> {
       subtitle: semester.isEmpty ? 'Lounge' : semester,
       icon: Icons.chat_bubble_outline_rounded,
       actions: [
-        if (_rulesAccepted)
-          ValueListenableBuilder<Map<String, int>>(
-            valueListenable: _chat.unread,
-            builder: (context, unread, _) => HeaderActionButton(
-              tooltip: 'Mark All Read',
-              icon: Icons.done_all_rounded,
-              onTap: unread.values.any((count) => count > 0)
-                  ? _markAllRead
-                  : null,
-            ),
+        ValueListenableBuilder<Map<String, int>>(
+          valueListenable: _chat.unread,
+          builder: (context, unread, _) => HeaderActionButton(
+            tooltip: 'Mark All Read',
+            icon: Icons.done_all_rounded,
+            onTap: unread.values.any((count) => count > 0)
+                ? _markAllRead
+                : null,
           ),
-        if (_rulesAccepted)
-          HeaderActionButton(
-            tooltip: 'Blocked Students',
-            icon: Icons.block_rounded,
-            onTap: _openBlocked,
-          ),
-        if (_rulesAccepted)
-          HeaderActionButton(
-            tooltip: 'Chat Rules',
-            icon: Icons.info_outline_rounded,
-            onTap: _showRules,
-          ),
+        ),
+        HeaderActionButton(
+          tooltip: 'Blocked Students',
+          icon: Icons.block_rounded,
+          onTap: _openBlocked,
+        ),
+        HeaderActionButton(
+          tooltip: 'Chat Rules',
+          icon: Icons.info_outline_rounded,
+          onTap: _showRules,
+        ),
       ],
-      body: _rulesAccepted ? _buildRooms() : _ChatRules(onAccept: _acceptRules),
+      body: _buildRooms(),
     );
   }
 
@@ -377,6 +353,8 @@ class _RoomTile extends StatelessWidget {
                   ],
                 ),
               ),
+              const Gap(4),
+              Icon(Icons.chevron_right, color: textSecondary),
             ],
           ),
         ),
@@ -512,49 +490,6 @@ class _BlockedStudentsPageState extends State<_BlockedStudentsPage> {
           );
         },
       ),
-    );
-  }
-}
-
-class _ChatRules extends StatelessWidget {
-  const _ChatRules({required this.onAccept});
-
-  final Future<void> Function() onAccept;
-
-  @override
-  Widget build(BuildContext context) {
-    return ListView(
-      padding: kPageListPadding,
-      children: [
-        AppCard(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Chat Rules',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w800,
-                  color: AppPalette.textPrimary(context),
-                ),
-              ),
-              const Gap(12),
-              const _RuleList(),
-              const Gap(6),
-              SizedBox(
-                width: double.infinity,
-                child: AppActionButton(
-                  label: 'Agree and Continue',
-                  outlined: false,
-                  backgroundColor: AppPalette.primary,
-                  foregroundColor: Colors.white,
-                  onPressed: onAccept,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
     );
   }
 }
