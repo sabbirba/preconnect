@@ -471,17 +471,26 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
   }
 
   Future<void> _report(ChatMessage message) async {
-    await showAppConfirmationWithActionDialog(
+    await showAppBottomSheet<void>(
       context,
-      icon: Icons.flag_outlined,
       title: 'Report Message',
-      message: 'Send this message to the moderators for review?',
-      confirmLabel: 'Report',
-      confirmColor: AppPalette.danger,
-      onConfirm: () async {
-        await _chat.report(message.id);
-        if (mounted) showAppSnackBar(context, 'Message reported.');
-      },
+      draggable: false,
+      isScrollControlled: true,
+      builder: (sheetContext, textPrimary, textSecondary) => _ReportSheet(
+        onSubmit: (reason) async {
+          Navigator.of(sheetContext).pop();
+          try {
+            await _chat.report(message.id, reason);
+            if (mounted) {
+              showAppSnackBar(context, 'Reported to the moderators.');
+            }
+          } on ChatException catch (error) {
+            if (mounted) showAppSnackBar(context, error.message);
+          } catch (_) {
+            if (mounted) showAppSnackBar(context, 'Report could not be sent.');
+          }
+        },
+      ),
     );
   }
 
@@ -694,6 +703,97 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
                 },
               ),
             ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ReportSheet extends StatefulWidget {
+  const _ReportSheet({required this.onSubmit});
+
+  final Future<void> Function(String reason) onSubmit;
+
+  @override
+  State<_ReportSheet> createState() => _ReportSheetState();
+}
+
+class _ReportSheetState extends State<_ReportSheet> {
+  final TextEditingController _reason = TextEditingController();
+  bool _busy = false;
+
+  @override
+  void dispose() {
+    _reason.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final textSecondary = AppPalette.textSecondary(context);
+    const minLength = ChatService.reportReasonMinLength;
+    return Padding(
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.viewInsetsOf(context).bottom + 12,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: Text(
+              'Tell the moderators what is wrong. Be specific — at least '
+              '$minLength characters.',
+              style: TextStyle(fontSize: 13, color: textSecondary),
+            ),
+          ),
+          ValueListenableBuilder<TextEditingValue>(
+            valueListenable: _reason,
+            builder: (context, value, _) {
+              final length = value.text.trim().length;
+              final enough = length >= minLength;
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  TextField(
+                    controller: _reason,
+                    minLines: 4,
+                    maxLines: 8,
+                    maxLength: 500,
+                    textCapitalization: TextCapitalization.sentences,
+                    decoration: appInputDecoration(
+                      context,
+                      hintText: 'Reason',
+                      counterText: '',
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(4, 4, 4, 12),
+                    child: Text(
+                      enough ? '$length characters' : '$length / $minLength',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: enough ? textSecondary : AppPalette.danger,
+                      ),
+                    ),
+                  ),
+                  AppActionButton(
+                    label: 'Report',
+                    outlined: false,
+                    backgroundColor: AppPalette.danger,
+                    foregroundColor: Colors.white,
+                    onPressed: (!enough || _busy)
+                        ? null
+                        : () async {
+                            setState(() => _busy = true);
+                            await widget.onSubmit(_reason.text.trim());
+                          },
+                  ),
+                ],
+              );
+            },
           ),
         ],
       ),

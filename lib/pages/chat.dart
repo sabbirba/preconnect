@@ -106,12 +106,24 @@ class _ChatPageState extends State<ChatPage> {
           ),
         if (_rulesAccepted)
           _HeaderButton(
+            tooltip: 'Blocked Students',
+            icon: Icons.block_rounded,
+            onPressed: _openBlocked,
+          ),
+        if (_rulesAccepted)
+          _HeaderButton(
             tooltip: 'Chat Rules',
             icon: Icons.info_outline_rounded,
             onPressed: _showRules,
           ),
       ],
       body: _rulesAccepted ? _buildRooms() : _ChatRules(onAccept: _acceptRules),
+    );
+  }
+
+  Future<void> _openBlocked() {
+    return Navigator.of(context).push(
+      MaterialPageRoute<void>(builder: (_) => const _BlockedStudentsPage()),
     );
   }
 
@@ -310,6 +322,90 @@ class _RuleList extends StatelessWidget {
           const Gap(10),
         ],
       ],
+    );
+  }
+}
+
+class _BlockedStudentsPage extends StatefulWidget {
+  const _BlockedStudentsPage();
+
+  @override
+  State<_BlockedStudentsPage> createState() => _BlockedStudentsPageState();
+}
+
+class _BlockedStudentsPageState extends State<_BlockedStudentsPage> {
+  final ChatService _chat = ChatService.instance;
+  late Future<List<ChatAuthor>> _future = _chat.loadBlockedStudents();
+  final Set<String> _removed = <String>{};
+
+  void _reload() {
+    setState(() {
+      _removed.clear();
+      _future = _chat.loadBlockedStudents();
+    });
+  }
+
+  Future<void> _unblock(ChatAuthor student) async {
+    try {
+      await _chat.unblock(student.id);
+      if (mounted) setState(() => _removed.add(student.id));
+    } catch (_) {
+      if (mounted) showAppSnackBar(context, 'Could not unblock. Try again.');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AppPageScaffold(
+      title: 'Blocked Students',
+      subtitle: 'People you have blocked',
+      icon: Icons.block_rounded,
+      body: FutureBuilder<List<ChatAuthor>>(
+        future: _future,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState != ConnectionState.done) {
+            return const AppLoading();
+          }
+          if (snapshot.hasError) {
+            return AppErrorState(
+              title: 'Unavailable',
+              message: 'Your blocklist could not be loaded.',
+              onRetry: _reload,
+            );
+          }
+          final students = (snapshot.data ?? const <ChatAuthor>[])
+              .where((student) => !_removed.contains(student.id))
+              .toList();
+          if (students.isEmpty) {
+            return const AppEmptyState(
+              message: 'You have not blocked anyone.',
+              icon: Icons.block_rounded,
+            );
+          }
+          return AppRefreshList(
+            onRefresh: () async {
+              _reload();
+              await _future;
+            },
+            children: [
+              for (final student in students) ...[
+                ActionBannerCard(
+                  icon: Icons.person_outline_rounded,
+                  title: student.name.isEmpty ? 'Student' : student.name,
+                  subtitle: 'Blocked',
+                  showTrailingIcon: false,
+                  onTap: () {},
+                  trailing: AppActionButton(
+                    label: 'Unblock',
+                    onPressed: () => _unblock(student),
+                  ),
+                ),
+                const Gap(10),
+              ],
+            ],
+          );
+        },
+      ),
     );
   }
 }

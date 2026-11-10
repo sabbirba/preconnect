@@ -48,6 +48,7 @@ class ChatService {
     '👍',
     '❤️',
     '😂',
+    '🔥',
     '😮',
     '😢',
     '🙏',
@@ -539,7 +540,9 @@ class ChatService {
         );
   }
 
-  Future<void> report(String messageId) async {
+  static const int reportReasonMinLength = 100;
+
+  Future<void> report(String messageId, String reason) async {
     final pb = await _client();
     try {
       await pb
@@ -548,11 +551,18 @@ class ChatService {
             body: <String, dynamic>{
               'message': messageId,
               'reporter': _me?.id ?? '',
-              'reason': 'Reported from the app',
+              'reason': reason.trim(),
             },
           );
     } on ClientException catch (error) {
-      if (error.statusCode != 400) rethrow;
+      final message = error.response['message'];
+      throw ChatException(
+        message is String &&
+                message.isNotEmpty &&
+                message != 'Failed to create record.'
+            ? message
+            : 'You have already reported this message.',
+      );
     }
   }
 
@@ -568,6 +578,44 @@ class ChatService {
           },
         );
     blocked.value = <String>{...blocked.value, studentId};
+  }
+
+  Future<void> unblock(String studentId) async {
+    final pb = await _client();
+    final me = _me?.id ?? '';
+    try {
+      final record = await pb
+          .collection('chat_blocks')
+          .getFirstListItem(
+            pb.filter('blocker = {:me} && blocked = {:blocked}', {
+              'me': me,
+              'blocked': studentId,
+            }),
+          );
+      await pb.collection('chat_blocks').delete(record.id);
+    } on ClientException catch (error) {
+      if (error.statusCode != 404) rethrow;
+    }
+    blocked.value = <String>{...blocked.value}..remove(studentId);
+  }
+
+  Future<List<ChatAuthor>> loadBlockedStudents() async {
+    final pb = await _client();
+    final me = _me?.id ?? '';
+    final records = await pb
+        .collection('chat_blocks')
+        .getFullList(
+          filter: pb.filter('blocker = {:me}', {'me': me}),
+          expand: 'blocked',
+        );
+    return records.map((record) {
+      final json = record.toJson();
+      final expand = json['expand'];
+      final student = expand is Map && expand['blocked'] is Map
+          ? (expand['blocked'] as Map).cast<String, dynamic>()
+          : <String, dynamic>{'id': json['blocked']};
+      return ChatAuthor.fromJson(student);
+    }).toList();
   }
 
   Future<void> markAllRead() async {
