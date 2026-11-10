@@ -214,7 +214,14 @@ String _roomSubtitle(ChatRoom room) {
   final last = visible.last;
   final sender = last.author.id == chat.me?.id
       ? 'You'
-      : last.author.name.split(' ').first;
+      : titleCaseWords(
+          last.author.name
+              .split(' ')
+              .firstWhere(
+                (part) => part.length > 1 && !part.endsWith('.'),
+                orElse: () => last.author.name,
+              ),
+        );
   return '$sender: ${last.text.isEmpty ? 'Photo' : last.text}';
 }
 
@@ -325,23 +332,31 @@ class _RoomTile extends StatelessWidget {
                       ],
                     ),
                     const Gap(2),
-                    Text(
-                      subtitle,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(fontSize: 12, color: textSecondary),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            subtitle,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: textSecondary,
+                            ),
+                          ),
+                        ),
+                        const Gap(6),
+                        if (unread > 0)
+                          UnreadCountPill(count: unread)
+                        else
+                          Icon(
+                            Icons.chevron_right,
+                            size: 18,
+                            color: textSecondary,
+                          ),
+                      ],
                     ),
                   ],
-                ),
-              ),
-              const Gap(6),
-              ConstrainedBox(
-                constraints: const BoxConstraints(minWidth: 24),
-                child: Center(
-                  widthFactor: 1,
-                  child: unread > 0
-                      ? UnreadCountPill(count: unread)
-                      : Icon(Icons.chevron_right, color: textSecondary),
                 ),
               ),
             ],

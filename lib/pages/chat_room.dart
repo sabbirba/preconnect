@@ -41,6 +41,7 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
   Timer? _readTimer;
   Timer? _cooldownTimer;
   bool _coolingDown = false;
+  String? _timeShownFor;
 
   ChatRoom get _room => widget.room;
 
@@ -574,6 +575,12 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
               isMine: message.author.id == me,
               showAuthor: !grouped,
               showTime: next == null || !_sameGroup(message, next),
+              showFullTime: _timeShownFor == message.id,
+              onTap: () => setState(
+                () => _timeShownFor = _timeShownFor == message.id
+                    ? null
+                    : message.id,
+              ),
               reactions:
                   reactionsByMessage[message.id] ?? const <ChatReaction>[],
               myId: me ?? '',
@@ -1037,6 +1044,8 @@ class _MessageBubble extends StatelessWidget {
     required this.isMine,
     required this.showAuthor,
     required this.showTime,
+    required this.showFullTime,
+    required this.onTap,
     required this.reactions,
     required this.myId,
     required this.onLongPress,
@@ -1048,6 +1057,8 @@ class _MessageBubble extends StatelessWidget {
   final bool isMine;
   final bool showAuthor;
   final bool showTime;
+  final bool showFullTime;
+  final VoidCallback onTap;
   final List<ChatReaction> reactions;
   final String myId;
   final VoidCallback? onLongPress;
@@ -1075,6 +1086,7 @@ class _MessageBubble extends StatelessWidget {
         message.replyToId.isNotEmpty && message.replyText.isNotEmpty;
     final hasText = hasReply || message.text.isNotEmpty;
     final bubble = GestureDetector(
+      onTap: onTap,
       onLongPress: onLongPress,
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -1263,11 +1275,13 @@ class _MessageBubble extends StatelessWidget {
                       ],
                     ),
                   ),
-                if (showTime)
+                if (showTime || showFullTime)
                   Padding(
                     padding: const EdgeInsets.fromLTRB(4, 3, 4, 0),
                     child: Text(
-                      AppTime.formatDateTime(message.created),
+                      showFullTime
+                          ? '${AppTime.formatLongDate(message.created.toLocal())} · ${AppTime.formatDateTime(message.created)}'
+                          : AppTime.formatDateTime(message.created),
                       style: TextStyle(fontSize: 10, color: textSecondary),
                     ),
                   ),
