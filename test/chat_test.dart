@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
@@ -125,6 +126,58 @@ void main() {
     expect(restored.active, isTrue);
     expect(restored.lastMessageAt, 1794200000000);
     expect(restored.memberCount, 42);
+  });
+
+  test('cached room messages and reactions survive a disk round-trip', () {
+    final original = ChatMessage.fromJson({
+      'id': 'm2',
+      'room': 'r1',
+      'author': 's2',
+      'text': 'when is the quiz?',
+      'image': ['a.jpg', 'b.jpg'],
+      'replyTo': 'm1',
+      'mentions': ['s1'],
+      'clientNonce': 's2-9',
+      'created': '2026-11-10 06:30:00.000Z',
+      'expand': {
+        'author': {'id': 's2', 'name': 'Test Student B', 'photo': '/p/b.jpg'},
+        'replyTo': {
+          'text': '',
+          'expand': {
+            'author': {'name': 'Test Student A'},
+          },
+        },
+      },
+    });
+    const reaction = ChatReaction(
+      id: 'x1',
+      messageId: 'm2',
+      studentId: 's1',
+      emoji: '👍',
+    );
+    final cached = ChatRecent(
+      [original],
+      const [reaction],
+      lastMessageAt: 1794300000000,
+    );
+    final restored = ChatRecent.fromJson(
+      jsonDecode(jsonEncode(cached.toJson())) as Map<String, dynamic>,
+    );
+    final message = restored.messages.single;
+    expect(restored.lastMessageAt, 1794300000000);
+    expect(message.id, 'm2');
+    expect(message.author.name, 'Test Student B');
+    expect(message.author.photo, '/p/b.jpg');
+    expect(message.text, 'when is the quiz?');
+    expect(message.images, ['a.jpg', 'b.jpg']);
+    expect(message.replyToId, 'm1');
+    expect(message.replyAuthorName, 'Test Student A');
+    expect(message.replyText, 'Photo');
+    expect(message.mentions, ['s1']);
+    expect(message.nonce, 's2-9');
+    expect(message.created.toUtc(), DateTime.utc(2026, 11, 10, 6, 30));
+    expect(restored.reactions.single.emoji, '👍');
+    expect(restored.reactions.single.messageId, 'm2');
   });
 
   test('messages default to sent and read the client nonce', () {

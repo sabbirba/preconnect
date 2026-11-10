@@ -51,13 +51,14 @@ class _ChatPageState extends State<ChatPage> {
     }
   }
 
-  Future<void> _load() async {
+  Future<void> _load({bool force = false}) async {
+    _chat.restoreCache();
     setState(() {
       _loading = _chat.rooms.value.isEmpty;
       _error = null;
     });
     try {
-      final rooms = await _chat.loadRooms();
+      final rooms = await _chat.loadRooms(force: force);
       if (mounted) setState(() => _loading = false);
       final target = widget.openRoomId;
       if (target != null && target.isNotEmpty && mounted) {
@@ -76,12 +77,13 @@ class _ChatPageState extends State<ChatPage> {
     }
   }
 
-  Future<void> _openRoom(ChatRoom room) async {
-    await Navigator.of(
+  Future<void> _openRoom(ChatRoom room) {
+    return Navigator.of(
       context,
     ).push(MaterialPageRoute<void>(builder: (_) => ChatRoomPage(room: room)));
-    if (mounted) unawaited(_chat.refreshUnread());
   }
+
+  Future<void> _reload() => _load(force: true);
 
   @override
   Widget build(BuildContext context) {
@@ -154,7 +156,7 @@ class _ChatPageState extends State<ChatPage> {
       return AppErrorState(
         title: 'Chat Unavailable',
         message: _error!,
-        onRetry: _load,
+        onRetry: _reload,
       );
     }
     return ValueListenableBuilder<List<ChatRoom>>(
@@ -187,19 +189,20 @@ class _ChatPageState extends State<ChatPage> {
               ),
             ];
             return AppRefreshList(
-              onRefresh: _load,
+              onRefresh: _reload,
               children: [
                 for (final (label, list) in groups)
                   if (list.isNotEmpty) ...[
-                    if (label.isNotEmpty) _GroupLabel(label: label),
+                    if (label.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(4, 6, 4, 10),
+                        child: AppSectionTitle(title: label),
+                      ),
                     for (final room in list) ...[
-                      ActionBannerCard(
-                        icon: _roomIcon(room.kind),
-                        title: room.title,
-                        subtitle: _roomSubtitle(room, muted.contains(room.id)),
-                        trailing: (unread[room.id] ?? 0) > 0
-                            ? UnreadCountPill(count: unread[room.id]!)
-                            : null,
+                      _RoomTile(
+                        room: room,
+                        status: _roomStatus(room, muted.contains(room.id)),
+                        unread: unread[room.id] ?? 0,
                         onTap: () => _openRoom(room),
                       ),
                       const Gap(10),
@@ -214,36 +217,90 @@ class _ChatPageState extends State<ChatPage> {
   }
 }
 
-IconData _roomIcon(ChatRoomKind kind) => switch (kind) {
-  ChatRoomKind.lounge => Icons.chat_bubble_outline_rounded,
-  ChatRoomKind.course => Icons.book_outlined,
-  ChatRoomKind.section => Icons.people_outline_rounded,
-};
-
-String _roomSubtitle(ChatRoom room, bool muted) {
+String? _roomStatus(ChatRoom room, bool muted) {
   if (!room.active) return 'Read only';
-  return switch (room.kind) {
-    ChatRoomKind.lounge => 'Everyone',
-    ChatRoomKind.course => muted ? 'All sections · Muted' : 'All sections',
-    ChatRoomKind.section => muted ? 'Your section · Muted' : 'Your section',
-  };
+  if (room.kind == ChatRoomKind.lounge) return 'Everyone';
+  return muted ? 'Muted' : null;
 }
 
-class _GroupLabel extends StatelessWidget {
-  const _GroupLabel({required this.label});
+class _RoomTile extends StatelessWidget {
+  const _RoomTile({
+    required this.room,
+    required this.status,
+    required this.unread,
+    required this.onTap,
+  });
 
-  final String label;
+  static const double _leadingSize = 40;
+
+  final ChatRoom room;
+  final String? status;
+  final int unread;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(4, 6, 4, 8),
-      child: Text(
-        label,
-        style: TextStyle(
-          fontSize: 13,
-          fontWeight: FontWeight.w700,
-          color: AppPalette.textSecondary(context),
+    final isSection = room.kind == ChatRoomKind.section;
+    final dash = room.title.lastIndexOf('-');
+    final title = isSection && dash > 0
+        ? room.title.substring(0, dash)
+        : room.title;
+    final label = status;
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(18),
+        onTap: onTap,
+        child: AppCard(
+          child: Row(
+            children: [
+              if (isSection)
+                SectionBadge(
+                  label: formatSectionBadge(
+                    dash > 0 ? room.title.substring(dash + 1) : '',
+                  ),
+                  color: AppPalette.primary,
+                  size: _leadingSize,
+                )
+              else
+                SizedBox.square(
+                  dimension: _leadingSize,
+                  child: Icon(
+                    room.kind == ChatRoomKind.lounge
+                        ? Icons.chat_bubble_outline_rounded
+                        : Icons.book_outlined,
+                    color: AppPalette.primary,
+                  ),
+                ),
+              const Gap(12),
+              Expanded(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        color: AppPalette.textPrimary(context),
+                      ),
+                    ),
+                    if (label != null) ...[
+                      const Gap(4),
+                      Text(
+                        label,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: AppPalette.textSecondary(context),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              if (unread > 0) UnreadCountPill(count: unread),
+            ],
+          ),
         ),
       ),
     );

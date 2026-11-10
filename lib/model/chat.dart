@@ -48,6 +48,12 @@ class ChatAuthor {
   final String id;
   final String name;
   final String photo;
+
+  Map<String, dynamic> toJson() => <String, dynamic>{
+    'id': id,
+    'name': name,
+    'photo': photo,
+  };
 }
 
 class ChatRoom {
@@ -155,6 +161,28 @@ class ChatMessage {
   bool get hasImage => images.isNotEmpty || localImages.isNotEmpty;
   bool get isPending => status != ChatMessageStatus.sent;
 
+  Map<String, dynamic> toJson() => <String, dynamic>{
+    'id': id,
+    'room': roomId,
+    'author': author.id,
+    'text': text,
+    'image': images,
+    'created': created.toUtc().toIso8601String(),
+    'replyTo': replyToId,
+    'mentions': mentions,
+    'clientNonce': nonce,
+    'expand': <String, dynamic>{
+      'author': author.toJson(),
+      if (replyToId.isNotEmpty)
+        'replyTo': <String, dynamic>{
+          'text': replyText == 'Photo' ? '' : replyText,
+          'expand': <String, dynamic>{
+            'author': <String, dynamic>{'name': replyAuthorName},
+          },
+        },
+    },
+  };
+
   ChatMessage copyWith({
     String? id,
     ChatMessageStatus? status,
@@ -195,15 +223,42 @@ class ChatReaction {
   final String messageId;
   final String studentId;
   final String emoji;
+
+  Map<String, dynamic> toJson() => <String, dynamic>{
+    'id': id,
+    'message': messageId,
+    'student': studentId,
+    'emoji': emoji,
+  };
 }
 
 DateTime? chatDate(Object? value) => _date(value);
 
+List<Map<String, dynamic>> _maps(Object? value) => value is List
+    ? value
+          .whereType<Map>()
+          .map((item) => item.cast<String, dynamic>())
+          .toList()
+    : const <Map<String, dynamic>>[];
+
 class ChatRecent {
-  const ChatRecent(this.messages, this.reactions);
+  const ChatRecent(this.messages, this.reactions, {this.lastMessageAt = 0});
+
+  factory ChatRecent.fromJson(Map<String, dynamic> json) => ChatRecent(
+    _maps(json['messages']).map(ChatMessage.fromJson).toList(),
+    _maps(json['reactions']).map(ChatReaction.fromJson).toList(),
+    lastMessageAt: _int(json['lastMessageAt']),
+  );
 
   static const ChatRecent empty = ChatRecent(<ChatMessage>[], <ChatReaction>[]);
 
   final List<ChatMessage> messages;
   final List<ChatReaction> reactions;
+  final int lastMessageAt;
+
+  Map<String, dynamic> toJson() => <String, dynamic>{
+    'lastMessageAt': lastMessageAt,
+    'messages': [for (final message in messages) message.toJson()],
+    'reactions': [for (final reaction in reactions) reaction.toJson()],
+  };
 }

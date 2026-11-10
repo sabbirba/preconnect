@@ -85,6 +85,8 @@ class ChatService {
   Future<List<ChatRoom>>? _roomsLoading;
   Future<ChatWatch>? _roomsWatch;
   DateTime? _preloadedAt;
+  DateTime? _roomsLoadedAt;
+  Timer? _persistTimer;
   int _generation = 0;
   String? activeRoomId;
 
@@ -192,6 +194,21 @@ class ChatService {
 
   bool hasRecent(String roomId) => _recent.containsKey(roomId);
 
+  ChatRoom? _room(String roomId) {
+    for (final room in rooms.value) {
+      if (room.id == roomId) return room;
+    }
+    return null;
+  }
+
+  bool isFresh(String roomId) {
+    final cached = _recent[roomId];
+    final room = _room(roomId);
+    return cached != null &&
+        room != null &&
+        cached.lastMessageAt >= room.lastMessageAt;
+  }
+
   void remember(
     String roomId,
     List<ChatMessage> messages,
@@ -204,22 +221,39 @@ class ChatService {
     _recent[roomId] = ChatRecent(
       kept,
       reactions.where((r) => ids.contains(r.messageId)).toList(),
+      lastMessageAt: _room(roomId)?.lastMessageAt ?? 0,
     );
+    _persistRecentSoon();
   }
 
-  void restoreRooms() {
-    if (rooms.value.isNotEmpty) return;
-    final raw = AppStorage.instance.getStringSync(
-      StorageKeys.chatRoomsSnapshot,
-    );
-    if (raw == null || raw.isEmpty) return;
+  void restoreCache() {
+    final store = AppStorage.instance;
     try {
-      final decoded = jsonDecode(raw);
-      if (decoded is! List) return;
-      rooms.value = decoded
-          .whereType<Map>()
-          .map((item) => ChatRoom.fromJson(item.cast<String, dynamic>()))
-          .toList();
+      if (rooms.value.isEmpty) {
+        final decoded = jsonDecode(
+          store.getStringSync(StorageKeys.chatRoomsSnapshot) ?? '[]',
+        );
+        if (decoded is List) {
+          rooms.value = decoded
+              .whereType<Map>()
+              .map((item) => ChatRoom.fromJson(item.cast<String, dynamic>()))
+              .toList();
+        }
+      }
+      if (_recent.isEmpty) {
+        final decoded = jsonDecode(
+          store.getStringSync(StorageKeys.chatRecent) ?? '{}',
+        );
+        if (decoded is Map) {
+          for (final entry in decoded.entries) {
+            if (entry.value is Map) {
+              _recent['${entry.key}'] = ChatRecent.fromJson(
+                (entry.value as Map).cast<String, dynamic>(),
+              );
+            }
+          }
+        }
+      }
     } catch (_) {}
   }
 
@@ -232,17 +266,35 @@ class ChatService {
     );
   }
 
+  void _persistRecentSoon() {
+    _persistTimer?.cancel();
+    _persistTimer = Timer(const Duration(seconds: 1), () {
+      final live = rooms.value.map((room) => room.id).toSet();
+      unawaited(
+        AppStorage.instance.setString(
+          StorageKeys.chatRecent,
+          jsonEncode(<String, dynamic>{
+            for (final entry in _recent.entries)
+              if (live.contains(entry.key)) entry.key: entry.value.toJson(),
+          }),
+        ),
+      );
+    });
+  }
+
   Future<void> preload() async {
-    restoreRooms();
+    restoreCache();
     final last = _preloadedAt;
     if (last != null && DateTime.now().difference(last) < _preloadInterval) {
       return;
     }
     _preloadedAt = DateTime.now();
     try {
-      final list = await loadRooms();
+      final list = await loadRooms(force: true);
       unawaited(keepRoomsLive());
-      await Future.wait(list.map(_preloadRoom));
+      await Future.wait(
+        list.where((room) => !isFresh(room.id)).map(_preloadRoom),
+      );
     } catch (_) {
       _preloadedAt = null;
     }
@@ -256,8 +308,18 @@ class ChatService {
     remember(room.id, messages, reactions);
   }
 
-  Future<List<ChatRoom>> loadRooms() =>
-      _roomsLoading ??= _loadRooms().whenComplete(() => _roomsLoading = null);
+  Future<List<ChatRoom>> loadRooms({bool force = false}) async {
+    final loaded = _roomsLoadedAt;
+    if (!force &&
+        loaded != null &&
+        rooms.value.isNotEmpty &&
+        DateTime.now().difference(loaded) < _preloadInterval) {
+      return rooms.value;
+    }
+    return _roomsLoading ??= _loadRooms().whenComplete(
+      () => _roomsLoading = null,
+    );
+  }
 
   Future<List<ChatRoom>> _loadRooms() async {
     final pb = await _client();
@@ -282,6 +344,7 @@ class ChatService {
         .map((record) => record.getStringValue('blocked'))
         .toSet();
     rooms.value = list;
+    _roomsLoadedAt = DateTime.now();
     _persistRooms(list);
     unawaited(_syncTopics(list));
     unawaited(refreshUnread());
@@ -426,13 +489,17 @@ class ChatService {
   Future<List<ChatMessage>> loadMessages(
     String roomId, {
     ChatMessage? before,
+    ChatMessage? after,
   }) async {
     final pb = await _client();
-    final filter = before == null
+    final edge = before ?? after;
+    final filter = edge == null
         ? pb.filter('room = {:room}', {'room': roomId})
         : pb.filter(
-            'room = {:room} && (created < {:at} || (created = {:at} && id < {:id}))',
-            {'room': roomId, 'at': before.created.toUtc(), 'id': before.id},
+            before != null
+                ? 'room = {:room} && (created < {:at} || (created = {:at} && id < {:id}))'
+                : 'room = {:room} && (created > {:at} || (created = {:at} && id > {:id}))',
+            {'room': roomId, 'at': edge.created.toUtc(), 'id': edge.id},
           );
     final result = await pb
         .collection('chat_messages')
@@ -716,7 +783,15 @@ class ChatService {
         FCMService.instance.unsubscribeFromTopic(topic),
       if (pb != null) pb.realtime.unsubscribe(),
     ]);
-    await AppStorage.instance.remove(StorageKeys.chatPushTopics);
+    _persistTimer?.cancel();
+    await Future.wait(<Future<void>>[
+      for (final key in <String>[
+        StorageKeys.chatPushTopics,
+        StorageKeys.chatRoomsSnapshot,
+        StorageKeys.chatRecent,
+      ])
+        AppStorage.instance.remove(key),
+    ]);
     pb?.authStore.clear();
     _me = null;
     _personalTopic = '';
@@ -728,6 +803,7 @@ class ChatService {
     _recent.clear();
     _roomsWatch = null;
     _preloadedAt = null;
+    _roomsLoadedAt = null;
     activeRoomId = null;
     rooms.value = const <ChatRoom>[];
     unread.value = const <String, int>{};

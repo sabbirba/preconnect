@@ -75,6 +75,7 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
       _messages.where((m) => !m.isPending).toList(),
       _reactions,
     );
+    if (_readTimer?.isActive ?? false) _markLatestRead();
     _readTimer?.cancel();
     _cooldownTimer?.cancel();
     unawaited(_watch?.then((watch) => watch.cancel()));
@@ -91,23 +92,31 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
         onReaction: _onReaction,
       );
       unawaited(watch.then((_) {}, onError: (Object _) => _watch = null));
-      final messages = await _chat.loadMessages(_room.id);
+      final sent = _messages.where((m) => !m.isPending).toList();
+      final after = sent.isEmpty ? null : sent.last;
+      final messages = await _chat.loadMessages(_room.id, after: after);
       if (!mounted) return;
-      final loaded = messages.map((m) => m.id).toSet();
+      final fullPage = messages.length >= ChatService.pageSize;
       setState(() {
-        _messages = _merged(messages, _messages);
-        _hasMore = messages.length >= ChatService.pageSize;
+        _messages = after != null && fullPage
+            ? _merged(messages, _messages.where((m) => m.isPending).toList())
+            : _merged(messages, _messages);
+        if (after == null || fullPage) _hasMore = fullPage;
         _loading = false;
         _error = null;
       });
       _markLatestRead();
       _loadOlderIfAllHidden();
-      final reactions = await _chat.loadReactions(loaded.toList());
+      final visible = _messages
+          .where((m) => !m.isPending)
+          .map((m) => m.id)
+          .toSet();
+      final reactions = await _chat.loadReactions(visible.toList());
       if (!mounted) return;
       setState(() {
         _reactions = <ChatReaction>[
           ...reactions,
-          ..._reactions.where((r) => !loaded.contains(r.messageId)),
+          ..._reactions.where((r) => !visible.contains(r.messageId)),
         ];
       });
     } on ChatException catch (error) {
