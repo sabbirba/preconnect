@@ -265,26 +265,23 @@ class _RoomTile extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           child: Row(
             children: [
-              if (room.kind == ChatRoomKind.lounge)
-                SizedBox.square(
-                  dimension: _leadingSize,
-                  child: Icon(
-                    Icons.forum_outlined,
-                    size: 20,
-                    color: AppPalette.primary,
-                  ),
-                )
-              else
+              if (isSection)
                 SectionBadge(
-                  label: isSection
-                      ? formatSectionBadge(
-                          dash > 0 ? room.title.substring(dash + 1) : '',
-                        )
-                      : title.characters.first.toUpperCase(),
-                  formatLabel: false,
+                  label: dash > 0 ? room.title.substring(dash + 1) : '',
                   color: AppPalette.primary,
                   size: _leadingSize,
                   fontSize: 13,
+                )
+              else
+                SizedBox.square(
+                  dimension: _leadingSize,
+                  child: Icon(
+                    room.kind == ChatRoomKind.lounge
+                        ? Icons.forum_outlined
+                        : Icons.tag_rounded,
+                    size: 20,
+                    color: AppPalette.primary,
+                  ),
                 ),
               const Gap(10),
               Expanded(
