@@ -9,6 +9,7 @@ import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/app_storage.dart';
 import 'package:preconnect/tools/storage_keys.dart';
 import 'package:preconnect/tools/string_utils.dart';
+import 'package:preconnect/tools/time_utils.dart';
 
 class ChatPage extends StatefulWidget {
   const ChatPage({super.key, this.openRoomId});
@@ -163,7 +164,12 @@ class _ChatPageState extends State<ChatPage> {
       valueListenable: _chat.rooms,
       builder: (context, rooms, _) {
         return ListenableBuilder(
-          listenable: Listenable.merge([_chat.unread, _chat.muted]),
+          listenable: Listenable.merge([
+            _chat.unread,
+            _chat.muted,
+            _chat.blocked,
+            _chat.recentVersion,
+          ]),
           builder: (context, _) {
             final unread = _chat.unread.value;
             final muted = _chat.muted.value;
@@ -195,17 +201,18 @@ class _ChatPageState extends State<ChatPage> {
                   if (list.isNotEmpty) ...[
                     if (label.isNotEmpty)
                       Padding(
-                        padding: const EdgeInsets.fromLTRB(4, 6, 4, 10),
+                        padding: const EdgeInsets.fromLTRB(4, 8, 4, 8),
                         child: AppSectionTitle(title: label),
                       ),
                     for (final room in list) ...[
                       _RoomTile(
                         room: room,
-                        status: _roomStatus(room, muted.contains(room.id)),
+                        subtitle: _roomSubtitle(room),
+                        muted: muted.contains(room.id),
                         unread: unread[room.id] ?? 0,
                         onTap: () => _openRoom(room),
                       ),
-                      const Gap(10),
+                      const Gap(8),
                     ],
                   ],
               ],
@@ -217,41 +224,72 @@ class _ChatPageState extends State<ChatPage> {
   }
 }
 
-String? _roomStatus(ChatRoom room, bool muted) {
+String _roomSubtitle(ChatRoom room) {
   if (!room.active) return 'Read only';
-  if (room.kind == ChatRoomKind.lounge) return 'Everyone';
-  return muted ? 'Muted' : null;
+  final chat = ChatService.instance;
+  if (chat.isFresh(room.id)) {
+    final blocked = chat.blocked.value;
+    final visible = chat
+        .recent(room.id)
+        .messages
+        .where((message) => !blocked.contains(message.author.id));
+    if (visible.isNotEmpty) {
+      final last = visible.last;
+      final sender = last.author.id == chat.me?.id
+          ? 'You'
+          : last.author.name.split(' ').first;
+      return '$sender: ${last.text.isEmpty ? 'Photo' : last.text}';
+    }
+  }
+  final count = room.memberCount;
+  return '${formatAmount(count)} ${count == 1 ? 'student' : 'students'}';
+}
+
+String _roomTime(int lastMessageAt) {
+  if (lastMessageAt <= 0) return '';
+  final at = DateTime.fromMillisecondsSinceEpoch(lastMessageAt);
+  final now = DateTime.now();
+  final days = DateUtils.dateOnly(
+    now,
+  ).difference(DateUtils.dateOnly(at)).inDays;
+  if (days == 0) return AppTime.formatDateTime(at);
+  if (days < 7) return formatRelativeDayLabel(at, includeYesterday: true);
+  return AppTime.formatDayMonth(at);
 }
 
 class _RoomTile extends StatelessWidget {
   const _RoomTile({
     required this.room,
-    required this.status,
+    required this.subtitle,
+    required this.muted,
     required this.unread,
     required this.onTap,
   });
 
-  static const double _leadingSize = 40;
+  static const double _leadingSize = 32;
 
   final ChatRoom room;
-  final String? status;
+  final String subtitle;
+  final bool muted;
   final int unread;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
+    final textSecondary = AppPalette.textSecondary(context);
     final isSection = room.kind == ChatRoomKind.section;
     final dash = room.title.lastIndexOf('-');
     final title = isSection && dash > 0
         ? room.title.substring(0, dash)
         : room.title;
-    final label = status;
+    final time = _roomTime(room.lastMessageAt);
     return Material(
       color: Colors.transparent,
       child: InkWell(
         borderRadius: BorderRadius.circular(18),
         onTap: onTap,
         child: AppCard(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           child: Row(
             children: [
               if (isSection)
@@ -261,6 +299,7 @@ class _RoomTile extends StatelessWidget {
                   ),
                   color: AppPalette.primary,
                   size: _leadingSize,
+                  fontSize: 13,
                 )
               else
                 SizedBox.square(
@@ -269,36 +308,75 @@ class _RoomTile extends StatelessWidget {
                     room.kind == ChatRoomKind.lounge
                         ? Icons.chat_bubble_outline_rounded
                         : Icons.book_outlined,
+                    size: 20,
                     color: AppPalette.primary,
                   ),
                 ),
-              const Gap(12),
+              const Gap(10),
               Expanded(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      title,
-                      style: TextStyle(
-                        fontWeight: FontWeight.w600,
-                        color: AppPalette.textPrimary(context),
-                      ),
-                    ),
-                    if (label != null) ...[
-                      const Gap(4),
-                      Text(
-                        label,
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: AppPalette.textSecondary(context),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            title,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontWeight: FontWeight.w600,
+                              color: AppPalette.textPrimary(context),
+                            ),
+                          ),
                         ),
-                      ),
-                    ],
+                        if (muted)
+                          Padding(
+                            padding: const EdgeInsets.only(left: 6),
+                            child: Icon(
+                              Icons.notifications_off_outlined,
+                              size: 14,
+                              color: textSecondary,
+                            ),
+                          ),
+                        if (time.isNotEmpty)
+                          Padding(
+                            padding: const EdgeInsets.only(left: 6),
+                            child: Text(
+                              time,
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: textSecondary,
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                    const Gap(2),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            subtitle,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: textSecondary,
+                            ),
+                          ),
+                        ),
+                        if (unread > 0)
+                          Padding(
+                            padding: const EdgeInsets.only(left: 6),
+                            child: UnreadCountPill(count: unread),
+                          ),
+                      ],
+                    ),
                   ],
                 ),
               ),
-              if (unread > 0) UnreadCountPill(count: unread),
             ],
           ),
         ),

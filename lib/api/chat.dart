@@ -71,6 +71,7 @@ class ChatService {
   final ValueNotifier<Set<String>> muted = ValueNotifier<Set<String>>(
     const <String>{},
   );
+  final ValueNotifier<int> recentVersion = ValueNotifier<int>(0);
 
   PocketBase? _pb;
   ChatAuthor? _me;
@@ -223,6 +224,7 @@ class ChatService {
       reactions.where((r) => ids.contains(r.messageId)).toList(),
       lastMessageAt: _room(roomId)?.lastMessageAt ?? 0,
     );
+    recentVersion.value++;
     _persistRecentSoon();
   }
 
