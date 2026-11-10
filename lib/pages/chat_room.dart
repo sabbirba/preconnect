@@ -743,11 +743,7 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
           padding: const EdgeInsets.only(bottom: 12),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              for (final option in options) Expanded(child: option),
-              for (var i = options.length; i < 6; i++)
-                const Expanded(child: SizedBox.shrink()),
-            ],
+            children: [for (final option in options) Expanded(child: option)],
           ),
         );
       },
