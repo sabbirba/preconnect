@@ -6,7 +6,9 @@ import 'package:flutter/services.dart';
 import 'package:gap/gap.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:preconnect/api/chat.dart';
+import 'package:preconnect/api/custom_schedules.dart';
 import 'package:preconnect/model/chat.dart';
+import 'package:preconnect/pages/custom_sections/schedules_shared.dart';
 import 'package:preconnect/pages/friend_sections/friend_header.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/string_utils.dart';
@@ -57,8 +59,22 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
             .firstOrNull
             ?.memberCount ??
         _room.memberCount;
-    return '${formatAmount(count)} ${count == 1 ? 'student' : 'students'}';
+    final students =
+        '${formatAmount(count)} ${count == 1 ? 'student' : 'students'}';
+    final section = _sectionName;
+    return section.isEmpty
+        ? students
+        : 'Section ${formatSectionBadge(section)} · $students';
   }
+
+  int get _sectionDash =>
+      _room.kind == ChatRoomKind.section ? _room.title.lastIndexOf('-') : -1;
+
+  String get _sectionName =>
+      _sectionDash > 0 ? _room.title.substring(_sectionDash + 1) : '';
+
+  String get _headerTitle =>
+      _sectionDash > 0 ? _room.title.substring(0, _sectionDash) : _room.title;
 
   @override
   void initState() {
@@ -323,10 +339,9 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
   }
 
   Future<void> _pickImages() async {
-    final files = await ImagePicker().pickMultiImage(
-      limit: ChatService.maxPhotos,
-    );
-    final room = ChatService.maxPhotos - _images.length;
+    final maxPhotos = _chat.settings.value.maxPhotos;
+    final files = await ImagePicker().pickMultiImage(limit: maxPhotos);
+    final room = maxPhotos - _images.length;
     final picked = await Future.wait(
       files.take(room).map((file) => file.readAsBytes()),
     );
@@ -365,6 +380,7 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
     List<Uint8List> images = const <Uint8List>[],
     List<String> mentions = const <String>[],
     List<String> pollOptions = const <String>[],
+    ChatEvent? event,
   }) {
     final me = _chat.me;
     if (me == null) return;
@@ -387,6 +403,7 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
       status: ChatMessageStatus.sending,
       localImages: images,
       pollOptions: pollOptions,
+      event: event,
     );
     _input.clear();
     _mentionPicks.clear();
@@ -410,6 +427,7 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
             replyToId: pending.replyToId,
             mentions: pending.mentions,
             pollOptions: pending.pollOptions,
+            event: pending.event,
             nonce: pending.nonce,
           )
           .then(
@@ -532,6 +550,10 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
                   action(Icons.flag_outlined, 'Report', () {
                     unawaited(_report(message));
                   }),
+                if (_canPin && message.text.isNotEmpty)
+                  action(Icons.push_pin_outlined, 'Pin', () {
+                    unawaited(_setPin(message.text));
+                  }),
                 if (!isMine)
                   action(Icons.block_rounded, 'Block', () {
                     unawaited(_block(message.author));
@@ -594,15 +616,10 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
   @override
   Widget build(BuildContext context) {
     return AppPageScaffold(
-      title: _room.title,
+      title: _headerTitle,
       subtitle: _headerSubtitle(),
       icon: Icons.chat_bubble_outline_rounded,
       actions: [
-        HeaderActionButton(
-          tooltip: 'Chat Rules',
-          icon: Icons.info_outline_rounded,
-          onTap: _showRules,
-        ),
         if (_room.kind != ChatRoomKind.lounge && _room.active)
           ValueListenableBuilder<Set<String>>(
             valueListenable: _chat.muted,
@@ -617,6 +634,11 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
               );
             },
           ),
+        HeaderActionButton(
+          tooltip: 'Chat Rules',
+          icon: Icons.info_outline_rounded,
+          onTap: _showRules,
+        ),
       ],
       body: Column(
         children: [
@@ -631,12 +653,110 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
                   _room.pinned;
               return pinned.isEmpty
                   ? const SizedBox.shrink()
-                  : _PinnedNote(text: pinned);
+                  : _PinnedNote(
+                      text: pinned,
+                      onLongPress: _canPin ? _confirmUnpin : null,
+                    );
             },
           ),
           Expanded(child: _buildMessages()),
           if (_room.active) _buildComposer() else const _ReadOnlyNotice(),
         ],
+      ),
+    );
+  }
+
+  bool get _canPin => _room.kind == ChatRoomKind.section && _room.active;
+
+  bool get _canShareEvents => _room.kind != ChatRoomKind.lounge && _room.active;
+
+  Future<void> _setPin(String text) async {
+    try {
+      await _chat.pin(_room.id, text);
+      if (mounted) {
+        showAppSnackBar(context, text.isEmpty ? 'Unpinned.' : 'Pinned.');
+      }
+    } on ChatException catch (error) {
+      if (mounted) showAppSnackBar(context, error.message);
+    } catch (_) {
+      if (mounted) showAppSnackBar(context, 'Could not update the pin.');
+    }
+  }
+
+  Future<void> _confirmUnpin() {
+    return showAppConfirmationWithActionDialog(
+      context,
+      icon: Icons.push_pin_outlined,
+      title: 'Unpin Message',
+      message: 'Remove the pinned message for everyone in this section?',
+      confirmLabel: 'Unpin',
+      confirmColor: AppPalette.danger,
+      onConfirm: () => _setPin(''),
+    );
+  }
+
+  Future<void> _showAttachMenu() {
+    final photosFull = _images.length >= _chat.settings.value.maxPhotos;
+    return showAppBottomSheet<void>(
+      context,
+      title: 'Share',
+      draggable: false,
+      isScrollControlled: false,
+      builder: (sheetContext, textPrimary, textSecondary) {
+        void pick(VoidCallback action) {
+          Navigator.of(sheetContext).pop();
+          action();
+        }
+
+        final options = <Widget>[
+          _AttachOption(
+            icon: Icons.photo_library_outlined,
+            label: 'Photos',
+            onTap: photosFull ? null : () => pick(_pickImages),
+          ),
+          _AttachOption(
+            icon: Icons.poll_outlined,
+            label: 'Poll',
+            onTap: _images.isEmpty ? () => pick(_createPoll) : null,
+          ),
+          if (_canShareEvents)
+            for (final kind in ChatEvent.kinds)
+              _AttachOption(
+                icon: _eventIcon(kind),
+                label: personalSchedulesKindLabel(kind),
+                onTap: _images.isEmpty
+                    ? () => pick(() => _createEvent(kind))
+                    : null,
+              ),
+        ];
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              for (final option in options) Expanded(child: option),
+              for (var i = options.length; i < 5; i++)
+                const Expanded(child: SizedBox.shrink()),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _createEvent(String kind) {
+    return showAppBottomSheet<void>(
+      context,
+      title: 'Share ${personalSchedulesKindLabel(kind)}',
+      draggable: false,
+      isScrollControlled: true,
+      builder: (sheetContext, textPrimary, textSecondary) => _EventSheet(
+        kind: kind,
+        onShare: (event) {
+          Navigator.of(sheetContext).pop();
+          _startCooldown();
+          _post(event.title, event: event);
+        },
       ),
     );
   }
@@ -663,9 +783,9 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
       title: 'Chat Rules',
       draggable: false,
       isScrollControlled: false,
-      builder: (sheetContext, textPrimary, textSecondary) => const Padding(
-        padding: EdgeInsets.only(bottom: 12),
-        child: _RuleList(),
+      builder: (sheetContext, textPrimary, textSecondary) => Padding(
+        padding: const EdgeInsets.only(bottom: 12),
+        child: _RuleList(rules: _chat.settings.value.rules),
       ),
     );
   }
@@ -794,19 +914,13 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
           Row(
             children: [
               IconButton(
-                tooltip: 'Add Photos',
-                onPressed:
-                    !_room.active || _images.length >= ChatService.maxPhotos
-                    ? null
-                    : _pickImages,
-                icon: Icon(Icons.image_outlined, color: textSecondary),
-              ),
-              IconButton(
-                tooltip: 'New Poll',
-                onPressed: _images.isEmpty && !_coolingDown
-                    ? _createPoll
-                    : null,
-                icon: Icon(Icons.poll_outlined, color: textSecondary),
+                tooltip: 'Share',
+                onPressed: _coolingDown ? null : _showAttachMenu,
+                icon: const Icon(
+                  Icons.add_circle_outline_rounded,
+                  size: 26,
+                  color: AppPalette.primary,
+                ),
               ),
               Expanded(
                 child: CallbackShortcuts(
@@ -855,16 +969,9 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
 }
 
 class _RuleList extends StatelessWidget {
-  const _RuleList();
+  const _RuleList({required this.rules});
 
-  static const List<String> _rules = <String>[
-    'Only signed-in BRACU students can join. You are added to the Lounge and to your own course and section rooms automatically.',
-    'Your BRACU name and profile photo are shown with your messages.',
-    'Messages and photos are kept for 180 days, then deleted automatically. They cannot be edited or deleted before then.',
-    'Be respectful. No harassment, hate, spam or sharing other people\'s private information.',
-    'Report messages that break these rules. Messages reported by several students are hidden, and moderators can mute or ban students.',
-    'PreConnect is a student-run project and is not affiliated with BRAC University.',
-  ];
+  final List<String> rules;
 
   @override
   Widget build(BuildContext context) {
@@ -873,7 +980,7 @@ class _RuleList extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        for (final rule in _rules) ...[
+        for (final rule in rules) ...[
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -923,7 +1030,7 @@ class _ReportSheetState extends State<_ReportSheet> {
   @override
   Widget build(BuildContext context) {
     final textSecondary = AppPalette.textSecondary(context);
-    const minLength = ChatService.reportReasonMinLength;
+    final minLength = ChatService.instance.settings.value.reportReasonMin;
     return Padding(
       padding: EdgeInsets.only(
         bottom: MediaQuery.viewInsetsOf(context).bottom + 12,
@@ -1355,7 +1462,12 @@ class _MessageBubble extends StatelessWidget {
                         style: TextStyle(fontSize: 12, color: textSecondary),
                       ),
                     ),
-                  if (message.isPoll)
+                  if (message.event != null)
+                    _EventCard(
+                      event: message.event!,
+                      enabled: !message.isPending,
+                    )
+                  else if (message.isPoll)
                     _PollCard(
                       message: message,
                       votes: votes,
@@ -1741,38 +1853,347 @@ class _ChatImageState extends State<_ChatImage> {
 }
 
 class _PinnedNote extends StatelessWidget {
-  const _PinnedNote({required this.text});
+  const _PinnedNote({required this.text, required this.onLongPress});
 
   final String text;
+  final VoidCallback? onLongPress;
 
   @override
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(12, 4, 12, 4),
-      child: AppCard(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Icon(
-              Icons.push_pin_outlined,
-              size: 16,
-              color: AppPalette.primary,
+      child: GestureDetector(
+        onLongPress: onLongPress,
+        child: AppCard(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          child: SizedBox(
+            width: double.infinity,
+            child: _LinkText(
+              text: text,
+              maxLines: 3,
+              style: TextStyle(
+                fontSize: 13,
+                height: 1.35,
+                color: AppPalette.textPrimary(context),
+              ),
             ),
-            const Gap(10),
-            Expanded(
-              child: _LinkText(
-                text: text,
-                maxLines: 3,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+IconData _eventIcon(String kind) => switch (kind) {
+  'quiz' => Icons.quiz_outlined,
+  'assignment' => Icons.assignment_outlined,
+  _ => Icons.alarm_rounded,
+};
+
+class _AttachOption extends StatelessWidget {
+  const _AttachOption({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final enabled = onTap != null;
+    final color = enabled
+        ? AppPalette.primary
+        : AppPalette.textSecondary(context);
+    return Center(
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 6),
+          child: Column(
+            children: [
+              Container(
+                width: 52,
+                height: 52,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: color.withValues(alpha: 0.14),
+                ),
+                child: Icon(icon, color: color, size: 24),
+              ),
+              const Gap(6),
+              Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
                 style: TextStyle(
-                  fontSize: 13,
-                  height: 1.35,
-                  color: AppPalette.textPrimary(context),
+                  fontSize: 12,
+                  color: enabled
+                      ? AppPalette.textPrimary(context)
+                      : AppPalette.textSecondary(context),
                 ),
               ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _EventSheet extends StatefulWidget {
+  const _EventSheet({required this.kind, required this.onShare});
+
+  final String kind;
+  final ValueChanged<ChatEvent> onShare;
+
+  @override
+  State<_EventSheet> createState() => _EventSheetState();
+}
+
+class _EventSheetState extends State<_EventSheet> {
+  final TextEditingController _title = TextEditingController();
+  late DateTime _at = () {
+    final tomorrow = DateTime.now().add(const Duration(days: 1));
+    return DateTime(tomorrow.year, tomorrow.month, tomorrow.day, 9);
+  }();
+
+  @override
+  void dispose() {
+    _title.dispose();
+    super.dispose();
+  }
+
+  Future<void> _pickDate() async {
+    final picked = await showAppDatePicker(
+      context,
+      initialDate: _at,
+      dayCount: 120,
+    );
+    if (picked == null || !mounted) return;
+    setState(
+      () => _at = DateTime(
+        picked.year,
+        picked.month,
+        picked.day,
+        _at.hour,
+        _at.minute,
+      ),
+    );
+  }
+
+  Future<void> _pickTime() async {
+    final picked = await showAppTimePicker(
+      context,
+      initialTime: TimeOfDay.fromDateTime(_at),
+    );
+    if (picked == null || !mounted) return;
+    setState(
+      () => _at = DateTime(
+        _at.year,
+        _at.month,
+        _at.day,
+        picked.hour,
+        picked.minute,
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final label = personalSchedulesKindLabel(widget.kind);
+    return Padding(
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.viewInsetsOf(context).bottom + 12,
+      ),
+      child: ValueListenableBuilder<TextEditingValue>(
+        valueListenable: _title,
+        builder: (context, value, _) => Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            TextField(
+              controller: _title,
+              maxLength: 120,
+              textCapitalization: TextCapitalization.sentences,
+              decoration: appInputDecoration(
+                context,
+                hintText: '$label title',
+                counterText: '',
+              ),
+            ),
+            const Gap(10),
+            Row(
+              children: [
+                Expanded(
+                  child: AppActionButton(
+                    label: AppTime.formatDayMonth(_at),
+                    icon: Icons.event_outlined,
+                    onPressed: _pickDate,
+                  ),
+                ),
+                const Gap(10),
+                Expanded(
+                  child: AppActionButton(
+                    label: AppTime.formatDateTime(_at),
+                    icon: Icons.schedule_rounded,
+                    onPressed: _pickTime,
+                  ),
+                ),
+              ],
+            ),
+            const Gap(16),
+            AppActionButton(
+              label: 'Share $label',
+              outlined: false,
+              backgroundColor: AppPalette.primary,
+              foregroundColor: Colors.white,
+              onPressed: value.text.trim().isEmpty
+                  ? null
+                  : () => widget.onShare(
+                      ChatEvent(
+                        kind: widget.kind,
+                        title: value.text.trim(),
+                        at: _at,
+                      ),
+                    ),
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _EventCard extends StatefulWidget {
+  const _EventCard({required this.event, required this.enabled});
+
+  final ChatEvent event;
+  final bool enabled;
+
+  @override
+  State<_EventCard> createState() => _EventCardState();
+}
+
+class _EventCardState extends State<_EventCard> {
+  bool _added = false;
+  bool _saving = false;
+
+  String get _sectionName {
+    final event = widget.event;
+    if (event.sectionName.isNotEmpty) return event.sectionName;
+    final prefix = '${event.courseCode}-';
+    final own = ChatService.instance.rooms.value.where(
+      (room) =>
+          room.kind == ChatRoomKind.section && room.title.startsWith(prefix),
+    );
+    return own.isEmpty ? '' : own.first.title.substring(prefix.length);
+  }
+
+  String get _scheduleTitle => personalSchedulesComposeTitle(
+    courseCode: widget.event.courseCode,
+    sectionName: _sectionName,
+    suffix: widget.event.title,
+  );
+
+  @override
+  void initState() {
+    super.initState();
+    unawaited(_checkAdded());
+  }
+
+  Future<void> _checkAdded() async {
+    final items = await CustomSchedulesService().getCachedItems();
+    final added = (items ?? const []).any(
+      (item) =>
+          item.title == _scheduleTitle &&
+          item.startTime.isAtSameMomentAs(widget.event.at),
+    );
+    if (added && mounted) setState(() => _added = true);
+  }
+
+  Future<void> _add() async {
+    setState(() => _saving = true);
+    final event = widget.event;
+    try {
+      await CustomSchedulesService().createItem(
+        kind: event.kind,
+        title: _scheduleTitle,
+        startTime: event.at,
+        reminderAt: event.at.subtract(const Duration(hours: 1)),
+        courseCode: event.courseCode,
+        sectionName: _sectionName,
+      );
+      if (!mounted) return;
+      setState(() => _added = true);
+      showAppSnackBar(
+        context,
+        '${personalSchedulesKindLabel(event.kind)} added to your schedule.',
+      );
+    } catch (_) {
+      if (mounted) {
+        showAppSnackBar(context, 'Could not add it to your schedule.');
+      }
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final event = widget.event;
+    final textSecondary = AppPalette.textSecondary(context);
+    final course = <String>[
+      event.courseCode,
+      if (event.sectionName.isNotEmpty) formatSectionBadge(event.sectionName),
+    ].where((part) => part.isNotEmpty).join(' · ');
+    return SizedBox(
+      width: 240,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(_eventIcon(event.kind), size: 14, color: AppPalette.primary),
+              const Gap(6),
+              Text(
+                course.isEmpty
+                    ? personalSchedulesKindLabel(event.kind)
+                    : '${personalSchedulesKindLabel(event.kind)} · $course',
+                style: TextStyle(fontSize: 11, color: textSecondary),
+              ),
+            ],
+          ),
+          const Gap(4),
+          Text(
+            event.title,
+            style: TextStyle(
+              fontSize: 14,
+              height: 1.35,
+              fontWeight: FontWeight.w600,
+              color: AppPalette.textPrimary(context),
+            ),
+          ),
+          const Gap(2),
+          Text(
+            '${AppTime.formatDayMonth(event.at)} · ${AppTime.formatDateTime(event.at)}',
+            style: TextStyle(fontSize: 12, color: textSecondary),
+          ),
+          const Gap(10),
+          SizedBox(
+            width: double.infinity,
+            child: AppActionButton(
+              label: _added ? 'Added to Schedule' : 'Add to Schedule',
+              icon: _added
+                  ? Icons.check_rounded
+                  : Icons.event_available_outlined,
+              onPressed: !widget.enabled || _added || _saving ? null : _add,
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -5,6 +5,7 @@ import 'package:gap/gap.dart';
 import 'package:preconnect/api/chat.dart';
 import 'package:preconnect/model/chat.dart';
 import 'package:preconnect/pages/chat_room.dart';
+import 'package:preconnect/pages/custom_sections/schedules_shared.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/app_storage.dart';
 import 'package:preconnect/tools/storage_keys.dart';
@@ -202,7 +203,10 @@ String _roomSubtitle(ChatRoom room) {
               (part) => part.length > 1 && !part.endsWith('.'),
               orElse: () => last.author.name,
             );
-  final body = last.isPoll
+  final event = last.event;
+  final body = event != null
+      ? '${personalSchedulesKindLabel(event.kind)}: ${last.text}'
+      : last.isPoll
       ? 'Poll: ${last.text}'
       : (last.text.isEmpty ? 'Photo' : last.text);
   return '$sender: $body';

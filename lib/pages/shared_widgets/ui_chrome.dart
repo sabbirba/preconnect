@@ -450,7 +450,7 @@ class HeaderActionButton extends StatelessWidget {
             padding: const EdgeInsets.all(8),
             child: Icon(
               icon,
-              size: 20,
+              size: 24,
               color: onTap == null
                   ? AppPalette.textSecondary(context)
                   : AppPalette.primary,

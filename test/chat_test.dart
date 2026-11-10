@@ -105,6 +105,32 @@ void main() {
     expect(ChatVote.fromJson(<String, dynamic>{'option': 1}).option, 1);
   });
 
+  test('event and settings read what the server sends', () {
+    final message = ChatMessage.fromJson(<String, dynamic>{
+      'id': 'm2',
+      'text': 'Quiz 2',
+      'event': <String, dynamic>{
+        'kind': 'quiz',
+        'title': 'Quiz 2',
+        'at': '2026-11-20T03:00:00.000Z',
+        'courseCode': 'CSE110',
+        'sectionName': '05',
+      },
+    });
+    final event = message.event!;
+    expect(event.kind, 'quiz');
+    expect(event.at.toUtc(), DateTime.utc(2026, 11, 20, 3));
+    expect(ChatMessage.fromJson(message.toJson()).event?.sectionName, '05');
+    final settings = ChatSettings.fromJson(<String, dynamic>{
+      'rules': <String>['Be kind.'],
+      'reportReasonMin': 50,
+      'maxPhotos': 4,
+    });
+    expect(settings.rules, <String>['Be kind.']);
+    expect(settings.maxPhotos, 4);
+    expect(ChatSettings.fromJson(settings.toJson()).reportReasonMin, 50);
+  });
+
   test('message without expand keeps the author id', () {
     final message = ChatMessage.fromJson({
       'id': 'm3',

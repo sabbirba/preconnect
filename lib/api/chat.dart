@@ -53,7 +53,6 @@ class ChatService {
     '🙏',
   ];
   static const int pageSize = 50;
-  static const int maxPhotos = 10;
   static const Duration _sessionLifetime = Duration(hours: 5);
   static const Duration _preloadInterval = Duration(minutes: 5);
   static const Duration _fileTokenLifetime = Duration(minutes: 2);
@@ -72,6 +71,9 @@ class ChatService {
     const <String>{},
   );
   final ValueNotifier<int> recentVersion = ValueNotifier<int>(0);
+  final ValueNotifier<ChatSettings> settings = ValueNotifier<ChatSettings>(
+    ChatSettings.initial,
+  );
 
   PocketBase? _pb;
   ChatAuthor? _me;
@@ -249,6 +251,14 @@ class ChatService {
               .toList();
         }
       }
+      final savedSettings = jsonDecode(
+        store.getStringSync(StorageKeys.chatSettings) ?? '{}',
+      );
+      if (savedSettings is Map && savedSettings.isNotEmpty) {
+        settings.value = ChatSettings.fromJson(
+          savedSettings.cast<String, dynamic>(),
+        );
+      }
       if (_recent.isEmpty) {
         final decoded = jsonDecode(
           store.getStringSync(StorageKeys.chatRecent) ?? '{}',
@@ -337,13 +347,24 @@ class ChatService {
 
   Future<List<ChatRoom>> _loadRooms() async {
     final pb = await _client();
-    final (roomRecords, memberRecords, blockRecords) = await (
+    final (roomRecords, memberRecords, blockRecords, configRecords) = await (
       pb
           .collection('chat_rooms')
           .getFullList(sort: '-active,-lastMessageAt,title'),
       pb.collection('chat_members').getFullList(),
       pb.collection('chat_blocks').getFullList(),
+      pb.collection('chat_config').getList(perPage: 1, skipTotal: true),
     ).wait;
+    final config = configRecords.items.firstOrNull;
+    if (config != null) {
+      settings.value = ChatSettings.fromJson(config.toJson());
+      unawaited(
+        AppStorage.instance.setString(
+          StorageKeys.chatSettings,
+          jsonEncode(settings.value.toJson()),
+        ),
+      );
+    }
     final list = roomRecords.map((r) => ChatRoom.fromJson(r.toJson())).toList();
     _memberIds.clear();
     _lastRead.clear();
@@ -543,6 +564,7 @@ class ChatService {
     String replyToId = '',
     List<String> mentions = const <String>[],
     List<String> pollOptions = const <String>[],
+    ChatEvent? event,
     String nonce = '',
   }) async {
     final pb = await _client();
@@ -564,6 +586,7 @@ class ChatService {
               if (nonce.isNotEmpty) 'clientNonce': nonce,
               if (pollOptions.isNotEmpty)
                 'poll': <String, dynamic>{'options': pollOptions},
+              if (event != null) 'event': event.toJson(),
             },
             files: files,
             expand: _messageExpand,
@@ -627,6 +650,21 @@ class ChatService {
     }
   }
 
+  Future<void> pin(String roomId, String text) async {
+    final pb = await _client();
+    try {
+      await pb.send(
+        '/api/chat/pin',
+        method: 'POST',
+        body: <String, dynamic>{'room': roomId, 'text': text},
+      );
+    } on ClientException catch (error) {
+      throw ChatException(
+        _serverMessage(error.response['message'], 'Could not update the pin.'),
+      );
+    }
+  }
+
   void sendTyping(String roomId) {
     final last = _typingSentAt;
     final now = DateTime.now();
@@ -669,8 +707,6 @@ class ChatService {
           },
         );
   }
-
-  static const int reportReasonMinLength = 100;
 
   Future<void> report(String messageId, String reason) async {
     final pb = await _client();
@@ -867,6 +903,7 @@ class ChatService {
         StorageKeys.chatPushTopics,
         StorageKeys.chatRoomsSnapshot,
         StorageKeys.chatRecent,
+        StorageKeys.chatSettings,
       ])
         AppStorage.instance.remove(key),
     ]);
@@ -887,5 +924,6 @@ class ChatService {
     unread.value = const <String, int>{};
     blocked.value = const <String>{};
     muted.value = const <String>{};
+    settings.value = ChatSettings.initial;
   }
 }

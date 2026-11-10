@@ -129,6 +129,7 @@ class ChatMessage {
     this.localImages = const <Uint8List>[],
     this.pollOptions = const <String>[],
     this.preview,
+    this.event,
   });
 
   factory ChatMessage.fromJson(Map<String, dynamic> json) {
@@ -159,6 +160,9 @@ class ChatMessage {
               (json['preview'] as Map).cast<String, dynamic>(),
             )
           : null,
+      event: json['event'] is Map
+          ? ChatEvent.fromJson((json['event'] as Map).cast<String, dynamic>())
+          : null,
     );
   }
 
@@ -177,6 +181,7 @@ class ChatMessage {
   final List<Uint8List> localImages;
   final List<String> pollOptions;
   final ChatLinkPreview? preview;
+  final ChatEvent? event;
 
   bool get isPoll => pollOptions.isNotEmpty;
   bool get hasImage => images.isNotEmpty || localImages.isNotEmpty;
@@ -194,6 +199,7 @@ class ChatMessage {
     'clientNonce': nonce,
     if (isPoll) 'poll': <String, dynamic>{'options': pollOptions},
     if (preview != null) 'preview': preview!.toJson(),
+    if (event != null) 'event': event!.toJson(),
     'expand': <String, dynamic>{
       'author': author.toJson(),
       if (replyToId.isNotEmpty)
@@ -226,7 +232,72 @@ class ChatMessage {
     localImages: localImages ?? this.localImages,
     pollOptions: pollOptions,
     preview: preview,
+    event: event,
   );
+}
+
+class ChatEvent {
+  const ChatEvent({
+    required this.kind,
+    required this.title,
+    required this.at,
+    this.courseCode = '',
+    this.sectionName = '',
+  });
+
+  factory ChatEvent.fromJson(Map<String, dynamic> json) => ChatEvent(
+    kind: _string(json['kind']),
+    title: _string(json['title']),
+    at: (_date(json['at']) ?? DateTime.now()).toLocal(),
+    courseCode: _string(json['courseCode']),
+    sectionName: _string(json['sectionName']),
+  );
+
+  static const List<String> kinds = <String>['quiz', 'assignment', 'reminder'];
+
+  final String kind;
+  final String title;
+  final DateTime at;
+  final String courseCode;
+  final String sectionName;
+
+  Map<String, dynamic> toJson() => <String, dynamic>{
+    'kind': kind,
+    'title': title,
+    'at': at.toUtc().toIso8601String(),
+    'courseCode': courseCode,
+    'sectionName': sectionName,
+  };
+}
+
+class ChatSettings {
+  const ChatSettings({
+    required this.rules,
+    required this.reportReasonMin,
+    required this.maxPhotos,
+  });
+
+  factory ChatSettings.fromJson(Map<String, dynamic> json) => ChatSettings(
+    rules: _strings(json['rules']),
+    reportReasonMin: _int(json['reportReasonMin']),
+    maxPhotos: _int(json['maxPhotos']),
+  );
+
+  static const ChatSettings initial = ChatSettings(
+    rules: <String>[],
+    reportReasonMin: 100,
+    maxPhotos: 10,
+  );
+
+  final List<String> rules;
+  final int reportReasonMin;
+  final int maxPhotos;
+
+  Map<String, dynamic> toJson() => <String, dynamic>{
+    'rules': rules,
+    'reportReasonMin': reportReasonMin,
+    'maxPhotos': maxPhotos,
+  };
 }
 
 class ChatLinkPreview {
