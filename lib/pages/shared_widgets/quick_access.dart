@@ -78,14 +78,6 @@ List<QuickAccessItem> defaultQuickAccessItems({
     onTap: () => onTap(HomeTab.degreeProgress),
   ),
   QuickAccessItem(
-    icon: Icons.developer_mode_outlined,
-    iconWidget: const PreConnectGitHubIcon(size: 22, color: Color(0xFF2C9DFF)),
-    title: 'Devs',
-    subtitle: 'Support',
-    color: const Color(0xFF2C9DFF),
-    onTap: () => onTap(HomeTab.devs),
-  ),
-  QuickAccessItem(
     icon: Icons.local_library_outlined,
     title: 'Library',
     subtitle: 'Libsync',
@@ -121,13 +113,6 @@ List<QuickAccessItem> defaultQuickAccessItems({
     onTap: () => onTap(HomeTab.campusPrinter),
   ),
   QuickAccessItem(
-    icon: Icons.library_books_outlined,
-    title: 'DSpace',
-    subtitle: 'Repository',
-    color: const Color(0xFF3CA947),
-    onTap: () => onTap(HomeTab.dspace),
-  ),
-  QuickAccessItem(
     icon: Icons.folder_copy_outlined,
     title: 'Course',
     subtitle: 'Materials',
@@ -135,11 +120,26 @@ List<QuickAccessItem> defaultQuickAccessItems({
     onTap: () => onTap(HomeTab.materials),
   ),
   QuickAccessItem(
+    icon: Icons.library_books_outlined,
+    title: 'DSpace',
+    subtitle: 'Repository',
+    color: const Color(0xFF3CA947),
+    onTap: () => onTap(HomeTab.dspace),
+  ),
+  QuickAccessItem(
     icon: Icons.calendar_today_outlined,
     title: 'Events',
     subtitle: 'Academic',
     color: const Color(0xFF00A86B),
     onTap: () => onTap(HomeTab.calendar),
+  ),
+  QuickAccessItem(
+    icon: Icons.developer_mode_outlined,
+    iconWidget: const PreConnectGitHubIcon(size: 22, color: Color(0xFF2C9DFF)),
+    title: 'Devs',
+    subtitle: 'Support',
+    color: const Color(0xFF2C9DFF),
+    onTap: () => onTap(HomeTab.devs),
   ),
 ];
 
