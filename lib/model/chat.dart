@@ -130,6 +130,8 @@ class ChatMessage {
     this.pollOptions = const <String>[],
     this.preview,
     this.event,
+    this.fileName = '',
+    this.localFile,
   });
 
   factory ChatMessage.fromJson(Map<String, dynamic> json) {
@@ -163,6 +165,7 @@ class ChatMessage {
       event: json['event'] is Map
           ? ChatEvent.fromJson((json['event'] as Map).cast<String, dynamic>())
           : null,
+      fileName: _string(json['file']),
     );
   }
 
@@ -182,6 +185,10 @@ class ChatMessage {
   final List<String> pollOptions;
   final ChatLinkPreview? preview;
   final ChatEvent? event;
+  final String fileName;
+  final Uint8List? localFile;
+
+  bool get hasFile => fileName.isNotEmpty;
 
   bool get isPoll => pollOptions.isNotEmpty;
   bool get hasImage => images.isNotEmpty || localImages.isNotEmpty;
@@ -200,6 +207,7 @@ class ChatMessage {
     if (isPoll) 'poll': <String, dynamic>{'options': pollOptions},
     if (preview != null) 'preview': preview!.toJson(),
     if (event != null) 'event': event!.toJson(),
+    if (hasFile) 'file': fileName,
     'expand': <String, dynamic>{
       'author': author.toJson(),
       if (replyToId.isNotEmpty)
@@ -233,6 +241,8 @@ class ChatMessage {
     pollOptions: pollOptions,
     preview: preview,
     event: event,
+    fileName: fileName,
+    localFile: localFile,
   );
 }
 
@@ -243,6 +253,7 @@ class ChatEvent {
     required this.at,
     this.courseCode = '',
     this.sectionName = '',
+    this.notes = '',
   });
 
   factory ChatEvent.fromJson(Map<String, dynamic> json) => ChatEvent(
@@ -251,6 +262,7 @@ class ChatEvent {
     at: (_date(json['at']) ?? DateTime.now()).toLocal(),
     courseCode: _string(json['courseCode']),
     sectionName: _string(json['sectionName']),
+    notes: _string(json['notes']),
   );
 
   static const List<String> kinds = <String>['quiz', 'assignment', 'reminder'];
@@ -260,6 +272,7 @@ class ChatEvent {
   final DateTime at;
   final String courseCode;
   final String sectionName;
+  final String notes;
 
   Map<String, dynamic> toJson() => <String, dynamic>{
     'kind': kind,
@@ -267,6 +280,7 @@ class ChatEvent {
     'at': at.toUtc().toIso8601String(),
     'courseCode': courseCode,
     'sectionName': sectionName,
+    'notes': notes,
   };
 }
 

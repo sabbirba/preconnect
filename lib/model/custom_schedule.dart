@@ -126,3 +126,36 @@ class CustomSchedule {
 
   bool get isOverdue => !isDone && startTime.isBefore(DateTime.now());
 }
+
+const String customScheduleTitleSeparator = ' ';
+
+String personalSchedulesComposeTitle({
+  required String courseCode,
+  required String sectionName,
+  required String suffix,
+}) {
+  final code = courseCode.trim().toUpperCase();
+  final section = sectionName.trim();
+  final extra = suffix.trim();
+  if (code.isEmpty) return extra;
+  if (section.isEmpty) {
+    return extra.isEmpty ? code : '$code$customScheduleTitleSeparator$extra';
+  }
+  if (extra.isEmpty) return '$code$customScheduleTitleSeparator$section';
+  return '$code$customScheduleTitleSeparator$section$customScheduleTitleSeparator$extra';
+}
+
+String personalSchedulesKindLabel(String kind) {
+  switch (kind) {
+    case 'quiz':
+      return 'Quiz';
+    case 'assignment':
+      return 'Assignment';
+    case 'reminder':
+      return 'Reminder';
+    default:
+      final value = kind.trim();
+      if (value.isEmpty) return 'Task';
+      return value[0].toUpperCase() + value.substring(1).toLowerCase();
+  }
+}

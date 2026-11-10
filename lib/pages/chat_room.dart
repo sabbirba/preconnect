@@ -1,18 +1,23 @@
 import 'dart:async';
+import 'dart:io';
+import 'dart:math' as math;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:gap/gap.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:preconnect/api/chat.dart';
-import 'package:preconnect/api/custom_schedules.dart';
 import 'package:preconnect/model/chat.dart';
-import 'package:preconnect/pages/custom_sections/schedules_shared.dart';
+import 'package:file_selector/file_selector.dart';
+import 'package:preconnect/model/custom_schedule.dart';
+import 'package:preconnect/tools/file_open.dart';
 import 'package:preconnect/pages/friend_sections/friend_header.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/string_utils.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:preconnect/tools/app_paths.dart';
 import 'package:preconnect/tools/cached_image.dart';
 import 'package:preconnect/tools/image_cache.dart';
 import 'package:preconnect/tools/time_utils.dart';
@@ -144,6 +149,7 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
       });
       _markLatestRead();
       _loadOlderIfAllHidden();
+      unawaited(_chat.scheduleEvents(_messages));
       final visible = _messages
           .where((m) => !m.isPending)
           .map((m) => m.id)
@@ -276,6 +282,7 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
     if (!mounted) return;
     _stopTyping(message.author.id);
     _upsert(message);
+    unawaited(_chat.scheduleEvents(<ChatMessage>[message]));
     _scheduleRead();
   }
 
@@ -381,6 +388,8 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
     List<String> mentions = const <String>[],
     List<String> pollOptions = const <String>[],
     ChatEvent? event,
+    String fileName = '',
+    Uint8List? file,
   }) {
     final me = _chat.me;
     if (me == null) return;
@@ -404,6 +413,8 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
       localImages: images,
       pollOptions: pollOptions,
       event: event,
+      fileName: fileName,
+      localFile: file,
     );
     _input.clear();
     _mentionPicks.clear();
@@ -428,6 +439,8 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
             mentions: pending.mentions,
             pollOptions: pending.pollOptions,
             event: pending.event,
+            fileName: pending.fileName,
+            file: pending.localFile,
             nonce: pending.nonce,
           )
           .then(
@@ -655,7 +668,7 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
                   ? const SizedBox.shrink()
                   : _PinnedNote(
                       text: pinned,
-                      onLongPress: _canPin ? _confirmUnpin : null,
+                      onUnpin: _canPin ? _confirmUnpin : null,
                     );
             },
           ),
@@ -715,6 +728,11 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
             onTap: photosFull ? null : () => pick(_pickImages),
           ),
           _AttachOption(
+            icon: Icons.picture_as_pdf_outlined,
+            label: 'PDF',
+            onTap: _images.isEmpty ? () => pick(_pickPdf) : null,
+          ),
+          _AttachOption(
             icon: Icons.poll_outlined,
             label: 'Poll',
             onTap: _images.isEmpty ? () => pick(_createPoll) : null,
@@ -735,13 +753,43 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               for (final option in options) Expanded(child: option),
-              for (var i = options.length; i < 5; i++)
+              for (var i = options.length; i < 6; i++)
                 const Expanded(child: SizedBox.shrink()),
             ],
           ),
         );
       },
     );
+  }
+
+  Future<void> _pickPdf() async {
+    final picked = await openFile(
+      acceptedTypeGroups: const <XTypeGroup>[
+        XTypeGroup(
+          label: 'PDF',
+          extensions: <String>['pdf'],
+          mimeTypes: <String>['application/pdf'],
+          uniformTypeIdentifiers: <String>['com.adobe.pdf'],
+        ),
+      ],
+    );
+    if (picked == null || !mounted) return;
+    final bytes = await picked.readAsBytes();
+    if (!mounted) return;
+    if (bytes.length > ChatService.maxFileBytes) {
+      showAppSnackBar(context, 'PDFs can be up to 10 MB.');
+      return;
+    }
+    final name = picked.name.toLowerCase().endsWith('.pdf')
+        ? picked.name
+        : '${picked.name}.pdf';
+    _startCooldown();
+    _post(
+      _input.text.trim(),
+      fileName: name.replaceAll(RegExp(r'[^A-Za-z0-9._ -]'), '_'),
+      file: bytes,
+    );
+    _input.clear();
   }
 
   Future<void> _createEvent(String kind) {
@@ -1418,7 +1466,7 @@ class _MessageBubble extends StatelessWidget {
         .toSet();
     final hasReply =
         message.replyToId.isNotEmpty && message.replyText.isNotEmpty;
-    final hasText = hasReply || message.text.isNotEmpty;
+    final hasText = hasReply || message.text.isNotEmpty || message.hasFile;
     final bubble = GestureDetector(
       onTap: onTap,
       onLongPress: onLongPress,
@@ -1432,9 +1480,7 @@ class _MessageBubble extends StatelessWidget {
           if (message.hasImage && hasText) const Gap(4),
           if (hasText)
             Container(
-              constraints: BoxConstraints(
-                maxWidth: MediaQuery.sizeOf(context).width * 0.72,
-              ),
+              constraints: BoxConstraints(maxWidth: _bubbleMaxWidth(context)),
               padding: const EdgeInsets.symmetric(
                 horizontal: _inset,
                 vertical: 8,
@@ -1462,6 +1508,10 @@ class _MessageBubble extends StatelessWidget {
                         style: TextStyle(fontSize: 12, color: textSecondary),
                       ),
                     ),
+                  if (message.hasFile) ...[
+                    _FileCard(message: message),
+                    if (message.text.isNotEmpty) const Gap(8),
+                  ],
                   if (message.event != null)
                     _EventCard(
                       event: message.event!,
@@ -1650,7 +1700,6 @@ class _ChatPhotos extends StatelessWidget {
 
   final ChatMessage message;
 
-  static const double _width = 220;
   static const double _gap = 4;
   static const double radius = 16;
 
@@ -1658,9 +1707,10 @@ class _ChatPhotos extends StatelessWidget {
   Widget build(BuildContext context) {
     final local = message.isPending && message.localImages.isNotEmpty;
     final count = local ? message.localImages.length : message.images.length;
-    final size = count == 1 ? _width : (_width - _gap) / 2;
+    final width = _bubbleMaxWidth(context);
+    final size = count == 1 ? width : (width - _gap) / 2;
     return SizedBox(
-      width: _width,
+      width: width,
       child: Wrap(
         spacing: _gap,
         runSpacing: _gap,
@@ -1853,31 +1903,42 @@ class _ChatImageState extends State<_ChatImage> {
 }
 
 class _PinnedNote extends StatelessWidget {
-  const _PinnedNote({required this.text, required this.onLongPress});
+  const _PinnedNote({required this.text, required this.onUnpin});
 
   final String text;
-  final VoidCallback? onLongPress;
+  final VoidCallback? onUnpin;
 
   @override
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(12, 4, 12, 4),
-      child: GestureDetector(
-        onLongPress: onLongPress,
-        child: AppCard(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-          child: SizedBox(
-            width: double.infinity,
-            child: _LinkText(
-              text: text,
-              maxLines: 3,
-              style: TextStyle(
-                fontSize: 13,
-                height: 1.35,
-                color: AppPalette.textPrimary(context),
+      child: AppCard(
+        padding: EdgeInsets.fromLTRB(14, 10, onUnpin == null ? 14 : 4, 10),
+        child: Row(
+          children: [
+            Expanded(
+              child: _LinkText(
+                text: text,
+                maxLines: 3,
+                style: TextStyle(
+                  fontSize: 13,
+                  height: 1.35,
+                  color: AppPalette.textPrimary(context),
+                ),
               ),
             ),
-          ),
+            if (onUnpin != null)
+              IconButton(
+                tooltip: 'Unpin',
+                visualDensity: VisualDensity.compact,
+                onPressed: onUnpin,
+                icon: Icon(
+                  Icons.close_rounded,
+                  size: 18,
+                  color: AppPalette.textSecondary(context),
+                ),
+              ),
+          ],
         ),
       ),
     );
@@ -1956,6 +2017,7 @@ class _EventSheet extends StatefulWidget {
 
 class _EventSheetState extends State<_EventSheet> {
   final TextEditingController _title = TextEditingController();
+  final TextEditingController _notes = TextEditingController();
   late DateTime _at = () {
     final tomorrow = DateTime.now().add(const Duration(days: 1));
     return DateTime(tomorrow.year, tomorrow.month, tomorrow.day, 9);
@@ -1964,6 +2026,7 @@ class _EventSheetState extends State<_EventSheet> {
   @override
   void dispose() {
     _title.dispose();
+    _notes.dispose();
     super.dispose();
   }
 
@@ -2026,6 +2089,19 @@ class _EventSheetState extends State<_EventSheet> {
               ),
             ),
             const Gap(10),
+            TextField(
+              controller: _notes,
+              minLines: 2,
+              maxLines: 4,
+              maxLength: 500,
+              textCapitalization: TextCapitalization.sentences,
+              decoration: appInputDecoration(
+                context,
+                hintText: 'Notes (optional)',
+                counterText: '',
+              ),
+            ),
+            const Gap(10),
             Row(
               children: [
                 Expanded(
@@ -2058,6 +2134,7 @@ class _EventSheetState extends State<_EventSheet> {
                         kind: widget.kind,
                         title: value.text.trim(),
                         at: _at,
+                        notes: _notes.text.trim(),
                       ),
                     ),
             ),
@@ -2079,64 +2156,50 @@ class _EventCard extends StatefulWidget {
 }
 
 class _EventCardState extends State<_EventCard> {
+  final ChatService _chat = ChatService.instance;
   bool _added = false;
   bool _saving = false;
-
-  String get _sectionName {
-    final event = widget.event;
-    if (event.sectionName.isNotEmpty) return event.sectionName;
-    final prefix = '${event.courseCode}-';
-    final own = ChatService.instance.rooms.value.where(
-      (room) =>
-          room.kind == ChatRoomKind.section && room.title.startsWith(prefix),
-    );
-    return own.isEmpty ? '' : own.first.title.substring(prefix.length);
-  }
-
-  String get _scheduleTitle => personalSchedulesComposeTitle(
-    courseCode: widget.event.courseCode,
-    sectionName: _sectionName,
-    suffix: widget.event.title,
-  );
 
   @override
   void initState() {
     super.initState();
-    unawaited(_checkAdded());
+    _chat.scheduledVersion.addListener(_refresh);
+    _refresh();
   }
 
-  Future<void> _checkAdded() async {
-    final items = await CustomSchedulesService().getCachedItems();
-    final added = (items ?? const []).any(
-      (item) =>
-          item.title == _scheduleTitle &&
-          item.startTime.isAtSameMomentAs(widget.event.at),
+  @override
+  void dispose() {
+    _chat.scheduledVersion.removeListener(_refresh);
+    super.dispose();
+  }
+
+  void _refresh() {
+    unawaited(
+      _chat.scheduledItem(widget.event).then((item) {
+        if (mounted) setState(() => _added = item != null);
+      }),
     );
-    if (added && mounted) setState(() => _added = true);
   }
 
-  Future<void> _add() async {
+  Future<void> _toggle() async {
     setState(() => _saving = true);
-    final event = widget.event;
+    final label = personalSchedulesKindLabel(widget.event.kind);
     try {
-      await CustomSchedulesService().createItem(
-        kind: event.kind,
-        title: _scheduleTitle,
-        startTime: event.at,
-        reminderAt: event.at.subtract(const Duration(hours: 1)),
-        courseCode: event.courseCode,
-        sectionName: _sectionName,
-      );
-      if (!mounted) return;
-      setState(() => _added = true);
-      showAppSnackBar(
-        context,
-        '${personalSchedulesKindLabel(event.kind)} added to your schedule.',
-      );
-    } catch (_) {
-      if (mounted) {
-        showAppSnackBar(context, 'Could not add it to your schedule.');
+      if (_added) {
+        await _chat.removeFromSchedule(widget.event);
+      } else {
+        await _chat.addToSchedule(widget.event);
       }
+      if (mounted) {
+        showAppSnackBar(
+          context,
+          _added
+              ? '$label removed from your schedule.'
+              : '$label added to your schedule.',
+        );
+      }
+    } catch (_) {
+      if (mounted) showAppSnackBar(context, 'Could not update your schedule.');
     } finally {
       if (mounted) setState(() => _saving = false);
     }
@@ -2146,12 +2209,13 @@ class _EventCardState extends State<_EventCard> {
   Widget build(BuildContext context) {
     final event = widget.event;
     final textSecondary = AppPalette.textSecondary(context);
+    final section = _chat.sectionFor(event);
     final course = <String>[
       event.courseCode,
-      if (event.sectionName.isNotEmpty) formatSectionBadge(event.sectionName),
+      if (section.isNotEmpty) formatSectionBadge(section),
     ].where((part) => part.isNotEmpty).join(' · ');
     return SizedBox(
-      width: 240,
+      width: _cardWidth(context),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -2159,11 +2223,13 @@ class _EventCardState extends State<_EventCard> {
             children: [
               Icon(_eventIcon(event.kind), size: 14, color: AppPalette.primary),
               const Gap(6),
-              Text(
-                course.isEmpty
-                    ? personalSchedulesKindLabel(event.kind)
-                    : '${personalSchedulesKindLabel(event.kind)} · $course',
-                style: TextStyle(fontSize: 11, color: textSecondary),
+              Expanded(
+                child: Text(
+                  course.isEmpty
+                      ? personalSchedulesKindLabel(event.kind)
+                      : '${personalSchedulesKindLabel(event.kind)} · $course',
+                  style: TextStyle(fontSize: 11, color: textSecondary),
+                ),
               ),
             ],
           ),
@@ -2182,21 +2248,156 @@ class _EventCardState extends State<_EventCard> {
             '${AppTime.formatDayMonth(event.at)} · ${AppTime.formatDateTime(event.at)}',
             style: TextStyle(fontSize: 12, color: textSecondary),
           ),
+          if (event.notes.isNotEmpty) ...[
+            const Gap(6),
+            _LinkText(
+              text: event.notes,
+              style: TextStyle(
+                fontSize: 13,
+                height: 1.35,
+                color: AppPalette.textPrimary(context),
+              ),
+            ),
+          ],
           const Gap(10),
           SizedBox(
             width: double.infinity,
             child: AppActionButton(
-              label: _added ? 'Added to Schedule' : 'Add to Schedule',
+              label: _added ? 'Remove from Schedule' : 'Add to Schedule',
               icon: _added
-                  ? Icons.check_rounded
+                  ? Icons.event_busy_outlined
                   : Icons.event_available_outlined,
-              onPressed: !widget.enabled || _added || _saving ? null : _add,
+              onPressed: !widget.enabled || _saving ? null : _toggle,
             ),
           ),
         ],
       ),
     );
   }
+}
+
+double _cardWidth(BuildContext context) =>
+    _bubbleMaxWidth(context) - _MessageBubble._inset * 2;
+
+double _bubbleMaxWidth(BuildContext context) =>
+    math.min(MediaQuery.sizeOf(context).width * 0.78, 340);
+
+class _FileCard extends StatefulWidget {
+  const _FileCard({required this.message});
+
+  final ChatMessage message;
+
+  @override
+  State<_FileCard> createState() => _FileCardState();
+}
+
+class _FileCardState extends State<_FileCard> {
+  bool _opening = false;
+
+  Future<void> _open() async {
+    final message = widget.message;
+    final chat = ChatService.instance;
+    setState(() => _opening = true);
+    try {
+      final file = await AppImageCache.instance.getSingleFile(
+        await chat.fileUrl(message),
+        key: chat.fileKey(message),
+      );
+      if (kIsWeb) {
+        await openPdfInBrowser(
+          bytes: await file.readAsBytes(),
+          fileName: message.fileName,
+        );
+      } else {
+        final named = File(
+          '${(await AppPaths.temporaryDirectory()).path}/'
+          '${_displayName(message.fileName)}',
+        );
+        if (!await named.exists() ||
+            await named.length() != await file.length()) {
+          await file.copy(named.path);
+        }
+        if (!await NativeFile.open(named.path) && mounted) {
+          showAppSnackBar(context, 'No app could open this PDF.');
+        }
+      }
+    } catch (_) {
+      if (mounted) showAppSnackBar(context, 'The PDF could not be opened.');
+    } finally {
+      if (mounted) setState(() => _opening = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final message = widget.message;
+    final pending = message.isPending;
+    final textSecondary = AppPalette.textSecondary(context);
+    final size = message.localFile?.length;
+    return InkWell(
+      borderRadius: BorderRadius.circular(_ChatPhotos.radius - 4),
+      onTap: pending || _opening ? null : _open,
+      child: Container(
+        width: _cardWidth(context),
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(_ChatPhotos.radius - 4),
+          border: Border.all(color: textSecondary.withValues(alpha: 0.25)),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: AppPalette.danger.withValues(alpha: 0.14),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(
+                Icons.picture_as_pdf_outlined,
+                color: AppPalette.danger,
+              ),
+            ),
+            const Gap(10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    _displayName(message.fileName),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: AppPalette.textPrimary(context),
+                    ),
+                  ),
+                  const Gap(2),
+                  Text(
+                    size == null
+                        ? 'PDF · Tap to open'
+                        : 'PDF · ${(size / 1048576).toStringAsFixed(1)} MB',
+                    style: TextStyle(fontSize: 11, color: textSecondary),
+                  ),
+                ],
+              ),
+            ),
+            if (_opening || pending)
+              const Padding(
+                padding: EdgeInsets.only(left: 8),
+                child: AppSpinner(size: 18),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+String _displayName(String stored) {
+  final match = RegExp(r'^(.*)_[a-z0-9]{10}(\.pdf)$').firstMatch(stored);
+  return match == null ? stored : '${match.group(1)}${match.group(2)}';
 }
 
 class _TypingLine extends StatelessWidget {
@@ -2315,7 +2516,7 @@ class _LinkPreviewCard extends StatelessWidget {
       child: GestureDetector(
         onTap: () => openExternalUrl(context, preview.url),
         child: Container(
-          width: 240,
+          width: _cardWidth(context),
           clipBehavior: Clip.antiAlias,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(_ChatPhotos.radius - 4),
@@ -2327,10 +2528,10 @@ class _LinkPreviewCard extends StatelessWidget {
               if (preview.image.isNotEmpty)
                 CachedImage(
                   url: preview.image,
-                  width: 240,
-                  height: 126,
+                  width: _cardWidth(context),
+                  height: _cardWidth(context) * 0.52,
                   fit: BoxFit.cover,
-                  placeholder: const SizedBox(height: 126),
+                  placeholder: SizedBox(height: _cardWidth(context) * 0.52),
                   error: const SizedBox.shrink(),
                 ),
               Padding(
@@ -2399,7 +2600,7 @@ class _PollCard extends StatelessWidget {
     final mine = votes.where((v) => v.studentId == myId).firstOrNull?.option;
     final total = votes.length;
     return SizedBox(
-      width: 240,
+      width: _cardWidth(context),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

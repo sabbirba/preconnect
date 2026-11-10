@@ -117,8 +117,6 @@ String personalSchedulesCourseOptionIdentity(
   return '${option.courseCode}|${option.sectionName}';
 }
 
-const String _myTitleSeparator = ' ';
-
 List<String> _splitCustomSchedulesTitleParts(String title) {
   return title
       .split(RegExp(r'\s*•\s*|\s+'))
@@ -131,7 +129,7 @@ String _joinCustomSchedulesTitleParts(Iterable<String> parts) {
   return parts
       .map((part) => part.trim())
       .where((part) => part.isNotEmpty)
-      .join(_myTitleSeparator);
+      .join(customScheduleTitleSeparator);
 }
 
 CustomSchedulesCourseOption? personalSchedulesSelectDefaultCourseOption(
@@ -471,7 +469,7 @@ String personalSchedulesTitleTemplateLabel(
   CustomSchedulesTitleTemplate template,
 ) {
   final courseCode = template.courseOption.courseCode.trim().toUpperCase();
-  return '$courseCode$_myTitleSeparator${personalSchedulesKindLabel(template.kind)}';
+  return '$courseCode$customScheduleTitleSeparator${personalSchedulesKindLabel(template.kind)}';
 }
 
 String personalSchedulesGeneratedTitle({
@@ -487,7 +485,7 @@ String personalSchedulesGeneratedTitle({
           .toUpperCase();
   final kindLabel = personalSchedulesKindLabel(kind);
   if (code.isEmpty) return kindLabel;
-  return '$code$_myTitleSeparator$kindLabel';
+  return '$code$customScheduleTitleSeparator$kindLabel';
 }
 
 String personalSchedulesNormalizeTitle(String title) {
@@ -496,7 +494,7 @@ String personalSchedulesNormalizeTitle(String title) {
     return _joinCustomSchedulesTitleParts(<String>[
       parts[0],
       parts[1],
-      parts.sublist(2).join(_myTitleSeparator),
+      parts.sublist(2).join(customScheduleTitleSeparator),
     ]);
   }
   if (parts.length < 2) return title;
@@ -505,38 +503,7 @@ String personalSchedulesNormalizeTitle(String title) {
     return title;
   }
   final code = parts.first;
-  return '$code$_myTitleSeparator${personalSchedulesKindLabel(kind)}';
-}
-
-String personalSchedulesComposeTitle({
-  required String courseCode,
-  required String sectionName,
-  required String suffix,
-}) {
-  final code = courseCode.trim().toUpperCase();
-  final section = sectionName.trim();
-  final extra = suffix.trim();
-  if (code.isEmpty) return extra;
-  if (section.isEmpty) {
-    return extra.isEmpty ? code : '$code$_myTitleSeparator$extra';
-  }
-  if (extra.isEmpty) return '$code$_myTitleSeparator$section';
-  return '$code$_myTitleSeparator$section$_myTitleSeparator$extra';
-}
-
-String personalSchedulesKindLabel(String kind) {
-  switch (kind) {
-    case 'quiz':
-      return 'Quiz';
-    case 'assignment':
-      return 'Assignment';
-    case 'reminder':
-      return 'Reminder';
-    default:
-      final value = kind.trim();
-      if (value.isEmpty) return 'Task';
-      return value[0].toUpperCase() + value.substring(1).toLowerCase();
-  }
+  return '$code$customScheduleTitleSeparator${personalSchedulesKindLabel(kind)}';
 }
 
 String personalSchedulesFormatKind(String kind) {
@@ -548,7 +515,7 @@ String personalSchedulesCardTitle(String rawTitle) {
   if (parts.length >= 3) {
     return _joinCustomSchedulesTitleParts(<String>[
       parts[0],
-      parts.sublist(2).join(_myTitleSeparator),
+      parts.sublist(2).join(customScheduleTitleSeparator),
     ]);
   }
   if (parts.length < 2) return rawTitle.trim();
@@ -556,7 +523,7 @@ String personalSchedulesCardTitle(String rawTitle) {
   if (kind != 'quiz' && kind != 'assignment' && kind != 'reminder') {
     return rawTitle.trim();
   }
-  return '${parts.first}$_myTitleSeparator${parts.last}';
+  return '${parts.first}$customScheduleTitleSeparator${parts.last}';
 }
 
 String personalSchedulesNormalizeTitleForSave(String rawTitle) {
@@ -565,7 +532,7 @@ String personalSchedulesNormalizeTitleForSave(String rawTitle) {
     return _joinCustomSchedulesTitleParts(<String>[
       parts[0],
       parts[1],
-      parts.sublist(2).join(_myTitleSeparator),
+      parts.sublist(2).join(customScheduleTitleSeparator),
     ]);
   }
   if (parts.length < 2) return rawTitle.trim();
@@ -573,7 +540,7 @@ String personalSchedulesNormalizeTitleForSave(String rawTitle) {
   if (kind != 'quiz' && kind != 'assignment' && kind != 'reminder') {
     return rawTitle.trim();
   }
-  return '${parts.first}$_myTitleSeparator${parts.last}';
+  return '${parts.first}$customScheduleTitleSeparator${parts.last}';
 }
 
 String personalSchedulesSectionBadgeLabel(

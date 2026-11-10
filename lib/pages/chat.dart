@@ -5,7 +5,7 @@ import 'package:gap/gap.dart';
 import 'package:preconnect/api/chat.dart';
 import 'package:preconnect/model/chat.dart';
 import 'package:preconnect/pages/chat_room.dart';
-import 'package:preconnect/pages/custom_sections/schedules_shared.dart';
+import 'package:preconnect/model/custom_schedule.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/app_storage.dart';
 import 'package:preconnect/tools/storage_keys.dart';
@@ -132,25 +132,22 @@ class _ChatPageState extends State<ChatPage> {
           builder: (context, _) {
             final unread = _chat.unread.value;
             final muted = _chat.muted.value;
+            List<ChatRoom> byActivity(bool Function(ChatRoom) test) =>
+                rooms.where(test).toList()
+                  ..sort((a, b) => b.lastMessageAt.compareTo(a.lastMessageAt));
             final groups = <(String, List<ChatRoom>)>[
-              ('', rooms.where((r) => r.kind == ChatRoomKind.lounge).toList()),
+              ('', byActivity((r) => r.kind == ChatRoomKind.lounge)),
               (
                 'Courses',
-                rooms
-                    .where((r) => r.active && r.kind == ChatRoomKind.course)
-                    .toList(),
+                byActivity((r) => r.active && r.kind == ChatRoomKind.course),
               ),
               (
                 'Sections',
-                rooms
-                    .where((r) => r.active && r.kind == ChatRoomKind.section)
-                    .toList(),
+                byActivity((r) => r.active && r.kind == ChatRoomKind.section),
               ),
               (
                 'Past Semesters',
-                rooms
-                    .where((r) => !r.active && r.kind != ChatRoomKind.lounge)
-                    .toList(),
+                byActivity((r) => !r.active && r.kind != ChatRoomKind.lounge),
               ),
             ];
             return AppRefreshList(
@@ -206,6 +203,8 @@ String _roomSubtitle(ChatRoom room) {
   final event = last.event;
   final body = event != null
       ? '${personalSchedulesKindLabel(event.kind)}: ${last.text}'
+      : last.hasFile
+      ? 'PDF${last.text.isEmpty ? '' : ': ${last.text}'}'
       : last.isPoll
       ? 'Poll: ${last.text}'
       : (last.text.isEmpty ? 'Photo' : last.text);

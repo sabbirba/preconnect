@@ -115,12 +115,18 @@ void main() {
         'at': '2026-11-20T03:00:00.000Z',
         'courseCode': 'CSE110',
         'sectionName': '05',
+        'notes': 'Chapters 3 and 4',
       },
+      'file': 'notes_ab12cd34ef.pdf',
     });
     final event = message.event!;
     expect(event.kind, 'quiz');
     expect(event.at.toUtc(), DateTime.utc(2026, 11, 20, 3));
-    expect(ChatMessage.fromJson(message.toJson()).event?.sectionName, '05');
+    final restored = ChatMessage.fromJson(message.toJson());
+    expect(restored.event?.sectionName, '05');
+    expect(restored.event?.notes, 'Chapters 3 and 4');
+    expect(restored.hasFile, isTrue);
+    expect(restored.fileName, 'notes_ab12cd34ef.pdf');
     final settings = ChatSettings.fromJson(<String, dynamic>{
       'rules': <String>['Be kind.'],
       'reportReasonMin': 50,

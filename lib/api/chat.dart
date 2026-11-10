@@ -6,9 +6,11 @@ import 'package:http/http.dart' as http;
 import 'package:pocketbase/pocketbase.dart';
 import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/api/auth.dart';
+import 'package:preconnect/api/custom_schedules.dart';
 import 'package:preconnect/api/fcm.dart';
 import 'package:preconnect/api/schedule.dart';
 import 'package:preconnect/model/chat.dart';
+import 'package:preconnect/model/custom_schedule.dart';
 import 'package:preconnect/model/section_info.dart'
     show parseSectionsFromScheduleJson;
 import 'package:preconnect/tools/app_storage.dart';
@@ -53,6 +55,9 @@ class ChatService {
     '🙏',
   ];
   static const int pageSize = 50;
+  static const int maxFileBytes = 10 * 1024 * 1024;
+  static const int _scheduledLimit = 500;
+  static const Duration scheduleReminderLead = Duration(hours: 1);
   static const Duration _sessionLifetime = Duration(hours: 5);
   static const Duration _preloadInterval = Duration(minutes: 5);
   static const Duration _fileTokenLifetime = Duration(minutes: 2);
@@ -71,6 +76,7 @@ class ChatService {
     const <String>{},
   );
   final ValueNotifier<int> recentVersion = ValueNotifier<int>(0);
+  final ValueNotifier<int> scheduledVersion = ValueNotifier<int>(0);
   final ValueNotifier<ChatSettings> settings = ValueNotifier<ChatSettings>(
     ChatSettings.initial,
   );
@@ -91,6 +97,7 @@ class ChatService {
   DateTime? _roomsLoadedAt;
   Timer? _persistTimer;
   DateTime? _typingSentAt;
+  Future<void> _scheduling = Future<void>.value();
   int _generation = 0;
   String? activeRoomId;
 
@@ -235,6 +242,92 @@ class ChatService {
     );
     recentVersion.value++;
     _persistRecentSoon();
+    unawaited(scheduleEvents(kept));
+  }
+
+  String sectionFor(ChatEvent event) {
+    if (event.sectionName.isNotEmpty) return event.sectionName;
+    final prefix = '${event.courseCode}-';
+    for (final room in rooms.value) {
+      if (room.kind == ChatRoomKind.section && room.title.startsWith(prefix)) {
+        return room.title.substring(prefix.length);
+      }
+    }
+    return '';
+  }
+
+  String scheduleTitle(ChatEvent event) => personalSchedulesComposeTitle(
+    courseCode: event.courseCode,
+    sectionName: sectionFor(event),
+    suffix: event.title,
+  );
+
+  Future<CustomSchedule?> scheduledItem(ChatEvent event) async {
+    final title = scheduleTitle(event);
+    final items = await CustomSchedulesService().getCachedItems();
+    return (items ?? const <CustomSchedule>[])
+        .where(
+          (item) =>
+              item.title == title && item.startTime.isAtSameMomentAs(event.at),
+        )
+        .firstOrNull;
+  }
+
+  Future<void> addToSchedule(ChatEvent event) async {
+    if (await scheduledItem(event) != null) return;
+    await CustomSchedulesService().createItem(
+      kind: event.kind,
+      title: scheduleTitle(event),
+      startTime: event.at,
+      reminderAt: event.at.subtract(scheduleReminderLead),
+      courseCode: event.courseCode,
+      sectionName: sectionFor(event),
+      notes: event.notes,
+    );
+    scheduledVersion.value++;
+  }
+
+  Future<void> removeFromSchedule(ChatEvent event) async {
+    final item = await scheduledItem(event);
+    if (item == null) return;
+    await CustomSchedulesService().deleteItem(item.itemId);
+    scheduledVersion.value++;
+  }
+
+  Future<void> scheduleEvents(List<ChatMessage> messages) =>
+      _scheduling = _scheduling
+          .then((_) => _scheduleEvents(messages))
+          .catchError((Object _) {});
+
+  Future<void> _scheduleEvents(List<ChatMessage> messages) async {
+    final now = DateTime.now();
+    final fresh = messages
+        .where(
+          (message) =>
+              !message.isPending &&
+              message.event != null &&
+              message.event!.at.isAfter(now),
+        )
+        .toList();
+    if (fresh.isEmpty) return;
+    final store = AppStorage.instance;
+    final handled =
+        (await store.getStringList(StorageKeys.chatScheduled) ??
+                const <String>[])
+            .toList();
+    final known = handled.toSet();
+    final pending = fresh.where((message) => !known.contains(message.id));
+    if (pending.isEmpty) return;
+    for (final message in pending) {
+      await addToSchedule(message.event!);
+      handled.add(message.id);
+    }
+    await store.setStringList(
+      StorageKeys.chatScheduled,
+      handled.length > _scheduledLimit
+          ? handled.sublist(handled.length - _scheduledLimit)
+          : handled,
+    );
   }
 
   void restoreCache() {
@@ -565,6 +658,8 @@ class ChatService {
     List<String> mentions = const <String>[],
     List<String> pollOptions = const <String>[],
     ChatEvent? event,
+    String fileName = '',
+    Uint8List? file,
     String nonce = '',
   }) async {
     final pb = await _client();
@@ -572,6 +667,8 @@ class ChatService {
     final files = <http.MultipartFile>[
       for (final photo in compressed)
         http.MultipartFile.fromBytes('image', photo, filename: 'photo.jpg'),
+      if (file != null)
+        http.MultipartFile.fromBytes('file', file, filename: fileName),
     ];
     try {
       final record = await pb
@@ -813,6 +910,12 @@ class ChatService {
     unread.value = <String, int>{...unread.value, roomId: 0};
   }
 
+  String fileKey(ChatMessage message) =>
+      imageKey(message, message.fileName, thumb: false);
+
+  Future<String> fileUrl(ChatMessage message) =>
+      imageUrl(message, message.fileName, thumb: false);
+
   String imageKey(ChatMessage message, String name, {bool thumb = true}) {
     final base =
         '${ApiConfig.pocketBaseUrl}/api/files/chat_messages/'
@@ -904,6 +1007,7 @@ class ChatService {
         StorageKeys.chatRoomsSnapshot,
         StorageKeys.chatRecent,
         StorageKeys.chatSettings,
+        StorageKeys.chatScheduled,
       ])
         AppStorage.instance.remove(key),
     ]);
