@@ -90,10 +90,7 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
         onMessage: _onIncoming,
         onReaction: _onReaction,
       );
-      await watch.catchError((Object error) {
-        _watch = null;
-        throw error;
-      });
+      unawaited(watch.then((_) {}, onError: (Object _) => _watch = null));
       final messages = await _chat.loadMessages(_room.id);
       if (!mounted) return;
       final loaded = messages.map((m) => m.id).toSet();
@@ -573,6 +570,12 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
           );
         }
         final me = _chat.me?.id;
+        final reactionsByMessage = <String, List<ChatReaction>>{};
+        for (final reaction in _reactions) {
+          (reactionsByMessage[reaction.messageId] ??= <ChatReaction>[]).add(
+            reaction,
+          );
+        }
         return ListView.builder(
           controller: _scroll,
           reverse: true,
@@ -594,9 +597,8 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
               isMine: message.author.id == me,
               showAuthor: !grouped,
               showTime: next == null || !_sameGroup(message, next),
-              reactions: _reactions
-                  .where((r) => r.messageId == message.id)
-                  .toList(),
+              reactions:
+                  reactionsByMessage[message.id] ?? const <ChatReaction>[],
               myId: me ?? '',
               onLongPress: message.isPending
                   ? null

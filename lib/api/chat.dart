@@ -630,29 +630,29 @@ class ChatService {
     required void Function(ChatReaction reaction, bool added) onReaction,
   }) async {
     final pb = await _client();
-    final stopMessages = await pb
-        .collection('chat_messages')
-        .subscribe(
-          '*',
-          (event) {
-            final record = event.record;
-            if (event.action == 'create' && record != null) {
-              onMessage(ChatMessage.fromJson(record.toJson()));
-            }
-          },
-          filter: pb.filter('room = {:room}', {'room': roomId}),
-          expand: _messageExpand,
+    final (stopMessages, stopReactions) = await (
+      pb
+          .collection('chat_messages')
+          .subscribe(
+            '*',
+            (event) {
+              final record = event.record;
+              if (event.action == 'create' && record != null) {
+                onMessage(ChatMessage.fromJson(record.toJson()));
+              }
+            },
+            filter: pb.filter('room = {:room}', {'room': roomId}),
+            expand: _messageExpand,
+          ),
+      pb.collection('chat_reactions').subscribe('*', (event) {
+        final record = event.record;
+        if (record == null || event.action == 'update') return;
+        onReaction(
+          ChatReaction.fromJson(record.toJson()),
+          event.action == 'create',
         );
-    final stopReactions = await pb.collection('chat_reactions').subscribe('*', (
-      event,
-    ) {
-      final record = event.record;
-      if (record == null || event.action == 'update') return;
-      onReaction(
-        ChatReaction.fromJson(record.toJson()),
-        event.action == 'create',
-      );
-    }, filter: pb.filter('message.room = {:room}', {'room': roomId}));
+      }, filter: pb.filter('message.room = {:room}', {'room': roomId})),
+    ).wait;
     return ChatWatch(() async {
       await stopMessages();
       await stopReactions();

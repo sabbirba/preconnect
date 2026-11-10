@@ -87,26 +87,28 @@ class FCMService {
 
   static bool _isLocalNotifInitialized = false;
 
-  @pragma('vm:entry-point')
-  static void _onBackgroundNotificationResponse(NotificationResponse response) {
-    final payload = response.payload;
-    if (payload != null && payload.isNotEmpty) {
-      if (payload == 'captive_wifi') {
-        _instance._openCaptiveWifi?.call();
-        return;
+  static void _handlePayloadTap(String? payload) {
+    if (payload == null || payload.isEmpty) return;
+    if (payload == 'captive_wifi') {
+      _instance._openCaptiveWifi?.call();
+      return;
+    }
+    try {
+      final decoded = jsonDecode(payload);
+      if (decoded is Map) {
+        _instance._handleNotificationTapAction(
+          Map<String, dynamic>.from(decoded),
+        );
       }
-      try {
-        final decoded = jsonDecode(payload);
-        if (decoded is Map) {
-          _instance._handleNotificationTapAction(
-            Map<String, dynamic>.from(decoded),
-          );
-        }
-      } catch (error) {
-        unawaited(AppLog.write('Notification payload decode failed: $error'));
-      }
+    } catch (error) {
+      unawaited(AppLog.write('Notification payload decode failed: $error'));
     }
   }
+
+  @pragma('vm:entry-point')
+  static void _onBackgroundNotificationResponse(
+    NotificationResponse response,
+  ) => _handlePayloadTap(response.payload);
 
   static Future<void> ensureLocalNotificationsInitialized() async {
     if (_isLocalNotifInitialized || kIsWeb) return;
@@ -143,27 +145,7 @@ class FCMService {
     final launchDetails = await _localNotifications
         .getNotificationAppLaunchDetails();
     if (launchDetails?.didNotificationLaunchApp ?? false) {
-      final response = launchDetails?.notificationResponse;
-      if (response != null &&
-          response.payload != null &&
-          response.payload!.isNotEmpty) {
-        if (response.payload == 'captive_wifi') {
-          _instance._openCaptiveWifi?.call();
-        } else {
-          try {
-            final decoded = jsonDecode(response.payload!);
-            if (decoded is Map) {
-              _instance._handleNotificationTapAction(
-                Map<String, dynamic>.from(decoded),
-              );
-            }
-          } catch (error) {
-            unawaited(
-              AppLog.write('Notification launch payload decode failed: $error'),
-            );
-          }
-        }
-      }
+      _handlePayloadTap(launchDetails?.notificationResponse?.payload);
     }
 
     if (defaultTargetPlatform == TargetPlatform.android) {
@@ -219,11 +201,7 @@ class FCMService {
     String rawBody, {
     String? category,
     String? module,
-    String? source,
-  }) => stripNotificationCategory(
-    rawBody,
-    categories: [category, module, source],
-  );
+  }) => stripNotificationCategory(rawBody, categories: [category, module]);
 
   static String _notificationCategory(Map<String, dynamic> data) =>
       (data['category'] ?? data['module'] ?? data['source'] ?? '')
@@ -666,21 +644,23 @@ class FCMService {
     Future<Object?> Function(String topic) subscribe,
   ) => Future.wait<Object?>(topics.map(subscribe));
 
+  Future<void> _restoreTopics(
+    Future<bool> Function(String topic) subscribe,
+  ) async {
+    final (topics, pinned, chat) = await (
+      _topicsToSubscribe(),
+      _pinnedSeatTopics(),
+      ChatService.savedPushTopics(),
+    ).wait;
+    await _subscribeAll({...topics, ...pinned, ...chat}, subscribe);
+  }
+
   Future<void> _initWeb() async {
     final token = await _getToken();
     if (token == null) return;
 
     try {
-      final (topics, pinned, chat) = await (
-        _topicsToSubscribe(),
-        _pinnedSeatTopics(),
-        ChatService.savedPushTopics(),
-      ).wait;
-      await _subscribeAll({
-        ...topics,
-        ...pinned,
-        ...chat,
-      }, (topic) => _subscribeToTopicWeb(token, topic));
+      await _restoreTopics((topic) => _subscribeToTopicWeb(token, topic));
     } catch (error) {
       unawaited(AppLog.write('FCM topic restore failed: $error'));
     }
@@ -698,16 +678,9 @@ class FCMService {
 
   Future<void> _subscribeToDefaultTopics() async {
     final token = await _getToken();
-    final (topics, pinned, chat) = await (
-      _topicsToSubscribe(),
-      _pinnedSeatTopics(),
-      ChatService.savedPushTopics(),
-    ).wait;
-    await _subscribeAll({
-      ...topics,
-      ...pinned,
-      ...chat,
-    }, (topic) => _subscribeToTopicInternal(topic, cachedToken: token));
+    await _restoreTopics(
+      (topic) => _subscribeToTopicInternal(topic, cachedToken: token),
+    );
   }
 
   Future<void> _initNative() async {

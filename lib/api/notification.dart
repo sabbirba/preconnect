@@ -465,9 +465,7 @@ class NotificationService {
     return (connect?.newCount ?? 0) + feedUnread;
   }
 
-  Future<NotificationsFeed?> fetchRecentNotifications({
-    bool fromGet = false,
-  }) async {
+  Future<NotificationsFeed?> fetchRecentNotifications() async {
     final url =
         '${ApiConfig.connectApiBase}${ApiConfig.recentNotificationsPath}';
     try {
@@ -517,11 +515,10 @@ class NotificationService {
       module: module,
     );
 
-    final body = description.isNotEmpty ? description : '';
     unawaited(
       FCMService.instance.showLocalNotificationDirect(
         title: item.title,
-        body: body,
+        body: description,
         data: <String, dynamic>{
           if (item.link != null && item.link!.isNotEmpty) 'url': item.link,
           if (module.isNotEmpty) 'category': module,
@@ -541,7 +538,7 @@ class NotificationService {
       return cached;
     }
     if (fromFetch) return null;
-    return fetchRecentNotifications(fromGet: true);
+    return fetchRecentNotifications();
   }
 
   Future<ConnectNotificationDetail> fetchNotificationDetail(int id) async {
