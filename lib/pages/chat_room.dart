@@ -45,18 +45,13 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
   ChatRoom get _room => widget.room;
 
   String _headerSubtitle() {
-    final current = _chat.rooms.value.where((room) => room.id == _room.id);
-    final count = current.isEmpty
-        ? _room.memberCount
-        : current.first.memberCount;
-    if (count > 0) {
-      return '${formatAmount(count)} ${count == 1 ? 'student' : 'students'}';
-    }
-    return switch (_room.kind) {
-      ChatRoomKind.lounge => 'Everyone',
-      ChatRoomKind.course => 'Course',
-      ChatRoomKind.section => 'Section',
-    };
+    final count =
+        _chat.rooms.value
+            .where((room) => room.id == _room.id)
+            .firstOrNull
+            ?.memberCount ??
+        _room.memberCount;
+    return '${formatAmount(count)} ${count == 1 ? 'student' : 'students'}';
   }
 
   @override
@@ -293,48 +288,38 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
       _images = const <Uint8List>[];
       _replyTo = null;
     });
-    if (_scroll.hasClients) _scroll.jumpTo(0);
     _startCooldown();
-    unawaited(
-      _deliver(
-        optimistic,
-        text: text,
-        images: images,
-        replyTo: replyTo,
-        mentions: mentions,
-        nonce: nonce,
-      ),
-    );
+    _deliver(optimistic);
   }
 
-  Future<void> _deliver(
-    ChatMessage optimistic, {
-    required String text,
-    required List<Uint8List> images,
-    required ChatMessage? replyTo,
-    required List<String> mentions,
-    required String nonce,
-  }) async {
-    try {
-      final sent = await _chat.send(
-        _room,
-        text: text,
-        images: images,
-        replyTo: replyTo,
-        mentions: mentions,
-        nonce: nonce,
-      );
-      _upsert(sent);
-      _markLatestRead();
-    } on ChatCooldownException {
-      _upsert(optimistic.copyWith(status: ChatMessageStatus.failed));
-    } on ChatException catch (error) {
-      _upsert(optimistic.copyWith(status: ChatMessageStatus.failed));
-      if (mounted) showAppSnackBar(context, error.message);
-    } on FormatException catch (error) {
-      _upsert(optimistic.copyWith(status: ChatMessageStatus.failed));
-      if (mounted) showAppSnackBar(context, error.message);
-    }
+  void _deliver(ChatMessage pending) {
+    if (_scroll.hasClients) _scroll.jumpTo(0);
+    unawaited(
+      _chat
+          .send(
+            _room,
+            text: pending.text,
+            images: pending.localImages,
+            replyToId: pending.replyToId,
+            mentions: pending.mentions,
+            nonce: pending.nonce,
+          )
+          .then(
+            (sent) {
+              _upsert(sent);
+              _markLatestRead();
+            },
+            onError: (Object error) {
+              _upsert(pending.copyWith(status: ChatMessageStatus.failed));
+              if (error is ChatCooldownException || !mounted) return;
+              showAppSnackBar(context, switch (error) {
+                ChatException(:final message) => message,
+                FormatException(:final message) => message,
+                _ => 'Message could not be sent.',
+              });
+            },
+          ),
+    );
   }
 
   void _retry(ChatMessage message) {
@@ -346,27 +331,7 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
         retried,
       ],
     );
-    if (_scroll.hasClients) _scroll.jumpTo(0);
-    final replyStub = message.replyToId.isEmpty
-        ? null
-        : ChatMessage(
-            id: message.replyToId,
-            roomId: _room.id,
-            author: const ChatAuthor(id: '', name: '', photo: ''),
-            text: '',
-            images: const <String>[],
-            created: message.created,
-          );
-    unawaited(
-      _deliver(
-        retried,
-        text: message.text,
-        images: message.localImages,
-        replyTo: replyStub,
-        mentions: message.mentions,
-        nonce: message.nonce,
-      ),
-    );
+    _deliver(retried);
   }
 
   void _mention(ChatAuthor author) {
@@ -530,18 +495,12 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
             valueListenable: _chat.muted,
             builder: (context, muted, _) {
               final isMuted = muted.contains(_room.id);
-              return IconButton(
+              return HeaderActionButton(
                 tooltip: isMuted ? 'Unmute' : 'Mute',
-                onPressed: () => _toggleMute(!isMuted),
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
-                visualDensity: VisualDensity.compact,
-                icon: Icon(
-                  isMuted
-                      ? Icons.notifications_off_outlined
-                      : Icons.notifications_none_rounded,
-                  color: AppPalette.primary,
-                ),
+                icon: isMuted
+                    ? Icons.notifications_off_outlined
+                    : Icons.notifications_none_rounded,
+                onTap: () => _toggleMute(!isMuted),
               );
             },
           ),
@@ -1112,10 +1071,6 @@ class _MessageBubble extends StatelessWidget {
         .where((r) => r.studentId == myId)
         .map((r) => r.emoji)
         .toSet();
-    final time = Text(
-      AppTime.formatDateTime(message.created),
-      style: TextStyle(fontSize: 10, color: textSecondary),
-    );
     final hasReply =
         message.replyToId.isNotEmpty && message.replyText.isNotEmpty;
     final hasText = hasReply || message.text.isNotEmpty;
@@ -1311,7 +1266,10 @@ class _MessageBubble extends StatelessWidget {
                 if (showTime)
                   Padding(
                     padding: const EdgeInsets.fromLTRB(4, 3, 4, 0),
-                    child: time,
+                    child: Text(
+                      AppTime.formatDateTime(message.created),
+                      style: TextStyle(fontSize: 10, color: textSecondary),
+                    ),
                   ),
               ],
             ),

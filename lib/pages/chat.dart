@@ -412,19 +412,13 @@ class _BlockedStudentsPage extends StatefulWidget {
 class _BlockedStudentsPageState extends State<_BlockedStudentsPage> {
   final ChatService _chat = ChatService.instance;
   late Future<List<ChatAuthor>> _future = _chat.loadBlockedStudents();
-  final Set<String> _removed = <String>{};
 
-  void _reload() {
-    setState(() {
-      _removed.clear();
-      _future = _chat.loadBlockedStudents();
-    });
-  }
+  void _reload() => setState(() => _future = _chat.loadBlockedStudents());
 
   Future<void> _unblock(ChatAuthor student) async {
     try {
       await _chat.unblock(student.id);
-      if (mounted) setState(() => _removed.add(student.id));
+      if (mounted) setState(() {});
     } catch (_) {
       if (mounted) showAppSnackBar(context, 'Could not unblock. Try again.');
     }
@@ -450,7 +444,7 @@ class _BlockedStudentsPageState extends State<_BlockedStudentsPage> {
             );
           }
           final students = (snapshot.data ?? const <ChatAuthor>[])
-              .where((student) => !_removed.contains(student.id))
+              .where((student) => _chat.blocked.value.contains(student.id))
               .toList();
           if (students.isEmpty) {
             return const AppEmptyState(

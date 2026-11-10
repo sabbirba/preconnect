@@ -159,7 +159,7 @@ class ChatService {
       response = await _requestSession();
     }
     if (response.statusCode == 401) {
-      throw ChatException(_errorMessage(response.body));
+      throw ChatException(_serverMessage(_decodeMessage(response.body)));
     }
     if (response.statusCode != 200) {
       throw const ChatException('Chat is unavailable right now.');
@@ -177,15 +177,24 @@ class ChatService {
     _fileToken = null;
   }
 
-  String _errorMessage(String body) {
+  Object? _decodeMessage(String body) {
     try {
       final decoded = jsonDecode(body);
-      if (decoded is Map && decoded['message'] is String) {
-        return decoded['message'] as String;
-      }
-    } catch (_) {}
-    return 'Chat is unavailable right now.';
+      return decoded is Map ? decoded['message'] : null;
+    } catch (_) {
+      return null;
+    }
   }
+
+  String _serverMessage(
+    Object? message, [
+    String fallback = 'Chat is unavailable right now.',
+  ]) =>
+      message is String &&
+          message.isNotEmpty &&
+          message != 'Failed to create record.'
+      ? message
+      : fallback;
 
   ChatRecent recent(String roomId) => _recent[roomId] ?? ChatRecent.empty;
 
@@ -291,37 +300,24 @@ class ChatService {
       final list = await loadRooms(force: true);
       unawaited(keepRoomsLive());
       await Future.wait(
-        list.where((room) => !isFresh(room.id)).map(_preloadRoom),
+        list.where((room) => !isFresh(room.id)).map((r) => _sync(r.id)),
       );
     } catch (_) {
       _preloadedAt = null;
     }
   }
 
-  Future<void> _preloadRoom(ChatRoom room) async {
-    final messages = await loadMessages(room.id);
-    final reactions = await loadReactions(
-      messages.map((message) => message.id).toList(),
-    );
-    remember(room.id, messages, reactions);
-  }
-
-  Future<void> _catchUp(String roomId) async {
+  Future<void> _sync(String roomId) async {
     final cached = recent(roomId);
-    final room = _room(roomId);
-    try {
-      if (cached.messages.isEmpty) {
-        if (room != null) await _preloadRoom(room);
-        return;
-      }
-      final fresh = await loadMessages(roomId, after: cached.messages.last);
-      if (isViewing(roomId)) return;
-      final known = cached.messages.map((message) => message.id).toSet();
-      remember(roomId, [
-        ...cached.messages,
-        ...fresh.where((message) => !known.contains(message.id)),
-      ], cached.reactions);
-    } catch (_) {}
+    final fresh = await loadMessages(roomId, after: cached.messages.lastOrNull);
+    if (isViewing(roomId)) return;
+    final kept = fresh.length >= pageSize
+        ? const <ChatMessage>[]
+        : cached.messages;
+    final known = {for (final message in kept) message.id};
+    final added = fresh.where((m) => !known.contains(m.id)).toList();
+    final reactions = await loadReactions(added.map((m) => m.id).toList());
+    remember(roomId, [...kept, ...added], [...cached.reactions, ...reactions]);
   }
 
   Future<List<ChatRoom>> loadRooms({bool force = false}) async {
@@ -380,34 +376,6 @@ class ChatService {
     };
   }
 
-  Future<int> _countUnread(String roomId) async {
-    final read = _lastRead[roomId];
-    if (read == null) return 0;
-    final pb = await _client();
-    final params = <String, dynamic>{
-      'room': roomId,
-      'me': _me?.id ?? '',
-      'since': read.toUtc(),
-    };
-    final hidden = blocked.value.toList();
-    for (var i = 0; i < hidden.length; i++) {
-      params['b$i'] = hidden[i];
-    }
-    final filter = <String>[
-      'room = {:room} && author != {:me} && created > {:since}',
-      for (var i = 0; i < hidden.length; i++) 'author != {:b$i}',
-    ].join(' && ');
-    final result = await pb
-        .collection('chat_messages')
-        .getList(perPage: 1, filter: pb.filter(filter, params), fields: 'id');
-    return result.totalItems;
-  }
-
-  Future<void> _refreshRoomUnread(String roomId) async {
-    final count = await _countUnread(roomId);
-    unread.value = <String, int>{...unread.value, roomId: count};
-  }
-
   Future<ChatWatch> keepRoomsLive() =>
       _roomsWatch ??= _watchRooms().catchError((Object error) {
         _roomsWatch = null;
@@ -439,8 +407,8 @@ class ChatService {
       rooms.value = [...list]..[index] = updated;
       if (updated.lastMessageAt > previous.lastMessageAt &&
           !isViewing(updated.id)) {
-        unawaited(_refreshRoomUnread(updated.id));
-        unawaited(_catchUp(updated.id));
+        unawaited(refreshUnread().catchError((Object _) {}));
+        unawaited(_sync(updated.id).catchError((Object _) {}));
       }
     });
     return ChatWatch(() async {
@@ -553,7 +521,7 @@ class ChatService {
     ChatRoom room, {
     String text = '',
     List<Uint8List> images = const <Uint8List>[],
-    ChatMessage? replyTo,
+    String replyToId = '',
     List<String> mentions = const <String>[],
     String nonce = '',
   }) async {
@@ -571,7 +539,7 @@ class ChatService {
               'room': room.id,
               'author': _me?.id ?? '',
               'text': text.trim(),
-              if (replyTo != null) 'replyTo': replyTo.id,
+              if (replyToId.isNotEmpty) 'replyTo': replyToId,
               if (mentions.isNotEmpty) 'mentions': mentions,
               if (nonce.isNotEmpty) 'clientNonce': nonce,
             },
@@ -583,19 +551,17 @@ class ChatService {
       if (error.statusCode == 400 && room.slowSeconds > 0) {
         throw const ChatCooldownException();
       }
-      throw ChatException(_sendError(room, error));
+      throw ChatException(
+        !room.active
+            ? 'This room is read-only now.'
+            : error.statusCode == 400
+            ? _serverMessage(
+                error.response['message'],
+                'Message could not be sent.',
+              )
+            : 'Message could not be sent. Check your connection.',
+      );
     }
-  }
-
-  String _sendError(ChatRoom room, ClientException error) {
-    if (!room.active) return 'This room is read-only now.';
-    final message = error.response['message'];
-    if (message is String && message.isNotEmpty && error.statusCode == 400) {
-      return message == 'Failed to create record.'
-          ? 'Message could not be sent.'
-          : message;
-    }
-    return 'Message could not be sent. Check your connection.';
   }
 
   Future<void> toggleReaction(
@@ -638,13 +604,11 @@ class ChatService {
             },
           );
     } on ClientException catch (error) {
-      final message = error.response['message'];
       throw ChatException(
-        message is String &&
-                message.isNotEmpty &&
-                message != 'Failed to create record.'
-            ? message
-            : 'You have already reported this message.',
+        _serverMessage(
+          error.response['message'],
+          'You have already reported this message.',
+        ),
       );
     }
   }
@@ -691,7 +655,7 @@ class ChatService {
           filter: pb.filter('blocker = {:me}', {'me': me}),
           expand: 'blocked',
         );
-    return records.map((record) {
+    final students = records.map((record) {
       final json = record.toJson();
       final expand = json['expand'];
       final student = expand is Map && expand['blocked'] is Map
@@ -699,6 +663,8 @@ class ChatService {
           : <String, dynamic>{'id': json['blocked']};
       return ChatAuthor.fromJson(student);
     }).toList();
+    blocked.value = {for (final student in students) student.id};
+    return students;
   }
 
   Future<void> markAllRead() async {
