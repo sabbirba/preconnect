@@ -218,46 +218,6 @@ String _roomSubtitle(ChatRoom room) {
   return '$sender: ${last.text.isEmpty ? 'Photo' : last.text}';
 }
 
-const Map<String, IconData> _subjectIcons = <String, IconData>{
-  'CSE': Icons.computer_outlined,
-  'CS': Icons.computer_outlined,
-  'EEE': Icons.bolt_outlined,
-  'ECE': Icons.memory_outlined,
-  'PHY': Icons.science_outlined,
-  'CHE': Icons.science_outlined,
-  'BIO': Icons.biotech_outlined,
-  'MIC': Icons.biotech_outlined,
-  'BTE': Icons.biotech_outlined,
-  'PHR': Icons.medication_outlined,
-  'MAT': Icons.functions_rounded,
-  'STA': Icons.bar_chart_rounded,
-  'ENV': Icons.eco_outlined,
-  'LAW': Icons.gavel_rounded,
-  'ENG': Icons.translate_rounded,
-  'BNG': Icons.translate_rounded,
-  'BUS': Icons.business_center_outlined,
-  'MGT': Icons.business_center_outlined,
-  'MKT': Icons.campaign_outlined,
-  'ACT': Icons.account_balance_wallet_outlined,
-  'FIN': Icons.account_balance_outlined,
-  'ECO': Icons.trending_up_rounded,
-  'ARC': Icons.architecture_rounded,
-  'HUM': Icons.history_edu_outlined,
-  'HST': Icons.history_edu_outlined,
-  'PHI': Icons.psychology_alt_outlined,
-  'PSY': Icons.psychology_outlined,
-  'SOC': Icons.groups_outlined,
-  'ANT': Icons.groups_outlined,
-  'POL': Icons.account_balance_outlined,
-  'CST': Icons.public_rounded,
-};
-
-IconData _roomIcon(ChatRoom room) {
-  if (room.kind == ChatRoomKind.lounge) return Icons.forum_outlined;
-  final subject = RegExp(r'^[A-Za-z]+').stringMatch(room.title) ?? '';
-  return _subjectIcons[subject.toUpperCase()] ?? Icons.menu_book_outlined;
-}
-
 String _roomTime(int lastMessageAt) {
   if (lastMessageAt <= 0) return '';
   final at = DateTime.fromMillisecondsSinceEpoch(lastMessageAt);
@@ -305,23 +265,26 @@ class _RoomTile extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           child: Row(
             children: [
-              if (isSection)
-                SectionBadge(
-                  label: formatSectionBadge(
-                    dash > 0 ? room.title.substring(dash + 1) : '',
-                  ),
-                  color: AppPalette.primary,
-                  size: _leadingSize,
-                  fontSize: 13,
-                )
-              else
+              if (room.kind == ChatRoomKind.lounge)
                 SizedBox.square(
                   dimension: _leadingSize,
                   child: Icon(
-                    _roomIcon(room),
+                    Icons.forum_outlined,
                     size: 20,
                     color: AppPalette.primary,
                   ),
+                )
+              else
+                SectionBadge(
+                  label: isSection
+                      ? formatSectionBadge(
+                          dash > 0 ? room.title.substring(dash + 1) : '',
+                        )
+                      : title.characters.first.toUpperCase(),
+                  formatLabel: false,
+                  color: AppPalette.primary,
+                  size: _leadingSize,
+                  fontSize: 13,
                 ),
               const Gap(10),
               Expanded(
