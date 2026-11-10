@@ -306,6 +306,24 @@ class ChatService {
     remember(room.id, messages, reactions);
   }
 
+  Future<void> _catchUp(String roomId) async {
+    final cached = recent(roomId);
+    final room = _room(roomId);
+    try {
+      if (cached.messages.isEmpty) {
+        if (room != null) await _preloadRoom(room);
+        return;
+      }
+      final fresh = await loadMessages(roomId, after: cached.messages.last);
+      if (isViewing(roomId)) return;
+      final known = cached.messages.map((message) => message.id).toSet();
+      remember(roomId, [
+        ...cached.messages,
+        ...fresh.where((message) => !known.contains(message.id)),
+      ], cached.reactions);
+    } catch (_) {}
+  }
+
   Future<List<ChatRoom>> loadRooms({bool force = false}) async {
     final loaded = _roomsLoadedAt;
     if (!force &&
@@ -422,6 +440,7 @@ class ChatService {
       if (updated.lastMessageAt > previous.lastMessageAt &&
           !isViewing(updated.id)) {
         unawaited(_refreshRoomUnread(updated.id));
+        unawaited(_catchUp(updated.id));
       }
     });
     return ChatWatch(() async {

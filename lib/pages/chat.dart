@@ -201,24 +201,61 @@ class _ChatPageState extends State<ChatPage> {
 }
 
 String _roomSubtitle(ChatRoom room) {
-  if (!room.active) return 'Read only';
   final chat = ChatService.instance;
-  if (chat.isFresh(room.id)) {
-    final blocked = chat.blocked.value;
-    final visible = chat
-        .recent(room.id)
-        .messages
-        .where((message) => !blocked.contains(message.author.id));
-    if (visible.isNotEmpty) {
-      final last = visible.last;
-      final sender = last.author.id == chat.me?.id
-          ? 'You'
-          : last.author.name.split(' ').first;
-      return '$sender: ${last.text.isEmpty ? 'Photo' : last.text}';
-    }
+  final blocked = chat.blocked.value;
+  final visible = chat
+      .recent(room.id)
+      .messages
+      .where((message) => !blocked.contains(message.author.id));
+  if (visible.isEmpty) {
+    if (!room.active) return 'Read only';
+    return room.lastMessageAt > 0 ? ' ' : 'No messages yet';
   }
-  final count = room.memberCount;
-  return '${formatAmount(count)} ${count == 1 ? 'student' : 'students'}';
+  final last = visible.last;
+  final sender = last.author.id == chat.me?.id
+      ? 'You'
+      : last.author.name.split(' ').first;
+  return '$sender: ${last.text.isEmpty ? 'Photo' : last.text}';
+}
+
+const Map<String, IconData> _subjectIcons = <String, IconData>{
+  'CSE': Icons.computer_outlined,
+  'CS': Icons.computer_outlined,
+  'EEE': Icons.bolt_outlined,
+  'ECE': Icons.memory_outlined,
+  'PHY': Icons.science_outlined,
+  'CHE': Icons.science_outlined,
+  'BIO': Icons.biotech_outlined,
+  'MIC': Icons.biotech_outlined,
+  'BTE': Icons.biotech_outlined,
+  'PHR': Icons.medication_outlined,
+  'MAT': Icons.functions_rounded,
+  'STA': Icons.bar_chart_rounded,
+  'ENV': Icons.eco_outlined,
+  'LAW': Icons.gavel_rounded,
+  'ENG': Icons.translate_rounded,
+  'BNG': Icons.translate_rounded,
+  'BUS': Icons.business_center_outlined,
+  'MGT': Icons.business_center_outlined,
+  'MKT': Icons.campaign_outlined,
+  'ACT': Icons.account_balance_wallet_outlined,
+  'FIN': Icons.account_balance_outlined,
+  'ECO': Icons.trending_up_rounded,
+  'ARC': Icons.architecture_rounded,
+  'HUM': Icons.history_edu_outlined,
+  'HST': Icons.history_edu_outlined,
+  'PHI': Icons.psychology_alt_outlined,
+  'PSY': Icons.psychology_outlined,
+  'SOC': Icons.groups_outlined,
+  'ANT': Icons.groups_outlined,
+  'POL': Icons.account_balance_outlined,
+  'CST': Icons.public_rounded,
+};
+
+IconData _roomIcon(ChatRoom room) {
+  if (room.kind == ChatRoomKind.lounge) return Icons.forum_outlined;
+  final subject = RegExp(r'^[A-Za-z]+').stringMatch(room.title) ?? '';
+  return _subjectIcons[subject.toUpperCase()] ?? Icons.menu_book_outlined;
 }
 
 String _roomTime(int lastMessageAt) {
@@ -281,9 +318,7 @@ class _RoomTile extends StatelessWidget {
                 SizedBox.square(
                   dimension: _leadingSize,
                   child: Icon(
-                    room.kind == ChatRoomKind.lounge
-                        ? Icons.chat_bubble_outline_rounded
-                        : Icons.book_outlined,
+                    _roomIcon(room),
                     size: 20,
                     color: AppPalette.primary,
                   ),
@@ -330,31 +365,25 @@ class _RoomTile extends StatelessWidget {
                       ],
                     ),
                     const Gap(2),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            subtitle,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: textSecondary,
-                            ),
-                          ),
-                        ),
-                        if (unread > 0)
-                          Padding(
-                            padding: const EdgeInsets.only(left: 6),
-                            child: UnreadCountPill(count: unread),
-                          ),
-                      ],
+                    Text(
+                      subtitle,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(fontSize: 12, color: textSecondary),
                     ),
                   ],
                 ),
               ),
-              const Gap(4),
-              Icon(Icons.chevron_right, color: textSecondary),
+              const Gap(6),
+              ConstrainedBox(
+                constraints: const BoxConstraints(minWidth: 24),
+                child: Center(
+                  widthFactor: 1,
+                  child: unread > 0
+                      ? UnreadCountPill(count: unread)
+                      : Icon(Icons.chevron_right, color: textSecondary),
+                ),
+              ),
             ],
           ),
         ),
