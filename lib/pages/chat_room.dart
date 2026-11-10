@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:io';
 import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
@@ -12,12 +11,12 @@ import 'package:preconnect/api/chat.dart';
 import 'package:preconnect/model/chat.dart';
 import 'package:file_selector/file_selector.dart';
 import 'package:preconnect/model/custom_schedule.dart';
-import 'package:preconnect/tools/file_open.dart';
+import 'package:preconnect/pages/faculty_reviews.dart';
 import 'package:preconnect/pages/friend_sections/friend_header.dart';
+import 'package:preconnect/pages/shared_materials.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/string_utils.dart';
 import 'package:share_plus/share_plus.dart';
-import 'package:preconnect/tools/app_paths.dart';
 import 'package:preconnect/tools/cached_image.dart';
 import 'package:preconnect/tools/image_cache.dart';
 import 'package:preconnect/tools/time_utils.dart';
@@ -406,6 +405,7 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
       pollOptions: pollOptions,
       event: event,
       fileNames: fileNames,
+      fileTitles: fileNames,
       localFiles: files,
     );
     _input.clear();
@@ -625,6 +625,27 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
       subtitle: _headerSubtitle(),
       icon: Icons.chat_bubble_outline_rounded,
       actions: [
+        if (_room.kind == ChatRoomKind.section)
+          ValueListenableBuilder<List<ChatRoom>>(
+            valueListenable: _chat.rooms,
+            builder: (context, rooms, _) {
+              final room =
+                  rooms.where((room) => room.id == _room.id).firstOrNull ??
+                  _room;
+              if (room.facultyInitial.isEmpty) return const SizedBox.shrink();
+              return HeaderActionButton(
+                tooltip: 'Faculty Reviews',
+                icon: Icons.star_outline_rounded,
+                onTap: () => showFacultyReviews(
+                  context,
+                  initial: room.facultyInitial,
+                  name: room.facultyName,
+                  roomId: room.id,
+                  canReview: room.active,
+                ),
+              );
+            },
+          ),
         if (_room.kind != ChatRoomKind.lounge && _room.active)
           ValueListenableBuilder<Set<String>>(
             valueListenable: _chat.muted,
@@ -1099,8 +1120,7 @@ class _ReportSheetState extends State<_ReportSheet> {
           ValueListenableBuilder<TextEditingValue>(
             valueListenable: _reason,
             builder: (context, value, _) {
-              final length = value.text.trim().length;
-              final enough = length >= minLength;
+              final enough = value.text.trim().length >= minLength;
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
@@ -1116,16 +1136,7 @@ class _ReportSheetState extends State<_ReportSheet> {
                       counterText: '',
                     ),
                   ),
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(4, 4, 4, 12),
-                    child: Text(
-                      enough ? '$length characters' : '$length / $minLength',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: enough ? textSecondary : AppPalette.danger,
-                      ),
-                    ),
-                  ),
+                  const Gap(12),
                   AppActionButton(
                     label: 'Report',
                     outlined: false,
@@ -1514,6 +1525,7 @@ class _MessageBubble extends StatelessWidget {
                     _FileCard(
                       message: message,
                       name: message.fileNames[i],
+                      title: message.fileTitle(i),
                       bytes: i < message.localFiles.length
                           ? message.localFiles[i].length
                           : null,
@@ -2294,11 +2306,13 @@ class _FileCard extends StatefulWidget {
   const _FileCard({
     required this.message,
     required this.name,
+    required this.title,
     required this.bytes,
   });
 
   final ChatMessage message;
   final String name;
+  final String title;
   final int? bytes;
 
   @override
@@ -2312,34 +2326,15 @@ class _FileCardState extends State<_FileCard> {
     final message = widget.message;
     final chat = ChatService.instance;
     setState(() => _opening = true);
-    try {
-      final file = await AppImageCache.instance.getSingleFile(
-        await chat.fileUrl(message, widget.name),
-        key: chat.fileKey(message, widget.name),
-      );
-      if (kIsWeb) {
-        await openPdfInBrowser(
-          bytes: await file.readAsBytes(),
-          fileName: widget.name,
-        );
-      } else {
-        final named = File(
-          '${(await AppPaths.temporaryDirectory()).path}/'
-          '${_displayName(widget.name)}',
-        );
-        if (!await named.exists() ||
-            await named.length() != await file.length()) {
-          await file.copy(named.path);
-        }
-        if (!await NativeFile.open(named.path) && mounted) {
-          showAppSnackBar(context, 'No app could open this PDF.');
-        }
-      }
-    } catch (_) {
-      if (mounted) showAppSnackBar(context, 'The PDF could not be opened.');
-    } finally {
-      if (mounted) setState(() => _opening = false);
-    }
+    final url = await chat.fileUrl(message, widget.name);
+    if (!mounted) return;
+    await openCachedPdf(
+      context,
+      url: url,
+      cacheKey: chat.fileKey(message, widget.name),
+      fileName: widget.title,
+    );
+    if (mounted) setState(() => _opening = false);
   }
 
   @override
@@ -2378,7 +2373,7 @@ class _FileCardState extends State<_FileCard> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    _displayName(widget.name),
+                    widget.title,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
@@ -2407,11 +2402,6 @@ class _FileCardState extends State<_FileCard> {
       ),
     );
   }
-}
-
-String _displayName(String stored) {
-  final match = RegExp(r'^(.*)_[a-z0-9]{10}(\.pdf)$').firstMatch(stored);
-  return match == null ? stored : '${match.group(1)}${match.group(2)}';
 }
 
 class _TypingLine extends StatelessWidget {

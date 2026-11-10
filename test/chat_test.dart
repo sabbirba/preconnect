@@ -140,6 +140,60 @@ void main() {
     expect(ChatSettings.fromJson(settings.toJson()).reportReasonMin, 50);
   });
 
+  test('faculty reviews read ratings and hide below the minimum', () {
+    final data = ChatFacultyReviews.fromJson(<String, dynamic>{
+      'faculty': <String, dynamic>{
+        'initial': 'ABC',
+        'name': 'Dr. Abc',
+        'reviewCount': 2,
+        'minimum': 3,
+        'teaching': 0,
+      },
+      'locked': true,
+      'reviews': <Map<String, dynamic>>[],
+      'mine': <String, dynamic>{
+        'id': 'r1',
+        'courseCode': 'CSE110',
+        'comment': 'Clear',
+        'teaching': 5,
+        'grading': 4,
+        'recommend': 3,
+        'mine': true,
+      },
+    });
+    expect(data.faculty?.visible, isFalse);
+    expect(data.locked, isTrue);
+    expect(data.mine?.ratings['grading'], 4);
+    expect(data.mine?.ratings.overall, 4);
+    final material = ChatMaterial.fromJson(<String, dynamic>{
+      'id': 'm1',
+      'courseCode': 'CSE110',
+      'name': 'lecture 1.pdf',
+      'file': 'lecture_1_ab12cd34ef.pdf',
+      'size': 2048,
+      'helpful': 3,
+    });
+    expect(material.helpful, 3);
+    expect(
+      chatFileTitle('contract_law_notes_ab12cd34ef.pdf'),
+      'contract law notes.pdf',
+    );
+    final shared = ChatMessage.fromJson(<String, dynamic>{
+      'id': 'f1',
+      'file': <String>['a_ab12cd34ef.pdf', 'contract_law_ab12cd34ef.pdf'],
+      'fileTitles': <String>['A.pdf', 'Contract Law.pdf'],
+    });
+    expect(shared.lastFileTitle, 'Contract Law.pdf');
+    expect(
+      const ChatSettings(
+        rules: <String>[],
+        reportReasonMin: 1,
+        maxPhotos: 1,
+      ).reviewMinimum,
+      3,
+    );
+  });
+
   test('message without expand keeps the author id', () {
     final message = ChatMessage.fromJson({
       'id': 'm3',

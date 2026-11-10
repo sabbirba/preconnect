@@ -69,6 +69,8 @@ class ChatRoom {
     required this.slowSeconds,
     this.moderatedAt = 0,
     this.pinned = '',
+    this.facultyInitial = '',
+    this.facultyName = '',
   });
 
   factory ChatRoom.fromJson(Map<String, dynamic> json) => ChatRoom(
@@ -83,6 +85,8 @@ class ChatRoom {
     slowSeconds: _int(json['slowSeconds']),
     moderatedAt: _int(json['moderatedAt']),
     pinned: _string(json['pinned']),
+    facultyInitial: _string(json['facultyInitial']),
+    facultyName: _string(json['facultyName']),
   );
 
   final String id;
@@ -96,6 +100,8 @@ class ChatRoom {
   final int slowSeconds;
   final int moderatedAt;
   final String pinned;
+  final String facultyInitial;
+  final String facultyName;
 
   Map<String, dynamic> toJson() => <String, dynamic>{
     'id': id,
@@ -109,6 +115,8 @@ class ChatRoom {
     'slowSeconds': slowSeconds,
     'moderatedAt': moderatedAt,
     'pinned': pinned,
+    'facultyInitial': facultyInitial,
+    'facultyName': facultyName,
   };
 }
 
@@ -131,6 +139,7 @@ class ChatMessage {
     this.preview,
     this.event,
     this.fileNames = const <String>[],
+    this.fileTitles = const <String>[],
     this.localFiles = const <Uint8List>[],
   });
 
@@ -166,6 +175,7 @@ class ChatMessage {
           ? ChatEvent.fromJson((json['event'] as Map).cast<String, dynamic>())
           : null,
       fileNames: _strings(json['file']),
+      fileTitles: _strings(json['fileTitles']),
     );
   }
 
@@ -186,9 +196,17 @@ class ChatMessage {
   final ChatLinkPreview? preview;
   final ChatEvent? event;
   final List<String> fileNames;
+  final List<String> fileTitles;
   final List<Uint8List> localFiles;
 
   bool get hasFile => fileNames.isNotEmpty;
+
+  String fileTitle(int index) =>
+      index < fileTitles.length && fileTitles[index].isNotEmpty
+      ? fileTitles[index]
+      : chatFileTitle(fileNames[index]);
+
+  String get lastFileTitle => hasFile ? fileTitle(fileNames.length - 1) : '';
 
   bool get isPoll => pollOptions.isNotEmpty;
   bool get hasImage => images.isNotEmpty || localImages.isNotEmpty;
@@ -208,6 +226,7 @@ class ChatMessage {
     if (preview != null) 'preview': preview!.toJson(),
     if (event != null) 'event': event!.toJson(),
     if (hasFile) 'file': fileNames,
+    if (hasFile) 'fileTitles': fileTitles,
     'expand': <String, dynamic>{
       'author': author.toJson(),
       if (replyToId.isNotEmpty)
@@ -242,6 +261,7 @@ class ChatMessage {
     preview: preview,
     event: event,
     fileNames: fileNames,
+    fileTitles: fileTitles,
     localFiles: localFiles,
   );
 }
@@ -289,12 +309,20 @@ class ChatSettings {
     required this.rules,
     required this.reportReasonMin,
     required this.maxPhotos,
+    this.reviewMinimum = 3,
+    this.reviewCommentMin = 100,
   });
 
   factory ChatSettings.fromJson(Map<String, dynamic> json) => ChatSettings(
     rules: _strings(json['rules']),
     reportReasonMin: _int(json['reportReasonMin']),
     maxPhotos: _int(json['maxPhotos']),
+    reviewMinimum: _int(json['reviewMinimum']) > 0
+        ? _int(json['reviewMinimum'])
+        : 3,
+    reviewCommentMin: json['reviewCommentMin'] is num
+        ? _int(json['reviewCommentMin'])
+        : 100,
   );
 
   static const ChatSettings initial = ChatSettings(
@@ -306,11 +334,15 @@ class ChatSettings {
   final List<String> rules;
   final int reportReasonMin;
   final int maxPhotos;
+  final int reviewMinimum;
+  final int reviewCommentMin;
 
   Map<String, dynamic> toJson() => <String, dynamic>{
     'rules': rules,
     'reportReasonMin': reportReasonMin,
     'maxPhotos': maxPhotos,
+    'reviewMinimum': reviewMinimum,
+    'reviewCommentMin': reviewCommentMin,
   };
 }
 
@@ -426,3 +458,158 @@ class ChatRecent {
     'reactions': [for (final reaction in reactions) reaction.toJson()],
   };
 }
+
+class ChatMaterial {
+  const ChatMaterial({
+    required this.id,
+    required this.courseCode,
+    required this.name,
+    required this.file,
+    required this.size,
+    required this.helpful,
+    required this.semesterSessionId,
+    required this.created,
+  });
+
+  factory ChatMaterial.fromJson(Map<String, dynamic> json) => ChatMaterial(
+    id: _string(json['id']),
+    courseCode: _string(json['courseCode']),
+    name: _string(json['name']),
+    file: _string(json['file']),
+    size: _int(json['size']),
+    helpful: _int(json['helpful']),
+    semesterSessionId: _int(json['semesterSessionId']),
+    created: _date(json['created']) ?? DateTime.now(),
+  );
+
+  final String id;
+  final String courseCode;
+  final String name;
+  final String file;
+  final int size;
+  final int helpful;
+  final int semesterSessionId;
+  final DateTime created;
+}
+
+class ChatFaculty {
+  const ChatFaculty({
+    required this.initial,
+    required this.name,
+    required this.reviewCount,
+    required this.minimum,
+    required this.ratings,
+  });
+
+  factory ChatFaculty.fromJson(Map<String, dynamic> json) => ChatFaculty(
+    initial: _string(json['initial']),
+    name: _string(json['name']),
+    reviewCount: _int(json['reviewCount']),
+    minimum: _int(json['minimum']),
+    ratings: ChatRatings.fromJson(json),
+  );
+
+  final String initial;
+  final String name;
+  final int reviewCount;
+  final int minimum;
+  final ChatRatings ratings;
+
+  bool get visible => minimum > 0 && reviewCount >= minimum;
+}
+
+class ChatRatings {
+  const ChatRatings({
+    required this.teaching,
+    required this.grading,
+    required this.recommend,
+  });
+
+  factory ChatRatings.fromJson(Map<String, dynamic> json) => ChatRatings(
+    teaching: _double(json['teaching']),
+    grading: _double(json['grading']),
+    recommend: _double(json['recommend']),
+  );
+
+  static const List<String> fields = <String>[
+    'teaching',
+    'grading',
+    'recommend',
+  ];
+
+  final double teaching;
+  final double grading;
+  final double recommend;
+
+  double operator [](String field) => switch (field) {
+    'teaching' => teaching,
+    'grading' => grading,
+    _ => recommend,
+  };
+
+  double get overall => (teaching + grading + recommend) / 3;
+}
+
+class ChatReview {
+  const ChatReview({
+    required this.id,
+    required this.courseCode,
+    required this.comment,
+    required this.ratings,
+    required this.mine,
+    required this.updated,
+  });
+
+  factory ChatReview.fromJson(Map<String, dynamic> json) => ChatReview(
+    id: _string(json['id']),
+    courseCode: _string(json['courseCode']),
+    comment: _string(json['comment']),
+    ratings: ChatRatings.fromJson(json),
+    mine: json['mine'] == true,
+    updated: _date(json['updated']) ?? DateTime.now(),
+  );
+
+  final String id;
+  final String courseCode;
+  final String comment;
+  final ChatRatings ratings;
+  final bool mine;
+  final DateTime updated;
+}
+
+class ChatFacultyReviews {
+  const ChatFacultyReviews({
+    required this.faculty,
+    required this.reviews,
+    required this.mine,
+    required this.locked,
+  });
+
+  factory ChatFacultyReviews.fromJson(Map<String, dynamic> json) =>
+      ChatFacultyReviews(
+        faculty: json['faculty'] is Map
+            ? ChatFaculty.fromJson(
+                (json['faculty'] as Map).cast<String, dynamic>(),
+              )
+            : null,
+        reviews: _maps(json['reviews']).map(ChatReview.fromJson).toList(),
+        mine: json['mine'] is Map
+            ? ChatReview.fromJson((json['mine'] as Map).cast<String, dynamic>())
+            : null,
+        locked: json['locked'] == true,
+      );
+
+  final ChatFaculty? faculty;
+  final List<ChatReview> reviews;
+  final ChatReview? mine;
+  final bool locked;
+}
+
+String chatFileTitle(String stored) {
+  final match = RegExp(r'^(.*)_[a-z0-9]{10}(\.pdf)$').firstMatch(stored);
+  final base = match == null ? stored : '${match.group(1)}${match.group(2)}';
+  return base.replaceAll(RegExp(r'_+'), ' ').trim();
+}
+
+double _double(Object? value) =>
+    value is num ? value.toDouble() : double.tryParse('$value') ?? 0;

@@ -204,11 +204,16 @@ String _roomSubtitle(ChatRoom room) {
   final body = event != null
       ? '${personalSchedulesKindLabel(event.kind)}: ${last.text}'
       : last.hasFile
-      ? '${last.fileNames.length == 1 ? 'PDF' : '${last.fileNames.length} PDFs'}'
+      ? '${last.lastFileTitle}'
+            '${last.fileNames.length > 1 ? ' +${last.fileNames.length - 1}' : ''}'
             '${last.text.isEmpty ? '' : ': ${last.text}'}'
       : last.isPoll
       ? 'Poll: ${last.text}'
-      : (last.text.isEmpty ? 'Photo' : last.text);
+      : last.text.isNotEmpty
+      ? last.text
+      : last.images.length > 1
+      ? '${last.images.length} Photos'
+      : 'Photo';
   return '$sender: $body';
 }
 

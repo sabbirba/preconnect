@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:preconnect/model/section_info.dart' as section;
 import 'package:preconnect/pages/shared_widgets/entry_card.dart';
+import 'package:preconnect/pages/faculty_reviews.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/time_utils.dart';
 
@@ -66,15 +67,25 @@ Future<void> showFacultyScheduleSheet(
     subtitle: 'Faculty Schedule',
     builder: (sheetContext, textPrimary, textSecondary) {
       final dragController = bottomSheetScrollController(sheetContext);
+      final rating = FacultyRatingBadge(
+        initial: facultyInitial,
+        name: staffName?.trim() ?? '',
+      );
       if (sortedItems.isEmpty) {
-        return Padding(
-          padding: const EdgeInsets.symmetric(vertical: 24),
-          child: Center(
-            child: Text(
-              'No schedule found.',
-              style: TextStyle(color: textSecondary),
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            rating,
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 24),
+              child: Center(
+                child: Text(
+                  'No schedule found.',
+                  style: TextStyle(color: textSecondary),
+                ),
+              ),
             ),
-          ),
+          ],
         );
       }
 
@@ -94,9 +105,10 @@ Future<void> showFacultyScheduleSheet(
       return ListView.builder(
         controller: dragController,
         physics: const ClampingScrollPhysics(),
-        itemCount: sortedDays.length,
-        itemBuilder: (context, dayIndex) {
-          final day = sortedDays[dayIndex];
+        itemCount: sortedDays.length + 1,
+        itemBuilder: (context, index) {
+          if (index == 0) return rating;
+          final day = sortedDays[index - 1];
           final dayEntries = grouped[day]!;
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,

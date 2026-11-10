@@ -5,6 +5,7 @@ import 'package:gap/gap.dart';
 import 'package:preconnect/api/materials.dart';
 import 'package:preconnect/model/materials.dart';
 import 'package:preconnect/pages/home_tab.dart';
+import 'package:preconnect/pages/shared_materials.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -327,6 +328,23 @@ class _MaterialsPageState extends State<MaterialsPage> {
             children: [
               AppSearchField(controller: _searchController),
               const Gap(12),
+              if (selectedSrc == null) ...[
+                AppActionCard(
+                  title: 'From Classmates',
+                  subtitle: 'PDFs shared in your course and section chats',
+                  leadingIcon: Icons.groups_outlined,
+                  trailing: Icon(
+                    Icons.chevron_right_rounded,
+                    color: AppPalette.textSecondary(context),
+                  ),
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => const SharedMaterialsPage(),
+                    ),
+                  ),
+                ),
+                const Gap(8),
+              ],
               _buildBody(),
               if (selectedSrc == null)
                 const Padding(

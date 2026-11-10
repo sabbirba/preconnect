@@ -78,6 +78,9 @@ class ChatService {
   );
   final ValueNotifier<int> recentVersion = ValueNotifier<int>(0);
   final ValueNotifier<int> scheduledVersion = ValueNotifier<int>(0);
+  final ValueNotifier<Map<String, ChatFaculty>> facultyRatings =
+      ValueNotifier<Map<String, ChatFaculty>>(const <String, ChatFaculty>{});
+  DateTime? _facultyLoadedAt;
   final ValueNotifier<ChatSettings> settings = ValueNotifier<ChatSettings>(
     ChatSettings.initial,
   );
@@ -157,6 +160,12 @@ class ChatService {
               'courseCode': section.courseCode,
               'sectionId': section.sectionId,
               'sectionName': section.sectionName,
+              if (section.faculty case final faculty?)
+                'faculty': <String, String>{
+                  'initial': faculty.shortName,
+                  'name': faculty.staffName,
+                  'photo': faculty.imgUrl ?? '',
+                },
             },
       ],
       'photo': AppStorage.instance.getStringSync(StorageKeys.photoFilePath),
@@ -911,6 +920,106 @@ class ChatService {
     unread.value = <String, int>{...unread.value, roomId: 0};
   }
 
+  Future<List<ChatMaterial>> loadMaterials() async {
+    final pb = await _client();
+    final records = await pb
+        .collection('chat_materials')
+        .getFullList(sort: '-helpful,-created');
+    return records.map((r) => ChatMaterial.fromJson(r.toJson())).toList();
+  }
+
+  Future<Map<String, String>> loadHelpfulVotes() async {
+    final pb = await _client();
+    final records = await pb.collection('chat_material_votes').getFullList();
+    return <String, String>{
+      for (final record in records)
+        record.getStringValue('material'): record.id,
+    };
+  }
+
+  Future<String?> setHelpful(String materialId, String? voteId) async {
+    final pb = await _client();
+    final votes = pb.collection('chat_material_votes');
+    if (voteId != null) {
+      await votes.delete(voteId);
+      return null;
+    }
+    final record = await votes.create(
+      body: <String, dynamic>{'material': materialId, 'student': _me?.id ?? ''},
+    );
+    return record.id;
+  }
+
+  String materialKey(ChatMaterial material) =>
+      '${ApiConfig.pocketBaseUrl}/api/files/chat_materials/'
+      '${material.id}/${Uri.encodeComponent(material.file)}';
+
+  Future<String> materialUrl(ChatMaterial material) async =>
+      _withFileToken(await _client(), materialKey(material));
+
+  Future<void> loadFacultyRatings({bool force = false}) async {
+    final loaded = _facultyLoadedAt;
+    if (!force &&
+        loaded != null &&
+        DateTime.now().difference(loaded) < _preloadInterval) {
+      return;
+    }
+    final pb = await _client();
+    final minimum = settings.value.reviewMinimum;
+    final records = await pb.collection('chat_faculty').getFullList();
+    facultyRatings.value = <String, ChatFaculty>{
+      for (final record in records)
+        record.getStringValue('initial').toUpperCase(): ChatFaculty.fromJson(
+          <String, dynamic>{...record.toJson(), 'minimum': minimum},
+        ),
+    };
+    _facultyLoadedAt = DateTime.now();
+  }
+
+  Future<ChatFacultyReviews> loadReviews({
+    String roomId = '',
+    String initial = '',
+  }) async {
+    final pb = await _client();
+    final result = await pb.send(
+      '/api/chat/reviews',
+      query: <String, dynamic>{
+        if (roomId.isNotEmpty) 'room': roomId,
+        if (initial.isNotEmpty) 'faculty': initial,
+      },
+    );
+    return ChatFacultyReviews.fromJson(
+      result is Map ? result.cast<String, dynamic>() : <String, dynamic>{},
+    );
+  }
+
+  Future<void> saveReview(
+    String roomId,
+    Map<String, int> ratings,
+    String comment,
+  ) => _reviewAction('/api/chat/review', <String, dynamic>{
+    'room': roomId,
+    ...ratings,
+    'comment': comment,
+  });
+
+  Future<void> reportReview(String reviewId) => _reviewAction(
+    '/api/chat/review/report',
+    <String, dynamic>{'review': reviewId},
+  );
+
+  Future<void> _reviewAction(String path, Map<String, dynamic> body) async {
+    final pb = await _client();
+    try {
+      await pb.send(path, method: 'POST', body: body);
+      _facultyLoadedAt = null;
+    } on ClientException catch (error) {
+      throw ChatException(
+        _serverMessage(error.response['message'], 'Please try again.'),
+      );
+    }
+  }
+
   String fileKey(ChatMessage message, String name) =>
       imageKey(message, name, thumb: false);
 
@@ -929,7 +1038,13 @@ class ChatService {
     String name, {
     bool thumb = true,
   }) async {
-    final pb = await _client();
+    return _withFileToken(
+      await _client(),
+      imageKey(message, name, thumb: thumb),
+    );
+  }
+
+  Future<String> _withFileToken(PocketBase pb, String key) async {
     final issued = _fileTokenAt;
     if (_fileToken == null ||
         issued == null ||
@@ -937,7 +1052,6 @@ class ChatService {
       _fileToken = await pb.files.getToken();
       _fileTokenAt = DateTime.now();
     }
-    final key = imageKey(message, name, thumb: thumb);
     final separator = key.contains('?') ? '&' : '?';
     return '$key${separator}token=${Uri.encodeQueryComponent(_fileToken!)}';
   }
@@ -1030,5 +1144,7 @@ class ChatService {
     blocked.value = const <String>{};
     muted.value = const <String>{};
     settings.value = ChatSettings.initial;
+    facultyRatings.value = const <String, ChatFaculty>{};
+    _facultyLoadedAt = null;
   }
 }
