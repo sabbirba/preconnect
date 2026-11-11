@@ -585,7 +585,7 @@ class FCMService {
   );
 
   static NotificationDetails _notificationDetails({
-    StyleInformation? androidStyle,
+    AndroidBitmap<Object>? androidImage,
     List<DarwinNotificationAttachment>? darwinAttachments,
   }) => NotificationDetails(
     android: AndroidNotificationDetails(
@@ -599,13 +599,19 @@ class FCMService {
       channelShowBadge: true,
       visibility: NotificationVisibility.public,
       category: AndroidNotificationCategory.event,
-      styleInformation: androidStyle,
+      largeIcon: androidImage,
+      styleInformation: androidImage == null
+          ? null
+          : BigPictureStyleInformation(
+              androidImage,
+              hideExpandedLargeIcon: true,
+            ),
     ),
     iOS: _darwinDetails(darwinAttachments),
     macOS: _darwinDetails(darwinAttachments),
   );
 
-  Future<(StyleInformation?, List<DarwinNotificationAttachment>?)>
+  Future<(AndroidBitmap<Object>?, List<DarwinNotificationAttachment>?)>
   _imageAttachments(String imageUrl) async {
     try {
       final response = await HttpUtils.client
@@ -613,13 +619,7 @@ class FCMService {
           .timeout(const Duration(seconds: 15));
       if (response.statusCode != 200) return (null, null);
       if (defaultTargetPlatform == TargetPlatform.android) {
-        return (
-          BigPictureStyleInformation(
-            ByteArrayAndroidBitmap(response.bodyBytes),
-            hideExpandedLargeIcon: true,
-          ),
-          null,
-        );
+        return (ByteArrayAndroidBitmap(response.bodyBytes), null);
       }
       final tempDir = await AppPaths.temporaryDirectory();
       final tempFile = File('${tempDir.path}/${imageUrl.hashCode}.png');
@@ -658,7 +658,7 @@ class FCMService {
     final notifId =
         id ?? ((shownTitle.hashCode ^ shownBody.hashCode) & 0x7FFFFFFF);
     final (
-      androidStyle,
+      androidImage,
       darwinAttachments,
     ) = (imageUrl != null && imageUrl.isNotEmpty)
         ? await _imageAttachments(imageUrl)
@@ -669,7 +669,7 @@ class FCMService {
       body: shownBody,
       payload: jsonEncode(data),
       notificationDetails: _notificationDetails(
-        androidStyle: androidStyle,
+        androidImage: androidImage,
         darwinAttachments: darwinAttachments,
       ),
     );
