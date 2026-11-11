@@ -7,6 +7,8 @@ import 'package:chrome_extension/src/js/tabs.dart' as $js;
 import 'package:preconnect/tools/extension_config.dart';
 import 'package:preconnect/tools/extension_bridge.dart';
 import 'package:preconnect/tools/pkce.dart';
+import 'package:preconnect/tools/platform_stub.dart'
+    show WebExtensionLoginState;
 import 'package:preconnect/tools/runtime_web.dart';
 
 class WebExtensionLoginFlow {
@@ -127,25 +129,3 @@ class WebExtensionLoginFlow {
     await _events.close();
   }
 }
-
-class WebExtensionLoginState {
-  const WebExtensionLoginState.started()
-    : type = WebExtensionLoginStateKind.started,
-      error = '';
-
-  const WebExtensionLoginState.complete()
-    : type = WebExtensionLoginStateKind.complete,
-      error = '';
-
-  const WebExtensionLoginState.failed(this.error)
-    : type = WebExtensionLoginStateKind.failed;
-
-  final WebExtensionLoginStateKind type;
-  final String error;
-
-  bool get isStarted => type == WebExtensionLoginStateKind.started;
-  bool get isComplete => type == WebExtensionLoginStateKind.complete;
-  bool get isFailed => type == WebExtensionLoginStateKind.failed;
-}
-
-enum WebExtensionLoginStateKind { started, complete, failed }

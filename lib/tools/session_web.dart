@@ -2,6 +2,8 @@ import 'dart:async';
 
 import 'package:chrome_extension/runtime.dart';
 import 'package:preconnect/tools/extension_bridge.dart';
+import 'package:preconnect/tools/platform_stub.dart'
+    show WebExtensionSessionEvent;
 import 'package:preconnect/tools/runtime_web.dart';
 
 class WebExtensionSessionFlow {
@@ -30,12 +32,3 @@ class WebExtensionSessionFlow {
     await _events.close();
   }
 }
-
-class WebExtensionSessionEvent {
-  const WebExtensionSessionEvent.logoutComplete()
-    : type = WebExtensionSessionEventKind.logoutComplete;
-
-  final WebExtensionSessionEventKind type;
-}
-
-enum WebExtensionSessionEventKind { logoutComplete }
