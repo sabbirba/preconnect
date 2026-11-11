@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
 import 'package:preconnect/api/api_client.dart';
@@ -242,20 +243,7 @@ class _WishlistPageState extends State<WishlistPage> {
     });
 
     try {
-      final int courseId = (course['courseId'] as num).toInt();
-      final int credits = (course['courseCredit'] as num).toInt();
-
-      final res = await _client.authenticatedRequest(
-        'POST',
-        '${ApiConfig.connectApiBase}${ApiConfig.wishlistMutationPath}',
-        body: jsonEncode({
-          'courseId': courseId,
-          'courseCredit': credits,
-          'studentPortfolioId': int.parse(_portfolioId!),
-        }),
-        additionalHeaders: _buildHeaders(),
-        acceptedStatusCodes: const <int>{200, 201},
-      );
+      final res = await _postWishlistCourse(course);
 
       if (res.statusCode == 200 || res.statusCode == 201) {
         await _refreshWishlistData();
@@ -328,19 +316,7 @@ class _WishlistPageState extends State<WishlistPage> {
 
     try {
       for (final course in List<Map<String, dynamic>>.from(_batchQueue)) {
-        final int courseId = (course['courseId'] as num).toInt();
-        final int credits = (course['courseCredit'] as num).toInt();
-        await _client.authenticatedRequest(
-          'POST',
-          '${ApiConfig.connectApiBase}${ApiConfig.wishlistMutationPath}',
-          body: jsonEncode({
-            'courseId': courseId,
-            'courseCredit': credits,
-            'studentPortfolioId': int.parse(_portfolioId!),
-          }),
-          additionalHeaders: _buildHeaders(),
-          acceptedStatusCodes: const <int>{200, 201},
-        );
+        await _postWishlistCourse(course);
       }
       _batchQueue.clear();
       await _refreshWishlistData();
@@ -480,52 +456,77 @@ class _WishlistPageState extends State<WishlistPage> {
     );
   }
 
+  Future<http.Response> _postWishlistCourse(Map<String, dynamic> course) {
+    return _client.authenticatedRequest(
+      'POST',
+      '${ApiConfig.connectApiBase}${ApiConfig.wishlistMutationPath}',
+      body: jsonEncode({
+        'courseId': (course['courseId'] as num).toInt(),
+        'courseCredit': (course['courseCredit'] as num).toInt(),
+        'studentPortfolioId': int.parse(_portfolioId!),
+      }),
+      additionalHeaders: _buildHeaders(),
+      acceptedStatusCodes: const <int>{200, 201},
+    );
+  }
+
+  Widget _courseCard(
+    Map<String, dynamic> course,
+    Color textPrimary,
+    Color textSecondary,
+    List<Widget> actions,
+  ) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: AppCard(
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '${course['courseCode']} - ${course['name']}',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: textPrimary,
+                      fontSize: 15,
+                    ),
+                  ),
+                  const Gap(4),
+                  Text(
+                    'Credits: ${course['courseCredit']}',
+                    style: TextStyle(color: textSecondary, fontSize: 13),
+                  ),
+                ],
+              ),
+            ),
+            ...actions,
+          ],
+        ),
+      ),
+    );
+  }
+
   List<Widget> _buildWishlistItems(Color textPrimary, Color textSecondary) {
     if (_wishlistCourses.isEmpty) {
       return const [AppEmptyCard(message: 'No courses in your wishlist')];
     }
     return [
       for (final course in _wishlistCourses)
-        Padding(
-          padding: const EdgeInsets.only(bottom: 12),
-          child: AppCard(
-            child: Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        '${course['courseCode']} - ${course['name']}',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: textPrimary,
-                          fontSize: 15,
-                        ),
-                      ),
-                      const Gap(4),
-                      Text(
-                        'Credits: ${course['courseCredit']}',
-                        style: TextStyle(color: textSecondary, fontSize: 13),
-                      ),
-                    ],
-                  ),
-                ),
-                IconButton(
-                  icon: Icon(
-                    Icons.remove_circle_outline_rounded,
-                    color: _isPhaseCompleted
-                        ? Colors.grey.withValues(alpha: 0.5)
-                        : AppPalette.danger,
-                  ),
-                  onPressed: _isPhaseCompleted
-                      ? null
-                      : () => _confirmDropCourse(course),
-                ),
-              ],
+        _courseCard(course, textPrimary, textSecondary, [
+          IconButton(
+            icon: Icon(
+              Icons.remove_circle_outline_rounded,
+              color: _isPhaseCompleted
+                  ? Colors.grey.withValues(alpha: 0.5)
+                  : AppPalette.danger,
             ),
+            onPressed: _isPhaseCompleted
+                ? null
+                : () => _confirmDropCourse(course),
           ),
-        ),
+        ]),
     ];
   }
 
@@ -554,53 +555,26 @@ class _WishlistPageState extends State<WishlistPage> {
     final isQueued = wishlistContainsCourse(_batchQueue, course);
     final isSelected = isWishlisted || isQueued;
     final locked = _isPhaseCompleted || isWishlisted;
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: AppCard(
-        child: Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    '${course['courseCode']} - ${course['name']}',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: textPrimary,
-                      fontSize: 15,
-                    ),
-                  ),
-                  const Gap(4),
-                  Text(
-                    'Credits: ${course['courseCredit']}',
-                    style: TextStyle(color: textSecondary, fontSize: 13),
-                  ),
-                ],
-              ),
-            ),
-            IconButton(
-              icon: Icon(
-                isSelected ? Icons.check_box_rounded : Icons.add_box_outlined,
-                color: _isPhaseCompleted
-                    ? Colors.grey.withValues(alpha: 0.5)
-                    : (isSelected ? AppPalette.accent : AppPalette.primary),
-              ),
-              onPressed: locked ? null : () => _toggleQueued(course, isQueued),
-            ),
-            IconButton(
-              icon: Icon(
-                Icons.flash_on_rounded,
-                color: _isPhaseCompleted
-                    ? Colors.grey.withValues(alpha: 0.5)
-                    : AppPalette.favorite,
-              ),
-              onPressed: locked ? null : () => _addCourse(course),
-            ),
-          ],
+    return _courseCard(course, textPrimary, textSecondary, [
+      IconButton(
+        icon: Icon(
+          isSelected ? Icons.check_box_rounded : Icons.add_box_outlined,
+          color: _isPhaseCompleted
+              ? Colors.grey.withValues(alpha: 0.5)
+              : (isSelected ? AppPalette.accent : AppPalette.primary),
         ),
+        onPressed: locked ? null : () => _toggleQueued(course, isQueued),
       ),
-    );
+      IconButton(
+        icon: Icon(
+          Icons.flash_on_rounded,
+          color: _isPhaseCompleted
+              ? Colors.grey.withValues(alpha: 0.5)
+              : AppPalette.favorite,
+        ),
+        onPressed: locked ? null : () => _addCourse(course),
+      ),
+    ]);
   }
 
   void _toggleQueued(Map<String, dynamic> course, bool isQueued) {
