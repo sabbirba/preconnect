@@ -58,7 +58,50 @@ class ProfileService {
     return '';
   }
 
-  static const List<String> profileFields = [
+  static const Set<String> _requiredKeys = {
+    'studentId',
+    'fullName',
+    'program',
+    'currentSemester',
+    'enrolledSessionSemesterId',
+    'currentSessionSemesterId',
+    'enrolledSemester',
+    'mobileNo',
+    'photoFilePath',
+  };
+  static const Set<String> _miscDataKeys = {
+    'permanentAddress',
+    'presentAddress',
+    'isBothAddressSame',
+    'permanentUpazilaName',
+    'presentUpazilaName',
+    'fatherName',
+    'fatherMobileNo',
+    'fatherEmail',
+    'motherName',
+    'motherMobileNo',
+    'motherEmail',
+    'localGuardianName',
+    'localGuardianMobileNo',
+    'localGuardianEmail',
+    'sponsoredBy',
+    'countryName',
+    'hobbies',
+    'awards',
+    'hasDisability',
+    'disabilityDetails',
+  };
+  static const Set<String> _studentKeys = {
+    'dateOfBirth',
+    'nationalIdNo',
+    'passportNo',
+    'birthCertificateNo',
+    'emergencyContactNo',
+    'emergencyContactName',
+  };
+  static const Set<String> _yesNoKeys = {'isBothAddressSame', 'hasDisability'};
+  static const Set<String> _miscKeys = {..._miscDataKeys, ..._studentKeys};
+  static const Set<String> _profileKeys = {
     'id',
     'studentId',
     'fullName',
@@ -80,72 +123,7 @@ class ProfileService {
     'shortCode',
     'filePath',
     'photoFilePath',
-    'permanentAddress',
-    'presentAddress',
-    'isBothAddressSame',
-    'permanentUpazilaName',
-    'presentUpazilaName',
-    'fatherName',
-    'fatherMobileNo',
-    'fatherEmail',
-    'motherName',
-    'motherMobileNo',
-    'motherEmail',
-    'localGuardianName',
-    'localGuardianMobileNo',
-    'localGuardianEmail',
-    'sponsoredBy',
-    'countryName',
-    'hobbies',
-    'awards',
-    'hasDisability',
-    'disabilityDetails',
-    'dateOfBirth',
-    'nationalIdNo',
-    'passportNo',
-    'birthCertificateNo',
-    'emergencyContactNo',
-    'emergencyContactName',
-  ];
-
-  static const Set<String> _requiredKeys = {
-    'studentId',
-    'fullName',
-    'program',
-    'currentSemester',
-    'enrolledSessionSemesterId',
-    'currentSessionSemesterId',
-    'enrolledSemester',
-    'mobileNo',
-    'photoFilePath',
-  };
-  static const Set<String> _miscKeys = {
-    'permanentAddress',
-    'presentAddress',
-    'isBothAddressSame',
-    'permanentUpazilaName',
-    'presentUpazilaName',
-    'fatherName',
-    'fatherMobileNo',
-    'fatherEmail',
-    'motherName',
-    'motherMobileNo',
-    'motherEmail',
-    'localGuardianName',
-    'localGuardianMobileNo',
-    'localGuardianEmail',
-    'sponsoredBy',
-    'countryName',
-    'hobbies',
-    'awards',
-    'hasDisability',
-    'disabilityDetails',
-    'dateOfBirth',
-    'nationalIdNo',
-    'passportNo',
-    'birthCertificateNo',
-    'emergencyContactNo',
-    'emergencyContactName',
+    ..._miscKeys,
   };
 
   static String _boolToYesNo(dynamic value) {
@@ -309,39 +287,13 @@ class ProfileService {
             'enrolledSemester': profile['enrolledSemester'] ?? '',
             'departmentName': profile['departmentName'] ?? '',
             'studentEmail': profile['studentEmail'] ?? '',
-            'bloodGroup': _normalizeBloodType(
-              bloodGroup: profile['bloodGroup'],
-              bloodGroupName: profile['bloodGroupName'],
-              bloodType: profile['bloodType'],
-            ),
+            'bloodGroup': profile['bloodGroup']?.toString() ?? '',
             'mobileNo': profile['mobileNo'] ?? '',
             'shortCode': profile['shortCode'] ?? '',
             'fullName': profile['fullName'] ?? '',
             'email': profile['studentEmail'] ?? '',
             'cgpa': profile['cgpa']?.toString() ?? '',
           });
-          await Future.wait<void>([
-            for (final entry in <String, String>{
-              StorageKeys.studentId: profile['studentId']?.toString() ?? '',
-              StorageKeys.fullName: profile['fullName'] ?? '',
-              StorageKeys.studentEmail: profile['studentEmail'] ?? '',
-              StorageKeys.shortCode: profile['shortCode']?.toString() ?? '',
-              StorageKeys.program: profile['programOrCourse']?.toString() ?? '',
-              StorageKeys.departmentName:
-                  profile['departmentName']?.toString() ?? '',
-              StorageKeys.currentSemester:
-                  profile['currentSemester']?.toString() ?? '',
-              StorageKeys.cgpa: profile['cgpa']?.toString() ?? '',
-              StorageKeys.earnedCredit:
-                  profile['earnedCredit']?.toString() ?? '',
-              StorageKeys.attemptedCredit:
-                  profile['attemptedCredit']?.toString() ?? '',
-              StorageKeys.photoFilePath: profile['filePath']?.toString() ?? '',
-              StorageKeys.mobileNo: profile['mobileNo']?.toString() ?? '',
-              StorageKeys.bloodGroup: profile['bloodGroup']?.toString() ?? '',
-            }.entries)
-              AppStorage.instance.setString(entry.key, entry.value),
-          ]);
           final currentSessionSemesterId =
               profile['currentSessionSemesterId']?.toString().trim() ?? '';
           if (currentSessionSemesterId.isNotEmpty) {
@@ -361,125 +313,48 @@ class ProfileService {
     dynamic miscData,
     Map<String, String?> profile,
   ) async {
-    final repo = RepositoryCache.instance;
-    if (miscData is Map<String, dynamic>) {
-      final resolvedBloodGroup = _normalizeBloodType(
-        bloodGroup: miscData['bloodGroup'],
-        bloodGroupName: miscData['bloodGroupName'],
-        bloodType: miscData['bloodType'],
-      );
-      final updates = <String, String>{
-        if (resolvedBloodGroup.isNotEmpty) 'bloodGroup': resolvedBloodGroup,
-        'permanentAddress': miscData['permanentAddress']?.toString() ?? '',
-        'presentAddress': miscData['presentAddress']?.toString() ?? '',
-        'isBothAddressSame': _boolToYesNo(miscData['isBothAddressSame']),
-        'permanentUpazilaName':
-            miscData['permanentUpazilaName']?.toString() ?? '',
-        'presentUpazilaName': miscData['presentUpazilaName']?.toString() ?? '',
-        'fatherName': miscData['fatherName']?.toString() ?? '',
-        'fatherMobileNo': miscData['fatherMobileNo']?.toString() ?? '',
-        'fatherEmail': miscData['fatherEmail']?.toString() ?? '',
-        'motherName': miscData['motherName']?.toString() ?? '',
-        'motherMobileNo': miscData['motherMobileNo']?.toString() ?? '',
-        'motherEmail': miscData['motherEmail']?.toString() ?? '',
-        'localGuardianName': miscData['localGuardianName']?.toString() ?? '',
-        'localGuardianMobileNo':
-            miscData['localGuardianMobileNo']?.toString() ?? '',
-        'localGuardianEmail': miscData['localGuardianEmail']?.toString() ?? '',
-        'sponsoredBy': miscData['sponsoredBy']?.toString() ?? '',
-        'countryName': miscData['countryName']?.toString() ?? '',
-        'hobbies': miscData['hobbies']?.toString() ?? '',
-        'awards': miscData['awards']?.toString() ?? '',
-        'hasDisability': _boolToYesNo(miscData['hasDisability']),
-        'disabilityDetails': miscData['disabilityDetails']?.toString() ?? '',
-      };
-      await repo.writeStringMap(updates);
-      for (final entry in updates.entries) {
-        profile[entry.key] = entry.value;
-      }
-      await Future.wait<void>([
-        for (final entry in <String, String>{
-          StorageKeys.permanentAddress:
-              miscData['permanentAddress']?.toString() ?? '',
-          StorageKeys.presentAddress:
-              miscData['presentAddress']?.toString() ?? '',
-          StorageKeys.isBothAddressSame: _boolToYesNo(
-            miscData['isBothAddressSame'],
-          ),
-          StorageKeys.permanentUpazilaName:
-              miscData['permanentUpazilaName']?.toString() ?? '',
-          StorageKeys.presentUpazilaName:
-              miscData['presentUpazilaName']?.toString() ?? '',
-          StorageKeys.fatherName: miscData['fatherName']?.toString() ?? '',
-          StorageKeys.fatherMobileNo:
-              miscData['fatherMobileNo']?.toString() ?? '',
-          StorageKeys.fatherEmail: miscData['fatherEmail']?.toString() ?? '',
-          StorageKeys.motherName: miscData['motherName']?.toString() ?? '',
-          StorageKeys.motherMobileNo:
-              miscData['motherMobileNo']?.toString() ?? '',
-          StorageKeys.motherEmail: miscData['motherEmail']?.toString() ?? '',
-          StorageKeys.localGuardianName:
-              miscData['localGuardianName']?.toString() ?? '',
-          StorageKeys.localGuardianMobileNo:
-              miscData['localGuardianMobileNo']?.toString() ?? '',
-          StorageKeys.localGuardianEmail:
-              miscData['localGuardianEmail']?.toString() ?? '',
-          StorageKeys.sponsoredBy: miscData['sponsoredBy']?.toString() ?? '',
-          StorageKeys.countryName: miscData['countryName']?.toString() ?? '',
-          StorageKeys.hobbies: miscData['hobbies']?.toString() ?? '',
-          StorageKeys.awards: miscData['awards']?.toString() ?? '',
-          StorageKeys.hasDisability: _boolToYesNo(miscData['hasDisability']),
-          StorageKeys.disabilityDetails:
-              miscData['disabilityDetails']?.toString() ?? '',
-        }.entries)
-          AppStorage.instance.setString(entry.key, entry.value),
-      ]);
-    }
+    if (miscData is! Map<String, dynamic>) return;
+    final resolvedBloodGroup = _normalizeBloodType(
+      bloodGroup: miscData['bloodGroup'],
+      bloodGroupName: miscData['bloodGroupName'],
+      bloodType: miscData['bloodType'],
+    );
+    await _storeDetails(profile, {
+      if (resolvedBloodGroup.isNotEmpty) 'bloodGroup': resolvedBloodGroup,
+      ..._pickDetails(miscData, _miscDataKeys),
+    });
   }
 
   Future<void> _applyStudentData(
     dynamic studentData,
     Map<String, String?> profile,
   ) async {
-    final repo = RepositoryCache.instance;
-    if (studentData is Map<String, dynamic>) {
-      final updates = <String, String>{
-        'dateOfBirth': studentData['dateOfBirth']?.toString() ?? '',
-        'nationalIdNo': studentData['nationalIdNo']?.toString() ?? '',
-        'passportNo': studentData['passportNo']?.toString() ?? '',
-        'birthCertificateNo':
-            studentData['birthCertificateNo']?.toString() ?? '',
-        'emergencyContactNo':
-            studentData['emergencyContactNo']?.toString() ?? '',
-        'emergencyContactName':
-            studentData['emergencyContactName']?.toString() ?? '',
-      };
-      await repo.writeStringMap(updates);
-      for (final entry in updates.entries) {
-        profile[entry.key] = entry.value;
-      }
-      await Future.wait<void>([
-        for (final entry in <String, String>{
-          StorageKeys.dateOfBirth: studentData['dateOfBirth']?.toString() ?? '',
-          StorageKeys.nationalIdNo:
-              studentData['nationalIdNo']?.toString() ?? '',
-          StorageKeys.passportNo: studentData['passportNo']?.toString() ?? '',
-          StorageKeys.birthCertificateNo:
-              studentData['birthCertificateNo']?.toString() ?? '',
-          StorageKeys.emergencyContactNo:
-              studentData['emergencyContactNo']?.toString() ?? '',
-          StorageKeys.emergencyContactName:
-              studentData['emergencyContactName']?.toString() ?? '',
-        }.entries)
-          AppStorage.instance.setString(entry.key, entry.value),
-      ]);
-    }
+    if (studentData is! Map<String, dynamic>) return;
+    await _storeDetails(profile, _pickDetails(studentData, _studentKeys));
+  }
+
+  static Map<String, String> _pickDetails(
+    Map<String, dynamic> data,
+    Set<String> keys,
+  ) => {
+    for (final key in keys)
+      key: _yesNoKeys.contains(key)
+          ? _boolToYesNo(data[key])
+          : data[key]?.toString() ?? '',
+  };
+
+  Future<void> _storeDetails(
+    Map<String, String?> profile,
+    Map<String, String> updates,
+  ) async {
+    await RepositoryCache.instance.writeStringMap(updates);
+    profile.addAll(updates);
   }
 
   Future<Map<String, String?>?> getProfile({bool fromFetch = false}) async {
     final profileData = await RepositoryCache.instance
         .readStringMapWithFallback(
-          keys: profileFields.toSet(),
+          keys: _profileKeys,
           fromFetch: fromFetch,
           decoder: (value) => value,
           onCacheMiss: () async {
