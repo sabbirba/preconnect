@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:preconnect/tools/time_utils.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:gap/gap.dart';
 import 'package:flutter/services.dart';
 import 'package:preconnect/pages/ui_kit.dart';

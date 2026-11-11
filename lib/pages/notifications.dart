@@ -3,7 +3,7 @@ import 'dart:math' as math;
 import 'package:preconnect/api/repository_cache.dart';
 import 'package:preconnect/tools/app_storage.dart';
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:preconnect/api/notification.dart';
 import 'package:preconnect/pages/notifications_sections/detail_panels.dart';
 import 'package:preconnect/pages/notifications_sections/list_widgets.dart';

@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:preconnect/api/extra_classes.dart';
 import 'package:preconnect/api/seat_status.dart';
 import 'package:preconnect/model/extra_class.dart';

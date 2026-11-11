@@ -1,5 +1,5 @@
 import 'package:barcode_widget/barcode_widget.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:gap/gap.dart';
 import 'package:flutter_flip_card/flutter_flip_card.dart';
 import 'package:preconnect/pages/shared_widgets/bracu_logo.dart';

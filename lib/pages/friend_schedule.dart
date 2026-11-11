@@ -4,7 +4,7 @@ import 'dart:io';
 import 'package:share_plus/share_plus.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:preconnect/tools/app_paths.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:gap/gap.dart';
 import 'package:preconnect/api/auth.dart';
 import 'package:preconnect/api/friend_store.dart';

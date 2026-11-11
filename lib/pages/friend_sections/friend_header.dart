@@ -1,7 +1,7 @@
 import 'dart:convert';
 
 import 'package:preconnect/api/api_config.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:gap/gap.dart';
 import 'package:preconnect/model/friend_schedule.dart';
 import 'package:preconnect/pages/ui_kit.dart';

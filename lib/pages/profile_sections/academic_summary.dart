@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:gap/gap.dart';
 import 'package:preconnect/model/progress_info.dart';
 import 'package:preconnect/pages/profile_sections/personal_card.dart';

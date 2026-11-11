@@ -1,6 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/token_storage.dart';
 import 'package:webview_flutter/webview_flutter.dart';

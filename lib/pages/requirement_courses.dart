@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:preconnect/model/progress_info.dart';
 import 'package:preconnect/pages/shared_widgets/course_tile.dart';
 import 'package:preconnect/pages/ui_kit.dart';

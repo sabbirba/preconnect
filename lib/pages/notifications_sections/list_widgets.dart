@@ -1,5 +1,5 @@
 import 'package:preconnect/tools/time_utils.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:gap/gap.dart';
 import 'package:preconnect/api/notification.dart';
 import 'package:preconnect/pages/ui_kit.dart';

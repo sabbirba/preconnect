@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:preconnect/api/schedule.dart';
 import 'package:preconnect/model/advising_phase.dart';
 import 'package:preconnect/model/section_info.dart';

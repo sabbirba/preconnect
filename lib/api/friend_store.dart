@@ -136,11 +136,6 @@ class FriendScheduleStore {
     }
   }
 
-  Future<void> clearAll() async {
-    await AppStorage.instance.remove(_encodedSchedulesKey);
-    await AppStorage.instance.remove(_metadataKey);
-  }
-
   static FriendSchedule? parseSchedulePayload(String raw) {
     final parsed = _decodeCompressedJson(raw);
     if (parsed is! Map<String, dynamic> ||

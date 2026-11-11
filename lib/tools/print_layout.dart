@@ -70,10 +70,6 @@ class PrintLayout {
     ];
   }
 
-  static int sheetsNeeded(int sides, {required bool duplex}) {
-    return duplex ? (sides + 1) ~/ 2 : sides;
-  }
-
   static List<Cell> cellsFor(
     int perSheet, {
     required double margin,

@@ -1,6 +1,6 @@
 import 'dart:typed_data';
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 const String defaultWebPageTitle =
     'PreConnect Web | Fast, Calm Academic Companion App for BRAC University';

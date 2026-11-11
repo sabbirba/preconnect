@@ -175,14 +175,6 @@ class LibSyncAuthService extends ChangeNotifier {
     return _authenticateWithGoogleAccessToken(googleAccessToken);
   }
 
-  Future<void> saveProfile(Map<String, dynamic> profile) => _runAuth(() async {
-    await _apiClient.saveCachedProfile(profile);
-    return LibSyncAuthState(
-      status: LibSyncAuthStatus.authenticated,
-      profile: profile,
-    );
-  });
-
   Future<void> authenticateWithCookies(
     Map<String, String> cookies, {
     Map<String, dynamic>? profile,

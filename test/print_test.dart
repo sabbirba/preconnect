@@ -115,11 +115,6 @@ void main() {
         [3, 4],
       ]);
     });
-
-    test('sheet count halves for duplex', () {
-      expect(PrintLayout.sheetsNeeded(5, duplex: true), 3);
-      expect(PrintLayout.sheetsNeeded(5, duplex: false), 5);
-    });
   });
 
   group('placement', () {

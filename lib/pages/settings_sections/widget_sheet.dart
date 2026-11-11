@@ -1,5 +1,5 @@
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:preconnect/tools/time_utils.dart';
 import 'package:gap/gap.dart';
 import 'package:preconnect/features/schedule/application/today_widget.dart';

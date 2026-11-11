@@ -112,6 +112,7 @@ class ChatService {
     final pb = _pb;
     final startedAt = _sessionAt;
     if (pb != null &&
+        pb.authStore.isValid &&
         startedAt != null &&
         DateTime.now().difference(startedAt) < _sessionLifetime) {
       return pb;

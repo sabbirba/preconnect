@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:gap/gap.dart';
 import 'package:preconnect/api/seat_status.dart';
 import 'package:preconnect/model/section_info.dart' as section_info;
