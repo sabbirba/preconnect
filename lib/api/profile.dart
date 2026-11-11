@@ -389,6 +389,13 @@ class AdvisingService {
   factory AdvisingService() => _instance;
   AdvisingService._();
 
+  static String title(Map<String, String?> info) {
+    final phase = info['advisingPhase'] ?? '';
+    final semester = info['semesterSession'] ?? '';
+    final phaseLabel = phase.isEmpty ? 'Advising' : titleCaseWords(phase);
+    return semester.isEmpty ? phaseLabel : '$phaseLabel - $semester';
+  }
+
   static const List<String> storedProfileKeys = [
     'advisingStartDate',
     'advisingEndDate',

@@ -893,8 +893,6 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
     if (advisingInfo != null) {
       final startStr = advisingInfo['advisingStartDate'];
       final endStr = advisingInfo['advisingEndDate'];
-      final phase = advisingInfo['advisingPhase'] ?? '';
-      final semester = advisingInfo['semesterSession'] ?? '';
 
       if (startStr != null && endStr != null) {
         final startDate = DateTime.tryParse(startStr);
@@ -903,21 +901,8 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
           final now = DateTime.now();
           if (now.isBefore(endDate)) {
             final target = now.isBefore(startDate) ? startDate : endDate;
-            final phaseLabel = phase.isEmpty
-                ? 'Advising'
-                : phase
-                      .split('_')
-                      .map(
-                        (w) => w.isEmpty
-                            ? ''
-                            : w[0].toUpperCase() + w.substring(1).toLowerCase(),
-                      )
-                      .join(' ');
-            final title = semester.isEmpty
-                ? phaseLabel
-                : '$phaseLabel - $semester';
             nextAdvising = _CountdownCardData(
-              title: title,
+              title: AdvisingService.title(advisingInfo),
               targetDateTime: target,
               tab: HomeTab.alarms,
               subtitle: formatDateTimeRange(startDate, endDate),

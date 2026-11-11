@@ -911,22 +911,7 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
               );
               final endDate = DateTime.tryParse(info['advisingEndDate'] ?? '');
               if (startDate != null && endDate != null) {
-                final phase = info['advisingPhase'] ?? '';
-                final semester = info['semesterSession'] ?? '';
-                final phaseLabel = phase.isEmpty
-                    ? 'Advising'
-                    : phase
-                          .split('_')
-                          .map(
-                            (w) => w.isEmpty
-                                ? ''
-                                : w[0].toUpperCase() +
-                                      w.substring(1).toLowerCase(),
-                          )
-                          .join(' ');
-                final title = semester.isEmpty
-                    ? phaseLabel
-                    : '$phaseLabel - $semester';
+                final title = AdvisingService.title(info);
                 final subtitle = formatDateTimeRange(startDate, endDate);
                 final alarmKey = 'advising_${startDate.millisecondsSinceEpoch}';
                 _minutesBefore.putIfAbsent(alarmKey, () => 15);
