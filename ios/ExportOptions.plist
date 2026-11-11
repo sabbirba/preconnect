@@ -14,6 +14,8 @@
     <string>PreConnect</string>
     <key>com.sabbirba.preconnect.TodayWidgetExtension</key>
     <string>PreConnect Widget</string>
+    <key>com.sabbirba.preconnect.ImageNotification</key>
+    <string>PreConnect Notification</string>
   </dict>
   <key>uploadBitcode</key>
   <false/>

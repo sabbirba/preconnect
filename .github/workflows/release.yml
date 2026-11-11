@@ -620,10 +620,12 @@ jobs:
           IOS_P12_PASSWORD: ${{ secrets.IOS_P12_PASSWORD }}
           IOS_PROFILE_BASE64: ${{ secrets.IOS_PROFILE_BASE64 }}
           IOS_WIDGET_PROFILE_BASE64: ${{ secrets.IOS_WIDGET_PROFILE_BASE64 }}
+          IOS_NOTIFICATION_PROFILE_BASE64: ${{ secrets.IOS_NOTIFICATION_PROFILE_BASE64 }}
         run: |
           if [ -n "$DEVELOPMENT_TEAM" ] && [ -n "$IOS_P12_BASE64" ] && \
              [ -n "$IOS_P12_PASSWORD" ] && [ -n "$IOS_PROFILE_BASE64" ] && \
-             [ -n "$IOS_WIDGET_PROFILE_BASE64" ]; then
+             [ -n "$IOS_WIDGET_PROFILE_BASE64" ] && \
+             [ -n "$IOS_NOTIFICATION_PROFILE_BASE64" ]; then
             echo "enabled=true" >> "$GITHUB_OUTPUT"
           else
             echo "enabled=false" >> "$GITHUB_OUTPUT"
@@ -643,6 +645,7 @@ jobs:
         env:
           IOS_PROFILE_BASE64: ${{ secrets.IOS_PROFILE_BASE64 }}
           IOS_WIDGET_PROFILE_BASE64: ${{ secrets.IOS_WIDGET_PROFILE_BASE64 }}
+          IOS_NOTIFICATION_PROFILE_BASE64: ${{ secrets.IOS_NOTIFICATION_PROFILE_BASE64 }}
         run: |
           PROFILE_DIR="$HOME/Library/MobileDevice/Provisioning Profiles"
           mkdir -p "$PROFILE_DIR"
@@ -666,6 +669,7 @@ jobs:
           }
           install_profile "$IOS_PROFILE_BASE64" "PreConnect"
           install_profile "$IOS_WIDGET_PROFILE_BASE64" "PreConnect Widget"
+          install_profile "$IOS_NOTIFICATION_PROFILE_BASE64" "PreConnect Notification"
 
       - name: Build iOS Unsigned
         if: steps.ios_signing.outputs.enabled != 'true'
