@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/services.dart';
+import 'package:file_selector/file_selector.dart' show XTypeGroup, openFile;
 import 'package:permission_handler/permission_handler.dart';
 import 'package:preconnect/api/friend_store.dart';
 import 'package:preconnect/model/friend_schedule.dart';
@@ -85,13 +86,36 @@ class _ScanSchedulePageState extends State<ScanSchedulePage> {
       _controller.stop();
     } on FormatException {
       if (!mounted) return;
-      showAppSnackBar(context, 'Invalid friend schedule QR code');
+      showAppSnackBar(context, 'Invalid friend schedule code');
     } catch (_) {
       if (!mounted) return;
       showAppSnackBar(context, 'Could not save friend schedule');
     } finally {
       _isSaving = false;
     }
+  }
+
+  Future<void> _importFile() async {
+    final picked = await openFile(
+      acceptedTypeGroups: const [
+        XTypeGroup(
+          label: 'Friends Export',
+          extensions: ['txt'],
+          mimeTypes: ['text/plain'],
+          uniformTypeIdentifiers: ['public.plain-text'],
+        ),
+      ],
+    );
+    if (picked == null) return;
+    final String text;
+    try {
+      text = await picked.readAsString();
+    } catch (_) {
+      if (!mounted) return;
+      showAppSnackBar(context, 'Could not read the file');
+      return;
+    }
+    await _acceptScannedValue(text);
   }
 
   Future<void> _pasteCode() async {
@@ -272,11 +296,26 @@ class _ScanSchedulePageState extends State<ScanSchedulePage> {
               ),
             ),
             const Gap(16),
-            AppActionButton(
-              onPressed: _pasteCode,
-              icon: Icons.paste_rounded,
-              label: 'Paste Code',
-              outlined: true,
+            Row(
+              children: [
+                Expanded(
+                  child: AppActionButton(
+                    onPressed: _pasteCode,
+                    icon: Icons.paste_rounded,
+                    label: 'Paste Code',
+                    outlined: true,
+                  ),
+                ),
+                const Gap(12),
+                Expanded(
+                  child: AppActionButton(
+                    onPressed: _importFile,
+                    icon: Icons.file_open_outlined,
+                    label: 'Import File',
+                    outlined: true,
+                  ),
+                ),
+              ],
             ),
           ],
         ),

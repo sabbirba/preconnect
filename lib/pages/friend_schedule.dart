@@ -166,7 +166,7 @@ class _FriendSchedulePageState extends State<FriendSchedulePage>
         );
       } on FormatException {
         if (!mounted) return;
-        showAppSnackBar(context, 'Invalid friend schedule QR code');
+        showAppSnackBar(context, 'Invalid friend schedule code');
       } catch (_) {
         if (!mounted) return;
         showAppSnackBar(context, 'Could not save friend schedule');
