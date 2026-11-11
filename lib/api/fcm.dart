@@ -25,6 +25,7 @@ import 'package:preconnect/tools/runtime_stub.dart'
     if (dart.library.js_interop) 'package:preconnect/tools/runtime_web.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+@pragma('vm:entry-point')
 class FCMService {
   FCMService._internal();
   static final FCMService _instance = FCMService._internal();
@@ -128,9 +129,9 @@ class FCMService {
 
     const DarwinInitializationSettings initializationSettingsDarwin =
         DarwinInitializationSettings(
-          requestAlertPermission: true,
-          requestBadgePermission: true,
-          requestSoundPermission: true,
+          requestAlertPermission: false,
+          requestBadgePermission: false,
+          requestSoundPermission: false,
         );
 
     const LinuxInitializationSettings initializationSettingsLinux =
@@ -169,6 +170,11 @@ class FCMService {
       );
 
       await _androidNotifications?.createNotificationChannel(channel);
+    }
+  }
+
+  static Future<void> _askNotificationPermission() async {
+    if (defaultTargetPlatform == TargetPlatform.android) {
       await _androidNotifications?.requestNotificationsPermission();
     } else if (defaultTargetPlatform == TargetPlatform.iOS) {
       await _localNotifications
@@ -466,6 +472,7 @@ class FCMService {
     await ensureFirebase();
     if (!kIsWeb) {
       await ensureLocalNotificationsInitialized();
+      await _askNotificationPermission();
     }
 
     RefreshBus.instance.stream.listen((reason) {
