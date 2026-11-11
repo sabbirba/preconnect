@@ -1,3 +1,4 @@
+import BackgroundTasks
 import EventKit
 import Flutter
 import StoreKit
@@ -5,6 +6,7 @@ import UIKit
 import home_widget
 
 let preConnectPendingShortcutActionKey = "flutter.pending_shortcut_action"
+let todayWidgetRefreshTaskId = "com.sabbirba.preconnect.todayWidgetRefresh"
 
 @main
 @objc
@@ -13,6 +15,7 @@ class AppDelegate: FlutterAppDelegate, FlutterImplicitEngineDelegate,
 {
   private var documentController: UIDocumentInteractionController?
   private var advisingBackgroundTask: UIBackgroundTaskIdentifier = .invalid
+  private var todayWidgetRefreshEngine: FlutterEngine?
 
   private func cacheShortcutAction(_ type: String) {
     UserDefaults.standard.set(type, forKey: preConnectPendingShortcutActionKey)
@@ -23,6 +26,7 @@ class AppDelegate: FlutterAppDelegate, FlutterImplicitEngineDelegate,
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
   ) -> Bool {
     purgeLargeUserDefaultsEntries()
+    registerTodayWidgetRefresh()
     if #available(iOS 17, *) {
       HomeWidgetBackgroundWorker.setPluginRegistrantCallback { registry in
         GeneratedPluginRegistrant.register(with: registry)
@@ -93,6 +97,59 @@ class AppDelegate: FlutterAppDelegate, FlutterImplicitEngineDelegate,
     }
 
     GeneratedPluginRegistrant.register(with: engineBridge.pluginRegistry)
+  }
+
+  private func registerTodayWidgetRefresh() {
+    BGTaskScheduler.shared.register(forTaskWithIdentifier: todayWidgetRefreshTaskId, using: nil) {
+      [weak self] task in
+      DispatchQueue.main.async {
+        guard let self, let task = task as? BGAppRefreshTask else {
+          task.setTaskCompleted(success: false)
+          return
+        }
+        self.refreshTodayWidget(task: task)
+      }
+    }
+    scheduleTodayWidgetRefresh()
+  }
+
+  private func scheduleTodayWidgetRefresh() {
+    let request = BGAppRefreshTaskRequest(identifier: todayWidgetRefreshTaskId)
+    request.earliestBeginDate = Date(timeIntervalSinceNow: 30 * 60)
+    do {
+      try BGTaskScheduler.shared.submit(request)
+    } catch {
+      NSLog("Today widget refresh was not scheduled: \(error)")
+    }
+  }
+
+  private func refreshTodayWidget(task: BGAppRefreshTask) {
+    scheduleTodayWidgetRefresh()
+    guard todayWidgetRefreshEngine == nil else {
+      task.setTaskCompleted(success: false)
+      return
+    }
+    let engine = FlutterEngine(
+      name: "today_widget_refresh", project: nil, allowHeadlessExecution: true)
+    todayWidgetRefreshEngine = engine
+    let channel = FlutterMethodChannel(
+      name: "preconnect/today_widget", binaryMessenger: engine.binaryMessenger)
+    let finish = { [weak self] (success: Bool) in
+      DispatchQueue.main.async {
+        guard let self, self.todayWidgetRefreshEngine === engine else { return }
+        channel.setMethodCallHandler(nil)
+        engine.destroyContext()
+        self.todayWidgetRefreshEngine = nil
+        task.setTaskCompleted(success: success)
+      }
+    }
+    task.expirationHandler = { finish(false) }
+    channel.setMethodCallHandler { _, result in
+      result(nil)
+      finish(true)
+    }
+    engine.run(withEntrypoint: "todayWidgetRefresh")
+    GeneratedPluginRegistrant.register(with: engine)
   }
 
   private func registerFileChannel(binaryMessenger: FlutterBinaryMessenger) {

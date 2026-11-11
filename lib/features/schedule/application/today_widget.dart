@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:home_widget/home_widget.dart';
 
 class TodayItem {
@@ -38,6 +39,9 @@ abstract final class TodayWidget {
   static const String _iOSName = 'TodayWidget';
   static const String appGroupId =
       'group.com.sabbirba.preconnect.TodayWidgetExtension';
+  static const MethodChannel _refreshChannel = MethodChannel(
+    'preconnect/today_widget',
+  );
 
   static bool get isSupported =>
       !kIsWeb &&
@@ -113,6 +117,11 @@ abstract final class TodayWidget {
     try {
       await HomeWidget.saveWidgetData<String>('today_title', title);
       await HomeWidget.saveWidgetData<String>('today_date', date);
+      final now = DateTime.now();
+      await HomeWidget.saveWidgetData<int>(
+        'today_day',
+        now.year * 10000 + now.month * 100 + now.day,
+      );
       final previousItemCount =
           await HomeWidget.getWidgetData<int>('today_item_count') ?? 0;
       final slotCount = previousItemCount > items.length
@@ -155,6 +164,12 @@ abstract final class TodayWidget {
         androidName: _androidName,
         iOSName: _iOSName,
       );
+    } catch (_) {}
+  }
+
+  static Future<void> finishBackgroundRefresh() async {
+    try {
+      await _refreshChannel.invokeMethod<void>('done');
     } catch (_) {}
   }
 

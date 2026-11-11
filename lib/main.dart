@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -20,9 +21,16 @@ import 'tools/wifi_tile.dart';
 Future<void> homeWidgetBackground(Uri? uri) async {
   if (WifiTile.handles(uri)) {
     await WifiTile.run(uri!);
-    return;
   }
-  await syncTodayWidgetInBackground(uri);
+}
+
+@pragma('vm:entry-point')
+Future<void> todayWidgetRefresh() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  DartPluginRegistrant.ensureInitialized();
+  await TodayWidget.initialize();
+  await syncTodayWidgetInBackground(forceRefresh: true);
+  await TodayWidget.finishBackgroundRefresh();
 }
 
 Future<void> _initStorage() async {

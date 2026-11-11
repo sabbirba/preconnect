@@ -60,18 +60,18 @@ struct TodayWidgetProvider: TimelineProvider {
   {
     let entry = readEntry()
     let now = Date()
-    let nextRefresh = Calendar.current.date(byAdding: .minute, value: 5, to: now) ?? now
-      .addingTimeInterval(300)
-    let startOfDay = Calendar.current.startOfDay(for: now)
-    let classBoundaries = Set(entry.items.flatMap { [$0.startMinutes, $0.endMinutes] })
+    let calendar = Calendar.current
+    let startOfDay = calendar.startOfDay(for: now)
+    let nextReload = calendar.date(byAdding: .minute, value: 15, to: now) ?? now
+    let redrawTimes = Set(entry.items.flatMap { [$0.startMinutes, $0.endMinutes] } + [24 * 60])
       .filter { $0 >= 0 }
-      .compactMap { Calendar.current.date(byAdding: .minute, value: $0, to: startOfDay) }
-      .filter { $0 > now && $0 < nextRefresh }
+      .compactMap { calendar.date(byAdding: .minute, value: $0, to: startOfDay) }
+      .filter { $0 > now }
       .sorted()
-    let entries = [entry] + classBoundaries.map {
+    let entries = [entry] + redrawTimes.map {
       TodayWidgetEntry(date: $0, title: entry.title, dateText: entry.dateText, items: entry.items)
     }
-    completion(Timeline(entries: entries, policy: .after(nextRefresh)))
+    completion(Timeline(entries: entries, policy: .after(nextReload)))
   }
 
   private func readEntry() -> TodayWidgetEntry {

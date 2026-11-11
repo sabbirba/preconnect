@@ -1,30 +1,25 @@
 package com.sabbirba.preconnect
 
-import android.app.AlarmManager
-import android.app.PendingIntent
 import android.appwidget.AppWidgetManager
-import android.content.ComponentName
 import android.content.Context
-import android.content.Intent
 import android.content.SharedPreferences
 import android.net.Uri
-import android.os.SystemClock
 import android.view.View
 import android.widget.RemoteViews
 import java.util.Calendar
-import es.antonborri.home_widget.HomeWidgetBackgroundIntent
 import es.antonborri.home_widget.HomeWidgetLaunchIntent
 import es.antonborri.home_widget.HomeWidgetProvider
+import es.antonborri.home_widget.HomeWidgetScheduler
 
 class TodayWidgetProvider : HomeWidgetProvider() {
     override fun onEnabled(context: Context) {
         super.onEnabled(context)
-        scheduleRefresh(context)
+        TodayWidgetRefreshWorker.schedule(context)
     }
 
     override fun onDisabled(context: Context) {
-        val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
-        alarmManager.cancel(refreshIntent(context))
+        TodayWidgetRefreshWorker.cancel(context)
+        HomeWidgetScheduler.cancel(context, javaClass.name)
         super.onDisabled(context)
     }
 
@@ -99,9 +94,38 @@ class TodayWidgetProvider : HomeWidgetProvider() {
             appWidgetManager.updateAppWidget(widgetId, views)
         }
 
-        scheduleRefresh(context)
-        maybeRefreshFromCache(context, widgetData)
+        TodayWidgetRefreshWorker.schedule(context)
+        HomeWidgetScheduler.schedule(context, javaClass.name, redrawTimes(widgetData, now))
+        if (readInt(widgetData, "today_day") != dayKey(now)) {
+            TodayWidgetRefreshWorker.refreshNow(context)
+        }
     }
+
+    private fun redrawTimes(
+        widgetData: SharedPreferences,
+        now: Calendar,
+    ): List<Long> {
+        val startOfDay =
+            (now.clone() as Calendar).apply {
+                set(Calendar.HOUR_OF_DAY, 0)
+                set(Calendar.MINUTE, 0)
+                set(Calendar.SECOND, 0)
+                set(Calendar.MILLISECOND, 0)
+            }
+        val boundaries =
+            (1..3).flatMap { slot ->
+                listOf(
+                    readInt(widgetData, "today_item${slot}_start"),
+                    readInt(widgetData, "today_item${slot}_end"),
+                )
+            }.filter { it >= 0 } + MINUTES_PER_DAY
+        return boundaries.map { minutes ->
+            (startOfDay.clone() as Calendar).apply { add(Calendar.MINUTE, minutes) }.timeInMillis
+        }
+    }
+
+    private fun dayKey(now: Calendar): Int =
+        now.get(Calendar.YEAR) * 10000 + (now.get(Calendar.MONTH) + 1) * 100 + now.get(Calendar.DAY_OF_MONTH)
 
     private fun currentOrNextSlots(
         widgetData: SharedPreferences,
@@ -111,8 +135,8 @@ class TodayWidgetProvider : HomeWidgetProvider() {
             (1..3).map { slot ->
                 Triple(
                     slot,
-                    readMinutes(widgetData, "today_item${slot}_start"),
-                    readMinutes(widgetData, "today_item${slot}_end"),
+                    readInt(widgetData, "today_item${slot}_start"),
+                    readInt(widgetData, "today_item${slot}_end"),
                 )
             }.filter { (_, start, end) -> start in 0 until end }
         val running = slots.filter { (_, start, end) -> nowMinutes in start until end }
@@ -121,7 +145,7 @@ class TodayWidgetProvider : HomeWidgetProvider() {
         return slots.filter { it.second == nextStart }.map { it.first }.toSet()
     }
 
-    private fun readMinutes(
+    private fun readInt(
         widgetData: SharedPreferences,
         key: String,
     ): Int =
@@ -129,46 +153,6 @@ class TodayWidgetProvider : HomeWidgetProvider() {
             is Number -> value.toInt()
             else -> -1
         }
-
-    private fun scheduleRefresh(context: Context) {
-        val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
-        alarmManager.setInexactRepeating(
-            AlarmManager.ELAPSED_REALTIME,
-            SystemClock.elapsedRealtime() + REFRESH_INTERVAL_MILLIS,
-            REFRESH_INTERVAL_MILLIS,
-            refreshIntent(context),
-        )
-    }
-
-    private fun refreshIntent(context: Context): PendingIntent {
-        val appWidgetManager = AppWidgetManager.getInstance(context)
-        val widgetIds =
-            appWidgetManager.getAppWidgetIds(ComponentName(context, TodayWidgetProvider::class.java))
-        val intent =
-            Intent(context, TodayWidgetProvider::class.java).apply {
-                action = AppWidgetManager.ACTION_APPWIDGET_UPDATE
-                putExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS, widgetIds)
-            }
-        return PendingIntent.getBroadcast(
-            context,
-            0,
-            intent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
-        )
-    }
-
-    private fun maybeRefreshFromCache(
-        context: Context,
-        widgetData: SharedPreferences,
-    ) {
-        val now = System.currentTimeMillis()
-        val lastRequest = widgetData.getLong("today_last_refresh_request", 0)
-        if (now - lastRequest < REFRESH_INTERVAL_MILLIS) return
-        widgetData.edit().putLong("today_last_refresh_request", now).apply()
-        try {
-            HomeWidgetBackgroundIntent.getBroadcast(context, Uri.parse("todaywidget://refresh")).send()
-        } catch (_: PendingIntent.CanceledException) {}
-    }
 
     private data class Row(
         val container: Int,
@@ -181,6 +165,6 @@ class TodayWidgetProvider : HomeWidgetProvider() {
     )
 
     private companion object {
-        const val REFRESH_INTERVAL_MILLIS = 300_000L
+        const val MINUTES_PER_DAY = 24 * 60
     }
 }

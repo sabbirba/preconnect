@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:preconnect/tools/time_utils.dart';
 import 'package:gap/gap.dart';
 import 'package:intl/intl.dart';
-import 'package:preconnect/api/api_client.dart';
 import 'package:preconnect/features/schedule/application/today_widget.dart';
 import 'package:preconnect/pages/home.dart';
 import 'package:preconnect/pages/ui_kit.dart';
@@ -44,10 +43,7 @@ class _WidgetSetupSheetState extends State<WidgetSetupSheet> {
     var data = await TodayWidget.loadCurrent();
     if (data == null || (data.title.isEmpty && data.items.isEmpty)) {
       try {
-        await syncTodayWidgetInBackground(
-          Uri.parse('preconnect://refresh'),
-          forceRefresh: true,
-        );
+        await syncTodayWidgetInBackground(forceRefresh: true);
         data = await TodayWidget.loadCurrent();
       } catch (_) {}
     }
@@ -76,11 +72,7 @@ class _WidgetSetupSheetState extends State<WidgetSetupSheet> {
   Future<void> _syncWidget() async {
     setState(() => _isSyncing = true);
     try {
-      ApiClient().clearTransientCaches();
-      await syncTodayWidgetInBackground(
-        Uri.parse('preconnect://refresh'),
-        forceRefresh: true,
-      );
+      await syncTodayWidgetInBackground(forceRefresh: true);
     } catch (_) {}
     RefreshBus.instance.notify(reason: 'cache_cleared');
     final data = await TodayWidget.loadCurrent();
