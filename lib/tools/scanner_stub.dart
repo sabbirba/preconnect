@@ -32,6 +32,8 @@ class MobileScannerController {
     Size? cameraResolution,
     bool? autoStart,
     bool? returnImage,
+    bool? autoZoom,
+    bool? autoTorch,
   });
 
   Future<void> start() async {}
