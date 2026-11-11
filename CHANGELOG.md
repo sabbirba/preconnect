@@ -5,162 +5,151 @@ Entries are written for students, not developers — plain language, no commit h
 
 ## [Unreleased]
 
-## [2.1.4] — 2026-11-08
+## [2.1.4] — 2026-11-11
 
-- Plan your routine in Seat Status with conflict checks and new filters.
-- Planner Schedule sheet for planned classes and exams.
-- Live seat update times and a booked trend.
-- Midterms in light blue, finals in green.
-- Show More and Show Less step by five.
-- Supporters on the home dashboard with a Share button and an anonymous total.
-- Content refreshes in the background each time you open the app.
-- Faster connections, seat status, Wi-Fi login, and startup.
+- Chat for your Lounge, courses and sections.
+- Share quizzes and assignments set to your next class.
+- Course Materials from classmates and faculty reviews.
+- Live bus locations with a sync button.
+- Import friends from a file.
+- Home screen widget stays current when closed.
+- Plan your routine in Seat Status with clash checks.
+- Account Security, payslip printing and unread count.
+- Faster loading and many fixes.
 
 ## [2.1.3] — 2026-11-06
 
-- Print preview opens instantly and shows the first page of a PDF right away.
-- Staple and Punch, and Offset and Slip Sheet, now share one button each.
-- Your printer ID card and settings stay saved when a sign-in or profile read fails.
-- Seat counts update live while Seat Status is open, and seat watch stays on your device.
-- Push notifications no longer send your sign-in token.
-- Faster startup and clearer printer and Wi-Fi help.
+- Instant print preview.
+- Simpler finishing options.
+- Printer ID and settings stay saved.
+- Live seat counts in Seat Status.
+- Safer notifications and faster startup.
 
 ## [2.1.2] — 2026-10-26
 
-- Add or remove extra sections from a personal routine in one tap without changing Connect enrolment.
-- Combine matching class times with joined weekdays and make schedule cards, spacing, and actions more consistent.
-- Distinguish exams with the existing green accent and compact Midterm and Final labels.
-- Include extra classes in Alarms and focus on exams only from three days before their date.
-- Show 30 days in the custom planner date picker and 7 days in LibSync booking.
-- Improve saved schedules, secure credential handling, and recovery from temporary connection or storage failures.
-- Improve browser cache refresh, camera access for scanning, and notification registration.
-- Update dependencies and build tools across supported platforms.
+- Add or remove extra sections in one tap.
+- Cleaner schedule cards with joined weekdays.
+- Clearer Midterm and Final labels.
+- Extra classes in Alarms.
+- More reliable saving and sign-in.
 
 ## [2.1.1] — 2026-10-07
 
-- Library LibSync: Seamless library room reservation with direct deep link authentication and streamlined Google sign-in.
-- Onboarding: Refined continue action button for a more direct, intuitive sign-in experience.
+- Book library rooms with LibSync.
+- Simpler sign-in during onboarding.
 
 ## [2.1.0] — 2026-10-05
 
-- Curriculum & Degree Progress: Added required and optional course filters, dynamic dropdown labels, and seamless EMB101 and DEV101 course equivalence recognition.
-- Class Schedule Accuracy: Enforced exact semester start and end dates across active routines, preventing courses from displaying before their official start date or after semester completion.
-- Schedule Navigation & Views: Eliminated duplicate course entries and cleaned up empty schedule states to avoid unnecessary Next Week prompts.
-- App Lock Security: Standardized app security with a consistent 1-minute background timeout for seamless re-authentication.
-- Network & Performance: Enhanced campus network resolution and optimized faculty visual assets for fast, smooth loading.
+- Course filters in Degree Progress.
+- Schedules follow exact semester dates.
+- No duplicate courses or empty weeks.
+- App Lock re-locks after one minute.
+- Faster faculty photos and campus network.
 
 ## [2.0.9] — 2026-09-06
 
-- Campus Printer & Email Printing: Introduced Print by Email support to submit documents and duplex print jobs from any device or off-campus.
-- UI & Layout Polish: Refined layout spacing, link styling, and campus printing guide instructions.
+- Print by email from any device.
+- Layout and printing guide polish.
 
 ## [2.0.8] — 2026-08-31
 
-- Exam Schedule Accuracy: Polished exam schedule resolution to strictly match verified exam rooms, dates, and time slots without classroom fallbacks.
-- DSpace Digital Library: Integrated native back navigation to make browsing digital library archives smoother and more intuitive.
-- Student-WiFi: Streamlined Wi-Fi connection handling with a quieter, distraction-free connection experience.
+- More accurate exam rooms and times.
+- Back navigation in DSpace.
+- Quieter Wi-Fi sign-in.
 
 ## [2.0.7] — 2026-08-20
 
-- Student-WiFi: Instant one-tap sign-in with active keep-alive heartbeat, multi-AP roaming auto-reconnect, and real-time connection diagnostics.
-- Campus Printer: Configured default A4 media sizing across PJL directives and optimized single-pass LPR spooling for exact copy counts.
-- Home Screen Widget: Updated to a translucent glassmorphic look that seamlessly blends with your home screen wallpaper.
-- Quick Settings Tile: Added a dedicated Android Quick Settings tile for direct one-tap campus Wi-Fi sign-in from your notification shade.
+- One-tap Wi-Fi sign-in with auto reconnect.
+- A4 printing with exact copy counts.
+- Translucent home screen widget.
+- Quick Settings tile for Wi-Fi on Android.
 
 ## [2.0.6] — 2026-08-14
 
-- Student-WiFi & Connectivity: Enhanced Captive Wi-Fi login reliability with smart retry loops, automatic portal detection, and dedicated network fields.
-- Direct Developer Access: Quick-access developer utilities now open smoothly and directly.
+- More reliable Wi-Fi login.
+- Developer tools open directly.
 
 ## [2.0.5] — 2026-08-02
 
-- Optimize schedule handling and improve connectivity status management.
-- All-Department Payments Sync: Integrated multi-portfolio query flags (`includeInactive=true`) so payment records, dues, and transaction histories across all active and past departments load in full.
-- Semester Session Isolation: Fixed switching between past and current semesters to accurately preserve course schedules, exam rooms, seating details, and grade sheets.
+- Payments from all departments load in full.
+- Switching semesters keeps the right data.
 
 ## [2.0.4] — 2026-07-29
 
-Universal Compatibility: Expanded hardware feature definitions and optimized responsive layouts for all device form factors.
+- Better layouts on every screen size.
 
 ## [2.0.3] — 2026-07-28
 
-- Instant 0 ms Loading: Pages across the app (Dashboard, Class Schedule, Exam Schedule, DSpace, Calendar, Notifications, Seat Status, Free Labs) now render instantly from local cache without loading spinners.
-- 120Hz Smooth Scrolling: Enabled high refresh rate hardware rendering and optimized scroll physics for stutter-free navigation.
-- Real-Time Data Sync: Integrated background diff updates via Mercure SSE so your schedules and exam details update silently in the background.
-- Semester Session Isolation: Fixed switching between past and current semesters to accurately preserve course data, exam rooms, and seating details.
-- App-Wide UI Refresh: Compacted page paddings from 20px to 14px for cleaner, roomier card layouts.
-- Campus Wi-Fi & PDF Reliability: Enhanced captive portal login stability, unescaped PDF downloads, and persistent offline exam map caching.
+- Pages open instantly from cache.
+- Smooth 120 Hz scrolling.
+- Schedules update in the background.
+- Roomier card layouts.
+- More reliable Wi-Fi login and PDFs.
 
 ## [2.0.2] — 2026-07-23
 
-- Performance Upgrades: Pipeline compilation optimized with parallel build jobs and dependency caching.
+- Faster releases.
 
 ## [2.0.1] — 2026-07-18
 
-- Apple Silicon Support: Built on modern Apple Silicon virtual machine environments for faster deployment.
+- Faster Apple builds.
 
 ## [2.0.0] — 2026-07-17
 
-- Smoother Onboarding: Notification requests are now optional and won't interrupt your first startup.
-- Reliable Wi-Fi: Improved campus Wi-Fi login reliability with smart retry loops and delays.
-- Under the Hood: Cleaned up background notifications and fully optimized app stability.
+- Notification prompt is optional at first start.
+- More reliable Wi-Fi login.
+- Better stability.
 
 ## [1.6.9] — 2026-07-14
 
-- Instant 0 ms startup loading: Optimized initial frame settling delay to 0 ms.
-- Real-time silent UI updates: Connected Class Schedule, Exam Schedule, Bus, Alarms, and Degree Progress to background cache update listeners, refreshing the UI instantly without showing visual loading indicators or spinners.
-- Background sync integration: Wired the FCM background handler to silently fetch and update the local database cache when the server broadcasts silent data sync updates.
-- In-app routing for captive portal notifications: Push alerts for campus Wi-Fi redirects and external URLs now open directly inside the app's Captive Wi-Fi interface and in-app WebViews.
-- Fixed UI layout blank spaces: Resolved vertical spacing bugs and added attendance record empty state placeholder cards in the Student Profile.
+- Instant startup.
+- Screens update quietly in the background.
+- Wi-Fi alerts open inside the app.
+- Spacing fixes in Profile.
 
 ## [1.6.8] — 2026-06-27
 
-- Added help instructions and an automated Connect/Disconnect button to Captive Wi-Fi
-- Swapped the SSID display to a read-only input field matching the rest of the text fields
-- Replaced the webview portal page header with a transparent overlay for back and refresh controls
+- Wi-Fi help and one-tap Connect.
+- Cleaner Wi-Fi screen.
 
 ## [1.6.7] — 2026-06-17
 
-- Completely rewrote the campus Wi-Fi login flow to be API based
-- Network properties (gateway, MAC address, etc.) are now fetched dynamically from device APIs
-- Captive portal banner redesigned to be minimal on the Home screen
-- Fixed MAC address normalization and portal redirect URL parameter extraction
+- Rebuilt campus Wi-Fi login.
+- Smaller Wi-Fi banner on Home.
+- Wi-Fi redirect fixes.
 
 ## [1.6.6] — 2026-06-06
 
-- Improved app startup speed with smaller background work on launch
-- Better stability for course schedules, seats, and dashboard loading
-- Cleaner wording and small UI refinements across key screens
+- Faster startup.
+- More stable schedules and seats.
+- Clearer wording.
 
 ## [1.6.6] — 2026-06-01
 
-- Improved captive Wi-Fi detection: now supports modern RFC 8908 JSON portal responses and handles more campus router redirect patterns
-- Massive reduced download and install size by over 58% (saving ~14 MB of space) through optimized native library packaging and aggressive R8 code shrinking
-- Optimized memory and launch footprint by implemented lazy-loading for the PDF module
-- CI and build pipeline improvements (faster releases for you)
+- Better Wi-Fi portal detection.
+- 58% smaller download.
+- Lighter launch.
 
 ## [1.6.5] — 2026-05
 
-- Restored Rate App and Share actions in the Quick Access panel
-- Performance improvements to the home dashboard loading speed
-- Minor UI polish and bug fixes
+- Rate and Share back in Quick Access.
+- Faster dashboard.
 
 ## [1.6.0] — 2026-04
 
-- Major release: new Student Overview dashboard with semester and department info
-- Added QR code schedule sharing with friends
-- Class alarm system: set reminders per course, adjustable minutes before class
-- Improved offline caching — seat status and schedules now load without internet
-- Dark mode support across all screens
+- Student Overview dashboard.
+- Share schedules with friends by QR.
+- Class alarms.
+- Offline seats and schedules.
+- Dark mode.
 
 ## [1.5.0] — 2026-03
 
-- Seat status checker: real-time section seat availability during advising
-- Exam schedule viewer with room and building details
-- CGPA calculator and degree progress tracker
-- Campus bus route guide
+- Seat status checker.
+- Exam schedule with rooms.
+- CGPA calculator and degree progress.
+- Campus bus routes.
 
 ## [1.0.0] — 2026-01
 
-- Initial release of PreConnect for BRAC University students
-- Class schedule viewer, student profile, and campus utilities
+- First release with schedules, profile and campus tools.

@@ -1,8 +1,9 @@
-• Plan your routine in Seat Status with conflict checks and new filters.
-• Planner Schedule sheet for planned classes and exams.
-• Live seat update times and a booked trend.
-• Midterms in light blue, finals in green.
-• Show More and Show Less step by five.
-• Supporters on the home dashboard with a Share button and an anonymous total.
-• Content refreshes in the background each time you open the app.
-• Faster connections, seat status, Wi-Fi login, and startup.
+• Chat for your Lounge, courses and sections.
+• Share quizzes and assignments set to your next class.
+• Course Materials from classmates and faculty reviews.
+• Live bus locations with a sync button.
+• Import friends from a file.
+• Home screen widget stays current when closed.
+• Plan your routine in Seat Status with clash checks.
+• Account Security, payslip printing and unread count.
+• Faster loading and many fixes.
