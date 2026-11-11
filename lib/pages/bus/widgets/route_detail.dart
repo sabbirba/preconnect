@@ -82,14 +82,12 @@ class _BusRouteDetailPageState extends State<BusRouteDetailPage> {
                 ],
               ),
             ),
-          if (hasLivePosition && !kIsWeb) ...[
-            _RouteLiveMapCard(route: route),
+          if (hasLivePosition) ...[
+            kIsWeb
+                ? _RouteGoogleMapsLink(route: route)
+                : _RouteLiveMapCard(route: route),
             const Gap(2),
             if (hasLiveStats) _LiveTrackingCard(route: route),
-            const Gap(2),
-          ],
-          if (hasLivePosition && kIsWeb) ...[
-            _RouteGoogleMapsLink(route: route),
             const Gap(2),
           ],
           _RouteStopsCard(route: route),
