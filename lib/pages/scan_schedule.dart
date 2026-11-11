@@ -35,7 +35,6 @@ class _ScanSchedulePageState extends State<ScanSchedulePage> {
     detectionSpeed: DetectionSpeed.unrestricted,
     cameraResolution: const Size(1920, 1080),
     autoZoom: true,
-    autoTorch: true,
   );
   String? scannedValue;
   Map<String, FriendSchedule> _added = const {};
