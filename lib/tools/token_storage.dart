@@ -57,8 +57,6 @@ class TokenStorage {
     mOptions: MacOsOptions(usesDataProtectionKeychain: kReleaseMode),
   );
 
-  Future<void>? _legacyMigration;
-
   Future<String?> read({required String key}) async {
     if (kIsWeb) {
       try {
@@ -71,10 +69,7 @@ class TokenStorage {
       }
     }
 
-    if (_sensitiveKeys.contains(key)) {
-      await _ensureLegacySensitiveValuesMigrated();
-      return _readSecureValue(key);
-    }
+    if (_sensitiveKeys.contains(key)) return _readSecureValue(key);
 
     final value = await AppStorage.instance.getString(key);
     if (value == null || value.isEmpty) return null;
@@ -101,9 +96,7 @@ class TokenStorage {
     }
 
     if (_sensitiveKeys.contains(key)) {
-      await _ensureLegacySensitiveValuesMigrated();
       await _writeSecureValue(key, value);
-      await _removeLegacyValue(key);
     } else {
       if (value == null || value.isEmpty) {
         await AppStorage.instance.remove(key);
@@ -117,10 +110,8 @@ class TokenStorage {
 
   Future<void> deleteAll() async {
     if (!kIsWeb) {
-      await _ensureLegacySensitiveValuesMigrated();
       for (final key in _sensitiveKeys) {
         await _writeSecureValue(key, null);
-        await _removeLegacyValue(key);
       }
     } else {
       for (final key in _sensitiveKeys) {
@@ -155,49 +146,6 @@ class TokenStorage {
     await AppStorage.instance.setBool(_cachedHasSessionKey, hasValue);
   }
 
-  Future<void> _ensureLegacySensitiveValuesMigrated() async {
-    final inFlight = _legacyMigration;
-    if (inFlight != null) {
-      return inFlight;
-    }
-
-    final migration = _migrateLegacySensitiveValues();
-    _legacyMigration = migration;
-    try {
-      await migration;
-    } catch (_) {
-      if (identical(_legacyMigration, migration)) {
-        _legacyMigration = null;
-      }
-      rethrow;
-    }
-  }
-
-  Future<void> _migrateLegacySensitiveValues() async {
-    for (final key in _sensitiveKeys) {
-      final String? legacyValue;
-      try {
-        legacyValue = await AppStorage.instance.getString(key);
-      } catch (error) {
-        throw TokenPersistenceException(
-          'Failed to read legacy storage for "$key" '
-          '(${error.runtimeType}).',
-        );
-      }
-
-      if (legacyValue == null) {
-        continue;
-      }
-
-      final secureValue = await _readSecureValue(key);
-      if ((secureValue == null || secureValue.isEmpty) &&
-          legacyValue.isNotEmpty) {
-        await _writeSecureValue(key, legacyValue);
-      }
-      await _removeLegacyValue(key);
-    }
-  }
-
   Future<String?> _readSecureValue(String key) async {
     try {
       final value = await _secureStorage.read(key: key);
@@ -222,10 +170,6 @@ class TokenStorage {
         'Failed to persist secure storage for "$key" (${e.runtimeType}).',
       );
     }
-  }
-
-  Future<void> _removeLegacyValue(String key) async {
-    await AppStorage.instance.remove(key);
   }
 }
 

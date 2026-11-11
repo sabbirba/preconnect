@@ -49,24 +49,6 @@ void main() {
     await directory.delete(recursive: true);
   });
 
-  test('failed migration preserves legacy values and can retry', () async {
-    await AppStorage.instance.setString('access_token', 'synthetic_access');
-    final storage = TokenStorage();
-    failedMethod = 'write';
-    await expectLater(
-      storage.read(key: 'access_token'),
-      throwsA(isA<TokenPersistenceException>()),
-    );
-    expect(
-      await AppStorage.instance.getString('access_token'),
-      'synthetic_access',
-    );
-    failedMethod = null;
-    expect(await storage.read(key: 'access_token'), 'synthetic_access');
-    expect(await AppStorage.instance.getString('access_token'), isNull);
-    expect(secureValues['access_token'], 'synthetic_access');
-  });
-
   test('failed secure writes cannot mark a session as saved', () async {
     failedMethod = 'write';
     await expectLater(

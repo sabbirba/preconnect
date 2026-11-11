@@ -39,7 +39,6 @@ class AppStorage {
       } else {
         await _initCacheDir();
       }
-      await _migrateLargeEntries();
     } catch (_) {}
   }
 
@@ -54,23 +53,6 @@ class AppStorage {
     } catch (error) {
       _cacheDir = null;
     }
-  }
-
-  static Future<void> _migrateLargeEntries() async {
-    final prefs = _prefs;
-    if (prefs == null) return;
-    try {
-      final keys = prefs.getKeys().toList();
-      for (final key in keys) {
-        try {
-          final val = prefs.getString(key);
-          if (val == null || val.startsWith(_kFileCacheMarker)) continue;
-          if (val.length > _kLargeValueThreshold) {
-            await instance.setString(key, val);
-          }
-        } catch (_) {}
-      }
-    } catch (_) {}
   }
 
   static Future<SharedPreferences> _getInstance() async {

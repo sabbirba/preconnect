@@ -20,31 +20,11 @@ class AppPaths {
   }
 
   static Future<Directory> _persistentDirectory(String bucket) async {
-    final legacy = _platformDataRoot(bucket);
-    if (!Platform.isAndroid && !Platform.isIOS) {
-      return _ensureDirectory(legacy);
+    if (Platform.isAndroid || Platform.isIOS) {
+      final root = await getApplicationSupportDirectory();
+      return _ensureDirectory(Directory('${root.path}/PreConnect/$bucket'));
     }
-    final root = await getApplicationSupportDirectory();
-    return migrateDirectory(
-      legacy,
-      Directory('${root.path}/PreConnect/$bucket'),
-    );
-  }
-
-  static Future<Directory> migrateDirectory(
-    Directory legacy,
-    Directory target,
-  ) async {
-    if (await legacy.exists() && !await target.exists()) {
-      await target.parent.create(recursive: true);
-      try {
-        return await legacy.rename(target.path);
-      } on FileSystemException {
-        if (await target.exists()) return target;
-        rethrow;
-      }
-    }
-    return _ensureDirectory(target);
+    return _ensureDirectory(_desktopDataRoot(bucket));
   }
 
   static Future<Directory> _ensureDirectory(Directory directory) async {
@@ -54,42 +34,11 @@ class AppPaths {
     return directory;
   }
 
-  static Directory _platformDataRoot(String bucket) {
-    if (Platform.isAndroid || Platform.isIOS) {
-      return Directory('${Directory.systemTemp.path}/PreConnectData/$bucket');
-    }
-    final home = _homeDirectoryPath();
+  static Directory _desktopDataRoot(String bucket) {
+    final home = Platform.environment['HOME'] ?? Directory.systemTemp.path;
     if (Platform.isMacOS) {
-      final base = Directory('$home/Library/Application Support/PreConnect');
-      return Directory('${base.path}/$bucket');
-    }
-    if (Platform.isWindows) {
-      final appData = Platform.environment['APPDATA'];
-      final root = (appData == null || appData.isEmpty)
-          ? Directory('$home/AppData/Roaming/PreConnect')
-          : Directory('$appData/PreConnect');
-      return Directory('${root.path}/$bucket');
-    }
-    if (Platform.isLinux) {
-      final xdg = Platform.environment['XDG_DATA_HOME'];
-      final root = (xdg == null || xdg.isEmpty)
-          ? Directory('$home/.local/share/PreConnect')
-          : Directory('$xdg/PreConnect');
-      return Directory('${root.path}/$bucket');
+      return Directory('$home/Library/Application Support/PreConnect/$bucket');
     }
     return Directory('$home/PreConnect/$bucket');
-  }
-
-  static String _homeDirectoryPath() {
-    final candidates = <String?>[
-      Platform.environment['HOME'],
-      Platform.environment['USERPROFILE'],
-      Platform.environment['LOCALAPPDATA'],
-    ];
-    for (final candidate in candidates) {
-      final value = candidate?.trim() ?? '';
-      if (value.isNotEmpty) return value;
-    }
-    return Directory.systemTemp.path;
   }
 }

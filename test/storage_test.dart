@@ -4,7 +4,6 @@ import 'dart:io';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:preconnect/tools/app_storage.dart';
-import 'package:preconnect/tools/app_paths.dart';
 import 'package:preconnect/api/custom_schedules.dart';
 import 'package:preconnect/tools/snapshot_store.dart';
 import 'package:preconnect/tools/image_cache.dart';
@@ -133,19 +132,6 @@ void main() {
       await AppStorage.initialize(cacheDirectory: directory);
       expect(await storage.getString('cache'), isNull);
       expect(directory.listSync(), isEmpty);
-    },
-  );
-
-  test(
-    'directory migration preserves files and does not replace existing data',
-    () async {
-      final legacy = await Directory('${directory.path}/legacy').create();
-      await File('${legacy.path}/cached.json').writeAsString('saved');
-      final target = Directory('${directory.path}/persistent/support');
-      await AppPaths.migrateDirectory(legacy, target);
-      expect(await File('${target.path}/cached.json').readAsString(), 'saved');
-      await AppPaths.migrateDirectory(legacy, target);
-      expect(await File('${target.path}/cached.json').readAsString(), 'saved');
     },
   );
 
