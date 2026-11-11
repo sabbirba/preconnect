@@ -147,7 +147,7 @@ dependencies {
     implementation("androidx.core:core-ktx:1.19.1")
     implementation("com.google.android.play:app-update:2.1.0")
     implementation("com.google.android.play:review:2.0.2")
-    implementation("androidx.work:work-runtime-ktx:2.11.2")
+    implementation("androidx.work:work-runtime-ktx:2.12.0")
 }
 
 configurations.all {
