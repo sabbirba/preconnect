@@ -354,34 +354,48 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
     unawaited(_savePrinterPreferences());
   }
 
+  Future<void> _addPrintHistory(
+    String fileName,
+    String host,
+    int copies,
+    String status,
+    String message,
+  ) {
+    return _addHistory(
+      _PrintHistoryEntry(
+        fileName: fileName,
+        printerHost: host,
+        copies: copies,
+        status: status,
+        message: message,
+        createdAt: DateTime.now(),
+      ),
+    );
+  }
+
+  Future<void> _recordPrintFailure(
+    String fileName,
+    String host,
+    int copies,
+    String message,
+    String snack,
+  ) async {
+    await _addPrintHistory(fileName, host, copies, 'Failed', message);
+    if (mounted) showAppSnackBar(context, '$fileName: $snack');
+  }
+
   Future<void> _bootstrap() async {
-    final bootstrap = await CampusPrinterPage._preloadBootstrap();
-    if (!mounted) return;
-    setState(() {
-      _profile = bootstrap.profile;
-      _photoUrl = bootstrap.photoUrl;
-      _copies = bootstrap.copies;
-      _history = bootstrap.history;
-      _studentId = bootstrap.studentId;
-      _studentIdController.text = bootstrap.studentId;
-      _studentName = bootstrap.studentName;
-      _duplexMode = bootstrap.duplexMode;
-      _collateMode = bootstrap.collateMode;
-      _pagesPerSheet = bootstrap.pagesPerSheet;
-      _fittingMode = bootstrap.fittingMode;
-      _staple = bootstrap.staple;
-      _punch = bootstrap.punch;
-      _jobOffset = bootstrap.jobOffset;
-      _slipSheet = bootstrap.slipSheet;
-      _booklet = bootstrap.booklet;
-    });
-    _setCopiesControllerText(bootstrap.copies);
+    if (!_applyBootstrap(await CampusPrinterPage._preloadBootstrap())) return;
     unawaited(_discoverPrinter().catchError((e) {}));
   }
 
   Future<void> _refreshPrinterInfo() async {
-    final bootstrap = await CampusPrinterPage._loadBootstrap();
-    if (!mounted) return;
+    if (!_applyBootstrap(await CampusPrinterPage._loadBootstrap())) return;
+    await _discoverPrinter();
+  }
+
+  bool _applyBootstrap(_CampusPrinterBootstrap bootstrap) {
+    if (!mounted) return false;
     setState(() {
       _profile = bootstrap.profile;
       _photoUrl = bootstrap.photoUrl;
@@ -401,7 +415,7 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
       _booklet = bootstrap.booklet;
     });
     _setCopiesControllerText(bootstrap.copies);
-    await _discoverPrinter();
+    return true;
   }
 
   Future<void> _savePrinterPreferences() async {
@@ -969,68 +983,41 @@ class _CampusPrinterPageState extends State<CampusPrinterPage> {
                 : preferences,
           );
           if (!mounted) return;
-          const statusLabel = 'Sent';
-          const messageLabel = 'Sent to campus printer.';
-
-          await _addHistory(
-            _PrintHistoryEntry(
-              fileName: file.name,
-              printerHost: host,
-              copies: copies,
-              status: statusLabel,
-              message: messageLabel,
-              createdAt: DateTime.now(),
-            ),
+          await _addPrintHistory(
+            file.name,
+            host,
+            copies,
+            'Sent',
+            'Sent to campus printer.',
           );
         } on _LprPrintException catch (error) {
           if (!mounted) return;
-          await _addHistory(
-            _PrintHistoryEntry(
-              fileName: file.name,
-              printerHost: host,
-              copies: copies,
-              status: 'Failed',
-              message: error.message,
-              createdAt: DateTime.now(),
-            ),
+          await _recordPrintFailure(
+            file.name,
+            host,
+            copies,
+            error.message,
+            _sanitizePrinterMessage(error.message),
           );
-          if (mounted) {
-            showAppSnackBar(
-              context,
-              '${file.name}: ${_sanitizePrinterMessage(error.message)}',
-            );
-          }
         } on PrintComposeException catch (error) {
           if (!mounted) return;
-          await _addHistory(
-            _PrintHistoryEntry(
-              fileName: file.name,
-              printerHost: host,
-              copies: copies,
-              status: 'Failed',
-              message: error.message,
-              createdAt: DateTime.now(),
-            ),
+          await _recordPrintFailure(
+            file.name,
+            host,
+            copies,
+            error.message,
+            error.message,
           );
-          if (mounted) {
-            showAppSnackBar(context, '${file.name}: ${error.message}');
-          }
         } catch (error) {
           unawaited(AppLog.write('Print failed for ${file.name}: $error'));
           if (!mounted) return;
-          await _addHistory(
-            _PrintHistoryEntry(
-              fileName: file.name,
-              printerHost: host,
-              copies: copies,
-              status: 'Failed',
-              message: _snackPrintFailed,
-              createdAt: DateTime.now(),
-            ),
+          await _recordPrintFailure(
+            file.name,
+            host,
+            copies,
+            _snackPrintFailed,
+            _snackPrintFailed,
           );
-          if (mounted) {
-            showAppSnackBar(context, '${file.name}: $_snackPrintFailed');
-          }
         }
       }
       if (mounted) {
@@ -2130,18 +2117,12 @@ class _PrinterPreferencesPanel extends StatelessWidget {
               child: Row(
                 children: [
                   Expanded(
-                    child: AppActionButton(
+                    child: _printerToggle(
+                      context,
+                      active: duplexEnabled,
                       onPressed: () {
                         onDuplexChanged(duplexEnabled ? 'OFF' : 'LEFT');
                       },
-                      outlined: true,
-                      backgroundColor: duplexEnabled
-                          ? AppPalette.primary.withValues(alpha: 0.12)
-                          : Colors.transparent,
-                      foregroundColor: duplexEnabled
-                          ? AppPalette.primary
-                          : AppPalette.textPrimary(context),
-                      borderRadius: 12,
                       padding: togglePadding,
                       label: duplexEnabled ? 'Both Side' : 'One Side',
                       fontSize: toggleFont,
@@ -2149,18 +2130,12 @@ class _PrinterPreferencesPanel extends StatelessWidget {
                   ),
                   Gap(gap),
                   Expanded(
-                    child: AppActionButton(
+                    child: _printerToggle(
+                      context,
+                      active: collateEnabled,
                       onPressed: () {
                         onCollateChanged(collateEnabled ? 'OFF' : 'ON');
                       },
-                      outlined: true,
-                      backgroundColor: collateEnabled
-                          ? AppPalette.primary.withValues(alpha: 0.12)
-                          : Colors.transparent,
-                      foregroundColor: collateEnabled
-                          ? AppPalette.primary
-                          : AppPalette.textPrimary(context),
-                      borderRadius: 12,
                       padding: togglePadding,
                       label: 'Collate',
                       fontSize: toggleFont,
@@ -2232,7 +2207,9 @@ class _PrinterLayoutPreferencesPanel extends StatelessWidget {
                 Expanded(
                   child: Padding(
                     padding: EdgeInsets.symmetric(horizontal: gap / 2),
-                    child: AppActionButton(
+                    child: _printerToggle(
+                      context,
+                      active: pagesPerSheet != '1-in-1' || booklet == 'On',
                       onPressed: () {
                         if (booklet == 'On') {
                           onBookletChanged('Off');
@@ -2246,16 +2223,6 @@ class _PrinterLayoutPreferencesPanel extends StatelessWidget {
                           );
                         }
                       },
-                      outlined: true,
-                      backgroundColor:
-                          pagesPerSheet != '1-in-1' || booklet == 'On'
-                          ? AppPalette.primary.withValues(alpha: 0.12)
-                          : Colors.transparent,
-                      foregroundColor:
-                          pagesPerSheet != '1-in-1' || booklet == 'On'
-                          ? AppPalette.primary
-                          : AppPalette.textPrimary(context),
-                      borderRadius: 12,
                       padding: buttonPadding,
                       label: booklet == 'On' ? 'Booklet' : pagesPerSheet,
                       fontSize: toggleFont,
@@ -2266,7 +2233,9 @@ class _PrinterLayoutPreferencesPanel extends StatelessWidget {
                 Expanded(
                   child: Padding(
                     padding: EdgeInsets.symmetric(horizontal: gap / 2),
-                    child: AppActionButton(
+                    child: _printerToggle(
+                      context,
+                      active: fittingMode != 'Fit on Paper',
                       onPressed: () {
                         final nextVal = fittingMode == 'Fit on Paper'
                             ? 'Fit on Printable Area'
@@ -2275,14 +2244,6 @@ class _PrinterLayoutPreferencesPanel extends StatelessWidget {
                                   : 'Fit on Paper');
                         onFittingModeChanged(nextVal);
                       },
-                      outlined: true,
-                      backgroundColor: fittingMode != 'Fit on Paper'
-                          ? AppPalette.primary.withValues(alpha: 0.12)
-                          : Colors.transparent,
-                      foregroundColor: fittingMode != 'Fit on Paper'
-                          ? AppPalette.primary
-                          : AppPalette.textPrimary(context),
-                      borderRadius: 12,
                       padding: buttonPadding,
                       label: fittingMode == 'Fit on Paper'
                           ? 'Fit Paper'
@@ -2301,20 +2262,14 @@ class _PrinterLayoutPreferencesPanel extends StatelessWidget {
                 Expanded(
                   child: Padding(
                     padding: EdgeInsets.symmetric(horizontal: gap / 2),
-                    child: AppActionButton(
+                    child: _printerToggle(
+                      context,
+                      active: staple != 'Off' || punch != 'Off',
                       onPressed: () {
                         final next = PrintFinishing.after(staple, punch);
                         onStapleChanged(next.staple);
                         onPunchChanged(next.punch);
                       },
-                      outlined: true,
-                      backgroundColor: staple != 'Off' || punch != 'Off'
-                          ? AppPalette.primary.withValues(alpha: 0.12)
-                          : Colors.transparent,
-                      foregroundColor: staple != 'Off' || punch != 'Off'
-                          ? AppPalette.primary
-                          : AppPalette.textPrimary(context),
-                      borderRadius: 12,
                       padding: buttonPadding,
                       label: PrintFinishing.label(staple, punch),
                       fontSize: toggleFont,
@@ -2325,7 +2280,9 @@ class _PrinterLayoutPreferencesPanel extends StatelessWidget {
                 Expanded(
                   child: Padding(
                     padding: EdgeInsets.symmetric(horizontal: gap / 2),
-                    child: AppActionButton(
+                    child: _printerToggle(
+                      context,
+                      active: jobOffset == 'On' || slipSheet == 'On',
                       onPressed: () {
                         final next = PrintSeparation.after(
                           jobOffset == 'On',
@@ -2334,14 +2291,6 @@ class _PrinterLayoutPreferencesPanel extends StatelessWidget {
                         onJobOffsetChanged(next.offset ? 'On' : 'Off');
                         onSlipSheetChanged(next.slip ? 'On' : 'Off');
                       },
-                      outlined: true,
-                      backgroundColor: jobOffset == 'On' || slipSheet == 'On'
-                          ? AppPalette.primary.withValues(alpha: 0.12)
-                          : Colors.transparent,
-                      foregroundColor: jobOffset == 'On' || slipSheet == 'On'
-                          ? AppPalette.primary
-                          : AppPalette.textPrimary(context),
-                      borderRadius: 12,
                       padding: buttonPadding,
                       label: PrintSeparation.label(
                         jobOffset == 'On',
@@ -2359,16 +2308,10 @@ class _PrinterLayoutPreferencesPanel extends StatelessWidget {
                 Expanded(
                   child: Padding(
                     padding: EdgeInsets.symmetric(horizontal: gap / 2),
-                    child: AppActionButton(
+                    child: _printerToggle(
+                      context,
+                      active: pageRange.isNotEmpty,
                       onPressed: onPageRangeTap,
-                      outlined: true,
-                      backgroundColor: pageRange.isNotEmpty
-                          ? AppPalette.primary.withValues(alpha: 0.12)
-                          : Colors.transparent,
-                      foregroundColor: pageRange.isNotEmpty
-                          ? AppPalette.primary
-                          : AppPalette.textPrimary(context),
-                      borderRadius: 12,
                       padding: buttonPadding,
                       label: pageRange.isEmpty
                           ? 'Pages'
@@ -2848,4 +2791,28 @@ class _PrintPreviewSheetState extends State<_PrintPreviewSheet> {
       ],
     );
   }
+}
+
+Widget _printerToggle(
+  BuildContext context, {
+  required bool active,
+  required VoidCallback onPressed,
+  required EdgeInsetsGeometry padding,
+  required String label,
+  required double fontSize,
+}) {
+  return AppActionButton(
+    onPressed: onPressed,
+    outlined: true,
+    backgroundColor: active
+        ? AppPalette.primary.withValues(alpha: 0.12)
+        : Colors.transparent,
+    foregroundColor: active
+        ? AppPalette.primary
+        : AppPalette.textPrimary(context),
+    borderRadius: 12,
+    padding: padding,
+    label: label,
+    fontSize: fontSize,
+  );
 }

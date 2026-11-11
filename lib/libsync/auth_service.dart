@@ -114,9 +114,17 @@ class LibSyncAuthService extends ChangeNotifier {
           profile: profile,
         );
       }
-      if (response.statusCode != 401 && response.statusCode != 403) {
-        throw Exception('Server returned ${response.statusCode}');
+      if (response.statusCode == 401 || response.statusCode == 403) {
+        final restored = await _restoreGoogleSession();
+        if (restored != null) {
+          return restored;
+        }
+        await _apiClient.clearAuthData();
+        return const LibSyncAuthState(
+          status: LibSyncAuthStatus.unauthenticated,
+        );
       }
+      throw Exception('Server returned ${response.statusCode}');
     } catch (_) {
       final profile = await _apiClient.getCachedProfile();
       if (profile != null) {
@@ -127,8 +135,6 @@ class LibSyncAuthService extends ChangeNotifier {
       }
       rethrow;
     }
-    return await _restoreGoogleSession() ??
-        const LibSyncAuthState(status: LibSyncAuthStatus.unauthenticated);
   });
 
   Future<void> authenticateWithCode(String code, {String? redirectUri}) async {
@@ -260,6 +266,16 @@ class LibSyncAuthService extends ChangeNotifier {
     });
   }
 
+  Future<void> handleSessionExpired() async {
+    _lastProcessedCode = null;
+    await _apiClient.clearAuthData();
+    await LibSyncPage.clearReservationCache();
+    state.value = const LibSyncAuthState(
+      status: LibSyncAuthStatus.unauthenticated,
+      errorMessage: 'Your session expired. Please sign in again.',
+    );
+  }
+
   Future<Map<String, dynamic>> _fetchUserProfile() async {
     final response = await _apiClient.get(Uri.parse(LibSyncConfig.userMeUrl));
     if (response.statusCode != 200) {
@@ -292,6 +308,10 @@ class LibSyncAuthService extends ChangeNotifier {
           );
         }
       }
+      if (response.statusCode == 401 || response.statusCode == 403) {
+        await handleSessionExpired();
+        return null;
+      }
     } catch (error, stackTrace) {
       reportLibSyncError('Loading LibSync reservations', error, stackTrace);
     }
@@ -306,6 +326,10 @@ class LibSyncAuthService extends ChangeNotifier {
       if (response.statusCode == 200) {
         final decoded = jsonDecode(response.body);
         if (decoded is Map) return decoded.cast<String, dynamic>();
+      }
+      if (response.statusCode == 401 || response.statusCode == 403) {
+        await handleSessionExpired();
+        return null;
       }
     } catch (error, stackTrace) {
       reportLibSyncError('Loading LibSync room data', error, stackTrace);
@@ -331,6 +355,10 @@ class LibSyncAuthService extends ChangeNotifier {
           );
         }
       }
+      if (response.statusCode == 401 || response.statusCode == 403) {
+        await handleSessionExpired();
+        return null;
+      }
     } catch (error, stackTrace) {
       reportLibSyncError('Loading LibSync statistics', error, stackTrace);
     }
@@ -347,6 +375,10 @@ class LibSyncAuthService extends ChangeNotifier {
       if (response.statusCode == 200) {
         final decoded = jsonDecode(response.body);
         if (decoded is Map) return decoded.cast<String, dynamic>();
+      }
+      if (response.statusCode == 401 || response.statusCode == 403) {
+        await handleSessionExpired();
+        return null;
       }
     } catch (error, stackTrace) {
       reportLibSyncError(
@@ -389,7 +421,25 @@ class LibSyncAuthService extends ChangeNotifier {
       ),
     );
 
-    return parseAvailabilityResponse(response.statusCode, response.body);
+    if (response.statusCode == 401 || response.statusCode == 403) {
+      await handleSessionExpired();
+      throw const AvailabilityException(
+        'Your session expired. Please sign in again.',
+      );
+    }
+
+    try {
+      return parseAvailabilityResponse(response.statusCode, response.body);
+    } on AvailabilityException catch (e) {
+      if (e.message.contains('credentials were not provided') ||
+          e.message.contains('session expired')) {
+        await handleSessionExpired();
+        throw const AvailabilityException(
+          'Your session expired. Please sign in again.',
+        );
+      }
+      rethrow;
+    }
   }
 
   Future<Map<String, dynamic>?> holdSlot({
@@ -409,14 +459,25 @@ class LibSyncAuthService extends ChangeNotifier {
         'slot_ids': slotIds,
       }),
     );
+    if (response.statusCode == 401 || response.statusCode == 403) {
+      await handleSessionExpired();
+      throw Exception('Your session expired. Please sign in again.');
+    }
     final decoded = jsonDecode(response.body);
     if ((response.statusCode == 200 || response.statusCode == 201) &&
         decoded is Map) {
       return decoded.cast<String, dynamic>();
     }
-    throw Exception(
-      _extractErrorMessage(decoded, 'Failed to hold slot. Please try again.'),
+    final errorMsg = _extractErrorMessage(
+      decoded,
+      'Failed to hold slot. Please try again.',
     );
+    if (errorMsg.contains('credentials were not provided') ||
+        errorMsg.contains('session expired')) {
+      await handleSessionExpired();
+      throw Exception('Your session expired. Please sign in again.');
+    }
+    throw Exception(errorMsg);
   }
 
   Future<Map<String, dynamic>?> checkMember(String studentId) async {
@@ -440,10 +501,21 @@ class LibSyncAuthService extends ChangeNotifier {
       }
       return null;
     }
+    if (response.statusCode == 401 || response.statusCode == 403) {
+      await handleSessionExpired();
+      throw Exception('Your session expired. Please sign in again.');
+    }
     final decoded = jsonDecode(response.body);
-    throw Exception(
-      _extractErrorMessage(decoded, 'Failed to check member ID.'),
+    final errorMsg = _extractErrorMessage(
+      decoded,
+      'Failed to check member ID.',
     );
+    if (errorMsg.contains('credentials were not provided') ||
+        errorMsg.contains('session expired')) {
+      await handleSessionExpired();
+      throw Exception('Your session expired. Please sign in again.');
+    }
+    throw Exception(errorMsg);
   }
 
   Future<Map<String, dynamic>?> confirmReservation({
@@ -455,17 +527,25 @@ class LibSyncAuthService extends ChangeNotifier {
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({'student_ids': studentIds, 'note': note}),
     );
+    if (response.statusCode == 401 || response.statusCode == 403) {
+      await handleSessionExpired();
+      throw Exception('Your session expired. Please sign in again.');
+    }
     final decoded = jsonDecode(response.body);
     if ((response.statusCode == 200 || response.statusCode == 201) &&
         decoded is Map) {
       return decoded.cast<String, dynamic>();
     }
-    throw Exception(
-      _extractErrorMessage(
-        decoded,
-        'Failed to confirm reservation. Please try again.',
-      ),
+    final errorMsg = _extractErrorMessage(
+      decoded,
+      'Failed to confirm reservation. Please try again.',
     );
+    if (errorMsg.contains('credentials were not provided') ||
+        errorMsg.contains('session expired')) {
+      await handleSessionExpired();
+      throw Exception('Your session expired. Please sign in again.');
+    }
+    throw Exception(errorMsg);
   }
 
   Future<void> cancelReservation(String uniqueToken) async {
@@ -475,13 +555,21 @@ class LibSyncAuthService extends ChangeNotifier {
     if (response.statusCode == 200 || response.statusCode == 204) {
       return;
     }
+    if (response.statusCode == 401 || response.statusCode == 403) {
+      await handleSessionExpired();
+      throw Exception('Your session expired. Please sign in again.');
+    }
     final decoded = jsonDecode(response.body);
-    throw Exception(
-      _extractErrorMessage(
-        decoded,
-        'Failed to cancel reservation. Please try again.',
-      ),
+    final errorMsg = _extractErrorMessage(
+      decoded,
+      'Failed to cancel reservation. Please try again.',
     );
+    if (errorMsg.contains('credentials were not provided') ||
+        errorMsg.contains('session expired')) {
+      await handleSessionExpired();
+      throw Exception('Your session expired. Please sign in again.');
+    }
+    throw Exception(errorMsg);
   }
 
   Future<String> checkInAttendance(int reservationCode) async {
@@ -505,9 +593,20 @@ class LibSyncAuthService extends ChangeNotifier {
     if (response.statusCode == 200 || response.statusCode == 204) {
       return serverMessage ?? 'Attendance checked in successfully!';
     }
-    throw Exception(
-      _extractErrorMessage(decoded, 'Failed to check in. Please try again.'),
+    if (response.statusCode == 401 || response.statusCode == 403) {
+      await handleSessionExpired();
+      throw Exception('Your session expired. Please sign in again.');
+    }
+    final errorMsg = _extractErrorMessage(
+      decoded,
+      'Failed to check in. Please try again.',
     );
+    if (errorMsg.contains('credentials were not provided') ||
+        errorMsg.contains('session expired')) {
+      await handleSessionExpired();
+      throw Exception('Your session expired. Please sign in again.');
+    }
+    throw Exception(errorMsg);
   }
 
   String _extractErrorMessage(dynamic decoded, String defaultMessage) {

@@ -6,6 +6,7 @@ import 'package:gap/gap.dart';
 import 'package:flutter/services.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'auth_service.dart';
+import 'libsync_page.dart';
 import 'package:intl/intl.dart';
 import 'package:preconnect/tools/app_storage.dart';
 import 'error_reporter.dart';
@@ -152,7 +153,14 @@ class _SpaceAvailabilityPageState extends State<SpaceAvailabilityPage> {
     } catch (e) {
       if (mounted) {
         setState(() {
-          if (_availabilityData == null) {
+          final isExpired =
+              (e is AvailabilityException &&
+                  e.message.contains('session expired')) ||
+              e.toString().contains('credentials were not provided');
+          if (isExpired) {
+            _availabilityData = null;
+            _errorMessage = 'Your session expired. Please sign in again.';
+          } else if (_availabilityData == null) {
             _errorMessage = e is AvailabilityException
                 ? e.message
                 : AvailabilityException.defaultMessage;
@@ -284,10 +292,36 @@ class _SpaceAvailabilityPageState extends State<SpaceAvailabilityPage> {
           );
         } catch (e) {
           if (mounted) {
+            final msg = e.toString().replaceAll('Exception: ', '');
+            final isExpired =
+                msg.contains('session expired') ||
+                msg.contains('credentials were not provided');
             showAppSnackBar(
               context,
-              e.toString().replaceAll('Exception: ', ''),
+              isExpired ? 'Your session expired. Please sign in again.' : msg,
+              actionLabel: isExpired ? 'Sign In' : 'Close',
+              duration: isExpired
+                  ? const Duration(seconds: 8)
+                  : const Duration(seconds: 2),
+              onAction: isExpired
+                  ? () async {
+                      final signedIn = await LibSyncPage.startSignIn(context);
+                      if (signedIn && mounted) {
+                        _fetchAvailability();
+                      }
+                    }
+                  : null,
             );
+            if (isExpired) {
+              final navigator = Navigator.of(context, rootNavigator: true);
+              if (navigator.canPop()) {
+                navigator.pop();
+              }
+              final signedIn = await LibSyncPage.startSignIn(context);
+              if (signedIn && mounted) {
+                _fetchAvailability();
+              }
+            }
           }
           rethrow;
         }
@@ -321,10 +355,33 @@ class _SpaceAvailabilityPageState extends State<SpaceAvailabilityPage> {
         } catch (e) {
           if (mounted) {
             Navigator.of(context).pop();
+            final msg = e.toString().replaceAll('Exception: ', '');
+            final isExpired =
+                msg.contains('session expired') ||
+                msg.contains('credentials entertaining') ||
+                msg.contains('credentials were not provided');
             showAppSnackBar(
               context,
-              e.toString().replaceAll('Exception: ', ''),
+              isExpired ? 'Your session expired. Please sign in again.' : msg,
+              actionLabel: isExpired ? 'Sign In' : 'Close',
+              duration: isExpired
+                  ? const Duration(seconds: 8)
+                  : const Duration(seconds: 2),
+              onAction: isExpired
+                  ? () async {
+                      final signedIn = await LibSyncPage.startSignIn(context);
+                      if (signedIn && mounted) {
+                        _fetchAvailability();
+                      }
+                    }
+                  : null,
             );
+            if (isExpired) {
+              final signedIn = await LibSyncPage.startSignIn(context);
+              if (signedIn && mounted) {
+                _fetchAvailability();
+              }
+            }
           }
         }
       } else {
@@ -542,7 +599,30 @@ class _SpaceAvailabilityPageState extends State<SpaceAvailabilityPage> {
               child: Center(child: AppLoading()),
             )
           else if (errorMessage != null)
-            AppEmptyState(message: errorMessage)
+            Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                AppEmptyState(message: errorMessage),
+                if (errorMessage.contains('session expired') ||
+                    errorMessage.contains('credentials were not provided')) ...[
+                  const Gap(16),
+                  AppActionButton(
+                    onPressed: () async {
+                      final signedIn = await LibSyncPage.startSignIn(context);
+                      if (signedIn && mounted) {
+                        _fetchAvailability();
+                      }
+                    },
+                    borderRadius: 12,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 12,
+                    ),
+                    label: 'Sign In',
+                  ),
+                ],
+              ],
+            )
           else if (availabilityData == null)
             const AppEmptyState(
               message: 'Failed to load availability data. Please try again.',
@@ -1000,6 +1080,22 @@ class _MemberIdsDialogState extends State<_MemberIdsDialog> {
               fontWeight: FontWeight.w600,
             ),
           ),
+          if (_generalError!.contains('session expired') ||
+              _generalError!.contains('credentials were not provided')) ...[
+            const Gap(8),
+            AppActionButton(
+              onPressed: () async {
+                final navigator = Navigator.of(context);
+                final signedIn = await LibSyncPage.startSignIn(context);
+                if (signedIn && mounted) {
+                  navigator.pop();
+                }
+              },
+              borderRadius: 10,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              label: 'Sign In',
+            ),
+          ],
         ],
         const Gap(16),
         Row(
@@ -1035,13 +1131,24 @@ class _MemberIdsDialogState extends State<_MemberIdsDialog> {
                         }
                       } catch (e) {
                         if (mounted) {
+                          final msg = e.toString().replaceAll(
+                            'Exception: ',
+                            '',
+                          );
                           setState(() {
-                            _generalError = e.toString().replaceAll(
-                              'Exception: ',
-                              '',
-                            );
+                            _generalError = msg;
                             _isSubmitting = false;
                           });
+                          if (msg.contains('session expired') ||
+                              msg.contains('credentials were not provided')) {
+                            if (!context.mounted) return;
+                            final signedIn = await LibSyncPage.startSignIn(
+                              context,
+                            );
+                            if (signedIn && mounted) {
+                              navigator.pop();
+                            }
+                          }
                         }
                       }
                     }

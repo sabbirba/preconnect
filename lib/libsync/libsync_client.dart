@@ -103,20 +103,6 @@ class LibSyncApiClient extends http.BaseClient {
           }
         }
         return _sendWithCacheFallback(newRequest);
-      } else {
-        final urlKey = request.url.toString();
-        final isGet = request.method == 'GET';
-        if (isGet && _bodyCache.containsKey(urlKey)) {
-          final cachedBody = _bodyCache[urlKey]!;
-          final bodyBytes = utf8.encode(cachedBody);
-          return http.StreamedResponse(
-            Stream.value(bodyBytes),
-            200,
-            contentLength: bodyBytes.length,
-            request: request,
-            headers: _headersCache[urlKey] ?? {},
-          );
-        }
       }
     }
 

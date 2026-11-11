@@ -226,4 +226,20 @@ void main() {
       throwsA(isA<AvailabilityException>()),
     );
   });
+
+  test(
+    'session expiration clears auth data and enters unauthenticated state',
+    () async {
+      final client = _Client();
+      client.readCookies = () async => {'sessionid': 'expired'};
+      client.readProfile = () async => http.Response(
+        '{"detail":"Authentication credentials were not provided."}',
+        401,
+      );
+      final auth = LibSyncAuthService.testing(client);
+      await auth.initialize();
+      expect(auth.state.value.status, LibSyncAuthStatus.unauthenticated);
+      expect(client.clears, 1);
+    },
+  );
 }
