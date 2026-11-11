@@ -36,14 +36,6 @@ String advisingErrorMessage(Object error) {
   return message.replaceAll(RegExp(r'https?://\S+'), 'Connect API');
 }
 
-Map<String, dynamic> advisingSectionMutationPayload({
-  required String portfolioId,
-  required int sectionId,
-}) => <String, dynamic>{
-  'studentPortfolioId': int.parse(portfolioId),
-  'sectionId': sectionId,
-};
-
 class AdvisingSectionRecord {
   final int sectionId;
   final int? advisingSectionId;
@@ -405,54 +397,50 @@ class AdvisingHelperService {
     required int sectionId,
     required String publicKey,
     required AdvisingPhase phase,
-  }) async {
-    final headers = await buildRequestHeaders(
-      publicKey: publicKey,
-      phase: phase,
-    );
-
-    final payload = advisingSectionMutationPayload(
-      portfolioId: portfolioId,
-      sectionId: sectionId,
-    );
-
-    final url =
-        '${ApiConfig.connectApiBase}${ApiConfig.advisingStudentCoursesPath(phase)}';
-
-    await _client.authenticatedRequest(
-      'POST',
-      url,
-      body: jsonEncode(payload),
-      additionalHeaders: headers,
-      acceptedStatusCodes: const <int>{200, 201},
-    );
-  }
+  }) => _mutateSection(
+    'POST',
+    const <int>{200, 201},
+    portfolioId,
+    sectionId,
+    publicKey,
+    phase,
+  );
 
   Future<void> dropSection({
     required String portfolioId,
     required int sectionId,
     required String publicKey,
     required AdvisingPhase phase,
-  }) async {
+  }) => _mutateSection(
+    'DELETE',
+    const <int>{200, 204},
+    portfolioId,
+    sectionId,
+    publicKey,
+    phase,
+  );
+
+  Future<void> _mutateSection(
+    String method,
+    Set<int> acceptedStatusCodes,
+    String portfolioId,
+    int sectionId,
+    String publicKey,
+    AdvisingPhase phase,
+  ) async {
     final headers = await buildRequestHeaders(
       publicKey: publicKey,
       phase: phase,
     );
-
-    final payload = advisingSectionMutationPayload(
-      portfolioId: portfolioId,
-      sectionId: sectionId,
-    );
-
-    final url =
-        '${ApiConfig.connectApiBase}${ApiConfig.advisingStudentCoursesPath(phase)}';
-
     await _client.authenticatedRequest(
-      'DELETE',
-      url,
-      body: jsonEncode(payload),
+      method,
+      '${ApiConfig.connectApiBase}${ApiConfig.advisingStudentCoursesPath(phase)}',
+      body: jsonEncode({
+        'studentPortfolioId': int.parse(portfolioId),
+        'sectionId': sectionId,
+      }),
       additionalHeaders: headers,
-      acceptedStatusCodes: const <int>{200, 204},
+      acceptedStatusCodes: acceptedStatusCodes,
     );
   }
 
