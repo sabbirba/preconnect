@@ -43,10 +43,13 @@ class _LibraryCardFront extends StatelessWidget {
     return Center(
       child: Container(
         clipBehavior: Clip.antiAlias,
+        foregroundDecoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Colors.black),
+        ),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.black),
           boxShadow: const [
             BoxShadow(
               color: Color.fromRGBO(14, 75, 117, 0.08),
@@ -253,9 +256,12 @@ class _LibraryCardBack extends StatelessWidget {
     return Center(
       child: Container(
         clipBehavior: Clip.antiAlias,
-        decoration: BoxDecoration(
+        foregroundDecoration: BoxDecoration(
           borderRadius: BorderRadius.circular(16),
           border: Border.all(color: Colors.black),
+        ),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(16),
           color: const Color(0xFF0E4B75),
           boxShadow: const [
             BoxShadow(

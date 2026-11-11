@@ -611,7 +611,8 @@ class _MaterialsSubmissionCard extends StatelessWidget {
           ),
         ),
         Container(
-          decoration: BoxDecoration(
+          decoration: BoxDecoration(borderRadius: BorderRadius.circular(18)),
+          foregroundDecoration: BoxDecoration(
             borderRadius: BorderRadius.circular(18),
             border: Border.all(color: borderColor),
           ),

@@ -9,9 +9,11 @@ import 'package:flutter/services.dart';
 import 'package:gap/gap.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:preconnect/api/chat.dart';
+import 'package:preconnect/api/schedule.dart';
 import 'package:preconnect/model/chat.dart';
 import 'package:file_selector/file_selector.dart';
 import 'package:preconnect/model/custom_schedule.dart';
+import 'package:preconnect/pages/custom_sections/schedules_shared.dart';
 import 'package:preconnect/pages/faculty_reviews.dart';
 import 'package:preconnect/pages/friend_sections/friend_header.dart';
 import 'package:preconnect/pages/shared_materials.dart';
@@ -20,6 +22,7 @@ import 'package:preconnect/tools/string_utils.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:preconnect/tools/cached_image.dart';
 import 'package:preconnect/tools/drafts.dart';
+import 'package:preconnect/tools/ramadan.dart';
 import 'package:preconnect/tools/image_cache.dart';
 import 'package:preconnect/tools/time_utils.dart';
 
@@ -1117,7 +1120,27 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
     setState(() => _pdfs = <_StagedPdf>[..._pdfs, ...staged]);
   }
 
-  Future<void> _createEvent(String kind) {
+  Future<DateTime> _nextClassStart() async {
+    final title = _room.title.trim();
+    final dash = title.indexOf('-');
+    final isRamadan = await RamadanTiming.isRamadan().timeout(
+      const Duration(milliseconds: 400),
+      onTimeout: () => false,
+    );
+    final next = personalSchedulesNextClassStart(
+      ScheduleService().getStudentSectionsSync() ?? const [],
+      courseCode: dash > 0 ? title.substring(0, dash) : title,
+      sectionName: dash > 0 ? title.substring(dash + 1) : '',
+      isRamadan: isRamadan,
+    );
+    if (next != null) return next;
+    final tomorrow = DateTime.now().add(const Duration(days: 1));
+    return DateTime(tomorrow.year, tomorrow.month, tomorrow.day, 9);
+  }
+
+  Future<void> _createEvent(String kind) async {
+    final initialAt = await _nextClassStart();
+    if (!mounted) return;
     return showAppBottomSheet<void>(
       context,
       title: 'Share ${personalSchedulesKindLabel(kind)}',
@@ -1126,6 +1149,7 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
       fitContent: true,
       builder: (sheetContext, textPrimary, textSecondary) => _EventSheet(
         kind: kind,
+        initialAt: initialAt,
         draftKey: 'event:${_room.id}:$kind',
         onShare: (event) {
           Navigator.of(sheetContext).pop();
@@ -2599,11 +2623,13 @@ class _AttachOption extends StatelessWidget {
 class _EventSheet extends StatefulWidget {
   const _EventSheet({
     required this.kind,
+    required this.initialAt,
     required this.draftKey,
     required this.onShare,
   });
 
   final String kind;
+  final DateTime initialAt;
   final String draftKey;
   final ValueChanged<ChatEvent> onShare;
 
@@ -2614,10 +2640,7 @@ class _EventSheet extends StatefulWidget {
 class _EventSheetState extends State<_EventSheet> {
   final TextEditingController _title = TextEditingController();
   final TextEditingController _notes = TextEditingController();
-  late DateTime _at = () {
-    final tomorrow = DateTime.now().add(const Duration(days: 1));
-    return DateTime(tomorrow.year, tomorrow.month, tomorrow.day, 9);
-  }();
+  late DateTime _at = widget.initialAt;
 
   @override
   void initState() {
@@ -3071,11 +3094,7 @@ class _LinkTextState extends State<_LinkText> {
         TextSpan(
           text: url,
           recognizer: recognizer,
-          style: const TextStyle(
-            color: AppPalette.primary,
-            decoration: TextDecoration.underline,
-            decorationColor: AppPalette.primary,
-          ),
+          style: const TextStyle(color: AppPalette.primary),
         ),
       );
       start = end;
@@ -3107,6 +3126,9 @@ class _LinkPreviewCard extends StatelessWidget {
           width: _cardWidth(context),
           clipBehavior: Clip.antiAlias,
           decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(_ChatPhotos.radius - 4),
+          ),
+          foregroundDecoration: BoxDecoration(
             borderRadius: BorderRadius.circular(_ChatPhotos.radius - 4),
             border: Border.all(color: textSecondary.withValues(alpha: 0.25)),
           ),
@@ -3246,7 +3268,8 @@ class _PollOption extends StatelessWidget {
       child: Container(
         height: 36,
         clipBehavior: Clip.antiAlias,
-        decoration: BoxDecoration(
+        decoration: BoxDecoration(borderRadius: radius),
+        foregroundDecoration: BoxDecoration(
           borderRadius: radius,
           border: Border.all(
             color: selected

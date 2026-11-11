@@ -214,15 +214,8 @@ CustomSchedulesOccurrence? personalSchedulesNextOccurrenceRange({
   final endMinute = endParsed?.$2 ?? 0;
 
   final dayDelta = (targetWeekday - now.weekday + 7) % 7;
-  final nextDate = dayDelta == 0 && nowMinutes <= startMinutes
-      ? now
-      : dayDelta == 0
-      ? now
-      : now.add(Duration(days: dayDelta));
-
-  if (dayDelta == 0 && nowMinutes >= endHour * 60 + endMinute) {
-    return null;
-  }
+  final daysAhead = dayDelta == 0 && nowMinutes > startMinutes ? 7 : dayDelta;
+  final nextDate = DateTime(now.year, now.month, now.day + daysAhead);
 
   return (
     startTime: DateTime(
@@ -265,6 +258,26 @@ CustomSchedulesOccurrence? personalSchedulesDefaultOccurrenceForOption(
     }
   }
   return best;
+}
+
+DateTime? personalSchedulesNextClassStart(
+  Iterable<Section> sections, {
+  required String courseCode,
+  required String sectionName,
+  required bool isRamadan,
+}) {
+  final option = personalSchedulesFindCourseOption(
+    courseOptionsFromSections(sections),
+    courseCode,
+    preferredSectionName: sectionName,
+  );
+  if (option == null || option.courseCode != courseCode.trim().toUpperCase()) {
+    return null;
+  }
+  return personalSchedulesDefaultOccurrenceForOption(
+    option,
+    isRamadan: isRamadan,
+  )?.startTime;
 }
 
 DateTime? personalSchedulesNextOccurrence({
