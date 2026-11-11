@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
 import 'package:preconnect/model/progress_info.dart';
+import 'package:preconnect/pages/profile_sections/personal_card.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 
 class AcademicSummaryCard extends StatelessWidget {
@@ -17,26 +18,7 @@ class AcademicSummaryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final borderColor = AppPalette.textSecondary(
-      context,
-    ).withValues(alpha: isDark ? 0.35 : 0.18);
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppPalette.card(context),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: borderColor),
-        boxShadow: isDark
-            ? const []
-            : [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.06),
-                  blurRadius: 16,
-                  offset: const Offset(0, 8),
-                ),
-              ],
-      ),
+    return ProfileCard(
       child: _AcademicSummary(
         profile: profile,
         advising: advising,

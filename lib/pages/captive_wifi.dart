@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:preconnect/pages/profile_sections/personal_card.dart';
 import 'package:preconnect/pages/shared_widgets/preconnect_webview.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/api/profile.dart';
@@ -900,10 +901,6 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
     if (params.isEmpty) {
       return const SizedBox.shrink();
     }
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final borderColor = AppPalette.textSecondary(
-      context,
-    ).withValues(alpha: isDark ? 0.35 : 0.18);
 
     final rows = params.entries
         .where((entry) => entry.key != 'redirect-url')
@@ -928,68 +925,7 @@ class _CaptiveWifiPageState extends State<CaptiveWifiPage> {
       ));
     }
 
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppPalette.card(context),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: borderColor),
-        boxShadow: isDark
-            ? const []
-            : [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.06),
-                  blurRadius: 16,
-                  offset: const Offset(0, 8),
-                ),
-              ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          for (var i = 0; i < rows.length; i++) ...[
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  flex: 5,
-                  child: Text(
-                    rows[i].label,
-                    style: TextStyle(
-                      color: AppPalette.textSecondary(context),
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-                const Gap(12),
-                Expanded(
-                  flex: 6,
-                  child: Text(
-                    rows[i].value,
-                    textAlign: TextAlign.right,
-                    style: TextStyle(
-                      color: AppPalette.textPrimary(context),
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      fontFamily: 'monospace',
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            if (i != rows.length - 1)
-              Divider(
-                height: 18,
-                thickness: 1,
-                color: AppPalette.textSecondary(
-                  context,
-                ).withValues(alpha: isDark ? 0.22 : 0.14),
-              ),
-          ],
-        ],
-      ),
-    );
+    return ProfileCard(child: ProfileInfoList(rows: rows, monospace: true));
   }
 
   @override

@@ -12,10 +12,6 @@ class PersonalInfoCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final borderColor = AppPalette.textSecondary(
-      context,
-    ).withValues(alpha: isDark ? 0.35 : 0.18);
     final rows = <({String label, String value})>[
       (label: 'Name', value: _valueOf('fullName')),
       (label: 'Student ID', value: _valueOf('studentId')),
@@ -66,41 +62,8 @@ class PersonalInfoCard extends StatelessWidget {
 
     if (rows.isEmpty) return const SizedBox.shrink();
 
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppPalette.card(context),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: borderColor),
-        boxShadow: isDark
-            ? const []
-            : [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.06),
-                  blurRadius: 16,
-                  offset: const Offset(0, 8),
-                ),
-              ],
-      ),
-      child: Column(
-        children: [
-          for (var i = 0; i < rows.length; i++) ...[
-            _ProfileInfoRow(
-              label: rows[i].label,
-              value: rows[i].value,
-              enableCopy: _copyableLabels.contains(rows[i].label),
-            ),
-            if (i != rows.length - 1)
-              Divider(
-                height: 18,
-                thickness: 1,
-                color: AppPalette.textSecondary(
-                  context,
-                ).withValues(alpha: isDark ? 0.22 : 0.14),
-              ),
-          ],
-        ],
-      ),
+    return ProfileCard(
+      child: ProfileInfoList(rows: rows, copyLabels: _copyableLabels),
     );
   }
 }
@@ -126,16 +89,94 @@ const _copyableLabels = <String>{
   'Earned Credit',
 };
 
+class ProfileCard extends StatelessWidget {
+  const ProfileCard({super.key, required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppPalette.card(context),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: AppPalette.textSecondary(
+            context,
+          ).withValues(alpha: isDark ? 0.35 : 0.18),
+        ),
+        boxShadow: isDark
+            ? const []
+            : [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.06),
+                  blurRadius: 16,
+                  offset: const Offset(0, 8),
+                ),
+              ],
+      ),
+      child: child,
+    );
+  }
+}
+
+class ProfileInfoList extends StatelessWidget {
+  const ProfileInfoList({
+    super.key,
+    required this.rows,
+    this.copyLabels = const {},
+    this.monospace = false,
+    this.rowPadding = EdgeInsets.zero,
+  });
+
+  final List<({String label, String value})> rows;
+  final Set<String> copyLabels;
+  final bool monospace;
+  final EdgeInsets rowPadding;
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Column(
+      children: [
+        for (var i = 0; i < rows.length; i++) ...[
+          Padding(
+            padding: rowPadding,
+            child: _ProfileInfoRow(
+              label: rows[i].label,
+              value: rows[i].value,
+              enableCopy: copyLabels.contains(rows[i].label),
+              monospace: monospace,
+            ),
+          ),
+          if (i != rows.length - 1)
+            Divider(
+              height: 18,
+              thickness: 1,
+              color: AppPalette.textSecondary(
+                context,
+              ).withValues(alpha: isDark ? 0.22 : 0.14),
+            ),
+        ],
+      ],
+    );
+  }
+}
+
 class _ProfileInfoRow extends StatelessWidget {
   const _ProfileInfoRow({
     required this.label,
     required this.value,
     this.enableCopy = false,
+    this.monospace = false,
   });
 
   final String label;
   final String value;
   final bool enableCopy;
+  final bool monospace;
 
   @override
   Widget build(BuildContext context) {
@@ -163,8 +204,9 @@ class _ProfileInfoRow extends StatelessWidget {
               textAlign: TextAlign.right,
               style: TextStyle(
                 color: AppPalette.textPrimary(context),
-                fontSize: 14,
+                fontSize: monospace ? 13 : 14,
                 fontWeight: FontWeight.w600,
+                fontFamily: monospace ? 'monospace' : null,
               ),
             ),
           ),

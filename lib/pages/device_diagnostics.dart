@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:preconnect/pages/profile_sections/personal_card.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/app_log.dart';
 import 'package:preconnect/tools/app_paths.dart';
@@ -240,54 +241,6 @@ class _DeviceDiagnosticsPageState extends State<DeviceDiagnosticsPage> {
     } catch (_) {}
   }
 
-  Widget _buildInfoRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 2),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(
-            flex: 5,
-            child: Text(
-              label,
-              style: TextStyle(
-                color: AppPalette.textSecondary(context),
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-          const Gap(12),
-          Expanded(
-            flex: 6,
-            child: GestureDetector(
-              onTap: () => copyToClipboard(context, value),
-              child: Text(
-                value,
-                textAlign: TextAlign.right,
-                style: TextStyle(
-                  color: AppPalette.textPrimary(context),
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildDivider(bool isDark) {
-    return Divider(
-      height: 18,
-      thickness: 1,
-      color: AppPalette.textSecondary(
-        context,
-      ).withValues(alpha: isDark ? 0.22 : 0.14),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.sizeOf(context);
@@ -299,22 +252,16 @@ class _DeviceDiagnosticsPageState extends State<DeviceDiagnosticsPage> {
     final orientation = MediaQuery.orientationOf(
       context,
     ).toString().split('.').last;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
     final List<Widget> items = [];
 
     if (!_loading) {
+      final rows = <({String label, String value})>[];
       void addRow(String label, String? value) {
-        if (value != null) {
-          final trimmed = value.trim();
-          if (trimmed.isNotEmpty &&
-              trimmed != 'Unknown' &&
-              trimmed != 'unknown') {
-            if (items.isNotEmpty) {
-              items.add(_buildDivider(isDark));
-            }
-            items.add(_buildInfoRow(label, trimmed));
-          }
+        final trimmed = value?.trim() ?? '';
+        if (trimmed.isNotEmpty &&
+            trimmed != 'Unknown' &&
+            trimmed != 'unknown') {
+          rows.add((label: label, value: trimmed));
         }
       }
 
@@ -373,6 +320,13 @@ class _DeviceDiagnosticsPageState extends State<DeviceDiagnosticsPage> {
       addRow('System Locale', _deviceInfo['System Locale']);
       addRow('Local Time Zone', _deviceInfo['Time Zone']);
 
+      items.add(
+        ProfileInfoList(
+          rows: rows,
+          copyLabels: {for (final row in rows) row.label},
+          rowPadding: const EdgeInsets.symmetric(vertical: 2),
+        ),
+      );
       items.add(const Gap(24));
       items.add(
         ActionBannerCard(
