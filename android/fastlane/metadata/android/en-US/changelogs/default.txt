@@ -1,9 +1,9 @@
-• Chat for your Lounge, courses and sections.
-• Share quizzes and assignments set to your next class.
-• Course Materials from classmates and faculty reviews.
-• Live bus locations with a sync button.
-• Import friends from a file.
-• Home screen widget stays current when closed.
-• Plan your routine in Seat Status with clash checks.
-• Account Security, payslip printing and unread count.
-• Faster loading and many fixes.
+• Pictures in notifications, even on a locked phone.
+• Faculty photos in Seat Status.
+• Sync button in Seat Status and Seat Status on the welcome screen.
+• Browser extension loads your data without a Connect tab.
+• Smaller extension with fewer permissions.
+• Chat alerts in the Firefox extension.
+• Live bus speed and update time in the browser extension.
+• Scanner no longer turns on the flashlight.
+• Faster home screen after sign-in.

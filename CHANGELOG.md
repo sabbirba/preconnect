@@ -5,6 +5,18 @@ Entries are written for students, not developers — plain language, no commit h
 
 ## [Unreleased]
 
+## [2.1.5] — 2026-11-12
+
+- Pictures in notifications, even on a locked phone.
+- Faculty photos in Seat Status.
+- Sync button in Seat Status and Seat Status on the welcome screen.
+- Browser extension loads your data without a Connect tab.
+- Smaller extension with fewer permissions.
+- Chat alerts in the Firefox extension.
+- Live bus speed and update time in the browser extension.
+- Scanner no longer turns on the flashlight.
+- Faster home screen after sign-in.
+
 ## [2.1.4] — 2026-11-11
 
 - Chat for your Lounge, courses and sections.
