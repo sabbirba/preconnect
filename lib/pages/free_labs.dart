@@ -243,7 +243,7 @@ class _FreeLabsPageState extends State<FreeLabsPage> {
     final cachedSlots = _latestSlots;
     return AppPageScaffold(
       title: _dynamicHeaderTitle(),
-      subtitle: _headerDayLabel(),
+      subtitle: AppTime.formatDayMonth(_activeDate),
       icon: Icons.computer_outlined,
       actions: [
         AppSelectDropdownChip<_RoomFilter>(
