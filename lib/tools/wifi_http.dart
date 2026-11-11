@@ -558,14 +558,7 @@ class CaptiveWifiHttp {
       if (detected != null) {
         targetUrl = detected;
       } else {
-        final savedUrlStr = await CaptiveLoginStore.instance
-            .readLastPortalUrl();
-        if (savedUrlStr != null && savedUrlStr.isNotEmpty) {
-          final parsed = Uri.tryParse(savedUrlStr);
-          if (parsed != null) {
-            targetUrl = parsed;
-          }
-        }
+        targetUrl = await _savedPortalUrlOr(targetUrl);
       }
     }
 
@@ -766,21 +759,7 @@ class CaptiveWifiHttp {
         final decoded = jsonDecode(response.body);
         if (decoded is Map) {
           if (decoded['success'] == false) {
-            final errorCode = decoded['errorcode']?.toString() ?? '';
-            if (errorCode == '10105') {
-              return true;
-            }
-            final probeOk = await isValidatedViaProbe(
-              client: client,
-              cookies: cookies,
-            );
-            if (probeOk) return true;
-
-            lastErrorCode = errorCode;
-            isLastFatal = isFatalErrorCode(errorCode);
-            lastError = _mapPortalErrorCode(errorCode);
-
-            return false;
+            return await _isLoggedInAfterPortalError(decoded, client, cookies);
           }
           final token = decoded['token']?.toString();
           if (token != null && token.isNotEmpty) {
@@ -848,37 +827,13 @@ class CaptiveWifiHttp {
           final syncDecoded = jsonDecode(syncResponse.body);
           if (syncDecoded is Map) {
             if (syncDecoded['success'] == false) {
-              final errorCode = syncDecoded['errorcode']?.toString() ?? '';
-              if (errorCode == '10105') {
-                return true;
-              }
-              final probeOk = await isValidatedViaProbe(
-                client: client,
-                cookies: cookies,
+              return await _isLoggedInAfterPortalError(
+                syncDecoded,
+                client,
+                cookies,
               );
-              if (probeOk) return true;
-
-              lastErrorCode = errorCode;
-              isLastFatal = isFatalErrorCode(errorCode);
-              lastError = _mapPortalErrorCode(errorCode);
-
-              return false;
             }
-            final data = syncDecoded['data'];
-            if (data is Map) {
-              final validPeriod = data['validPeriod']?.toString();
-              if (validPeriod != null) {
-                unawaited(
-                  CaptiveLoginStore.instance.saveValidPeriod(validPeriod),
-                );
-              }
-              final remainTime = data['remainTime']?.toString();
-              if (remainTime != null) {
-                unawaited(
-                  CaptiveLoginStore.instance.saveRemainTime(remainTime),
-                );
-              }
-            }
+            _saveSyncData(syncDecoded['data']);
           }
         } else {
           final probeOk = await isValidatedViaProbe(
@@ -954,34 +909,74 @@ class CaptiveWifiHttp {
     }
   }
 
+  Future<Uri> _savedPortalUrlOr(Uri url) async {
+    if (url != defaultProbeUri) return url;
+    final saved = await CaptiveLoginStore.instance.readLastPortalUrl();
+    if (saved == null || saved.isEmpty) return url;
+    return Uri.tryParse(saved) ?? url;
+  }
+
+  Future<Uri> _sessionTargetUrl(Uri fallback) async {
+    final savedSuccessUrl = await CaptiveLoginStore.instance.readSuccessUrl();
+    return _savedPortalUrlOr(
+      savedSuccessUrl != null && savedSuccessUrl.isNotEmpty
+          ? Uri.parse(savedSuccessUrl)
+          : fallback,
+    );
+  }
+
+  Future<void> _restoreSessionCookies(Map<String, Cookie> cookies) async {
+    final savedToken = await CaptiveLoginStore.instance.readSessionToken();
+    if (savedToken != null && savedToken.isNotEmpty) {
+      cookies['XSRF-TOKEN'] = Cookie('XSRF-TOKEN', savedToken);
+    }
+    final savedPSessionId = await CaptiveLoginStore.instance.readPSessionId();
+    if (savedPSessionId != null && savedPSessionId.isNotEmpty) {
+      cookies['PSESSIONID'] = Cookie('PSESSIONID', savedPSessionId);
+    }
+    if (!cookies.containsKey('countdown')) {
+      cookies['countdown'] = Cookie('countdown', '0');
+    }
+  }
+
+  void _saveSyncData(Object? data) {
+    if (data is! Map) return;
+    final validPeriod = data['validPeriod']?.toString();
+    if (validPeriod != null) {
+      unawaited(CaptiveLoginStore.instance.saveValidPeriod(validPeriod));
+    }
+    final remainTime = data['remainTime']?.toString();
+    if (remainTime != null) {
+      unawaited(CaptiveLoginStore.instance.saveRemainTime(remainTime));
+    }
+  }
+
+  Future<bool> _isLoggedInAfterPortalError(
+    Map<dynamic, dynamic> decoded,
+    HttpClient client,
+    Map<String, Cookie> cookies,
+  ) async {
+    final errorCode = decoded['errorcode']?.toString() ?? '';
+    if (errorCode == '10105') return true;
+    if (await isValidatedViaProbe(client: client, cookies: cookies)) {
+      return true;
+    }
+    lastErrorCode = errorCode;
+    isLastFatal = isFatalErrorCode(errorCode);
+    lastError = _mapPortalErrorCode(errorCode);
+    return false;
+  }
+
   Future<bool> sendKeepAliveHeartbeat({Uri? captiveWifiUrl}) async {
     try {
       final savedToken = await CaptiveLoginStore.instance.readSessionToken();
-      final savedPSessionId = await CaptiveLoginStore.instance.readPSessionId();
       if (savedToken == null || savedToken.isEmpty) return false;
       final client = newClient();
       final cookies = sessionCookies;
-      cookies['XSRF-TOKEN'] = Cookie('XSRF-TOKEN', savedToken);
-      if (savedPSessionId != null && savedPSessionId.isNotEmpty) {
-        cookies['PSESSIONID'] = Cookie('PSESSIONID', savedPSessionId);
-      }
-      if (!cookies.containsKey('countdown')) {
-        cookies['countdown'] = Cookie('countdown', '0');
-      }
-      final savedSuccessUrl = await CaptiveLoginStore.instance.readSuccessUrl();
-      var targetUrl = savedSuccessUrl != null && savedSuccessUrl.isNotEmpty
-          ? Uri.parse(savedSuccessUrl)
-          : (captiveWifiUrl ?? defaultProbeUri);
-      if (targetUrl == defaultProbeUri) {
-        final savedUrlStr = await CaptiveLoginStore.instance
-            .readLastPortalUrl();
-        if (savedUrlStr != null && savedUrlStr.isNotEmpty) {
-          final parsed = Uri.tryParse(savedUrlStr);
-          if (parsed != null) {
-            targetUrl = parsed;
-          }
-        }
-      }
+      await _restoreSessionCookies(cookies);
+      final targetUrl = await _sessionTargetUrl(
+        captiveWifiUrl ?? defaultProbeUri,
+      );
       final apiSyncUri = targetUrl.replace(
         path: '/portalauth/syncPortalResult',
         queryParameters: {},
@@ -997,19 +992,7 @@ class CaptiveWifiHttp {
       if (syncResponse.statusCode == 200) {
         final syncDecoded = jsonDecode(syncResponse.body);
         if (syncDecoded is Map && syncDecoded['success'] == true) {
-          final data = syncDecoded['data'];
-          if (data is Map) {
-            final validPeriod = data['validPeriod']?.toString();
-            if (validPeriod != null) {
-              unawaited(
-                CaptiveLoginStore.instance.saveValidPeriod(validPeriod),
-              );
-            }
-            final remainTime = data['remainTime']?.toString();
-            if (remainTime != null) {
-              unawaited(CaptiveLoginStore.instance.saveRemainTime(remainTime));
-            }
-          }
+          _saveSyncData(syncDecoded['data']);
           return true;
         }
       }
@@ -1026,31 +1009,8 @@ class CaptiveWifiHttp {
     final client = newClient();
     final cookies = sessionCookies;
 
-    final savedToken = await CaptiveLoginStore.instance.readSessionToken();
-    if (savedToken != null && savedToken.isNotEmpty) {
-      cookies['XSRF-TOKEN'] = Cookie('XSRF-TOKEN', savedToken);
-    }
-    final savedPSessionId = await CaptiveLoginStore.instance.readPSessionId();
-    if (savedPSessionId != null && savedPSessionId.isNotEmpty) {
-      cookies['PSESSIONID'] = Cookie('PSESSIONID', savedPSessionId);
-    }
-    if (!cookies.containsKey('countdown')) {
-      cookies['countdown'] = Cookie('countdown', '0');
-    }
-
-    final savedSuccessUrl = await CaptiveLoginStore.instance.readSuccessUrl();
-    var targetUrl = savedSuccessUrl != null && savedSuccessUrl.isNotEmpty
-        ? Uri.parse(savedSuccessUrl)
-        : captiveWifiUrl;
-    if (targetUrl == defaultProbeUri) {
-      final savedUrlStr = await CaptiveLoginStore.instance.readLastPortalUrl();
-      if (savedUrlStr != null && savedUrlStr.isNotEmpty) {
-        final parsed = Uri.tryParse(savedUrlStr);
-        if (parsed != null) {
-          targetUrl = parsed;
-        }
-      }
-    }
+    await _restoreSessionCookies(cookies);
+    var targetUrl = await _sessionTargetUrl(captiveWifiUrl);
     if (targetUrl == defaultProbeUri) {
       final status = AndroidNetworkAssist.isSupported
           ? await AndroidNetworkAssist.getNetworkStatus()
