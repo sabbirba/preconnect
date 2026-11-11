@@ -582,12 +582,166 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
     return !DateTime.now().isAfter(endDate);
   }
 
+  bool _isAlarmDone(String alarmKey) =>
+      AppStorage.instance.getBoolSync('alarm_done_$alarmKey') == true;
+
+  Widget _alarmTitleRow(
+    BuildContext context, {
+    required Widget badge,
+    required String title,
+    required String subtitle,
+  }) {
+    return Row(
+      children: [
+        badge,
+        const Gap(12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
+              const Gap(6),
+              Text(
+                subtitle,
+                style: TextStyle(
+                  color: AppPalette.textPrimary(context),
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _alarmChips(
+    BuildContext context,
+    List<String> labels, {
+    bool singleLine = false,
+  }) {
+    return SizedBox(
+      width: double.infinity,
+      child: Wrap(
+        alignment: WrapAlignment.center,
+        spacing: 8,
+        runSpacing: 8,
+        children: [
+          for (final label in labels)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: Colors.transparent,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Text(
+                label,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: AppPalette.textPrimary(context),
+                  fontWeight: FontWeight.w600,
+                ),
+                maxLines: singleLine ? 1 : null,
+                softWrap: singleLine ? false : null,
+                overflow: singleLine ? TextOverflow.ellipsis : null,
+                textAlign: singleLine ? TextAlign.center : null,
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _minutesStepper(BuildContext context, String alarmKey) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF0B0B0B) : Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppPalette.primary.withValues(alpha: 0.2)),
+      ),
+      child: Row(
+        children: [
+          _minutesStepButton(Icons.remove, () {
+            if (_minutesBefore[alarmKey]! > 5) {
+              _minutesBefore[alarmKey] = _minutesBefore[alarmKey]! - 5;
+            }
+          }),
+          Expanded(
+            child: Center(
+              child: Text(
+                '${_minutesBefore[alarmKey]} min before',
+                style: TextStyle(
+                  fontWeight: FontWeight.w600,
+                  color: AppPalette.textPrimary(context),
+                ),
+              ),
+            ),
+          ),
+          _minutesStepButton(Icons.add, () {
+            _minutesBefore[alarmKey] = _minutesBefore[alarmKey]! + 5;
+          }),
+        ],
+      ),
+    );
+  }
+
+  Widget _minutesStepButton(IconData icon, VoidCallback change) {
+    return InkWell(
+      onTap: () => setState(change),
+      borderRadius: BorderRadius.circular(10),
+      child: Container(
+        padding: const EdgeInsets.all(6),
+        decoration: BoxDecoration(
+          color: AppPalette.primary.withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Icon(icon, size: 18, color: AppPalette.primary),
+      ),
+    );
+  }
+
+  Widget _alarmButton(
+    BuildContext context, {
+    required String alarmKey,
+    required String name,
+    required Future<void> Function() onSet,
+    String? removedMessage,
+    bool passed = false,
+  }) {
+    final isDone = _isAlarmDone(alarmKey) || passed;
+    return SizedBox(
+      width: double.infinity,
+      child: AppActionButton(
+        onPressed: () async {
+          if (!isDone) return onSet();
+          final confirmed = await showAppConfirmationWithActionDialog(
+            context,
+            icon: Icons.delete_outline_rounded,
+            title: 'Remove Alarm?',
+            message: 'This will remove the set alarm for $name.',
+            confirmLabel: 'Remove',
+            confirmColor: AppPalette.danger,
+            onConfirm: () => AppStorage.instance.remove('alarm_done_$alarmKey'),
+          );
+          if (!confirmed || !context.mounted) return;
+          showAppSnackBar(
+            context,
+            removedMessage ?? 'Alarm removed for $name.',
+          );
+          setState(() {});
+        },
+        icon: isDone
+            ? Icons.delete_outline_rounded
+            : Icons.notifications_active,
+        label: isDone ? 'Remove' : 'Set Alarm',
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final chipBg = Colors.transparent;
-    final controlBg = isDark ? const Color(0xFF0B0B0B) : Colors.white;
-
     return AppPageScaffold(
       title: 'Set Alarms',
       subtitle: 'Class & Exam',
@@ -783,168 +937,36 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Row(
-                          children: [
-                            const SectionBadge(
-                              label: 'AD',
-                              color: AppPalette.primary,
-                            ),
-                            const Gap(12),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    title,
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                  const Gap(6),
-                                  Text(
-                                    subtitle,
-                                    style: TextStyle(
-                                      color: AppPalette.textPrimary(context),
-                                      fontWeight: FontWeight.w700,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
+                        _alarmTitleRow(
+                          context,
+                          badge: const SectionBadge(
+                            label: 'AD',
+                            color: AppPalette.primary,
+                          ),
+                          title: title,
+                          subtitle: subtitle,
                         ),
                         const Gap(12),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 8,
-                          ),
-                          decoration: BoxDecoration(
-                            color: controlBg,
-                            borderRadius: BorderRadius.circular(14),
-                            border: Border.all(
-                              color: AppPalette.primary.withValues(alpha: 0.2),
+                        _minutesStepper(context, alarmKey),
+                        const Gap(12),
+                        _alarmButton(
+                          context,
+                          alarmKey: alarmKey,
+                          name: title,
+                          removedMessage: 'Alarm removed.',
+                          onSet: () => _setOneTimeAlarm(
+                            context,
+                            alarmKey: alarmKey,
+                            title: title,
+                            label: '$title Reminder',
+                            fireAt: startDate.subtract(
+                              Duration(minutes: _minutesBefore[alarmKey]!),
                             ),
-                          ),
-                          child: Row(
-                            children: [
-                              InkWell(
-                                onTap: () {
-                                  setState(() {
-                                    if (_minutesBefore[alarmKey]! > 5) {
-                                      _minutesBefore[alarmKey] =
-                                          _minutesBefore[alarmKey]! - 5;
-                                    }
-                                  });
-                                },
-                                borderRadius: BorderRadius.circular(10),
-                                child: Container(
-                                  padding: const EdgeInsets.all(6),
-                                  decoration: BoxDecoration(
-                                    color: AppPalette.primary.withValues(
-                                      alpha: 0.12,
-                                    ),
-                                    borderRadius: BorderRadius.circular(10),
-                                  ),
-                                  child: const Icon(
-                                    Icons.remove,
-                                    size: 18,
-                                    color: AppPalette.primary,
-                                  ),
-                                ),
-                              ),
-                              Expanded(
-                                child: Center(
-                                  child: Text(
-                                    '${_minutesBefore[alarmKey]} min before',
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.w600,
-                                      color: AppPalette.textPrimary(context),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                              InkWell(
-                                onTap: () {
-                                  setState(() {
-                                    _minutesBefore[alarmKey] =
-                                        _minutesBefore[alarmKey]! + 5;
-                                  });
-                                },
-                                borderRadius: BorderRadius.circular(10),
-                                child: Container(
-                                  padding: const EdgeInsets.all(6),
-                                  decoration: BoxDecoration(
-                                    color: AppPalette.primary.withValues(
-                                      alpha: 0.12,
-                                    ),
-                                    borderRadius: BorderRadius.circular(10),
-                                  ),
-                                  child: const Icon(
-                                    Icons.add,
-                                    size: 18,
-                                    color: AppPalette.primary,
-                                  ),
-                                ),
-                              ),
-                            ],
+                            minutesBefore: _minutesBefore[alarmKey]!,
+                            overMessage: 'This event is already over.',
+                            days: const <int>[],
                           ),
                         ),
-                        const Gap(12),
-                        (() {
-                          final isDone =
-                              AppStorage.instance.getBoolSync(
-                                'alarm_done_$alarmKey',
-                              ) ==
-                              true;
-                          return SizedBox(
-                            width: double.infinity,
-                            child: AppActionButton(
-                              onPressed: () async {
-                                if (isDone) {
-                                  final confirmed =
-                                      await showAppConfirmationWithActionDialog(
-                                        context,
-                                        icon: Icons.delete_outline_rounded,
-                                        title: 'Remove Alarm?',
-                                        message:
-                                            'This will remove the set alarm for $title.',
-                                        confirmLabel: 'Remove',
-                                        confirmColor: AppPalette.danger,
-                                        onConfirm: () async {
-                                          await AppStorage.instance.remove(
-                                            'alarm_done_$alarmKey',
-                                          );
-                                        },
-                                      );
-                                  if (!confirmed || !context.mounted) return;
-                                  showAppSnackBar(context, 'Alarm removed.');
-                                  setState(() {});
-                                } else {
-                                  await _setOneTimeAlarm(
-                                    context,
-                                    alarmKey:
-                                        'advising_${startDate.millisecondsSinceEpoch}',
-                                    title: title,
-                                    label: '$title Reminder',
-                                    fireAt: startDate.subtract(
-                                      Duration(
-                                        minutes: _minutesBefore[alarmKey]!,
-                                      ),
-                                    ),
-                                    minutesBefore: _minutesBefore[alarmKey]!,
-                                    overMessage: 'This event is already over.',
-                                    days: const <int>[],
-                                  );
-                                }
-                              },
-                              icon: isDone
-                                  ? Icons.delete_outline_rounded
-                                  : Icons.notifications_active,
-                              label: isDone ? 'Remove' : 'Set Alarm',
-                            ),
-                          );
-                        })(),
                       ],
                     ),
                   ),
@@ -977,68 +999,20 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Row(
-                        children: [
-                          SectionBadge(
-                            label: personalSchedulesSectionBadgeLabel(
-                              item,
-                              courseOptions,
-                            ),
-                            color: AppPalette.primary,
+                      _alarmTitleRow(
+                        context,
+                        badge: SectionBadge(
+                          label: personalSchedulesSectionBadgeLabel(
+                            item,
+                            courseOptions,
                           ),
-                          const Gap(12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  item.title,
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                                const Gap(6),
-                                Text(
-                                  subtitle,
-                                  style: TextStyle(
-                                    color: AppPalette.textPrimary(context),
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
+                          color: AppPalette.primary,
+                        ),
+                        title: item.title,
+                        subtitle: subtitle,
                       ),
                       const Gap(12),
-                      SizedBox(
-                        width: double.infinity,
-                        child: Wrap(
-                          alignment: WrapAlignment.center,
-                          spacing: 8,
-                          runSpacing: 8,
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 10,
-                                vertical: 6,
-                              ),
-                              decoration: BoxDecoration(
-                                color: chipBg,
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Text(
-                                dateStr,
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: AppPalette.textPrimary(context),
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
+                      _alarmChips(context, [dateStr]),
                       if (item.notes.trim().isNotEmpty) ...[
                         const Gap(8),
                         Text(
@@ -1050,139 +1024,25 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
                         ),
                       ],
                       const Gap(12),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 8,
-                        ),
-                        decoration: BoxDecoration(
-                          color: controlBg,
-                          borderRadius: BorderRadius.circular(14),
-                          border: Border.all(
-                            color: AppPalette.primary.withValues(alpha: 0.2),
+                      _minutesStepper(context, alarmKey),
+                      const Gap(12),
+                      _alarmButton(
+                        context,
+                        alarmKey: alarmKey,
+                        name: item.title,
+                        onSet: () => _setOneTimeAlarm(
+                          context,
+                          alarmKey: alarmKey,
+                          title: item.title,
+                          label: '${item.title} Reminder',
+                          fireAt: item.startTime.subtract(
+                            Duration(minutes: _minutesBefore[alarmKey]!),
                           ),
-                        ),
-                        child: Row(
-                          children: [
-                            InkWell(
-                              onTap: () {
-                                setState(() {
-                                  if (_minutesBefore[alarmKey]! > 5) {
-                                    _minutesBefore[alarmKey] =
-                                        _minutesBefore[alarmKey]! - 5;
-                                  }
-                                });
-                              },
-                              borderRadius: BorderRadius.circular(10),
-                              child: Container(
-                                padding: const EdgeInsets.all(6),
-                                decoration: BoxDecoration(
-                                  color: AppPalette.primary.withValues(
-                                    alpha: 0.12,
-                                  ),
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                                child: const Icon(
-                                  Icons.remove,
-                                  size: 18,
-                                  color: AppPalette.primary,
-                                ),
-                              ),
-                            ),
-                            Expanded(
-                              child: Center(
-                                child: Text(
-                                  '${_minutesBefore[alarmKey]} min before',
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.w600,
-                                    color: AppPalette.textPrimary(context),
-                                  ),
-                                ),
-                              ),
-                            ),
-                            InkWell(
-                              onTap: () {
-                                setState(() {
-                                  _minutesBefore[alarmKey] =
-                                      _minutesBefore[alarmKey]! + 5;
-                                });
-                              },
-                              borderRadius: BorderRadius.circular(10),
-                              child: Container(
-                                padding: const EdgeInsets.all(6),
-                                decoration: BoxDecoration(
-                                  color: AppPalette.primary.withValues(
-                                    alpha: 0.12,
-                                  ),
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                                child: const Icon(
-                                  Icons.add,
-                                  size: 18,
-                                  color: AppPalette.primary,
-                                ),
-                              ),
-                            ),
-                          ],
+                          minutesBefore: _minutesBefore[alarmKey]!,
+                          overMessage: 'This event is already over.',
+                          days: const <int>[],
                         ),
                       ),
-                      const Gap(12),
-                      (() {
-                        final isDone =
-                            AppStorage.instance.getBoolSync(
-                              'alarm_done_$alarmKey',
-                            ) ==
-                            true;
-                        return SizedBox(
-                          width: double.infinity,
-                          child: AppActionButton(
-                            onPressed: () async {
-                              if (isDone) {
-                                final confirmed =
-                                    await showAppConfirmationWithActionDialog(
-                                      context,
-                                      icon: Icons.delete_outline_rounded,
-                                      title: 'Remove Alarm?',
-                                      message:
-                                          'This will remove the set alarm for ${item.title}.',
-                                      confirmLabel: 'Remove',
-                                      confirmColor: AppPalette.danger,
-                                      onConfirm: () async {
-                                        await AppStorage.instance.remove(
-                                          'alarm_done_$alarmKey',
-                                        );
-                                      },
-                                    );
-                                if (!confirmed || !context.mounted) return;
-                                showAppSnackBar(
-                                  context,
-                                  'Alarm removed for ${item.title}.',
-                                );
-                                setState(() {});
-                              } else {
-                                await _setOneTimeAlarm(
-                                  context,
-                                  alarmKey: 'custom_${item.itemId}',
-                                  title: item.title,
-                                  label: '${item.title} Reminder',
-                                  fireAt: item.startTime.subtract(
-                                    Duration(
-                                      minutes: _minutesBefore[alarmKey]!,
-                                    ),
-                                  ),
-                                  minutesBefore: _minutesBefore[alarmKey]!,
-                                  overMessage: 'This event is already over.',
-                                  days: const <int>[],
-                                );
-                              }
-                            },
-                            icon: isDone
-                                ? Icons.delete_outline_rounded
-                                : Icons.notifications_active,
-                            label: isDone ? 'Remove' : 'Set Alarm',
-                          ),
-                        );
-                      })(),
                     ],
                   ),
                 ),
@@ -1311,194 +1171,32 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
                             ],
                           ),
                           const Gap(12),
-                          SizedBox(
-                            width: double.infinity,
-                            child: Wrap(
-                              alignment: WrapAlignment.center,
-                              spacing: 8,
-                              runSpacing: 8,
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 10,
-                                    vertical: 6,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: chipBg,
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  child: Text(
-                                    AppTime.formatLongDate(exam.dateTime),
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      color: AppPalette.textPrimary(context),
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 10,
-                                    vertical: 6,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: chipBg,
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  child: Text(
-                                    DateFormat(
-                                      'EEEE',
-                                    ).format(exam.dateTime).toUpperCase(),
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      color: AppPalette.textPrimary(context),
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ),
-                              ],
+                          _alarmChips(context, [
+                            AppTime.formatLongDate(exam.dateTime),
+                            DateFormat(
+                              'EEEE',
+                            ).format(exam.dateTime).toUpperCase(),
+                          ]),
+                          const Gap(12),
+                          _minutesStepper(context, alarmKey),
+                          const Gap(12),
+                          _alarmButton(
+                            context,
+                            alarmKey: alarmKey,
+                            name: '${exam.courseCode} ${exam.type}',
+                            passed: exam.isPassed,
+                            onSet: () => _setOneTimeAlarm(
+                              context,
+                              alarmKey: alarmKey,
+                              title: '${exam.courseCode} ${exam.type} Reminder',
+                              label: '${exam.courseCode} ${exam.type} Reminder',
+                              fireAt: exam.dateTime.subtract(
+                                Duration(minutes: _minutesBefore[alarmKey]!),
+                              ),
+                              minutesBefore: _minutesBefore[alarmKey]!,
+                              overMessage: 'This exam is already over.',
                             ),
                           ),
-                          const Gap(12),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 10,
-                              vertical: 8,
-                            ),
-                            decoration: BoxDecoration(
-                              color: controlBg,
-                              borderRadius: BorderRadius.circular(14),
-                              border: Border.all(
-                                color: AppPalette.primary.withValues(
-                                  alpha: 0.2,
-                                ),
-                              ),
-                            ),
-                            child: Row(
-                              children: [
-                                InkWell(
-                                  onTap: () {
-                                    setState(() {
-                                      if (_minutesBefore[alarmKey]! > 5) {
-                                        _minutesBefore[alarmKey] =
-                                            _minutesBefore[alarmKey]! - 5;
-                                      }
-                                    });
-                                  },
-                                  borderRadius: BorderRadius.circular(10),
-                                  child: Container(
-                                    padding: const EdgeInsets.all(6),
-                                    decoration: BoxDecoration(
-                                      color: AppPalette.primary.withValues(
-                                        alpha: 0.12,
-                                      ),
-                                      borderRadius: BorderRadius.circular(10),
-                                    ),
-                                    child: const Icon(
-                                      Icons.remove,
-                                      size: 18,
-                                      color: AppPalette.primary,
-                                    ),
-                                  ),
-                                ),
-                                Expanded(
-                                  child: Center(
-                                    child: Text(
-                                      '${_minutesBefore[alarmKey]} min before',
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.w600,
-                                        color: AppPalette.textPrimary(context),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                                InkWell(
-                                  onTap: () {
-                                    setState(() {
-                                      _minutesBefore[alarmKey] =
-                                          _minutesBefore[alarmKey]! + 5;
-                                    });
-                                  },
-                                  borderRadius: BorderRadius.circular(10),
-                                  child: Container(
-                                    padding: const EdgeInsets.all(6),
-                                    decoration: BoxDecoration(
-                                      color: AppPalette.primary.withValues(
-                                        alpha: 0.12,
-                                      ),
-                                      borderRadius: BorderRadius.circular(10),
-                                    ),
-                                    child: const Icon(
-                                      Icons.add,
-                                      size: 18,
-                                      color: AppPalette.primary,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const Gap(12),
-                          (() {
-                            final isDone =
-                                AppStorage.instance.getBoolSync(
-                                      'alarm_done_$alarmKey',
-                                    ) ==
-                                    true ||
-                                exam.isPassed;
-                            return SizedBox(
-                              width: double.infinity,
-                              child: AppActionButton(
-                                onPressed: () async {
-                                  if (isDone) {
-                                    final confirmed =
-                                        await showAppConfirmationWithActionDialog(
-                                          context,
-                                          icon: Icons.delete_outline_rounded,
-                                          title: 'Remove Alarm?',
-                                          message:
-                                              'This will remove the set alarm for ${exam.courseCode} ${exam.type}.',
-                                          confirmLabel: 'Remove',
-                                          confirmColor: AppPalette.danger,
-                                          onConfirm: () async {
-                                            await AppStorage.instance.remove(
-                                              'alarm_done_$alarmKey',
-                                            );
-                                          },
-                                        );
-                                    if (!confirmed || !context.mounted) {
-                                      return;
-                                    }
-                                    showAppSnackBar(
-                                      context,
-                                      'Alarm removed for ${exam.courseCode} ${exam.type}.',
-                                    );
-                                    setState(() {});
-                                  } else {
-                                    await _setOneTimeAlarm(
-                                      context,
-                                      alarmKey: 'exam_${exam.id}',
-                                      title:
-                                          '${exam.courseCode} ${exam.type} Reminder',
-                                      label:
-                                          '${exam.courseCode} ${exam.type} Reminder',
-                                      fireAt: exam.dateTime.subtract(
-                                        Duration(
-                                          minutes: _minutesBefore[alarmKey]!,
-                                        ),
-                                      ),
-                                      minutesBefore: _minutesBefore[alarmKey]!,
-                                      overMessage: 'This exam is already over.',
-                                    );
-                                  }
-                                },
-                                icon: isDone
-                                    ? Icons.delete_outline_rounded
-                                    : Icons.notifications_active,
-                                label: isDone ? 'Remove' : 'Set Alarm',
-                              ),
-                            );
-                          })(),
                         ],
                       ),
                     ),
@@ -1537,179 +1235,37 @@ class _AlarmPageState extends State<AlarmPage> with RefreshBusState {
                       wrapInCard: false,
                     ),
                     const Gap(12),
-                    SizedBox(
-                      width: double.infinity,
-                      child: Wrap(
-                        alignment: WrapAlignment.center,
-                        spacing: 8,
-                        runSpacing: 8,
-                        children: schedules.map((s) {
-                          return Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 10,
-                              vertical: 6,
-                            ),
-                            decoration: BoxDecoration(
-                              color: chipBg,
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Text(
-                              s.day.toUpperCase(),
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: AppPalette.textPrimary(context),
-                                fontWeight: FontWeight.w600,
-                              ),
-                              maxLines: 1,
-                              softWrap: false,
-                              overflow: TextOverflow.ellipsis,
-                              textAlign: TextAlign.center,
-                            ),
+                    _alarmChips(context, [
+                      for (final s in schedules) s.day.toUpperCase(),
+                    ], singleLine: true),
+                    const Gap(12),
+                    _minutesStepper(context, alarmKey),
+                    const Gap(12),
+                    _alarmButton(
+                      context,
+                      alarmKey: alarmKey,
+                      name: courseCode,
+                      onSet: () async {
+                        final days = schedules.map((s) => s.day).toList();
+                        final startTime = RamadanTiming.adjustRange(
+                          schedule.startTime,
+                          schedule.endTime,
+                          isRamadan: isRamadan,
+                        ).startTime;
+                        if (startTime.isNotEmpty && days.isNotEmpty) {
+                          await _setAlarm(
+                            context,
+                            days,
+                            startTime,
+                            isExtra
+                                ? '$courseCode Section ${section.sectionName}'
+                                : courseCode,
+                            _minutesBefore[alarmKey]!,
+                            alarmKey: alarmKey,
                           );
-                        }).toList(),
-                      ),
+                        }
+                      },
                     ),
-                    const Gap(12),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 8,
-                      ),
-                      decoration: BoxDecoration(
-                        color: controlBg,
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(
-                          color: AppPalette.primary.withValues(alpha: 0.2),
-                        ),
-                      ),
-                      child: Row(
-                        children: [
-                          InkWell(
-                            onTap: () {
-                              setState(() {
-                                if (_minutesBefore[alarmKey]! > 5) {
-                                  _minutesBefore[alarmKey] =
-                                      _minutesBefore[alarmKey]! - 5;
-                                }
-                              });
-                            },
-                            borderRadius: BorderRadius.circular(10),
-                            child: Container(
-                              padding: const EdgeInsets.all(6),
-                              decoration: BoxDecoration(
-                                color: AppPalette.primary.withValues(
-                                  alpha: 0.12,
-                                ),
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              child: const Icon(
-                                Icons.remove,
-                                size: 18,
-                                color: AppPalette.primary,
-                              ),
-                            ),
-                          ),
-                          Expanded(
-                            child: Center(
-                              child: Text(
-                                '${_minutesBefore[alarmKey]} min before',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.w600,
-                                  color: AppPalette.textPrimary(context),
-                                ),
-                              ),
-                            ),
-                          ),
-                          InkWell(
-                            onTap: () {
-                              setState(() {
-                                _minutesBefore[alarmKey] =
-                                    _minutesBefore[alarmKey]! + 5;
-                              });
-                            },
-                            borderRadius: BorderRadius.circular(10),
-                            child: Container(
-                              padding: const EdgeInsets.all(6),
-                              decoration: BoxDecoration(
-                                color: AppPalette.primary.withValues(
-                                  alpha: 0.12,
-                                ),
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              child: const Icon(
-                                Icons.add,
-                                size: 18,
-                                color: AppPalette.primary,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const Gap(12),
-                    (() {
-                      final isDone =
-                          AppStorage.instance.getBoolSync(
-                            'alarm_done_$alarmKey',
-                          ) ==
-                          true;
-                      return SizedBox(
-                        width: double.infinity,
-                        child: AppActionButton(
-                          onPressed: () async {
-                            if (isDone) {
-                              final confirmed =
-                                  await showAppConfirmationWithActionDialog(
-                                    context,
-                                    icon: Icons.delete_outline_rounded,
-                                    title: 'Remove Alarm?',
-                                    message:
-                                        'This will remove the set alarm for $courseCode.',
-                                    confirmLabel: 'Remove',
-                                    confirmColor: AppPalette.danger,
-                                    onConfirm: () async {
-                                      await AppStorage.instance.remove(
-                                        'alarm_done_$alarmKey',
-                                      );
-                                    },
-                                  );
-                              if (!confirmed || !context.mounted) return;
-                              showAppSnackBar(
-                                context,
-                                'Alarm removed for $courseCode.',
-                              );
-                              setState(() {});
-                            } else {
-                              final days = schedules.map((s) => s.day).toList();
-                              final startTime = schedules.isNotEmpty
-                                  ? RamadanTiming.adjustRange(
-                                      schedules.first.startTime,
-                                      schedules.first.endTime,
-                                      isRamadan: isRamadan,
-                                    ).startTime
-                                  : '';
-
-                              if (startTime.isNotEmpty && days.isNotEmpty) {
-                                await _setAlarm(
-                                  context,
-                                  days,
-                                  startTime,
-                                  isExtra
-                                      ? '$courseCode Section ${section.sectionName}'
-                                      : courseCode,
-                                  _minutesBefore[alarmKey]!,
-                                  alarmKey: alarmKey,
-                                );
-                              }
-                            }
-                          },
-                          icon: isDone
-                              ? Icons.delete_outline_rounded
-                              : Icons.notifications_active,
-                          label: isDone ? 'Remove' : 'Set Alarm',
-                        ),
-                      );
-                    })(),
                   ],
                 ),
               ),
