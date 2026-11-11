@@ -613,35 +613,67 @@ class ChatService {
     ]);
   }
 
+  DateTime? lastReadAt(String roomId) => _lastRead[roomId];
+
   Future<List<ChatMessage>> loadMessages(
     String roomId, {
     ChatMessage? before,
     ChatMessage? after,
+  }) {
+    final edge = before ?? after;
+    return _page(
+      roomId,
+      edge == null
+          ? ''
+          : before != null
+          ? '(created < {:at} || (created = {:at} && id < {:id}))'
+          : '(created > {:at} || (created = {:at} && id > {:id}))',
+      {if (edge != null) 'at': edge.created.toUtc(), 'id': edge?.id ?? ''},
+    );
+  }
+
+  Future<List<ChatMessage>> loadNewer(
+    String roomId,
+    DateTime since, {
+    String afterId = '',
+  }) => _page(
+    roomId,
+    afterId.isEmpty
+        ? 'created > {:at}'
+        : '(created > {:at} || (created = {:at} && id > {:id}))',
+    {'at': since.toUtc(), 'id': afterId},
+    oldestFirst: true,
+  );
+
+  Future<List<ChatMessage>> searchMessages(String roomId, String query) =>
+      _page(roomId, 'text ~ {:q}', {'q': query.trim()}, perPage: 30);
+
+  Future<List<ChatMessage>> _page(
+    String roomId,
+    String condition,
+    Map<String, dynamic> params, {
+    bool oldestFirst = false,
+    int perPage = pageSize,
   }) async {
     final pb = await _client();
-    final edge = before ?? after;
-    final filter = edge == null
-        ? pb.filter('room = {:room}', {'room': roomId})
-        : pb.filter(
-            before != null
-                ? 'room = {:room} && (created < {:at} || (created = {:at} && id < {:id}))'
-                : 'room = {:room} && (created > {:at} || (created = {:at} && id > {:id}))',
-            {'room': roomId, 'at': edge.created.toUtc(), 'id': edge.id},
-          );
     final result = await pb
         .collection('chat_messages')
         .getList(
-          perPage: pageSize,
-          filter: filter,
-          sort: '-created,-id',
+          perPage: perPage,
+          filter: pb.filter(
+            condition.isEmpty
+                ? 'room = {:room}'
+                : 'room = {:room} && $condition',
+            {...params, 'room': roomId},
+          ),
+          sort: oldestFirst ? 'created,id' : '-created,-id',
           expand: _messageExpand,
           skipTotal: true,
         );
-    return result.items
+    final messages = result.items
         .map((record) => ChatMessage.fromJson(record.toJson()))
-        .toList()
-        .reversed
         .toList();
+    return oldestFirst ? messages : messages.reversed.toList();
   }
 
   Future<List<ChatReaction>> loadReactions(List<String> messageIds) async {

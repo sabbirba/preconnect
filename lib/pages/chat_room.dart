@@ -46,7 +46,24 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
   List<_StagedPdf> _pdfs = const <_StagedPdf>[];
   late bool _loading = !_chat.hasRecent(_room.id);
   bool _loadingOlder = false;
+  bool _loadingNewer = false;
   bool _hasMore = true;
+  bool _hasNewer = false;
+  bool _revealing = false;
+  bool _tracksSeen = false;
+  bool _awayFromLatest = false;
+  int _newBelow = 0;
+  DateTime? _unreadSince;
+  DateTime? _seenUpTo;
+  String? _anchorId;
+  String? _firstUnreadId;
+  String? _focusId;
+  final GlobalKey _focusKey = GlobalKey();
+  final Key _olderKey = UniqueKey();
+  List<ChatReaction>? _indexedReactions;
+  Map<String, List<ChatReaction>> _reactionIndex = const {};
+  List<ChatVote>? _indexedVotes;
+  Map<String, List<ChatVote>> _voteIndex = const {};
   String? _error;
   Timer? _readTimer;
   Timer? _cooldownTimer;
@@ -79,6 +96,7 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
   void initState() {
     super.initState();
     _chat.activeRoomId = _room.id;
+    _unreadSince = _chat.lastReadAt(_room.id);
     _scroll.addListener(_onScroll);
     _chat.rooms.addListener(_onRoomsChanged);
     Drafts.instance.bind(_input, ChatService.draftKey(_room.id));
@@ -90,12 +108,14 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
   void dispose() {
     if (_chat.activeRoomId == _room.id) _chat.activeRoomId = null;
     _chat.rooms.removeListener(_onRoomsChanged);
-    _chat.remember(
-      _room.id,
-      _messages.where((m) => !m.isPending).toList(),
-      _reactions,
-    );
-    if (_readTimer?.isActive ?? false) _markLatestRead();
+    if (!_hasNewer) {
+      _chat.remember(
+        _room.id,
+        _messages.where((m) => !m.isPending).toList(),
+        _reactions,
+      );
+    }
+    if (_readTimer?.isActive ?? false) _markSeenRead();
     _readTimer?.cancel();
     _cooldownTimer?.cancel();
     for (final timer in _typingTimers.values) {
@@ -142,25 +162,10 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
         _loading = false;
         _error = null;
       });
-      _markLatestRead();
       _loadOlderIfAllHidden();
       unawaited(_chat.scheduleEvents(_messages));
-      final visible = _messages
-          .where((m) => !m.isPending)
-          .map((m) => m.id)
-          .toSet();
-      final (reactions, votes) = await (
-        _chat.loadReactions(visible.toList()),
-        _chat.loadVotes(_pollIds(_messages)),
-      ).wait;
-      if (!mounted) return;
-      setState(() {
-        _reactions = <ChatReaction>[
-          ...reactions,
-          ..._reactions.where((r) => !visible.contains(r.messageId)),
-        ];
-        _votes = votes;
-      });
+      unawaited(_loadExtras(_messages));
+      await _showFirstUnread();
     } on ChatException catch (error) {
       if (mounted) setState(() => _error = error.message);
     } catch (_) {
@@ -170,6 +175,218 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
     } finally {
       if (mounted) setState(() => _loading = false);
     }
+  }
+
+  Future<void> _loadExtras(List<ChatMessage> messages) async {
+    final ids = {
+      for (final message in messages)
+        if (!message.isPending) message.id,
+    };
+    final (reactions, votes) = await (
+      _chat.loadReactions(ids.toList()),
+      _chat.loadVotes(_pollIds(messages)),
+    ).wait;
+    if (!mounted) return;
+    setState(() {
+      _reactions = <ChatReaction>[
+        ...reactions,
+        ..._reactions.where((r) => !ids.contains(r.messageId)),
+      ];
+      _votes = <ChatVote>[
+        ...votes,
+        ..._votes.where((v) => !ids.contains(v.messageId)),
+      ];
+    });
+  }
+
+  bool _isUnread(ChatMessage message, DateTime since) =>
+      !message.isPending &&
+      message.author.id != _chat.me?.id &&
+      message.created.isAfter(since);
+
+  Future<void> _showFirstUnread() async {
+    if (_tracksSeen) return;
+    final since = _unreadSince;
+    final loaded = since == null
+        ? null
+        : _messages.where((m) => _isUnread(m, since)).firstOrNull;
+    if (since != null && loaded != null) {
+      final reachesBack = !_hasMore || !_messages.first.created.isAfter(since);
+      final first = reachesBack
+          ? loaded
+          : (await _chat.loadNewer(
+              _room.id,
+              since,
+            )).where((m) => _isUnread(m, since)).firstOrNull;
+      if (first != null && mounted) {
+        if (!reachesBack) await _openAt(first, highlight: false);
+        setState(() => _firstUnreadId = first.id);
+        await _reveal(first.id, highlight: false);
+      }
+    }
+    if (mounted) setState(() => _tracksSeen = true);
+  }
+
+  Future<void> _openAt(ChatMessage target, {bool highlight = true}) async {
+    final (older, newer) = await (
+      _chat.loadMessages(_room.id, before: target),
+      _chat.loadNewer(_room.id, target.created, afterId: target.id),
+    ).wait;
+    if (!mounted) return;
+    final window = <ChatMessage>[...older, target, ...newer];
+    final reachesLatest = newer.length < ChatService.pageSize;
+    setState(() {
+      _messages = _merged(
+        window,
+        reachesLatest ? _messages.where((m) => m.isPending).toList() : [],
+      );
+      _hasMore = older.length >= ChatService.pageSize;
+      _hasNewer = !reachesLatest;
+      _anchorId = reachesLatest ? null : window.last.id;
+      _newBelow = 0;
+    });
+    if (_scroll.hasClients) _scroll.jumpTo(0);
+    unawaited(_loadExtras(window));
+    if (highlight) await _reveal(target.id);
+  }
+
+  Future<void> _reveal(String id, {bool highlight = true}) async {
+    setState(() {
+      _focusId = id;
+      _revealing = true;
+    });
+    await WidgetsBinding.instance.endOfFrame;
+    for (var step = 0; step < 400 && mounted && _scroll.hasClients; step++) {
+      final target = _focusKey.currentContext;
+      if (target != null && target.mounted) {
+        if (step > 0 || highlight) {
+          await Scrollable.ensureVisible(
+            target,
+            alignment: 0.5,
+            duration: const Duration(milliseconds: 200),
+          );
+        }
+        break;
+      }
+      final position = _scroll.position;
+      if (position.pixels >= position.maxScrollExtent) break;
+      _scroll.jumpTo(
+        math.min(
+          position.pixels + position.viewportDimension,
+          position.maxScrollExtent,
+        ),
+      );
+      await WidgetsBinding.instance.endOfFrame;
+    }
+    if (!mounted) return;
+    setState(() {
+      _revealing = false;
+      if (!highlight) _focusId = null;
+    });
+    if (highlight) {
+      Timer(const Duration(seconds: 2), () {
+        if (mounted && _focusId == id) setState(() => _focusId = null);
+      });
+    }
+  }
+
+  Future<void> _showLatest() async {
+    if (_hasNewer) {
+      final latest = await _chat.loadMessages(_room.id);
+      if (!mounted) return;
+      setState(() {
+        _messages = _merged(
+          latest,
+          _messages.where((m) => m.isPending).toList(),
+        );
+        _hasMore = latest.length >= ChatService.pageSize;
+        _hasNewer = false;
+        _anchorId = null;
+      });
+      unawaited(_loadExtras(latest));
+      await WidgetsBinding.instance.endOfFrame;
+    }
+    if (!mounted || !_scroll.hasClients) return;
+    await _scroll.animateTo(
+      _scroll.position.minScrollExtent,
+      duration: const Duration(milliseconds: 250),
+      curve: Curves.easeOut,
+    );
+    if (!mounted) return;
+    setState(() {
+      _newBelow = 0;
+      _awayFromLatest = false;
+    });
+  }
+
+  Future<void> _loadNewer() async {
+    final last = _messages.where((m) => !m.isPending).lastOrNull;
+    if (last == null || _loadingNewer) return;
+    setState(() => _loadingNewer = true);
+    try {
+      final newer = await _chat.loadNewer(
+        _room.id,
+        last.created,
+        afterId: last.id,
+      );
+      if (!mounted) return;
+      setState(() {
+        _messages = _merged(newer, _messages);
+        _hasNewer = newer.length >= ChatService.pageSize;
+        if (!_hasNewer) _newBelow = 0;
+      });
+      unawaited(_loadExtras(newer));
+    } catch (_) {
+      if (mounted) showAppSnackBar(context, 'Newer messages could not load.');
+    } finally {
+      if (mounted) setState(() => _loadingNewer = false);
+    }
+  }
+
+  bool get _isAtLatest =>
+      !_hasNewer &&
+      (!_scroll.hasClients ||
+          _scroll.position.pixels - _scroll.position.minScrollExtent < 600);
+
+  void _noteSeen(ChatMessage message) {
+    if (!_tracksSeen || message.isPending) return;
+    final seen = _seenUpTo;
+    if (seen != null && !message.created.isAfter(seen)) return;
+    _seenUpTo = message.created;
+    _readTimer?.cancel();
+    _readTimer = Timer(const Duration(seconds: 2), _markSeenRead);
+  }
+
+  void _markSeenRead() {
+    final seen = _seenUpTo;
+    if (seen != null) unawaited(_chat.markRead(_room.id, seen));
+  }
+
+  Map<String, List<ChatReaction>> get _reactionsByMessage {
+    if (!identical(_indexedReactions, _reactions)) {
+      _indexedReactions = _reactions;
+      _reactionIndex = _groupByMessage(_reactions, (r) => r.messageId);
+    }
+    return _reactionIndex;
+  }
+
+  Map<String, List<ChatVote>> get _votesByMessage {
+    if (!identical(_indexedVotes, _votes)) {
+      _indexedVotes = _votes;
+      _voteIndex = _groupByMessage(_votes, (v) => v.messageId);
+    }
+    return _voteIndex;
+  }
+
+  static Map<String, List<T>> _groupByMessage<T>(
+    List<T> items,
+    String Function(T item) messageId,
+  ) {
+    final grouped = <String, List<T>>{};
+    for (final item in items) {
+      (grouped[messageId(item)] ??= <T>[]).add(item);
+    }
+    return grouped;
   }
 
   List<ChatMessage> _merged(
@@ -276,19 +493,12 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
   void _onIncoming(ChatMessage message) {
     if (!mounted) return;
     _stopTyping(message.author.id);
+    final follow = _anchorId != null && _isAtLatest;
+    if (!_isAtLatest) setState(() => _newBelow++);
+    if (_hasNewer) return;
     _upsert(message);
     unawaited(_chat.scheduleEvents(<ChatMessage>[message]));
-    _scheduleRead();
-  }
-
-  void _scheduleRead() {
-    _readTimer?.cancel();
-    _readTimer = Timer(const Duration(seconds: 2), _markLatestRead);
-  }
-
-  void _markLatestRead() {
-    if (_messages.isEmpty) return;
-    unawaited(_chat.markRead(_room.id, _messages.last.created));
+    if (follow) unawaited(_showLatest());
   }
 
   void _loadOlderIfAllHidden() {
@@ -309,9 +519,25 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
   }
 
   void _onScroll() {
-    if (!_scroll.hasClients || _loadingOlder || !_hasMore) return;
-    if (_scroll.position.pixels >= _scroll.position.maxScrollExtent - 200) {
+    if (!_scroll.hasClients) return;
+    final position = _scroll.position;
+    final away = !_isAtLatest;
+    if (away != _awayFromLatest || (!away && _newBelow > 0)) {
+      setState(() {
+        _awayFromLatest = away;
+        if (!away) _newBelow = 0;
+      });
+    }
+    if (_revealing) return;
+    if (_hasMore &&
+        !_loadingOlder &&
+        position.pixels >= position.maxScrollExtent - 200) {
       unawaited(_loadOlder());
+    }
+    if (_hasNewer &&
+        !_loadingNewer &&
+        position.pixels <= position.minScrollExtent + 200) {
+      unawaited(_loadNewer());
     }
   }
 
@@ -320,18 +546,13 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
     setState(() => _loadingOlder = true);
     try {
       final older = await _chat.loadMessages(_room.id, before: _messages.first);
-      final (reactions, votes) = await (
-        _chat.loadReactions(older.map((m) => m.id).toList()),
-        _chat.loadVotes(_pollIds(older)),
-      ).wait;
       if (!mounted) return;
       setState(() {
         _messages = <ChatMessage>[...older, ..._messages];
-        _reactions = <ChatReaction>[...reactions, ..._reactions];
-        _votes = <ChatVote>[...votes, ..._votes];
         _hasMore = older.length >= ChatService.pageSize;
         _loadingOlder = false;
       });
+      unawaited(_loadExtras(older));
       _loadOlderIfAllHidden();
     } catch (_) {
       if (mounted) showAppSnackBar(context, 'Older messages could not load.');
@@ -424,6 +645,7 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
     );
     _input.clear();
     _mentionPicks.clear();
+    if (_hasNewer) unawaited(_showLatest());
     setState(() {
       _messages = <ChatMessage>[..._messages, optimistic];
       _images = const <Uint8List>[];
@@ -435,7 +657,9 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
   }
 
   void _deliver(ChatMessage pending) {
-    if (_scroll.hasClients) _scroll.jumpTo(0);
+    if (_scroll.hasClients && !_hasNewer) {
+      _scroll.jumpTo(_scroll.position.minScrollExtent);
+    }
     unawaited(
       _chat
           .send(
@@ -453,7 +677,7 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
           .then(
             (sent) {
               _upsert(sent);
-              _markLatestRead();
+              _noteSeen(sent);
             },
             onError: (Object error) {
               _upsert(pending.copyWith(status: ChatMessageStatus.failed));
@@ -654,6 +878,11 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
       subtitle: _headerSubtitle(),
       icon: Icons.chat_bubble_outline_rounded,
       actions: [
+        HeaderActionButton(
+          tooltip: 'Search Messages',
+          icon: Icons.search_rounded,
+          onTap: _openSearch,
+        ),
         if (_room.kind == ChatRoomKind.section &&
             _chat.settings.value.reviewsEnabled)
           ValueListenableBuilder<List<ChatRoom>>(
@@ -925,6 +1154,18 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
     );
   }
 
+  Future<void> _openSearch() async {
+    final picked = await showAppBottomSheet<ChatMessage>(
+      context,
+      title: 'Search Messages',
+      builder: (sheetContext, textPrimary, textSecondary) => _SearchSheet(
+        roomId: _room.id,
+        onPick: (message) => Navigator.of(sheetContext).pop(message),
+      ),
+    );
+    if (picked != null && mounted) await _openAt(picked);
+  }
+
   Future<void> _toggleMute(bool value) async {
     try {
       await _chat.setMuted(_room.id, value);
@@ -957,65 +1198,100 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
             icon: Icons.chat_bubble_outline_rounded,
           );
         }
-        final me = _chat.me?.id;
-        final votesByMessage = <String, List<ChatVote>>{};
-        for (final vote in _votes) {
-          (votesByMessage[vote.messageId] ??= <ChatVote>[]).add(vote);
-        }
-        final reactionsByMessage = <String, List<ChatReaction>>{};
-        for (final reaction in _reactions) {
-          (reactionsByMessage[reaction.messageId] ??= <ChatReaction>[]).add(
-            reaction,
-          );
-        }
-        return ListView.builder(
+        final anchor = _anchorId == null
+            ? -1
+            : visible.indexWhere((m) => m.id == _anchorId);
+        final split = anchor < 0 ? visible.length : anchor + 1;
+        final newerCount = visible.length - split;
+        final list = CustomScrollView(
           controller: _scroll,
           reverse: true,
-          padding: const EdgeInsets.fromLTRB(12, 6, 12, 6),
-          itemCount: visible.length + (_loadingOlder ? 1 : 0),
-          itemBuilder: (context, index) {
-            if (index == visible.length) return const AppLoading();
-            final message = visible[visible.length - 1 - index];
-            final previous = index + 1 < visible.length
-                ? visible[visible.length - 2 - index]
-                : null;
-            final newDay =
-                previous == null ||
-                !DateUtils.isSameDay(previous.created, message.created);
-            final next = index > 0 ? visible[visible.length - index] : null;
-            final grouped = previous != null && _sameGroup(previous, message);
-            final bubble = _MessageBubble(
-              message: message,
-              isMine: message.author.id == me,
-              showAuthor: !grouped,
-              showTime: next == null || !_sameGroup(message, next),
-              showFullTime: _timeShownFor == message.id,
-              onTap: () => setState(
-                () => _timeShownFor = _timeShownFor == message.id
-                    ? null
-                    : message.id,
+          center: _olderKey,
+          slivers: [
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(12, 0, 12, 6),
+              sliver: SliverList.builder(
+                itemCount: newerCount + (_loadingNewer ? 1 : 0),
+                itemBuilder: (context, index) => index == newerCount
+                    ? const AppLoading()
+                    : _buildItem(visible, split + index),
               ),
-              reactions:
-                  reactionsByMessage[message.id] ?? const <ChatReaction>[],
-              myId: me ?? '',
-              votes: votesByMessage[message.id] ?? const <ChatVote>[],
-              onVote: (option) => _vote(message, option),
-              onLongPress: message.isPending
-                  ? null
-                  : () => _showActions(message),
-              onReact: (emoji) => _toggleReaction(message, emoji),
-              onRetry: () => _retry(message),
-            );
-            if (!newDay) return bubble;
-            return Column(
-              children: [
-                _DayLabel(day: message.created),
-                bubble,
-              ],
-            );
-          },
+            ),
+            SliverPadding(
+              key: _olderKey,
+              padding: const EdgeInsets.fromLTRB(12, 6, 12, 0),
+              sliver: SliverList.builder(
+                itemCount: split + (_loadingOlder ? 1 : 0),
+                itemBuilder: (context, index) => index == split
+                    ? const AppLoading()
+                    : _buildItem(visible, split - 1 - index),
+              ),
+            ),
+          ],
+        );
+        return Stack(
+          children: [
+            list,
+            if (_awayFromLatest || _hasNewer)
+              Positioned(
+                right: 14,
+                bottom: 10,
+                child: _JumpToLatest(count: _newBelow, onTap: _showLatest),
+              ),
+          ],
         );
       },
+    );
+  }
+
+  Widget _buildItem(List<ChatMessage> visible, int index) {
+    final message = visible[index];
+    _noteSeen(message);
+    final me = _chat.me?.id ?? '';
+    final previous = index > 0 ? visible[index - 1] : null;
+    final next = index + 1 < visible.length ? visible[index + 1] : null;
+    final newDay =
+        previous == null ||
+        !DateUtils.isSameDay(previous.created, message.created);
+    final grouped = previous != null && _sameGroup(previous, message);
+    final isFocus = message.id == _focusId;
+    Widget bubble = _MessageBubble(
+      message: message,
+      isMine: message.author.id == me,
+      showAuthor: !grouped,
+      showTime: next == null || !_sameGroup(message, next),
+      showFullTime: _timeShownFor == message.id,
+      onTap: () => setState(
+        () => _timeShownFor = _timeShownFor == message.id ? null : message.id,
+      ),
+      reactions: _reactionsByMessage[message.id] ?? const <ChatReaction>[],
+      myId: me,
+      votes: _votesByMessage[message.id] ?? const <ChatVote>[],
+      onVote: (option) => _vote(message, option),
+      onLongPress: message.isPending ? null : () => _showActions(message),
+      onReact: (emoji) => _toggleReaction(message, emoji),
+      onRetry: () => _retry(message),
+    );
+    if (isFocus) {
+      bubble = AnimatedContainer(
+        key: _focusKey,
+        duration: const Duration(milliseconds: 300),
+        decoration: BoxDecoration(
+          color: AppPalette.primary.withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: bubble,
+      );
+    }
+    final isFirstUnread = message.id == _firstUnreadId;
+    if (!newDay && !isFirstUnread) return bubble;
+    return Column(
+      children: [
+        if (newDay) _ListLabel(label: _dayLabel(message.created)),
+        if (isFirstUnread)
+          const _ListLabel(label: 'New Messages', color: AppPalette.primary),
+        bubble,
+      ],
     );
   }
 
@@ -1200,20 +1476,22 @@ class _ReportSheetState extends State<_ReportSheet> {
   }
 }
 
-class _DayLabel extends StatelessWidget {
-  const _DayLabel({required this.day});
+String _dayLabel(DateTime day) {
+  final today = DateUtils.dateOnly(DateTime.now());
+  final date = DateUtils.dateOnly(day);
+  if (date == today) return 'Today';
+  if (date == today.subtract(const Duration(days: 1))) return 'Yesterday';
+  return AppTime.formatLongDate(date);
+}
 
-  final DateTime day;
+class _ListLabel extends StatelessWidget {
+  const _ListLabel({required this.label, this.color});
+
+  final String label;
+  final Color? color;
 
   @override
   Widget build(BuildContext context) {
-    final today = DateUtils.dateOnly(DateTime.now());
-    final date = DateUtils.dateOnly(day);
-    final label = date == today
-        ? 'Today'
-        : date == today.subtract(const Duration(days: 1))
-        ? 'Yesterday'
-        : AppTime.formatLongDate(date);
     return Padding(
       padding: const EdgeInsets.only(top: 10, bottom: 2),
       child: Text(
@@ -1221,9 +1499,203 @@ class _DayLabel extends StatelessWidget {
         style: TextStyle(
           fontSize: 12,
           fontWeight: FontWeight.w600,
-          color: AppPalette.textSecondary(context),
+          color: color ?? AppPalette.textSecondary(context),
         ),
       ),
+    );
+  }
+}
+
+class _SearchSheet extends StatefulWidget {
+  const _SearchSheet({required this.roomId, required this.onPick});
+
+  final String roomId;
+  final ValueChanged<ChatMessage> onPick;
+
+  @override
+  State<_SearchSheet> createState() => _SearchSheetState();
+}
+
+class _SearchSheetState extends State<_SearchSheet> {
+  static const int _minLength = 2;
+
+  final TextEditingController _query = TextEditingController();
+  Timer? _debounce;
+  List<ChatMessage> _results = const <ChatMessage>[];
+  String _searched = '';
+  bool _searching = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _query.addListener(_onChanged);
+  }
+
+  @override
+  void dispose() {
+    _debounce?.cancel();
+    _query.dispose();
+    super.dispose();
+  }
+
+  void _onChanged() {
+    _debounce?.cancel();
+    final text = _query.text.trim();
+    setState(() {
+      if (text.length < _minLength) {
+        _results = const <ChatMessage>[];
+        _searched = '';
+      }
+    });
+    if (text.length < _minLength || text == _searched) return;
+    _debounce = Timer(
+      const Duration(milliseconds: 400),
+      () => unawaited(_search(text)),
+    );
+  }
+
+  Future<void> _search(String text) async {
+    setState(() => _searching = true);
+    try {
+      final found = await ChatService.instance.searchMessages(
+        widget.roomId,
+        text,
+      );
+      if (!mounted || _query.text.trim() != text) return;
+      setState(() {
+        _results = found.reversed.toList();
+        _searched = text;
+      });
+    } catch (_) {
+      if (mounted) showAppSnackBar(context, 'Search is unavailable right now.');
+    } finally {
+      if (mounted) setState(() => _searching = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final textPrimary = AppPalette.textPrimary(context);
+    final textSecondary = AppPalette.textSecondary(context);
+    return ListView(
+      controller: bottomSheetScrollController(context),
+      padding: const EdgeInsets.only(bottom: 24),
+      children: [
+        AppSearchField(
+          controller: _query,
+          query: _query.text,
+          hintText: 'Search this room',
+          autofocus: true,
+        ),
+        const Gap(12),
+        if (_searching)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 20),
+            child: Center(child: AppSpinner(size: 22, strokeWidth: 2.4)),
+          )
+        else if (_searched.isNotEmpty && _results.isEmpty)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 20),
+            child: Center(
+              child: Text(
+                'No messages found.',
+                style: TextStyle(color: textSecondary),
+              ),
+            ),
+          ),
+        for (final message in _results)
+          InkWell(
+            borderRadius: BorderRadius.circular(12),
+            onTap: () => widget.onPick(message),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  FriendAvatar(
+                    name: message.author.name,
+                    photoUrl: message.author.photo,
+                    size: 36,
+                    radius: 18,
+                  ),
+                  const Gap(10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                message.author.name,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w700,
+                                  color: textPrimary,
+                                ),
+                              ),
+                            ),
+                            Text(
+                              _dayLabel(message.created),
+                              style: TextStyle(
+                                fontSize: 11.5,
+                                color: textSecondary,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const Gap(2),
+                        Text(
+                          message.text,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(fontSize: 13, color: textPrimary),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+class _JumpToLatest extends StatelessWidget {
+  const _JumpToLatest({required this.count, required this.onTap});
+
+  final int count;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        Material(
+          color: Theme.of(context).colorScheme.surface,
+          elevation: 3,
+          shape: const CircleBorder(),
+          child: InkWell(
+            customBorder: const CircleBorder(),
+            onTap: onTap,
+            child: const SizedBox.square(
+              dimension: HeaderActionButton.size,
+              child: Icon(
+                Icons.keyboard_arrow_down_rounded,
+                size: HeaderActionButton.iconSize,
+                color: AppPalette.primary,
+              ),
+            ),
+          ),
+        ),
+        if (count > 0)
+          Positioned(top: -4, right: -4, child: UnreadCountPill(count: count)),
+      ],
     );
   }
 }
