@@ -373,11 +373,12 @@ object QuietModeAutomation {
         }
     }
 
-    private fun openExactAlarmSettings(context: Context) {
+    fun openExactAlarmSettings(context: Context) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return
         try {
             val intent =
                 Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM).apply {
+                    data = Uri.parse("package:${context.packageName}")
                     addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                 }
             context.startActivity(intent)

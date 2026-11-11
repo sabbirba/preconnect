@@ -28,6 +28,8 @@ class WidgetSetupSheet extends StatefulWidget {
 
 class _WidgetSetupSheetState extends State<WidgetSetupSheet> {
   bool _isPinSupported = false;
+  bool _needsExactUpdates = false;
+  late final AppLifecycleListener _lifecycle;
   bool _isSyncing = false;
   TodayWidgetData? _widgetData;
   bool _isLoading = true;
@@ -35,11 +37,24 @@ class _WidgetSetupSheetState extends State<WidgetSetupSheet> {
   @override
   void initState() {
     super.initState();
+    _lifecycle = AppLifecycleListener(onResume: _refreshExactUpdates);
     _initData();
+  }
+
+  @override
+  void dispose() {
+    _lifecycle.dispose();
+    super.dispose();
+  }
+
+  Future<void> _refreshExactUpdates() async {
+    final needed = await TodayWidget.needsExactUpdates();
+    if (mounted) setState(() => _needsExactUpdates = needed);
   }
 
   Future<void> _initData() async {
     final supported = await TodayWidget.isPinWidgetSupported();
+    final needsExact = await TodayWidget.needsExactUpdates();
     var data = await TodayWidget.loadCurrent();
     if (data == null || (data.title.isEmpty && data.items.isEmpty)) {
       try {
@@ -50,6 +65,7 @@ class _WidgetSetupSheetState extends State<WidgetSetupSheet> {
     if (mounted) {
       setState(() {
         _isPinSupported = supported;
+        _needsExactUpdates = needsExact;
         _widgetData = data;
         _isLoading = false;
       });
@@ -106,6 +122,15 @@ class _WidgetSetupSheetState extends State<WidgetSetupSheet> {
             outlined: false,
             backgroundColor: AppPalette.primary,
             foregroundColor: Colors.white,
+          ),
+          const Gap(12),
+        ],
+        if (isAndroid && _needsExactUpdates) ...[
+          AppActionButton(
+            onPressed: TodayWidget.allowExactUpdates,
+            label: 'Allow On-Time Updates',
+            icon: Icons.alarm_on_rounded,
+            outlined: true,
           ),
           const Gap(12),
         ],

@@ -16,6 +16,10 @@ internal class PermissionChannel(
             when (call.method) {
                 "isBatteryOptimizationIgnored" -> result.success(isIgnored())
                 "requestIgnoreBatteryOptimization" -> result.success(requestExemption())
+                "requestExactAlarms" -> {
+                    QuietModeAutomation.openExactAlarmSettings(activity)
+                    result.success(true)
+                }
                 else -> result.notImplemented()
             }
         }

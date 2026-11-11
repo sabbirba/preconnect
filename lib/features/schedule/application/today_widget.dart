@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:home_widget/home_widget.dart';
+import 'package:preconnect/tools/platform_channels.dart';
 
 class TodayItem {
   const TodayItem({
@@ -173,10 +174,29 @@ abstract final class TodayWidget {
     } catch (_) {}
   }
 
-  static Future<bool> isPinWidgetSupported() async {
-    if (!isSupported || defaultTargetPlatform != TargetPlatform.android) {
+  static bool get _isAndroid =>
+      isSupported && defaultTargetPlatform == TargetPlatform.android;
+
+  static Future<bool> needsExactUpdates() async {
+    if (!_isAndroid) return false;
+    try {
+      return await HomeWidget.canScheduleExactWidgetUpdates() == false;
+    } catch (_) {
       return false;
     }
+  }
+
+  static Future<void> allowExactUpdates() async {
+    if (!_isAndroid) return;
+    try {
+      await const MethodChannel(
+        PlatformChannels.backgroundPermission,
+      ).invokeMethod<bool>('requestExactAlarms');
+    } catch (_) {}
+  }
+
+  static Future<bool> isPinWidgetSupported() async {
+    if (!_isAndroid) return false;
     try {
       final supported = await HomeWidget.isRequestPinWidgetSupported();
       return supported ?? false;
