@@ -485,6 +485,106 @@ class _CgpaCalculatorPageState extends State<CgpaCalculatorPage> {
     );
   }
 
+  Future<void> _pickDraftGrade(
+    _CurrentCourseDraft draft, {
+    required bool isRetake,
+  }) async {
+    final selected = await _pickGrade(
+      courseCode: draft.codeValue,
+      subtitle: 'Choose expected grade',
+      currentGrade: draft.grade,
+      resetGrade: 'A',
+      isRetake: isRetake,
+    );
+    if (!mounted || selected == null) return;
+    final wasReset = selected == 'A' && draft.grade != 'A';
+    setState(() {
+      draft.grade = selected;
+    });
+    _saveToStorage();
+    _showCalculatorSnackBar(
+      wasReset
+          ? '${draft.codeValue} reset to A'
+          : '${draft.codeValue} grade set to $selected',
+    );
+  }
+
+  void _removePlanned(_PlannedCourseDraft draft) {
+    setState(() {
+      _plannedCourses.remove(draft);
+    });
+    draft.dispose();
+    _saveToStorage();
+    _showCalculatorSnackBar('Removed ${draft.codeValue}');
+  }
+
+  Widget _sheetTextField(
+    TextEditingController controller, {
+    required TextCapitalization capitalization,
+    required String label,
+    required String hint,
+    required Color textPrimary,
+    required Color textSecondary,
+  }) {
+    return TextField(
+      controller: controller,
+      textCapitalization: capitalization,
+      style: TextStyle(color: textPrimary),
+      decoration: InputDecoration(
+        labelText: label,
+        hintText: hint,
+        labelStyle: TextStyle(color: textSecondary),
+        hintStyle: TextStyle(color: textSecondary.withValues(alpha: 0.6)),
+        isDense: true,
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide(color: textSecondary.withValues(alpha: 0.24)),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: const BorderSide(color: AppPalette.primary),
+        ),
+      ),
+    );
+  }
+
+  Widget _choiceWrap(
+    BuildContext sheetContext,
+    Iterable<String> options, {
+    required String? selected,
+    required ValueChanged<String> onSelected,
+    required Color textPrimary,
+    required Color textSecondary,
+  }) {
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: [
+        for (final option in options)
+          ChoiceChip(
+            label: Text(option),
+            selected: selected == option,
+            showCheckmark: false,
+            labelStyle: TextStyle(
+              color: selected == option ? AppPalette.primary : textPrimary,
+              fontWeight: FontWeight.w700,
+            ),
+            backgroundColor: AppPalette.card(
+              sheetContext,
+            ).withValues(alpha: 0.92),
+            selectedColor: AppPalette.primary.withValues(alpha: 0.14),
+            side: BorderSide(
+              color: selected == option
+                  ? AppPalette.primary
+                  : textSecondary.withValues(alpha: 0.24),
+            ),
+            onSelected: (_) => onSelected(option),
+          ),
+      ],
+    );
+  }
+
   Widget _buildCurrentCourseCard(
     BuildContext context,
     _CurrentCourseDraft draft,
@@ -492,26 +592,7 @@ class _CgpaCalculatorPageState extends State<CgpaCalculatorPage> {
     final isRetake = _completedEffectiveCodes.contains(draft.codeValue);
     return InkWell(
       borderRadius: BorderRadius.circular(18),
-      onTap: () async {
-        final selected = await _pickGrade(
-          courseCode: draft.codeValue,
-          subtitle: 'Choose expected grade',
-          currentGrade: draft.grade,
-          resetGrade: 'A',
-          isRetake: isRetake,
-        );
-        if (!mounted || selected == null) return;
-        final wasReset = selected == 'A' && draft.grade != 'A';
-        setState(() {
-          draft.grade = selected;
-        });
-        _saveToStorage();
-        _showCalculatorSnackBar(
-          wasReset
-              ? '${draft.codeValue} reset to A'
-              : '${draft.codeValue} grade set to $selected',
-        );
-      },
+      onTap: () => _pickDraftGrade(draft, isRetake: isRetake),
       child: AppCard(
         child: _buildCourseCard(
           context,
@@ -538,14 +619,7 @@ class _CgpaCalculatorPageState extends State<CgpaCalculatorPage> {
     return Dismissible(
       key: ValueKey(draft),
       direction: DismissDirection.endToStart,
-      onDismissed: (_) {
-        setState(() {
-          _plannedCourses.remove(draft);
-        });
-        draft.dispose();
-        _saveToStorage();
-        _showCalculatorSnackBar('Removed ${draft.codeValue}');
-      },
+      onDismissed: (_) => _removePlanned(draft),
       background: Container(
         alignment: Alignment.centerRight,
         padding: const EdgeInsets.only(right: 20),
@@ -560,26 +634,7 @@ class _CgpaCalculatorPageState extends State<CgpaCalculatorPage> {
       ),
       child: InkWell(
         borderRadius: BorderRadius.circular(18),
-        onTap: () async {
-          final selected = await _pickGrade(
-            courseCode: draft.codeValue,
-            subtitle: 'Choose expected grade',
-            currentGrade: draft.grade,
-            resetGrade: 'A',
-            isRetake: isRetake,
-          );
-          if (!mounted || selected == null) return;
-          final wasReset = selected == 'A' && draft.grade != 'A';
-          setState(() {
-            draft.grade = selected;
-          });
-          _saveToStorage();
-          _showCalculatorSnackBar(
-            wasReset
-                ? '${draft.codeValue} reset to A'
-                : '${draft.codeValue} grade set to $selected',
-          );
-        },
+        onTap: () => _pickDraftGrade(draft, isRetake: isRetake),
         child: AppCard(
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.center,
@@ -643,14 +698,7 @@ class _CgpaCalculatorPageState extends State<CgpaCalculatorPage> {
               ),
               const Gap(4),
               IconButton(
-                onPressed: () {
-                  setState(() {
-                    _plannedCourses.remove(draft);
-                  });
-                  draft.dispose();
-                  _saveToStorage();
-                  _showCalculatorSnackBar('Removed ${draft.codeValue}');
-                },
+                onPressed: () => _removePlanned(draft),
                 icon: Icon(
                   Icons.delete_outline_rounded,
                   size: 20,
@@ -699,60 +747,22 @@ class _CgpaCalculatorPageState extends State<CgpaCalculatorPage> {
                 physics: const ClampingScrollPhysics(),
                 padding: const EdgeInsets.only(bottom: 24),
                 children: [
-                  TextField(
-                    controller: codeController,
-                    textCapitalization: TextCapitalization.characters,
-                    style: TextStyle(color: textPrimary),
-                    decoration: InputDecoration(
-                      labelText: 'Course Code',
-                      hintText: 'e.g. CSE421',
-                      labelStyle: TextStyle(color: textSecondary),
-                      hintStyle: TextStyle(
-                        color: textSecondary.withValues(alpha: 0.6),
-                      ),
-                      isDense: true,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(14),
-                        borderSide: BorderSide(
-                          color: textSecondary.withValues(alpha: 0.24),
-                        ),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(14),
-                        borderSide: const BorderSide(color: AppPalette.primary),
-                      ),
-                    ),
+                  _sheetTextField(
+                    codeController,
+                    capitalization: TextCapitalization.characters,
+                    label: 'Course Code',
+                    hint: 'e.g. CSE421',
+                    textPrimary: textPrimary,
+                    textSecondary: textSecondary,
                   ),
                   const Gap(12),
-                  TextField(
-                    controller: titleController,
-                    textCapitalization: TextCapitalization.words,
-                    style: TextStyle(color: textPrimary),
-                    decoration: InputDecoration(
-                      labelText: 'Course Title (Optional)',
-                      hintText: 'e.g. Computer Networks',
-                      labelStyle: TextStyle(color: textSecondary),
-                      hintStyle: TextStyle(
-                        color: textSecondary.withValues(alpha: 0.6),
-                      ),
-                      isDense: true,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(14),
-                        borderSide: BorderSide(
-                          color: textSecondary.withValues(alpha: 0.24),
-                        ),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(14),
-                        borderSide: const BorderSide(color: AppPalette.primary),
-                      ),
-                    ),
+                  _sheetTextField(
+                    titleController,
+                    capitalization: TextCapitalization.words,
+                    label: 'Course Title (Optional)',
+                    hint: 'e.g. Computer Networks',
+                    textPrimary: textPrimary,
+                    textSecondary: textSecondary,
                   ),
                   const Gap(16),
                   Text(
@@ -764,37 +774,14 @@ class _CgpaCalculatorPageState extends State<CgpaCalculatorPage> {
                     ),
                   ),
                   const Gap(8),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: creditOptions.map((credit) {
-                      final isSelected = selectedCredit == credit;
-                      return ChoiceChip(
-                        label: Text(credit),
-                        selected: isSelected,
-                        showCheckmark: false,
-                        labelStyle: TextStyle(
-                          color: isSelected ? AppPalette.primary : textPrimary,
-                          fontWeight: FontWeight.w700,
-                        ),
-                        backgroundColor: AppPalette.card(
-                          sheetContext,
-                        ).withValues(alpha: 0.92),
-                        selectedColor: AppPalette.primary.withValues(
-                          alpha: 0.14,
-                        ),
-                        side: BorderSide(
-                          color: isSelected
-                              ? AppPalette.primary
-                              : textSecondary.withValues(alpha: 0.24),
-                        ),
-                        onSelected: (_) {
-                          setDialogState(() {
-                            selectedCredit = credit;
-                          });
-                        },
-                      );
-                    }).toList(),
+                  _choiceWrap(
+                    sheetContext,
+                    creditOptions,
+                    selected: selectedCredit,
+                    onSelected: (value) =>
+                        setDialogState(() => selectedCredit = value),
+                    textPrimary: textPrimary,
+                    textSecondary: textSecondary,
                   ),
                   const Gap(16),
                   Text(
@@ -806,37 +793,14 @@ class _CgpaCalculatorPageState extends State<CgpaCalculatorPage> {
                     ),
                   ),
                   const Gap(8),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: _gradeOptions.take(13).map((grade) {
-                      final isSelected = selectedGrade == grade;
-                      return ChoiceChip(
-                        label: Text(grade),
-                        selected: isSelected,
-                        showCheckmark: false,
-                        labelStyle: TextStyle(
-                          color: isSelected ? AppPalette.primary : textPrimary,
-                          fontWeight: FontWeight.w700,
-                        ),
-                        backgroundColor: AppPalette.card(
-                          sheetContext,
-                        ).withValues(alpha: 0.92),
-                        selectedColor: AppPalette.primary.withValues(
-                          alpha: 0.14,
-                        ),
-                        side: BorderSide(
-                          color: isSelected
-                              ? AppPalette.primary
-                              : textSecondary.withValues(alpha: 0.24),
-                        ),
-                        onSelected: (_) {
-                          setDialogState(() {
-                            selectedGrade = grade;
-                          });
-                        },
-                      );
-                    }).toList(),
+                  _choiceWrap(
+                    sheetContext,
+                    _gradeOptions.take(13),
+                    selected: selectedGrade,
+                    onSelected: (value) =>
+                        setDialogState(() => selectedGrade = value),
+                    textPrimary: textPrimary,
+                    textSecondary: textSecondary,
                   ),
                   const Gap(24),
                   FilledButton(
@@ -1236,31 +1200,13 @@ class _CgpaCalculatorPageState extends State<CgpaCalculatorPage> {
           physics: const ClampingScrollPhysics(),
           padding: const EdgeInsets.only(bottom: 24),
           children: [
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: _gradeOptions.map((grade) {
-                final selected = currentGrade == grade;
-                return ChoiceChip(
-                  label: Text(grade),
-                  selected: selected,
-                  showCheckmark: false,
-                  labelStyle: TextStyle(
-                    color: selected ? AppPalette.primary : textPrimary,
-                    fontWeight: FontWeight.w700,
-                  ),
-                  backgroundColor: AppPalette.card(
-                    sheetContext,
-                  ).withValues(alpha: 0.92),
-                  selectedColor: AppPalette.primary.withValues(alpha: 0.14),
-                  side: BorderSide(
-                    color: selected
-                        ? AppPalette.primary
-                        : textSecondary.withValues(alpha: 0.24),
-                  ),
-                  onSelected: (_) => Navigator.of(sheetContext).pop(grade),
-                );
-              }).toList(),
+            _choiceWrap(
+              sheetContext,
+              _gradeOptions,
+              selected: currentGrade,
+              onSelected: (value) => Navigator.of(sheetContext).pop(value),
+              textPrimary: textPrimary,
+              textSecondary: textSecondary,
             ),
             const Gap(12),
             _buildGradeGuideLegend(sheetContext, textPrimary, textSecondary),
