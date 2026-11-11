@@ -240,9 +240,23 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
     }
   }
 
+  static void _warmQuickAccessPages() {
+    for (final preload in <Future<void> Function()>[
+      ClassSchedulePage.preload,
+      ExamSchedule.preload,
+      DegreeProgressPage.preload,
+      StudentProfile.preload,
+      CustomSchedulesPage.preload,
+      AlarmPage.preload,
+    ]) {
+      unawaited(preload());
+    }
+  }
+
   Future<void> _warmAndBind({bool forceRefresh = false}) async {
     try {
       if (_latestData != null) {
+        _warmQuickAccessPages();
         unawaited(_backgroundRefresh(ignoreMinInterval: forceRefresh));
         return;
       }
@@ -252,6 +266,7 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
         _latestData = data;
         _future = Future<_HomeData>.value(data);
       });
+      _warmQuickAccessPages();
       unawaited(_saveHomeDashboardSnapshot(data));
       if (!forceRefresh) {
         unawaited(_backgroundRefresh());
@@ -415,24 +430,20 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
       final holidayStatus = results[5] as HolidayStatus;
 
       final photoUrl = ApiConfig.photoUrl(profile?['photoFilePath']);
-      Map<String, ExamScheduleOverride> examOverrides =
-          const <String, ExamScheduleOverride>{};
-      Future<Map<String, ExamScheduleOverride>>? examOverridesFuture;
-
-      if (sections.isNotEmpty && cardVisibility.showExamCountdownCard) {
-        examOverridesFuture = ExamScheduleService()
-            .getOverridesForSections(sections, forceRefresh: forceRefresh)
-            .catchError((e) => const <String, ExamScheduleOverride>{});
-      }
-
-      if (examOverridesFuture != null) {
-        examOverrides = await examOverridesFuture;
-      }
-      final extraSections = currentSessionSemesterId == null || !needsSchedule
-          ? const <section.Section>[]
-          : await ExtraClassesStore()
+      final examOverridesFuture =
+          sections.isNotEmpty && cardVisibility.showExamCountdownCard
+          ? ExamScheduleService()
+                .getOverridesForSections(sections, forceRefresh: forceRefresh)
+                .catchError((e) => const <String, ExamScheduleOverride>{})
+          : Future.value(const <String, ExamScheduleOverride>{});
+      final extraSectionsFuture =
+          currentSessionSemesterId == null || !needsSchedule
+          ? Future.value(const <section.Section>[])
+          : ExtraClassesStore()
                 .sectionsFor(currentSessionSemesterId, sections)
                 .catchError((_) => const <section.Section>[]);
+      final examOverrides = await examOverridesFuture;
+      final extraSections = await extraSectionsFuture;
       final entries = _ScheduleEntry.buildEntries(
         sections: [...sections, ...extraSections],
         overrides: examOverrides,

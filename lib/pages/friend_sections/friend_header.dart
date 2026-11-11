@@ -146,10 +146,31 @@ class FriendAvatar extends StatelessWidget {
     return '${ApiConfig.connectCdnBase}/img/thumb/$encoded.jpg';
   }
 
+  Widget _initials(BuildContext context) {
+    final letter = name.trim().characters.firstOrNull?.toUpperCase() ?? '?';
+    return Container(
+      width: size,
+      height: size,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: AppPalette.primary.withValues(alpha: 0.16),
+        borderRadius: BorderRadius.circular(radius),
+      ),
+      child: Text(
+        letter,
+        style: TextStyle(
+          fontSize: size * 0.4,
+          fontWeight: FontWeight.w700,
+          color: AppPalette.primary,
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final resolvedPhotoUrl = _resolvePhotoUrl(photoUrl);
-    if (resolvedPhotoUrl == null) return const SizedBox.shrink();
+    if (resolvedPhotoUrl == null) return _initials(context);
     return ClipRRect(
       borderRadius: BorderRadius.circular(radius),
       child: CachedImage(
@@ -157,8 +178,8 @@ class FriendAvatar extends StatelessWidget {
         fit: BoxFit.cover,
         width: size,
         height: size,
-        placeholder: const SizedBox.shrink(),
-        error: const SizedBox.shrink(),
+        placeholder: _initials(context),
+        error: _initials(context),
       ),
     );
   }

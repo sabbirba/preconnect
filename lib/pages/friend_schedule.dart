@@ -15,6 +15,7 @@ import 'package:preconnect/pages/friend_sections/friend_detail.dart';
 import 'package:preconnect/pages/scan_schedule.dart';
 import 'package:preconnect/pages/share_schedule.dart';
 import 'package:preconnect/pages/ui_kit.dart';
+import 'package:preconnect/tools/cached_image.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
 import 'package:preconnect/tools/ramadan.dart';
 
@@ -82,59 +83,58 @@ class _FriendSchedulePageState extends State<FriendSchedulePage>
     final completer = Completer<void>();
     _loadCompleter = completer;
     try {
-      final ramadanFuture = RamadanTiming.isRamadan();
       final snapshot = await _store.loadSnapshot();
       final encodedList = snapshot.encodedSchedules;
       _metadata = snapshot.metadata;
 
-      final isRamadan = await ramadanFuture;
-      if (encodedList.isEmpty) {
-        if (!mounted) return;
-        setState(() {
-          decodedSchedules = <FriendScheduleItem>[];
-          _isRamadan = isRamadan;
-        });
-        return;
-      }
-
       final allSchedules = <FriendScheduleItem>[];
-      final validEntries = <String>[];
-
       for (final base64Json in encodedList) {
         final friendSchedule = FriendScheduleStore.parseSchedulePayload(
           base64Json,
         );
         if (friendSchedule != null && friendSchedule.id.isNotEmpty) {
-          final metadata = _metadata[friendSchedule.id];
           allSchedules.add(
             FriendScheduleItem(
               encoded: base64Json,
               friend: friendSchedule,
-              metadata: metadata,
+              metadata: _metadata[friendSchedule.id],
             ),
           );
-          validEntries.add(base64Json);
         }
       }
-
-      final invalidEntries = encodedList
-          .where((entry) => !validEntries.contains(entry))
-          .toList();
-      for (final invalid in invalidEntries) {
-        await _store.removeByEncoded(invalid);
-      }
-
       _sortSchedules(allSchedules);
 
       if (!mounted) return;
-      setState(() {
-        decodedSchedules = allSchedules;
-        _isRamadan = isRamadan;
-      });
+      setState(() => decodedSchedules = allSchedules);
+      _precacheAvatars(allSchedules);
+
+      unawaited(
+        RamadanTiming.isRamadan()
+            .then((value) {
+              if (mounted && value != _isRamadan) {
+                setState(() => _isRamadan = value);
+              }
+            })
+            .catchError((Object _) {}),
+      );
+    } catch (error) {
+      if (mounted && decodedSchedules.isEmpty) {
+        showAppSnackBar(context, 'Could not load friends. Pull to refresh.');
+      }
     } finally {
       _isLoadingSchedules = false;
       if (!completer.isCompleted) completer.complete();
       if (identical(_loadCompleter, completer)) _loadCompleter = null;
+    }
+  }
+
+  void _precacheAvatars(List<FriendScheduleItem> items) {
+    if (!mounted) return;
+    for (final item in items) {
+      final url = item.friend.photoUrl;
+      if (url != null && url.startsWith('http')) {
+        CachedImage.precache(context, url);
+      }
     }
   }
 

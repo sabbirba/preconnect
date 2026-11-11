@@ -115,25 +115,20 @@ class _CustomSchedulesPageState extends State<CustomSchedulesPage>
     itemsCache.value = await itemsCache.load(forceRefresh: forceRefresh);
 
     try {
-      final currentSessionSemesterId =
-          await resolveCurrentSessionSemesterIdWithRetry();
-      final scheduleService = ScheduleService();
-      if (currentSessionSemesterId == null) {
-        _cachedCourseOptions = const <CustomSchedulesCourseOption>[];
-        return;
-      }
-      final jsonString = await scheduleService.fetchStudentScheduleForSemester(
-        semesterSessionId: currentSessionSemesterId,
-      );
-      final sections = scheduleService.parseStudentSections(
-        jsonString,
-        semesterSessionId: currentSessionSemesterId,
-      );
-      final courseOptions = courseOptionsFromSections(sections);
-      _cachedCourseOptions = courseOptions;
+      _cachedCourseOptions = await _courseOptionsForCurrentSemester();
     } catch (_) {
       _cachedCourseOptions ??= const <CustomSchedulesCourseOption>[];
     }
+  }
+
+  static Future<List<CustomSchedulesCourseOption>>
+  _courseOptionsForCurrentSemester() async {
+    final semesterId = await resolveCurrentSessionSemesterIdWithRetry();
+    if (semesterId == null) return const <CustomSchedulesCourseOption>[];
+    final sections = await ScheduleService().getUnifiedStudentSchedule(
+      semesterSessionId: semesterId,
+    );
+    return courseOptionsFromSections(sections);
   }
 
   @override
@@ -206,21 +201,7 @@ class _CustomSchedulesPageState extends State<CustomSchedulesPage>
 
     final loadFuture = () async {
       try {
-        final currentSessionSemesterId =
-            await resolveCurrentSessionSemesterIdWithRetry();
-        final scheduleService = ScheduleService();
-        if (currentSessionSemesterId == null) {
-          return const <CustomSchedulesCourseOption>[];
-        }
-        final jsonString = await scheduleService
-            .fetchStudentScheduleForSemester(
-              semesterSessionId: currentSessionSemesterId,
-            );
-        final sections = scheduleService.parseStudentSections(
-          jsonString,
-          semesterSessionId: currentSessionSemesterId,
-        );
-        final options = courseOptionsFromSections(sections);
+        final options = await _courseOptionsForCurrentSemester();
         if (mounted) {
           setState(() {
             _latestCourseOptions = options;
@@ -264,7 +245,14 @@ class _CustomSchedulesPageState extends State<CustomSchedulesPage>
 
   Future<void> _openEditor({CustomSchedule? item}) async {
     final currentContext = context;
-    final courseOptions = _latestCourseOptions;
+    var courseOptions = _latestCourseOptions;
+    if (courseOptions.isEmpty) {
+      final syncSections = ScheduleService().getStudentSectionsSync();
+      courseOptions = syncSections != null && syncSections.isNotEmpty
+          ? courseOptionsFromSections(syncSections)
+          : await _loadCourseOptions();
+    }
+    if (!currentContext.mounted) return;
     final draft = await showCustomSchedulesEditorSheet(
       currentContext,
       item: item,
@@ -765,9 +753,8 @@ class _UpcomingScheduleItemCard extends StatelessWidget {
                       ),
                       const Gap(4),
                       Text(
-                        endTime == null
-                            ? DateFormat('hh:mm a').format(startTime)
-                            : '${DateFormat('hh:mm a').format(startTime)} - ${DateFormat('hh:mm a').format(endTime)}',
+                        '${DateFormat('d MMM').format(startTime)} · '
+                        '${endTime == null ? DateFormat('hh:mm a').format(startTime) : '${DateFormat('hh:mm a').format(startTime)} - ${DateFormat('hh:mm a').format(endTime)}'}',
                         style: TextStyle(
                           color: timeColor,
                           fontWeight: FontWeight.w700,

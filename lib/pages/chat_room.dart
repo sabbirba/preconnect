@@ -577,7 +577,14 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
                   }),
                 if (_canPin && message.text.isNotEmpty)
                   action(Icons.push_pin_outlined, 'Pin', () {
-                    unawaited(_setPin(message.text));
+                    final event = message.event;
+                    unawaited(
+                      _setPin(
+                        event == null
+                            ? message.text
+                            : '${message.text} · ${eventWhen(event)}',
+                      ),
+                    );
                   }),
                 if (!isMine)
                   action(Icons.block_rounded, 'Block', () {
@@ -1681,31 +1688,11 @@ class _MessageBubble extends StatelessWidget {
               child: showAuthor
                   ? Align(
                       alignment: Alignment.topLeft,
-                      child: Stack(
-                        children: [
-                          CircleAvatar(
-                            radius: _avatarSize / 2,
-                            backgroundColor: AppPalette.primary.withValues(
-                              alpha: 0.16,
-                            ),
-                            child: Text(
-                              message.author.name.characters.firstOrNull
-                                      ?.toUpperCase() ??
-                                  '',
-                              style: const TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w700,
-                                color: AppPalette.primary,
-                              ),
-                            ),
-                          ),
-                          FriendAvatar(
-                            name: message.author.name,
-                            photoUrl: message.author.photo,
-                            size: _avatarSize,
-                            radius: _avatarSize / 2,
-                          ),
-                        ],
+                      child: FriendAvatar(
+                        name: message.author.name,
+                        photoUrl: message.author.photo,
+                        size: _avatarSize,
+                        radius: _avatarSize / 2,
                       ),
                     )
                   : null,
@@ -2074,6 +2061,9 @@ class _PinnedNote extends StatelessWidget {
   }
 }
 
+String eventWhen(ChatEvent event) =>
+    '${AppTime.formatDayMonth(event.at)} · ${AppTime.formatDateTime(event.at)}';
+
 IconData _eventIcon(String kind) => switch (kind) {
   'quiz' => Icons.quiz_outlined,
   'assignment' => Icons.assignment_outlined,
@@ -2383,8 +2373,7 @@ class _EventCardState extends State<_EventCard> {
           ),
           const Gap(2),
           Text(
-            '${personalSchedulesKindLabel(event.kind)} · '
-            '${AppTime.formatDayMonth(event.at)} · ${AppTime.formatDateTime(event.at)}',
+            '${personalSchedulesKindLabel(event.kind)} · ${eventWhen(event)}',
             style: TextStyle(fontSize: 12, color: textSecondary),
           ),
           if (event.notes.isNotEmpty) ...[
