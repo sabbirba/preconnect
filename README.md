@@ -8,7 +8,7 @@ Fast, Calm Academic Companion App.
 An initiative run by [BRAC University](https://bracu.ac.bd) students.
 
 [![GitHub Release](https://img.shields.io/github/v/release/sabbirba/preconnect?label=latest%20version&color=dark-green&style=flat-square&logo=github)](https://github.com/sabbirba/preconnect/releases/latest)
-[![Status](https://img.shields.io/badge/Status-Operational-brightgreen?style=flat-square&logo=cloudflare)](https://status.preconnect.app)
+[![Status](https://img.shields.io/badge/Status-Operational-brightgreen?style=flat-square&logo=cloudflare)](https://api.preconnect.app)
 [![Dart SDK](https://img.shields.io/badge/Dart-%3E%3D3.8.1-0175C2?style=flat-square&logo=dart)](https://dart.dev)
 [![Flutter](https://img.shields.io/badge/Flutter-Stable-02569B?style=flat-square&logo=flutter)](https://flutter.dev)
 [![License](https://img.shields.io/badge/license-GPL3.0-blue?style=flat-square)](LICENSE)
