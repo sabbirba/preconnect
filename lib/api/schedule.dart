@@ -298,7 +298,7 @@ class ScheduleService {
     bool fromGet = false,
   }) async {
     final inFlight = _scheduleFetchInFlight[semesterSessionId];
-    if (inFlight != null && !fromGet) {
+    if (inFlight != null) {
       return await inFlight;
     }
     final request = _fetchStudentScheduleForSemesterInternal(

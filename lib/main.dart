@@ -29,7 +29,7 @@ Future<void> todayWidgetRefresh() async {
   WidgetsFlutterBinding.ensureInitialized();
   DartPluginRegistrant.ensureInitialized();
   await TodayWidget.initialize();
-  await syncTodayWidgetInBackground(forceRefresh: true);
+  await syncTodayWidgetInBackground();
   await TodayWidget.finishBackgroundRefresh();
 }
 

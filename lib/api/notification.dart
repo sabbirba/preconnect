@@ -374,7 +374,10 @@ class NotificationService {
   static const String _feedCacheKey = 'feed_notifications_v1';
   static const String _seenIdsCacheKey = 'feed_seen_v1';
 
+  static const Duration _connectRefreshInterval = Duration(minutes: 15);
+
   NotificationsFeed? _inMemoryFeed;
+  DateTime? _connectFetchedAt;
   List<FeedItem>? _inMemoryFeedItems;
   Set<String>? _inMemorySeenIds;
 
@@ -457,15 +460,24 @@ class NotificationService {
 
   Future<int> getTotalUnreadCount({bool forceRefresh = false}) async {
     final connect = forceRefresh
-        ? await fetchRecentNotifications()
+        ? await refreshRecentNotifications()
         : await getRecentNotifications();
-    final feed = await getFeedItems(forceRefresh: forceRefresh);
+    final feed = await getFeedItems();
     final seenIds = await getSeenFeedIds();
     final feedUnread = feed.where((item) => !seenIds.contains(item.id)).length;
     return (connect?.newCount ?? 0) + feedUnread;
   }
 
+  Future<NotificationsFeed?> refreshRecentNotifications() {
+    final fetchedAt = _connectFetchedAt;
+    final isRecent =
+        fetchedAt != null &&
+        DateTime.now().difference(fetchedAt) < _connectRefreshInterval;
+    return isRecent ? getRecentNotifications() : fetchRecentNotifications();
+  }
+
   Future<NotificationsFeed?> fetchRecentNotifications() async {
+    _connectFetchedAt = DateTime.now();
     final url =
         '${ApiConfig.connectApiBase}${ApiConfig.recentNotificationsPath}';
     try {

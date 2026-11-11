@@ -6,15 +6,12 @@ Future<void> syncTodayWidgetInBackground({bool forceRefresh = false}) async {
     if (forceRefresh) {
       ApiClient().clearTransientCaches();
     }
-    final data = await _HomeDashboardState.preloadData(
-      forceRefresh: forceRefresh,
-    );
     final state = _HomeDashboardState();
+    final data = await state._loadData(forceRefresh: forceRefresh);
     await state._syncTodayWidget(data);
     if (forceRefresh) {
       await state._saveHomeDashboardSnapshot(data);
     }
-    unawaited(NotificationsPage.preloadData(forceRefresh: forceRefresh));
   } catch (_) {}
 }
 
@@ -53,7 +50,16 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
   static _HomeData? _cachedData;
   static Future<_HomeData>? _preloadFuture;
   static DateTime? _lastBackgroundRefreshAt;
-  static const Duration _minBackgroundRefreshInterval = Duration(minutes: 3);
+  static const Duration _minBackgroundRefreshInterval = Duration(minutes: 15);
+  static const Set<String> _networkRefreshReasons = {'auth', 'cache_cleared'};
+  static const Set<String> _cacheRefreshReasons = {
+    'holiday',
+    'exam_schedule',
+    'datasets',
+    'schedule',
+    'extra_classes',
+    'mercure_event',
+  };
 
   @override
   void initState() {
@@ -196,19 +202,23 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
     } catch (_) {}
   }
 
-  Future<void> _backgroundRefresh({bool ignoreMinInterval = false}) async {
+  Future<void> _backgroundRefresh({
+    bool ignoreMinInterval = false,
+    bool fromNetwork = true,
+  }) async {
     if (_refreshInFlight || _isRefreshing) return;
     final lastRefresh = _lastBackgroundRefreshAt;
-    if (!ignoreMinInterval &&
+    if (fromNetwork &&
+        !ignoreMinInterval &&
         lastRefresh != null &&
         DateTime.now().difference(lastRefresh) <
             _minBackgroundRefreshInterval) {
       return;
     }
     _refreshInFlight = true;
-    _lastBackgroundRefreshAt = DateTime.now();
+    if (fromNetwork) _lastBackgroundRefreshAt = DateTime.now();
     try {
-      final fresh = await _loadData(forceRefresh: true);
+      final fresh = await _loadData(forceRefresh: fromNetwork);
       if (!fresh.hasProfileIdentity && _latestData != null) {
         return;
       }
@@ -290,9 +300,13 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
     if (!mounted) return;
     if (isRefreshingFrom('home_card_settings_changed')) {
       unawaited(_reloadCardVisibilityOnly());
-      return;
+    } else if (isRefreshingFromAny(_networkRefreshReasons)) {
+      unawaited(_backgroundRefresh(ignoreMinInterval: true));
+    } else if (isRefreshingFrom('home_dashboard')) {
+      unawaited(_backgroundRefresh());
+    } else if (isRefreshingFromAny(_cacheRefreshReasons)) {
+      unawaited(_backgroundRefresh(fromNetwork: false));
     }
-    unawaited(_backgroundRefresh(ignoreMinInterval: true));
   }
 
   Future<void> _reloadCardVisibilityOnly() async {

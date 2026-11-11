@@ -142,16 +142,14 @@ class _NotificationsPageState extends State<NotificationsPage>
   }) async {
     final connectFuture =
         (forceRefresh
-                ? NotificationService().fetchRecentNotifications()
+                ? NotificationService().refreshRecentNotifications()
                 : NotificationService().getRecentNotifications())
             .catchError((e) {
               return null;
             });
-    final feedFuture = NotificationService()
-        .getFeedItems(forceRefresh: forceRefresh)
-        .catchError((e) {
-          return const <FeedItem>[];
-        });
+    final feedFuture = NotificationService().getFeedItems().catchError((e) {
+      return const <FeedItem>[];
+    });
     final seenFeedIdsFuture = NotificationService().getSeenFeedIds().catchError(
       (e) {
         return <String>{};

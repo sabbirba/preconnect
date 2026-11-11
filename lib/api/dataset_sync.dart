@@ -85,7 +85,11 @@ class DatasetSync {
   Future<void> applyPush(Map<String, dynamic> data) async {
     try {
       final versions = decodeVersions('${data['manifest'] ?? ''}');
-      await (versions.isEmpty ? checkManifest() : applyVersions(versions));
+      if (versions.isNotEmpty) {
+        await applyVersions(versions);
+      } else if (data['type'] == 'sync') {
+        await checkManifest();
+      }
     } catch (error) {
       unawaited(AppLog.write('Push sync failed: $error'));
     }

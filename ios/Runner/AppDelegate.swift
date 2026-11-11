@@ -115,7 +115,7 @@ class AppDelegate: FlutterAppDelegate, FlutterImplicitEngineDelegate,
 
   private func scheduleTodayWidgetRefresh() {
     let request = BGAppRefreshTaskRequest(identifier: todayWidgetRefreshTaskId)
-    request.earliestBeginDate = Date(timeIntervalSinceNow: 30 * 60)
+    request.earliestBeginDate = Date(timeIntervalSinceNow: 6 * 60 * 60)
     do {
       try BGTaskScheduler.shared.submit(request)
     } catch {

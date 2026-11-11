@@ -32,9 +32,7 @@ import 'package:preconnect/pages/onboarding.dart';
 import 'package:preconnect/pages/advising_helper.dart';
 import 'package:preconnect/pages/captive_wifi.dart';
 import 'package:preconnect/pages/ui_kit.dart';
-import 'package:preconnect/tools/cdn_cache.dart';
 import 'package:preconnect/tools/http/http_utils.dart';
-import 'package:preconnect/api/notification.dart';
 import 'package:preconnect/api/funding.dart';
 import 'package:preconnect/pages/shared_widgets/map_shared.dart';
 import 'package:preconnect/pages/devs.dart';
@@ -169,8 +167,6 @@ class MyApp extends StatefulWidget {
   static Future<void> _refreshRemoteData() async {
     await Future.wait([
       HttpUtils.warmConnections(),
-      FeedService().refreshAll(),
-      CdnJsonCache.refreshAll(),
       FundingService.fetchStatus(forceRefresh: true),
       DatasetSync.instance.checkManifest(),
     ]);

@@ -12,7 +12,6 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/api/chat.dart';
 import 'package:preconnect/api/dataset_sync.dart';
-import 'package:preconnect/api/notification.dart';
 import 'package:preconnect/features/notifications/data/device_registry.dart';
 import 'package:preconnect/features/notifications/data/push_registration.dart';
 import 'package:preconnect/tools/http/http_utils.dart';
@@ -196,11 +195,8 @@ class FCMService {
     if (message.notification == null) {
       await _handleIncomingMessage(message);
     } else {
-      RefreshBus.instance.notify(reason: 'push_notification');
       await DatasetSync.instance.applyPush(message.data);
     }
-    unawaited(NotificationService().getFeedItems(forceRefresh: true));
-    unawaited(NotificationService().fetchRecentNotifications());
   }
 
   static String cleanNotificationDescription(

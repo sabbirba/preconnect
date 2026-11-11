@@ -1,11 +1,9 @@
 package com.sabbirba.preconnect
 
 import android.content.Context
-import androidx.work.Constraints
 import androidx.work.CoroutineWorker
 import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.ExistingWorkPolicy
-import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
@@ -56,19 +54,14 @@ class TodayWidgetRefreshWorker(
         private const val ENTRYPOINT = "todayWidgetRefresh"
         private const val PERIODIC_WORK = "today_widget_periodic_refresh"
         private const val ONE_TIME_WORK = "today_widget_refresh"
-        private const val INTERVAL_MINUTES = 30L
+        private const val INTERVAL_HOURS = 6L
         private const val TIMEOUT_MILLIS = 60_000L
-
-        private val networkConstraint =
-            Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build()
 
         fun schedule(context: Context) {
             val request =
-                PeriodicWorkRequestBuilder<TodayWidgetRefreshWorker>(INTERVAL_MINUTES, TimeUnit.MINUTES)
-                    .setConstraints(networkConstraint)
-                    .build()
+                PeriodicWorkRequestBuilder<TodayWidgetRefreshWorker>(INTERVAL_HOURS, TimeUnit.HOURS).build()
             WorkManager.getInstance(context)
-                .enqueueUniquePeriodicWork(PERIODIC_WORK, ExistingPeriodicWorkPolicy.KEEP, request)
+                .enqueueUniquePeriodicWork(PERIODIC_WORK, ExistingPeriodicWorkPolicy.UPDATE, request)
         }
 
         fun refreshNow(context: Context) {
