@@ -475,7 +475,7 @@ class _RamadanTopCountdownState extends State<_RamadanTopCountdown> {
                 ),
               ),
               const Gap(8),
-              _RamadanCountdownDigital(remaining: remaining),
+              CountdownDigital(showSeconds: true, remaining: remaining),
             ],
           );
         },
@@ -497,66 +497,6 @@ class _RamadanTopCountdownState extends State<_RamadanTopCountdown> {
       target = target.add(const Duration(days: 1));
     }
     return target.difference(now);
-  }
-}
-
-class _RamadanCountdownDigital extends StatelessWidget {
-  const _RamadanCountdownDigital({required this.remaining});
-
-  final Duration remaining;
-
-  @override
-  Widget build(BuildContext context) {
-    final totalSeconds = remaining.inSeconds;
-    final safeSeconds = totalSeconds < 0 ? 0 : totalSeconds;
-    final hours = safeSeconds ~/ 3600;
-    final minutes = (safeSeconds ~/ 60) % 60;
-    final seconds = safeSeconds % 60;
-
-    Widget cell(String value, String label) {
-      return SizedBox(
-        width: 52,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              value,
-              style: TextStyle(
-                color: AppPalette.textPrimary(context),
-                fontWeight: FontWeight.w700,
-                fontSize: 14,
-                fontFeatures: const [FontFeature.tabularFigures()],
-              ),
-            ),
-            const Gap(2),
-            Text(
-              label,
-              style: TextStyle(
-                color: AppPalette.textSecondary(context),
-                fontWeight: FontWeight.w600,
-                fontSize: 10,
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-
-    final units = <({String value, String label})>[
-      (value: hours.toString().padLeft(2, '0'), label: 'Hours'),
-      (value: minutes.toString().padLeft(2, '0'), label: 'Minutes'),
-      (value: seconds.toString().padLeft(2, '0'), label: 'Seconds'),
-    ];
-
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        for (var i = 0; i < units.length; i++) ...[
-          cell(units[i].value, units[i].label),
-          if (i != units.length - 1) const Gap(8),
-        ],
-      ],
-    );
   }
 }
 

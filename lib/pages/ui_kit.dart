@@ -538,46 +538,75 @@ Future<void> showFundingSupportSheet(BuildContext context) async {
 }
 
 class CountdownDigital extends StatelessWidget {
-  const CountdownDigital({super.key, required this.remaining});
+  const CountdownDigital({
+    super.key,
+    required this.remaining,
+    this.showSeconds = false,
+  });
 
   final Duration remaining;
+  final bool showSeconds;
 
   @override
   Widget build(BuildContext context) {
-    final totalMinutes = remaining.inMinutes;
-    final safeMinutes = totalMinutes < 0 ? 0 : totalMinutes;
-    final days = safeMinutes ~/ 1440;
-    final hours = (safeMinutes ~/ 60) % 24;
-    final minutes = safeMinutes % 60;
-
-    final units = <({String value, String label})>[
-      if (days > 0) (value: days.toString(), label: 'Days'),
-      if (hours > 0) (value: hours.toString().padLeft(2, '0'), label: 'Hours'),
-      (value: minutes.toString().padLeft(2, '0'), label: 'Minutes'),
-    ];
-
+    final units = showSeconds ? _clockUnits() : _calendarUnits();
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
         for (var i = 0; i < units.length; i++) ...[
-          _CountdownCell(value: units[i].value, label: units[i].label),
+          _CountdownCell(
+            value: units[i].value,
+            label: units[i].label,
+            width: showSeconds ? 52 : 48,
+          ),
           if (i != units.length - 1) const Gap(8),
         ],
       ],
     );
   }
+
+  List<({String value, String label})> _calendarUnits() {
+    final totalMinutes = remaining.inMinutes;
+    final safeMinutes = totalMinutes < 0 ? 0 : totalMinutes;
+    final days = safeMinutes ~/ 1440;
+    final hours = (safeMinutes ~/ 60) % 24;
+    final minutes = safeMinutes % 60;
+    return [
+      if (days > 0) (value: days.toString(), label: 'Days'),
+      if (hours > 0) (value: hours.toString().padLeft(2, '0'), label: 'Hours'),
+      (value: minutes.toString().padLeft(2, '0'), label: 'Minutes'),
+    ];
+  }
+
+  List<({String value, String label})> _clockUnits() {
+    final totalSeconds = remaining.inSeconds;
+    final safeSeconds = totalSeconds < 0 ? 0 : totalSeconds;
+    return [
+      (value: (safeSeconds ~/ 3600).toString().padLeft(2, '0'), label: 'Hours'),
+      (
+        value: ((safeSeconds ~/ 60) % 60).toString().padLeft(2, '0'),
+        label: 'Minutes',
+      ),
+      (value: (safeSeconds % 60).toString().padLeft(2, '0'), label: 'Seconds'),
+    ];
+  }
 }
 
 class _CountdownCell extends StatelessWidget {
-  const _CountdownCell({required this.value, required this.label});
+  const _CountdownCell({
+    required this.value,
+    required this.label,
+    required this.width,
+  });
 
   final String value;
   final String label;
+  final double width;
 
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      width: 48,
+      width: width,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
