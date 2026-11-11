@@ -341,11 +341,7 @@ class _TopBar extends StatelessWidget {
           ),
         ),
         if (showNotificationsIcon)
-          AppNotificationsIconButton(
-            onTap: onOpenNotifications,
-            iconSize: 28,
-            padding: 8,
-          ),
+          AppNotificationsIconButton(onTap: onOpenNotifications),
       ],
     );
   }

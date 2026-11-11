@@ -138,16 +138,9 @@ class AppSelectDropdownChip<T> extends StatelessWidget {
 }
 
 class AppNotificationsIconButton extends StatefulWidget {
-  const AppNotificationsIconButton({
-    super.key,
-    required this.onTap,
-    this.iconSize = 20,
-    this.padding = 7,
-  });
+  const AppNotificationsIconButton({super.key, required this.onTap});
 
   final VoidCallback onTap;
-  final double iconSize;
-  final double padding;
 
   @override
   State<AppNotificationsIconButton> createState() =>
@@ -220,22 +213,17 @@ class _AppNotificationsIconButtonState extends State<AppNotificationsIconButton>
         return Stack(
           clipBehavior: Clip.none,
           children: [
-            InkWell(
+            HeaderActionButton(
+              icon: bellIcon,
+              tooltip: 'Notifications',
               onTap: widget.onTap,
-              borderRadius: BorderRadius.circular(12),
-              child: Padding(
-                padding: EdgeInsets.all(widget.padding),
-                child: Icon(
-                  bellIcon,
-                  size: widget.iconSize,
-                  color: AppPalette.primary,
-                ),
-              ),
             ),
             if (newCount > 0)
               Positioned(
-                left: widget.padding + widget.iconSize * 0.58,
-                top: widget.padding - 5,
+                left:
+                    HeaderActionButton.inset +
+                    HeaderActionButton.iconSize * 0.58,
+                top: HeaderActionButton.inset - 5,
                 child: UnreadCountPill(count: newCount),
               ),
           ],

@@ -52,8 +52,6 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
               ),
             );
           },
-          iconSize: 28,
-          padding: 8,
         ),
       ],
       body: Stack(

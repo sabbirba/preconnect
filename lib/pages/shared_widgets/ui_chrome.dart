@@ -378,8 +378,9 @@ class HeaderActionButton extends StatelessWidget {
     required this.onTap,
   });
 
-  static const double size = 40;
-  static const double iconSize = 24;
+  static const double size = 44;
+  static const double iconSize = 28;
+  static const double inset = (size - iconSize) / 2;
 
   final IconData icon;
   final String tooltip;
