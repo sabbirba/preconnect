@@ -14,7 +14,6 @@ import 'package:preconnect/tools/string_utils.dart';
 import 'package:preconnect/tools/app_storage.dart';
 import 'package:preconnect/tools/storage_keys.dart';
 import 'package:preconnect/tools/exam_visibility.dart';
-import 'package:preconnect/tools/snapshot_store.dart';
 import 'package:preconnect/tools/preload_cache.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
 import 'package:preconnect/pages/shared_widgets/online_guard.dart';
@@ -94,27 +93,20 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
   static Future<_ExamScheduleData> _loadExamData({
     bool forceRefresh = false,
   }) async {
-    final currentSessionSemesterId =
-        await resolveCurrentSessionSemesterIdWithRetry();
+    return _loadExamDataFor(
+      await resolveCurrentSessionSemesterIdWithRetry(),
+      forceRefresh: forceRefresh,
+    );
+  }
 
-    List<Section> sections = const <Section>[];
-    if (currentSessionSemesterId != null) {
-      sections = await ScheduleService().getUnifiedStudentSchedule(
-        semesterSessionId: currentSessionSemesterId,
-        forceRefresh: forceRefresh,
-      );
-    } else {
-      sections = await JsonSnapshotStore.readSections() ?? const <Section>[];
-    }
-
-    final overrides = sections.isEmpty
-        ? const <String, ExamScheduleOverride>{}
-        : await ExamScheduleService().getOverridesForSections(
-            sections,
-            forceRefresh: forceRefresh,
-            forcedSemesterSessionId: currentSessionSemesterId,
-          );
-
+  static Future<_ExamScheduleData> _loadExamDataFor(
+    int? semesterSessionId, {
+    bool forceRefresh = false,
+  }) async {
+    final (sections, overrides) = await ExamScheduleService().loadSemester(
+      semesterSessionId,
+      forceRefresh: forceRefresh,
+    );
     return _ExamScheduleData(sections: sections, overrides: overrides);
   }
 
@@ -145,13 +137,7 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
 
   void _onRefreshSignal() {
     if (!mounted) return;
-    if (isRefreshingFrom('exam_schedule')) {
-      return;
-    }
-    if (isRefreshingFrom('cache_cleared')) {
-      unawaited(_handleRefresh(notify: false));
-      return;
-    }
+    if (isRefreshingFrom('exam_schedule')) return;
     unawaited(_handleRefresh(notify: false));
   }
 
@@ -186,26 +172,10 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
         _selectedSemesterSessionId ??
         _currentSessionSemesterId ??
         await resolveCurrentSessionSemesterIdWithRetry();
-
-    List<Section> sections = const <Section>[];
-    if (targetSemesterSessionId != null) {
-      sections = await ScheduleService().getUnifiedStudentSchedule(
-        semesterSessionId: targetSemesterSessionId,
-        forceRefresh: forceRefresh,
-      );
-    } else {
-      sections = await JsonSnapshotStore.readSections() ?? const <Section>[];
-    }
-
-    final overrides = sections.isEmpty
-        ? const <String, ExamScheduleOverride>{}
-        : await ExamScheduleService().getOverridesForSections(
-            sections,
-            forceRefresh: forceRefresh,
-            forcedSemesterSessionId: targetSemesterSessionId,
-          );
-
-    final data = _ExamScheduleData(sections: sections, overrides: overrides);
+    final data = await _loadExamDataFor(
+      targetSemesterSessionId,
+      forceRefresh: forceRefresh,
+    );
     cache.value = data;
     if (mounted) {
       setState(() {
@@ -283,18 +253,10 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
     int semesterSessionId, {
     bool forceRefresh = false,
   }) async {
-    final sections = await ScheduleService().getUnifiedStudentSchedule(
-      semesterSessionId: semesterSessionId,
+    final data = await _loadExamDataFor(
+      semesterSessionId,
       forceRefresh: forceRefresh,
     );
-    final overrides = sections.isEmpty
-        ? const <String, ExamScheduleOverride>{}
-        : await ExamScheduleService().getOverridesForSections(
-            sections,
-            forceRefresh: forceRefresh,
-            forcedSemesterSessionId: semesterSessionId,
-          );
-    final data = _ExamScheduleData(sections: sections, overrides: overrides);
     if (mounted) {
       setState(() {
         _latestData = data;

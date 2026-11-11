@@ -15,7 +15,6 @@ import 'package:preconnect/pages/shared_widgets/session_selector.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/app_storage.dart';
 import 'package:preconnect/tools/storage_keys.dart';
-import 'package:preconnect/tools/snapshot_store.dart';
 import 'package:preconnect/tools/preload_cache.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
 import 'package:preconnect/pages/shared_widgets/online_guard.dart';
@@ -182,30 +181,14 @@ class _ClassScheduleState extends State<ClassSchedulePage>
     final currentSessionSemesterId = forceRefresh
         ? null
         : await resolveCurrentSessionSemesterIdWithRetry();
-
-    List<section.Section> sections = const <section.Section>[];
-    if (currentSessionSemesterId != null) {
-      sections = await ScheduleService().getUnifiedStudentSchedule(
-        semesterSessionId: currentSessionSemesterId,
-        forceRefresh: forceRefresh,
-      );
-    } else {
-      sections =
-          await JsonSnapshotStore.readSections() ?? const <section.Section>[];
-    }
-
+    final (sections, examOverrides) = await ExamScheduleService().loadSemester(
+      currentSessionSemesterId,
+      forceRefresh: forceRefresh,
+    );
     final (isRamadan, holidayStatus) = await (
       ramadanFuture,
       holidayFuture,
     ).wait;
-
-    final examOverrides = sections.isEmpty
-        ? const <String, ExamScheduleOverride>{}
-        : await ExamScheduleService().getOverridesForSections(
-            sections,
-            forceRefresh: forceRefresh,
-            forcedSemesterSessionId: currentSessionSemesterId,
-          );
 
     return _buildScheduleDataFromSectionsStatic(
       sections,
@@ -245,13 +228,7 @@ class _ClassScheduleState extends State<ClassSchedulePage>
     if (isRefreshingFromAny(['auth', 'cache_cleared'])) {
       unawaited(_loadExtras());
     }
-    if (isRefreshingFrom('class_schedule')) {
-      return;
-    }
-    if (isRefreshingFrom('cache_cleared')) {
-      unawaited(_handleRefresh(notify: false));
-      return;
-    }
+    if (isRefreshingFrom('class_schedule')) return;
     unawaited(_handleRefresh(notify: false));
   }
 
@@ -564,18 +541,11 @@ class _ClassScheduleState extends State<ClassSchedulePage>
     int semesterSessionId, {
     bool forceRefresh = false,
   }) async {
-    final sections = await ScheduleService().getUnifiedStudentSchedule(
-      semesterSessionId: semesterSessionId,
+    final (sections, examOverrides) = await ExamScheduleService().loadSemester(
+      semesterSessionId,
       forceRefresh: forceRefresh,
     );
     final isRamadan = await RamadanTiming.isRamadan();
-    final examOverrides = sections.isEmpty
-        ? const <String, ExamScheduleOverride>{}
-        : await ExamScheduleService().getOverridesForSections(
-            sections,
-            forceRefresh: forceRefresh,
-            forcedSemesterSessionId: semesterSessionId,
-          );
     final currentSessionId = await resolveCurrentSessionSemesterId();
     final isCurrentSemester =
         currentSessionId == null || semesterSessionId == currentSessionId;

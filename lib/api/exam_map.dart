@@ -7,6 +7,7 @@ import 'package:preconnect/api/schedule.dart';
 import 'package:preconnect/model/section_info.dart';
 import 'package:preconnect/tools/app_storage.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
+import 'package:preconnect/tools/snapshot_store.dart';
 import 'package:preconnect/tools/storage_keys.dart';
 
 class ExamMapService {
@@ -690,6 +691,24 @@ class ExamScheduleService {
       semesterSessionId: semesterSessionId,
       forceRefresh: forceRefresh,
     );
+  }
+
+  Future<(List<Section>, Map<String, ExamScheduleOverride>)> loadSemester(
+    int? semesterSessionId, {
+    bool forceRefresh = false,
+  }) async {
+    final sections = semesterSessionId == null
+        ? await JsonSnapshotStore.readSections() ?? const <Section>[]
+        : await ScheduleService().getUnifiedStudentSchedule(
+            semesterSessionId: semesterSessionId,
+            forceRefresh: forceRefresh,
+          );
+    final overrides = await getOverridesForSections(
+      sections,
+      forceRefresh: forceRefresh,
+      forcedSemesterSessionId: semesterSessionId,
+    );
+    return (sections, overrides);
   }
 
   Map<String, ExamScheduleOverride> getOverridesForSemesterSync(
