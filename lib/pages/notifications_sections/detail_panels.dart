@@ -36,67 +36,17 @@ class FeedDetailPanel extends StatelessWidget {
       physics: const ClampingScrollPhysics(),
       padding: const EdgeInsets.fromLTRB(2, 4, 2, 16),
       children: [
-        Text(
+        ..._detailBody(
+          context,
           _published,
-          style: TextStyle(
-            color: AppPalette.textSecondary(context),
-            fontSize: 12,
-            fontWeight: FontWeight.w600,
-          ),
+          _parts,
+          media: [
+            if (_imageUrls.isNotEmpty) ...[
+              const Gap(12),
+              ImageCarousel(imageUrls: _imageUrls, borderRadius: 14),
+            ],
+          ],
         ),
-        if (_imageUrls.isNotEmpty) ...[
-          const Gap(12),
-          ImageCarousel(imageUrls: _imageUrls, borderRadius: 14),
-        ],
-        const Gap(16),
-        Text(
-          _parts.body.isEmpty
-              ? 'No additional details were provided.'
-              : _parts.body,
-          style: TextStyle(
-            color: AppPalette.textPrimary(context),
-            fontSize: 15,
-            height: 1.5,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-        if (_parts.links.isNotEmpty) ...[
-          const Gap(16),
-          Text(
-            'Source links:',
-            style: TextStyle(
-              color: AppPalette.textPrimary(context),
-              fontSize: 14,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          const Gap(8),
-          ..._parts.links.map(
-            (link) => Padding(
-              padding: const EdgeInsets.only(bottom: 6),
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: InkWell(
-                  onTap: () async {
-                    await openExternalUrl(context, link);
-                  },
-                  borderRadius: BorderRadius.circular(6),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 2),
-                    child: Text(
-                      displayLinkLabel(link),
-                      style: TextStyle(
-                        color: AppPalette.primary,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ],
         if ((item.url ?? '').trim().isNotEmpty) ...[
           const Gap(16),
           SizedBox(
@@ -188,65 +138,7 @@ class _ConnectNotificationDetailPanelState
           controller: dragController,
           physics: const ClampingScrollPhysics(),
           padding: const EdgeInsets.fromLTRB(2, 4, 2, 16),
-          children: [
-            Text(
-              _detailMeta(detail),
-              style: TextStyle(
-                color: AppPalette.textSecondary(context),
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            const Gap(16),
-            Text(
-              parts.body.isEmpty
-                  ? 'No additional details were provided.'
-                  : parts.body,
-              style: TextStyle(
-                color: AppPalette.textPrimary(context),
-                fontSize: 15,
-                height: 1.5,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-            if (parts.links.isNotEmpty) ...[
-              const Gap(16),
-              Text(
-                'Source links:',
-                style: TextStyle(
-                  color: AppPalette.textPrimary(context),
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              const Gap(8),
-              ...parts.links.map(
-                (link) => Padding(
-                  padding: const EdgeInsets.only(bottom: 6),
-                  child: Align(
-                    alignment: Alignment.centerLeft,
-                    child: InkWell(
-                      onTap: () async {
-                        await openExternalUrl(context, link);
-                      },
-                      borderRadius: BorderRadius.circular(6),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 2),
-                        child: Text(
-                          displayLinkLabel(link),
-                          style: TextStyle(
-                            color: AppPalette.primary,
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ],
+          children: [..._detailBody(context, _detailMeta(detail), parts)],
         );
       },
     );
@@ -261,4 +153,67 @@ class _ConnectNotificationDetailPanelState
     ).format(createdOn.toLocal());
     return '$module  •  $fullTime';
   }
+}
+
+List<Widget> _detailBody(
+  BuildContext context,
+  String meta,
+  NotificationBodyParts parts, {
+  List<Widget> media = const [],
+}) {
+  return [
+    Text(
+      meta,
+      style: TextStyle(
+        color: AppPalette.textSecondary(context),
+        fontSize: 12,
+        fontWeight: FontWeight.w600,
+      ),
+    ),
+    ...media,
+    const Gap(16),
+    Text(
+      parts.body.isEmpty ? 'No additional details were provided.' : parts.body,
+      style: TextStyle(
+        color: AppPalette.textPrimary(context),
+        fontSize: 15,
+        height: 1.5,
+        fontWeight: FontWeight.w500,
+      ),
+    ),
+    if (parts.links.isNotEmpty) ...[
+      const Gap(16),
+      Text(
+        'Source links:',
+        style: TextStyle(
+          color: AppPalette.textPrimary(context),
+          fontSize: 14,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+      const Gap(8),
+      for (final link in parts.links)
+        Padding(
+          padding: const EdgeInsets.only(bottom: 6),
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: InkWell(
+              onTap: () => openExternalUrl(context, link),
+              borderRadius: BorderRadius.circular(6),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 2),
+                child: Text(
+                  displayLinkLabel(link),
+                  style: const TextStyle(
+                    color: AppPalette.primary,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+    ],
+  ];
 }
