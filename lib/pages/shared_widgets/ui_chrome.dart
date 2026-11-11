@@ -120,33 +120,7 @@ class _AppPageScaffoldState extends State<AppPageScaffold> {
                   child: SafeArea(
                     child: Stack(
                       children: [
-                        if (enabled) ...[
-                          Positioned(
-                            top: -90,
-                            right: -70,
-                            child: DecorBlob(
-                              color: AppPalette.decorColor(context),
-                              size: 240,
-                            ),
-                          ),
-                          Positioned.fill(
-                            child: Align(
-                              alignment: Alignment.center,
-                              child: DecorLogoEmblem(
-                                size: 280,
-                                color: AppPalette.decorColor(context),
-                              ),
-                            ),
-                          ),
-                          Positioned(
-                            bottom: -100,
-                            left: -80,
-                            child: DecorBlob(
-                              color: AppPalette.decorColor(context),
-                              size: 260,
-                            ),
-                          ),
-                        ],
+                        if (enabled) ...pageDecorations(context),
                         Column(
                           children: [
                             Padding(
@@ -356,46 +330,6 @@ class AppGlassContainer extends StatelessWidget {
   }
 }
 
-class AppGlassCard extends StatelessWidget {
-  const AppGlassCard({
-    super.key,
-    required this.child,
-    this.padding = const EdgeInsets.all(14),
-    this.margin,
-    this.borderRadius,
-    this.blurSigma = 16.0,
-    this.backgroundColor,
-    this.borderColor,
-    this.isHighlighted = false,
-    this.highlightColor,
-  });
-
-  final Widget child;
-  final EdgeInsetsGeometry padding;
-  final EdgeInsetsGeometry? margin;
-  final BorderRadiusGeometry? borderRadius;
-  final double blurSigma;
-  final Color? backgroundColor;
-  final Color? borderColor;
-  final bool isHighlighted;
-  final Color? highlightColor;
-
-  @override
-  Widget build(BuildContext context) {
-    return AppGlassContainer(
-      padding: padding,
-      margin: margin,
-      borderRadius: borderRadius ?? BorderRadius.circular(18),
-      blurSigma: blurSigma,
-      backgroundColor: backgroundColor,
-      borderColor: borderColor,
-      isHighlighted: isHighlighted,
-      highlightColor: highlightColor,
-      child: child,
-    );
-  }
-}
-
 class AppCard extends StatelessWidget {
   const AppCard({
     super.key,
@@ -547,6 +481,24 @@ class AppEmptyState extends StatelessWidget {
       ),
     );
   }
+}
+
+List<Widget> pageDecorations(BuildContext context) {
+  final color = AppPalette.decorColor(context);
+  return [
+    Positioned(top: -90, right: -70, child: DecorBlob(color: color, size: 240)),
+    Positioned.fill(
+      child: Align(
+        alignment: Alignment.center,
+        child: DecorLogoEmblem(size: 280, color: color),
+      ),
+    ),
+    Positioned(
+      bottom: -100,
+      left: -80,
+      child: DecorBlob(color: color, size: 260),
+    ),
+  ];
 }
 
 class DecorBlob extends StatelessWidget {
@@ -1135,36 +1087,18 @@ class QuickAccessCard extends StatelessWidget {
             ),
 
             const Gap(4),
-            SizedBox(
-              width: double.infinity,
-              child: FittedBox(
-                fit: BoxFit.scaleDown,
-                child: Text(
-                  title,
-                  textAlign: TextAlign.center,
-                  maxLines: 1,
-                  softWrap: false,
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: textPrimary,
-                  ),
-                ),
+            _scaledLine(
+              title,
+              TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: textPrimary,
               ),
             ),
             const Gap(2),
-            SizedBox(
-              width: double.infinity,
-              child: FittedBox(
-                fit: BoxFit.scaleDown,
-                child: Text(
-                  subtitle,
-                  textAlign: TextAlign.center,
-                  maxLines: 1,
-                  softWrap: false,
-                  style: TextStyle(fontSize: 11, color: textSecondary),
-                ),
-              ),
+            _scaledLine(
+              subtitle,
+              TextStyle(fontSize: 11, color: textSecondary),
             ),
           ],
         ),
@@ -1210,36 +1144,18 @@ class FriendActionCard extends StatelessWidget {
               child: Icon(icon, color: color, size: 20),
             ),
             const Gap(8),
-            SizedBox(
-              width: double.infinity,
-              child: FittedBox(
-                fit: BoxFit.scaleDown,
-                child: Text(
-                  title,
-                  textAlign: TextAlign.center,
-                  maxLines: 1,
-                  softWrap: false,
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: textPrimary,
-                  ),
-                ),
+            _scaledLine(
+              title,
+              TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: textPrimary,
               ),
             ),
             const Gap(2),
-            SizedBox(
-              width: double.infinity,
-              child: FittedBox(
-                fit: BoxFit.scaleDown,
-                child: Text(
-                  subtitle,
-                  textAlign: TextAlign.center,
-                  maxLines: 1,
-                  softWrap: false,
-                  style: TextStyle(fontSize: 10.5, color: textSecondary),
-                ),
-              ),
+            _scaledLine(
+              subtitle,
+              TextStyle(fontSize: 10.5, color: textSecondary),
             ),
           ],
         ),
@@ -1424,4 +1340,20 @@ class AppHeaderTextAction extends StatelessWidget {
       ),
     );
   }
+}
+
+Widget _scaledLine(String text, TextStyle style) {
+  return SizedBox(
+    width: double.infinity,
+    child: FittedBox(
+      fit: BoxFit.scaleDown,
+      child: Text(
+        text,
+        textAlign: TextAlign.center,
+        maxLines: 1,
+        softWrap: false,
+        style: style,
+      ),
+    ),
+  );
 }

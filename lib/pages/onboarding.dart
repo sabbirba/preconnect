@@ -563,7 +563,7 @@ class _InfoCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AppGlassCard(
+    return AppGlassContainer(
       padding: const EdgeInsets.all(14),
       borderRadius: BorderRadius.circular(16),
       borderColor: color.withValues(alpha: 0.22),

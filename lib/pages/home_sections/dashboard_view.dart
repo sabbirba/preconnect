@@ -24,33 +24,7 @@ extension _HomeDashboardView on _HomeDashboardState {
           child: SafeArea(
             child: Stack(
               children: [
-                if (decorationsEnabled) ...[
-                  Positioned(
-                    top: -90,
-                    right: -70,
-                    child: DecorBlob(
-                      color: AppPalette.decorColor(context),
-                      size: 240,
-                    ),
-                  ),
-                  Positioned.fill(
-                    child: Align(
-                      alignment: Alignment.center,
-                      child: DecorLogoEmblem(
-                        size: 280,
-                        color: AppPalette.decorColor(context),
-                      ),
-                    ),
-                  ),
-                  Positioned(
-                    bottom: -100,
-                    left: -80,
-                    child: DecorBlob(
-                      color: AppPalette.decorColor(context),
-                      size: 260,
-                    ),
-                  ),
-                ],
+                if (decorationsEnabled) ...pageDecorations(context),
                 Column(
                   children: [
                     Expanded(
