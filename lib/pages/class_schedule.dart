@@ -42,16 +42,6 @@ class ClassSchedulePage extends StatefulWidget {
 class _ClassScheduleState extends State<ClassSchedulePage>
     with RefreshBusState {
   static const int _initialVisibleWeekCount = 1;
-  static const List<String> _weekdayNames = <String>[
-    'MONDAY',
-    'TUESDAY',
-    'WEDNESDAY',
-    'THURSDAY',
-    'FRIDAY',
-    'SATURDAY',
-    'SUNDAY',
-  ];
-
   static final CachedPageController<_ScheduleData> cache =
       CachedPageController<_ScheduleData>(
         ({bool forceRefresh = false}) =>
@@ -480,7 +470,7 @@ class _ClassScheduleState extends State<ClassSchedulePage>
     DateTime? maxFinalExamDate,
   }) {
     if (!shouldHighlightCurrentSemester) {
-      return _weekdayNames
+      return AppTime.weekdayNames
           .where(grouped.containsKey)
           .map(
             (day) =>
@@ -507,7 +497,7 @@ class _ClassScheduleState extends State<ClassSchedulePage>
     for (var dayOffset = 0; dayOffset < totalDays; dayOffset++) {
       final date = today.add(Duration(days: dayOffset));
       if (cutoff != null && date.isAfter(cutoff)) break;
-      final day = _weekdayNames[date.weekday - 1];
+      final day = AppTime.weekdayNames[date.weekday - 1];
       final list = grouped[day];
       if (list == null || !list.any((s) => s.isActiveOn(date))) continue;
       sections.add(
@@ -724,7 +714,7 @@ class _ClassScheduleState extends State<ClassSchedulePage>
           ];
           final now = DateTime.now();
           final today = DateTime(now.year, now.month, now.day);
-          final todayWeekday = _weekdayNames[now.weekday - 1];
+          final todayWeekday = AppTime.weekdayNames[now.weekday - 1];
           final hasClassesToday = visibleGrouped.containsKey(todayWeekday);
           final holidayStatus = isCurrentSemester
               ? _holidayStatus

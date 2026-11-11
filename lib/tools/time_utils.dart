@@ -116,17 +116,20 @@ class AppTime {
     );
   }
 
-  static int? weekdayFromName(String? day) =>
-      switch (day?.trim().toUpperCase()) {
-        'MONDAY' => DateTime.monday,
-        'TUESDAY' => DateTime.tuesday,
-        'WEDNESDAY' => DateTime.wednesday,
-        'THURSDAY' => DateTime.thursday,
-        'FRIDAY' => DateTime.friday,
-        'SATURDAY' => DateTime.saturday,
-        'SUNDAY' => DateTime.sunday,
-        _ => null,
-      };
+  static const List<String> weekdayNames = <String>[
+    'MONDAY',
+    'TUESDAY',
+    'WEDNESDAY',
+    'THURSDAY',
+    'FRIDAY',
+    'SATURDAY',
+    'SUNDAY',
+  ];
+
+  static int? weekdayFromName(String? day) {
+    final index = weekdayNames.indexOf(day?.trim().toUpperCase() ?? '');
+    return index < 0 ? null : index + DateTime.monday;
+  }
 
   static int shiftWeekday(int weekday, int offset) {
     if (weekday < DateTime.monday || weekday > DateTime.sunday) {

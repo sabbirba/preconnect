@@ -8,16 +8,6 @@ import 'package:preconnect/pages/shared_widgets/seat_card.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/time_utils.dart';
 
-const List<String> _weekdayNames = <String>[
-  'MONDAY',
-  'TUESDAY',
-  'WEDNESDAY',
-  'THURSDAY',
-  'FRIDAY',
-  'SATURDAY',
-  'SUNDAY',
-];
-
 Future<void> showRoutineSheet(
   BuildContext context, {
   required List<SeatStatusDetailsResponse> sections,
@@ -52,7 +42,7 @@ Future<void> showRoutineSheet(
 
 DateTime nextDateForWeekday(String weekday, DateTime today) {
   final start = DateTime(today.year, today.month, today.day);
-  final target = _weekdayNames.indexOf(weekday) + 1;
+  final target = AppTime.weekdayNames.indexOf(weekday) + 1;
   if (target == 0) return start;
   return start.add(Duration(days: (target - start.weekday + 7) % 7));
 }
@@ -68,7 +58,7 @@ List<Widget> plannerClassSchedule(
     final faculty = seatStatusFacultySummaryLabel(section.faculty);
     void add(SeatStatusClassSchedule slot, {required bool isLab}) {
       final day = normalizeWeekday(slot.day);
-      if (!_weekdayNames.contains(day)) return;
+      if (!AppTime.weekdayNames.contains(day)) return;
       byDay.putIfAbsent(day, () => <(int, Widget)>[]).add((
         AppTime.toMinutes(slot.startTime) ?? 0,
         Padding(
