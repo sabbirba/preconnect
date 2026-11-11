@@ -39,7 +39,6 @@ class CampusMapData {
     required this.mapImageUrl,
     required this.googleMapsUrl,
     required this.sourceUrl,
-    required this.transportScheduleUrl,
     required this.primaryEmail,
     required this.images,
     required this.offices,
@@ -51,7 +50,6 @@ class CampusMapData {
   final String mapImageUrl;
   final String googleMapsUrl;
   final String sourceUrl;
-  final String transportScheduleUrl;
   final String primaryEmail;
   final List<String> images;
   final List<CampusOfficeContact> offices;
@@ -96,7 +94,6 @@ class CampusMapData {
           '',
       googleMapsUrl: '${json['google_maps_url'] ?? ''}'.trim(),
       sourceUrl: '${json['source_url'] ?? ''}'.trim(),
-      transportScheduleUrl: '${json['schedule_url'] ?? ''}'.trim(),
       primaryEmail: primaryEmail,
       images: images,
       offices: offices,
@@ -289,11 +286,7 @@ Future<void> showCampusMapBottomSheet(BuildContext context) async {
             );
           }
 
-          final resolvedTransportUrl =
-              transportScheduleUrl != null &&
-                  transportScheduleUrl.trim().isNotEmpty
-              ? transportScheduleUrl.trim()
-              : mapData.transportScheduleUrl;
+          final resolvedTransportUrl = transportScheduleUrl?.trim() ?? '';
           return ListView(
             controller: sheetScroll,
             physics: const ClampingScrollPhysics(),

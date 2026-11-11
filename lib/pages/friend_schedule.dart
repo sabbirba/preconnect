@@ -153,8 +153,17 @@ class _FriendSchedulePageState extends State<FriendSchedulePage>
         return;
       }
       try {
-        await _store.importPayload(value.trim());
-        await _loadSchedules();
+        final added = await _store.importPayload(value.trim());
+        unawaited(_loadSchedules());
+        if (!mounted) return;
+        await _showScheduleToolSheet(
+          title: 'Scan Schedule',
+          subtitle: 'From Gallery',
+          builder: (sheetContext) => FriendsAddedView(
+            added: added,
+            onDone: () => Navigator.of(sheetContext).pop(),
+          ),
+        );
       } on FormatException {
         if (!mounted) return;
         showAppSnackBar(context, 'Invalid friend schedule QR code');
@@ -472,7 +481,7 @@ class _FriendSchedulePageState extends State<FriendSchedulePage>
     final totalFriends = decodedSchedules.length;
     final scheduleWord = totalFriends == 1 ? 'Schedule' : 'Schedules';
     return AppPageScaffold(
-      title: 'Friend Schedule',
+      title: 'Friends',
       subtitle: 'Schedules',
       icon: Icons.people_outline,
       actions: [
@@ -511,11 +520,9 @@ class _FriendSchedulePageState extends State<FriendSchedulePage>
                           subtitle: 'Scan QR from Friends',
                           builder: (sheetContext) => ScanSchedulePage(
                             onCompleted: () => Navigator.of(sheetContext).pop(),
+                            onSaved: () => unawaited(_loadSchedules()),
                           ),
                         );
-                        if (mounted) {
-                          await _loadSchedules();
-                        }
                       },
                     ),
                     FriendActionCard(

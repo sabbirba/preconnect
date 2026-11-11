@@ -56,6 +56,7 @@ class _BusRouteDetailPageState extends State<BusRouteDetailPage> {
       title: title,
       subtitle: subtitle,
       icon: Icons.directions_bus_filled_rounded,
+      actions: const [_BusSyncButton()],
       body: AppRefreshList(
         onRefresh: _BusLive.reconnect,
         children: [
@@ -414,7 +415,14 @@ String? _updatedLabel(BusRouteLiveSnapshot data) {
   if (raw.isEmpty) return null;
   try {
     final parsed = DateTime.parse('${raw.replaceFirst(' ', 'T')}Z').toLocal();
-    return DateFormat('d MMMM, h:mm a').format(parsed);
+    final now = DateTime.now();
+    final isToday =
+        parsed.year == now.year &&
+        parsed.month == now.month &&
+        parsed.day == now.day;
+    return DateFormat(
+      isToday ? 'h:mm:ss a' : 'd MMMM, h:mm:ss a',
+    ).format(parsed);
   } catch (_) {
     return null;
   }

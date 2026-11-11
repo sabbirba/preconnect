@@ -1,5 +1,8 @@
 part of 'package:preconnect/pages/bus.dart';
 
+String _coordinates(BusFleetMarker marker) =>
+    '${marker.latitude.toStringAsFixed(4)},${marker.longitude.toStringAsFixed(4)}';
+
 class BusFleetMapView extends StatelessWidget {
   const BusFleetMapView({required this.markers, super.key});
 
@@ -43,10 +46,7 @@ class _BusLiveMapWebViewState extends State<_BusLiveMapWebView> {
   @override
   void didUpdateWidget(covariant _BusLiveMapWebView oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (_markerSignature(oldWidget.markers) !=
-        _markerSignature(widget.markers)) {
-      _reloadMap();
-    }
+    _reloadMap();
   }
 
   Future<void> _reloadMap() async {
@@ -69,21 +69,6 @@ class _BusLiveMapWebViewState extends State<_BusLiveMapWebView> {
         child: WebViewWidget(controller: controller),
       ),
     );
-  }
-
-  String _markerSignature(List<BusFleetMarker> markers) {
-    return markers
-        .map(
-          (marker) => [
-            marker.code,
-            marker.title,
-            marker.latitude.toStringAsFixed(6),
-            marker.longitude.toStringAsFixed(6),
-            marker.speed,
-            marker.updatedAt,
-          ].join('|'),
-        )
-        .join('~');
   }
 
   String _buildFleetEmbedHtml(List<BusFleetMarker> markers) {
@@ -145,8 +130,7 @@ class _BusLiveMapWebViewState extends State<_BusLiveMapWebView> {
     if (validMarkers.length == 1) {
       final marker = validMarkers.first;
       return Uri.https('www.google.com', '/maps', <String, String>{
-        'q':
-            '${marker.latitude.toStringAsFixed(6)},${marker.longitude.toStringAsFixed(6)}',
+        'q': _coordinates(marker),
         'z': '16',
         'output': 'embed',
       }).toString();
@@ -157,18 +141,13 @@ class _BusLiveMapWebViewState extends State<_BusLiveMapWebView> {
     final waypoints = validMarkers
         .skip(1)
         .take(validMarkers.length - 2)
-        .map(
-          (marker) =>
-              '${marker.latitude.toStringAsFixed(6)},${marker.longitude.toStringAsFixed(6)}',
-        )
+        .map((marker) => _coordinates(marker))
         .join('|');
 
     final params = <String, String>{
       'api': '1',
-      'origin':
-          '${origin.latitude.toStringAsFixed(6)},${origin.longitude.toStringAsFixed(6)}',
-      'destination':
-          '${destination.latitude.toStringAsFixed(6)},${destination.longitude.toStringAsFixed(6)}',
+      'origin': _coordinates(origin),
+      'destination': _coordinates(destination),
       'travelmode': 'driving',
     };
     if (waypoints.isNotEmpty) {

@@ -22,12 +22,16 @@ class _BusLive {
   static final ValueNotifier<_BusDataPackage?> data =
       ValueNotifier<_BusDataPackage?>(null);
   static final ValueNotifier<bool> failed = ValueNotifier<bool>(false);
+  static final ValueNotifier<bool> syncing = ValueNotifier<bool>(false);
   static int _viewers = 0;
   static final SseClient _client = SseClient(
     name: 'Bus',
     request: () async => http.Request('GET', Uri.parse(ApiConfig.busStreamUrl)),
     onEvent: _apply,
-    onFailure: () => failed.value = true,
+    onFailure: () {
+      failed.value = true;
+      syncing.value = false;
+    },
     silence: const Duration(seconds: 20),
   );
 
@@ -38,6 +42,7 @@ class _BusLive {
       if (decoded is Map) {
         data.value = _BusDataPackage.fromJson(decoded.cast<String, dynamic>());
         failed.value = false;
+        syncing.value = false;
       }
     } on FormatException catch (error) {
       unawaited(AppLog.write('Bus stream event unreadable: $error'));
@@ -53,12 +58,29 @@ class _BusLive {
     _client.stop();
     data.value = null;
     failed.value = false;
+    syncing.value = false;
   }
 
   static Future<void> reconnect() async {
+    syncing.value = true;
     failed.value = false;
     _client.stop();
     _client.start();
+  }
+}
+
+class _BusSyncButton extends StatelessWidget {
+  const _BusSyncButton();
+
+  @override
+  Widget build(BuildContext context) {
+    return ValueListenableBuilder<bool>(
+      valueListenable: _BusLive.syncing,
+      builder: (_, syncing, _) => AppRefreshButton(
+        onPressed: () => unawaited(_BusLive.reconnect()),
+        isLoading: syncing,
+      ),
+    );
   }
 }
 
@@ -93,18 +115,9 @@ class _BusPageState extends State<BusPage> {
   }
 
   Future<void> _fetchSchedulePdfUrl() async {
-    try {
-      final url = await fetchTransportScheduleUrl();
-      final fallbackUrl = url == null || url.trim().isEmpty
-          ? (await fetchCampusMapData())?.transportScheduleUrl
-          : null;
-      final resolvedUrl = (url?.trim().isNotEmpty == true ? url : fallbackUrl)
-          ?.trim();
-      if (!mounted) return;
-      setState(() {
-        _schedulePdfUrl = resolvedUrl ?? '';
-      });
-    } catch (_) {}
+    final url = await fetchTransportScheduleUrl();
+    if (!mounted) return;
+    setState(() => _schedulePdfUrl = url ?? '');
   }
 
   @override
@@ -123,6 +136,7 @@ class _BusPageState extends State<BusPage> {
       subtitle: 'Routes',
       icon: Icons.directions_bus_filled_rounded,
       actions: [
+        const _BusSyncButton(),
         IconButton(
           tooltip: 'Open official schedule',
           onPressed: schedulePdfUrl.isEmpty

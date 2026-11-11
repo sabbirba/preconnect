@@ -57,7 +57,7 @@ class FriendScheduleStore {
     }
   }
 
-  Future<void> importPayload(String raw) async {
+  Future<Map<String, FriendSchedule>> importPayload(String raw) async {
     final trimmed = raw.trim();
     if (trimmed.isEmpty) {
       throw const FormatException('Schedule code is empty');
@@ -70,6 +70,7 @@ class FriendScheduleStore {
     }
 
     final incoming = <String, String>{};
+    final added = <String, FriendSchedule>{};
     for (final value in encodedValues) {
       final encoded = value.trim();
       final schedule = parseSchedulePayload(encoded);
@@ -78,6 +79,7 @@ class FriendScheduleStore {
         throw const FormatException('Invalid friend schedule code');
       }
       incoming[id] = encoded;
+      added[encoded] = schedule!;
     }
 
     final snapshot = await loadSnapshot();
@@ -97,6 +99,7 @@ class FriendScheduleStore {
         throw StateError('Friend schedule could not be saved');
       }
     }
+    return added;
   }
 
   Future<void> removeByEncoded(String encodedValue) async {

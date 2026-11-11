@@ -4,6 +4,8 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/services.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:preconnect/api/friend_store.dart';
+import 'package:preconnect/model/friend_schedule.dart';
+import 'package:preconnect/pages/friend_sections/schedule_list.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/token_storage.dart';
 import 'package:mobile_scanner/mobile_scanner.dart'
@@ -12,9 +14,14 @@ import 'package:preconnect/tools/clipboard_stub.dart'
     if (dart.library.js_interop) 'package:preconnect/tools/clipboard_web.dart';
 
 class ScanSchedulePage extends StatefulWidget {
-  const ScanSchedulePage({super.key, required this.onCompleted});
+  const ScanSchedulePage({
+    super.key,
+    required this.onCompleted,
+    required this.onSaved,
+  });
 
   final VoidCallback onCompleted;
+  final VoidCallback onSaved;
 
   @override
   State<ScanSchedulePage> createState() => _ScanSchedulePageState();
@@ -24,10 +31,13 @@ class _ScanSchedulePageState extends State<ScanSchedulePage> {
   final FriendScheduleStore _store = FriendScheduleStore();
   late final MobileScannerController _controller = MobileScannerController(
     formats: const [BarcodeFormat.qrCode],
-    detectionSpeed: DetectionSpeed.noDuplicates,
-    returnImage: false,
+    detectionSpeed: DetectionSpeed.unrestricted,
+    cameraResolution: const Size(1920, 1080),
+    autoZoom: true,
+    autoTorch: true,
   );
   String? scannedValue;
+  Map<String, FriendSchedule> _added = const {};
   bool? _cameraGranted;
   bool _cameraFailed = false;
   bool _isEnablingCamera = false;
@@ -65,9 +75,13 @@ class _ScanSchedulePageState extends State<ScanSchedulePage> {
     if (_isSaving || scannedValue != null) return;
     _isSaving = true;
     try {
-      await _store.importPayload(value);
+      final added = await _store.importPayload(value);
       if (!mounted) return;
-      setState(() => scannedValue = value);
+      setState(() {
+        scannedValue = value;
+        _added = added;
+      });
+      widget.onSaved();
       _controller.stop();
     } on FormatException {
       if (!mounted) return;
@@ -140,48 +154,10 @@ class _ScanSchedulePageState extends State<ScanSchedulePage> {
     }
 
     if (scannedValue != null) {
-      return Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            const Gap(16),
-            const Icon(
-              Icons.check_circle_rounded,
-              size: 72,
-              color: AppPalette.accent,
-            ),
-            const Gap(16),
-            const Text(
-              'Schedule Added!',
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
-            ),
-            const Gap(6),
-            Text(
-              'You can scan another QR anytime.',
-              textAlign: TextAlign.center,
-              style: TextStyle(color: AppPalette.textSecondary(context)),
-            ),
-            const Gap(24),
-            AppActionButton(
-              onPressed: widget.onCompleted,
-              icon: Icons.check_circle_rounded,
-              label: 'Done',
-              outlined: false,
-              backgroundColor: AppPalette.accent,
-              foregroundColor: Colors.white,
-            ),
-            const Gap(12),
-            AppActionButton(
-              onPressed: _restartScanner,
-              icon: Icons.qr_code_scanner,
-              label: 'Scan Another',
-              outlined: true,
-            ),
-          ],
-        ),
+      return FriendsAddedView(
+        added: _added,
+        onDone: widget.onCompleted,
+        onScanAnother: _restartScanner,
       );
     }
 
@@ -304,6 +280,69 @@ class _ScanSchedulePageState extends State<ScanSchedulePage> {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class FriendsAddedView extends StatelessWidget {
+  const FriendsAddedView({
+    super.key,
+    required this.added,
+    required this.onDone,
+    this.onScanAnother,
+  });
+
+  final Map<String, FriendSchedule> added;
+  final VoidCallback onDone;
+  final VoidCallback? onScanAnother;
+
+  @override
+  Widget build(BuildContext context) {
+    final onScanAnother = this.onScanAnother;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const Gap(8),
+          const Icon(
+            Icons.check_circle_rounded,
+            size: 56,
+            color: AppPalette.accent,
+          ),
+          const Gap(12),
+          Text(
+            added.length > 1 ? 'Schedules Added' : 'Schedule Added',
+            textAlign: TextAlign.center,
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+          ),
+          const Gap(16),
+          for (final entry in added.entries)
+            FriendScheduleSection(
+              item: FriendScheduleItem(encoded: entry.key, friend: entry.value),
+              showActions: false,
+            ),
+          const Gap(8),
+          AppActionButton(
+            onPressed: onDone,
+            icon: Icons.check_circle_rounded,
+            label: 'Done',
+            outlined: false,
+            backgroundColor: AppPalette.accent,
+            foregroundColor: Colors.white,
+          ),
+          if (onScanAnother != null) ...[
+            const Gap(12),
+            AppActionButton(
+              onPressed: onScanAnother,
+              icon: Icons.qr_code_scanner,
+              label: 'Scan Another',
+              outlined: true,
+            ),
+          ],
+        ],
       ),
     );
   }
