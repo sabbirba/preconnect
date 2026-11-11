@@ -255,7 +255,7 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
         unawaited(_backgroundRefresh(ignoreMinInterval: forceRefresh));
         return;
       }
-      final data = await preloadData(forceRefresh: forceRefresh);
+      final data = await _future;
       if (!mounted) return;
       setState(() {
         _latestData = data;
@@ -289,11 +289,10 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
     if (_cachedData != null) {
       return _cachedData!;
     }
-    return _preloadHomeDashboardData(forceRefresh: forceRefresh);
-  }
-
-  static Future<_HomeData> preloadData({bool forceRefresh = false}) async {
-    return _preloadHomeDashboardData(forceRefresh: forceRefresh);
+    final inFlight = _preloadFuture;
+    if (inFlight != null) return inFlight;
+    _lastBackgroundRefreshAt = DateTime.now();
+    return _preloadHomeDashboardData(forceRefresh: true);
   }
 
   void _onRefreshSignal() {

@@ -4,6 +4,7 @@ class PreConnectStorageKeys {
   static const String accessToken = 'access_token';
   static const String refreshToken = 'refresh_token';
   static const String idToken = 'id_token';
+  static const String chatToken = 'chat_token';
   static const String cachedHasAuthSession = 'cached_has_auth_session';
   static const String pendingShortcutAction = 'pending_shortcut_action';
   static const String pkceVerifier = '_pkce_verifier';

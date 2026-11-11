@@ -198,6 +198,7 @@ class AppActionButton extends StatelessWidget {
       splashFactory: NoSplash.splashFactory,
       overlayColor: Colors.transparent,
       enableFeedback: false,
+      minimumSize: const Size(0, 44),
       padding: padding,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(borderRadius),

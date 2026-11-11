@@ -16,13 +16,6 @@
   "background": {
     "service_worker": "background.dart.js"
   },
-  "content_scripts": [
-    {
-      "matches": ["https://connect.bracu.ac.bd/*"],
-      "js": ["connect_bridge.js"],
-      "run_at": "document_start"
-    }
-  ],
   "browser_specific_settings": {
     "gecko": {
       "id": "preconnect@sabbirba.com",
@@ -35,7 +28,6 @@
   "permissions": [
     "alarms",
     "cookies",
-    "webRequest",
     "sidePanel",
     "contextMenus",
     "notifications",
@@ -44,7 +36,9 @@
     "storage",
     "tabs",
     "webNavigation",
-    "gcm",
+    "gcm"
+  ],
+  "optional_permissions": [
     "clipboardRead"
   ],
   "side_panel": {
@@ -90,7 +84,11 @@
       "description": "Open Advising Helper"
     }
   },
-  "host_permissions": ["<all_urls>"],
+  "host_permissions": [
+    "https://*.preconnect.app/*",
+    "https://*.bracu.ac.bd/*",
+    "http://clients3.google.com/generate_204"
+  ],
   "content_security_policy": {
     "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self';"
   },

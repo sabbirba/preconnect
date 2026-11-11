@@ -192,6 +192,12 @@ class ChatService {
     final student = (body['student'] as Map).cast<String, dynamic>();
     final pb = _pb ??= PocketBase(ApiConfig.pocketBaseUrl);
     pb.authStore.save('${body['token']}', RecordModel.fromJson(student));
+    if (kIsWeb) {
+      await TokenStorage.instance.write(
+        key: PreConnectStorageKeys.chatToken,
+        value: '${body['token']}',
+      );
+    }
     _me = ChatAuthor.fromJson(student);
     _personalTopic = '${body['pushTopic'] ?? ''}';
     _sessionAt = DateTime.now();
@@ -1172,6 +1178,9 @@ class ChatService {
         AppStorage.instance.remove(key),
     ]);
     pb?.authStore.clear();
+    if (kIsWeb) {
+      await TokenStorage.instance.write(key: PreConnectStorageKeys.chatToken);
+    }
     _me = null;
     _personalTopic = '';
     _sessionAt = null;

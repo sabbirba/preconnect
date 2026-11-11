@@ -44,6 +44,7 @@ class TokenStorage {
     PreConnectStorageKeys.accessToken,
     PreConnectStorageKeys.refreshToken,
     PreConnectStorageKeys.idToken,
+    PreConnectStorageKeys.chatToken,
     'wifi_captive_password',
     'wifi_captive_session_token',
     'wifi_captive_psession_id',

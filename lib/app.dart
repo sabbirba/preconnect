@@ -590,7 +590,7 @@ class _MyAppState extends State<MyApp>
           connectivity.isEmpty ||
           connectivity.every((r) => r == ConnectivityResult.none);
       if (!isOffline) {
-        ApiClient().clearTransientCaches();
+        if (forceRefresh) ApiClient().clearTransientCaches();
         final activeTab = HomeTabRegistry.activeTab.value;
         final activeReason = switch (activeTab) {
           HomeTab.studentSchedule => 'class_schedule',
@@ -822,6 +822,8 @@ class _MyAppState extends State<MyApp>
       case PreConnectBrowserActionIds.shortcutNotifications:
       case 'notifications':
         return HomeTab.notifications;
+      case 'chat':
+        return HomeTab.chat;
       default:
         return null;
     }

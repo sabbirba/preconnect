@@ -101,7 +101,6 @@ for f in \
   favicon.png \
   touch_icon.png \
   auto_logout.js \
-  connect_bridge.js \
   remove_hash.js \
   remove_loader.js \
   index.html; do
@@ -216,11 +215,6 @@ for rel_path in ['canvaskit/canvaskit.js', 'canvaskit/chromium/canvaskit.js']:
     target.write_text(content)
 "
 
-if [[ ! -f "${COMMON_DIR}/connect_bridge.js" ]]; then
-  echo "Missing Connect browser relay: connect_bridge.js" >&2
-  exit 1
-fi
-
 if ! grep -q 'renderer:"canvaskit"' "${COMMON_DIR}/flutter_bootstrap.js"; then
   echo "Flutter extension bootstrap is not configured for CanvasKit" >&2
   exit 1
@@ -230,6 +224,16 @@ mkdir -p "${OUT_DIR}"
 mkdir -p "${FIREFOX_DIR}"
 cp -R "${COMMON_DIR}/." "${OUT_DIR}/"
 cp -R "${COMMON_DIR}/." "${FIREFOX_DIR}/"
+
+rm -f "${OUT_DIR}/canvaskit/canvaskit.js" "${OUT_DIR}/canvaskit/canvaskit.wasm"
+rm -rf "${FIREFOX_DIR}/canvaskit/chromium"
+perl -pi -e 's#canvasKitVariant:"auto"#canvasKitVariant:"chromium"#' "${OUT_DIR}/flutter_bootstrap.js"
+perl -pi -e 's#canvasKitVariant:"auto"#canvasKitVariant:"full"#' "${FIREFOX_DIR}/flutter_bootstrap.js"
+if ! grep -q 'canvasKitVariant:"chromium"' "${OUT_DIR}/flutter_bootstrap.js" ||
+  ! grep -q 'canvasKitVariant:"full"' "${FIREFOX_DIR}/flutter_bootstrap.js"; then
+  echo "Unable to pin the CanvasKit variant for each browser" >&2
+  exit 1
+fi
 
 python3 -c "
 import json

@@ -371,14 +371,8 @@ class ProfileService {
     if (anyRequiredMissing && !fromFetch) {
       return await fetchProfile(fromGet: true);
     }
-    if (!fromFetch) {
-      final anyMiscMissing = _miscKeys.any((key) {
-        final value = profileData[key];
-        return value == null || value.isEmpty;
-      });
-      if (anyMiscMissing) {
-        unawaited(fetchProfile(fromGet: true));
-      }
+    if (!fromFetch && _miscKeys.any((key) => profileData[key] == null)) {
+      unawaited(fetchProfile(fromGet: true));
     }
     return profileData;
   }

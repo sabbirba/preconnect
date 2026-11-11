@@ -138,6 +138,12 @@ jobs:
           unzip -t build/firefox-extension.zip
           du -k build/chrome-extension.zip build/firefox-extension.zip > reports/extensions_build_size.txt
 
+      - name: Lint Firefox Extension
+        run: npx --yes web-ext@10.8.0 lint --source-dir build/firefox-extension 2>&1 | tee reports/firefox_lint.log
+
+      - name: Smoke Test Chrome Extension
+        run: python3 tool/smoke_extension.py 2>&1 | tee reports/chrome_smoke.log
+
       - name: Upload Build Diagnostics
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v7

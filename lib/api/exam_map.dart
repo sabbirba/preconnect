@@ -33,6 +33,7 @@ class ExamMapService {
 
   final Map<int, Future<Map<String, ExamScheduleOverride>>>
   _inFlightSemesterFetches = {};
+  final Map<int, DateTime> _semesterFetchedAt = {};
 
   Future<Map<String, ExamScheduleOverride>> getOverridesForSemester({
     required int semesterSessionId,
@@ -43,7 +44,8 @@ class ExamMapService {
     final decoded = ExamScheduleOverride.decodeOverrides(cachedParsed);
 
     if (!forceRefresh && decoded.isNotEmpty) {
-      if (!_inFlightSemesterFetches.containsKey(semesterSessionId)) {
+      if (!_inFlightSemesterFetches.containsKey(semesterSessionId) &&
+          !_wasFetchedRecently(semesterSessionId)) {
         unawaited(
           _revalidateSemesterInBackground(
             semesterSessionId: semesterSessionId,
@@ -72,6 +74,12 @@ class ExamMapService {
     } finally {
       _inFlightSemesterFetches.remove(semesterSessionId);
     }
+  }
+
+  bool _wasFetchedRecently(int semesterSessionId) {
+    final fetchedAt = _semesterFetchedAt[semesterSessionId];
+    return fetchedAt != null &&
+        DateTime.now().difference(fetchedAt) < _indexCacheTtl;
   }
 
   Future<void> _revalidateSemesterInBackground({
@@ -168,8 +176,9 @@ class ExamMapService {
 
     final merged = <String, ExamScheduleOverride>{};
 
+    dynamic midJson;
     if (midUrl != null && midUrl.isNotEmpty) {
-      final midJson = await _fetchJsonWithCache(
+      midJson = await _fetchJsonWithCache(
         url: midUrl,
         cacheKey: StorageKeys.examMapMid(semesterSessionId),
         ttl: _examJsonCacheTtl,
@@ -179,12 +188,14 @@ class ExamMapService {
     }
 
     if (finalUrl != null && finalUrl.isNotEmpty) {
-      final finalJson = await _fetchJsonWithCache(
-        url: finalUrl,
-        cacheKey: StorageKeys.examMapFinal(semesterSessionId),
-        ttl: _examJsonCacheTtl,
-        forceRefresh: forceRefresh,
-      );
+      final finalJson = finalUrl == midUrl && midJson != null
+          ? midJson
+          : await _fetchJsonWithCache(
+              url: finalUrl,
+              cacheKey: StorageKeys.examMapFinal(semesterSessionId),
+              ttl: _examJsonCacheTtl,
+              forceRefresh: forceRefresh,
+            );
       _mergeExamRows(
         merged,
         finalJson,
@@ -194,6 +205,7 @@ class ExamMapService {
     }
 
     if (merged.isNotEmpty) {
+      _semesterFetchedAt[semesterSessionId] = DateTime.now();
       final jsonToWrite = merged.map(
         (key, value) => MapEntry(key, value.toJson()),
       );

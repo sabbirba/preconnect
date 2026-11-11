@@ -44,14 +44,9 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
             if (mounted) _selectArchive(value);
           },
         ),
-        AppNotificationsIconButton(
-          onTap: () async {
-            await Navigator.of(context).push(
-              MaterialPageRoute<void>(
-                builder: (_) => const NotificationsPage(),
-              ),
-            );
-          },
+        AppRefreshButton(
+          onPressed: () => unawaited(_refreshFromButton()),
+          isLoading: _isDetailsRefreshing,
         ),
       ],
       body: Stack(
@@ -554,6 +549,12 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
     if (shouldRefresh) {
       unawaited(_refreshDetailsFromApi());
     }
+  }
+
+  Future<void> _refreshFromButton() async {
+    final refresh = _refreshDetailsFromApi(forceRefresh: true);
+    _updateSeatStatusState(() {});
+    await refresh;
   }
 
   Future<void> _refreshDetailsFromApi({bool forceRefresh = false}) async {

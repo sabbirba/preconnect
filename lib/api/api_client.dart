@@ -367,6 +367,48 @@ class ApiClient {
       );
     }
 
+    final requestKey = _inFlightRequestKey(
+      normalizedMethod,
+      url,
+      headers: headers,
+      body: body,
+    );
+    _purgeExpiredResponseCache();
+    if (!bypassCache && cacheDuration > Duration.zero) {
+      final cachedResponse = _cachedResponses[requestKey];
+      if (cachedResponse != null && !cachedResponse.isExpired) {
+        return cachedResponse.response;
+      }
+    }
+    final inFlight = _inFlightRequests[requestKey];
+    if (inFlight != null) return inFlight;
+
+    final request = _fetchSharedResponse(
+      normalizedMethod,
+      url,
+      requestKey,
+      headers: headers,
+      body: body,
+      cacheDuration: cacheDuration,
+    );
+    _inFlightRequests[requestKey] = request;
+    try {
+      return await request;
+    } finally {
+      if (identical(_inFlightRequests[requestKey], request)) {
+        _inFlightRequests.remove(requestKey);
+      }
+    }
+  }
+
+  Future<http.Response> _fetchSharedResponse(
+    String method,
+    String url,
+    String requestKey, {
+    required Map<String, String> headers,
+    required String body,
+    required Duration cacheDuration,
+  }) async {
     final isPreConnectUrl = Uri.tryParse(url)?.host == 'api.preconnect.app';
     final revision = _cacheRevision;
     final finalHeaders = Map<String, String>.from(headers);
@@ -405,32 +447,13 @@ class ApiClient {
       }
     }
 
-    final inFlightKey = _inFlightRequestKey(
-      normalizedMethod,
-      url,
-      headers: finalHeaders,
-      body: body,
-    );
-    _purgeExpiredResponseCache();
-    if (!bypassCache && cacheDuration > Duration.zero) {
-      final cachedResponse = _cachedResponses[inFlightKey];
-      if (cachedResponse != null && !cachedResponse.isExpired) {
-        return cachedResponse.response;
-      }
-    }
-    final inFlight = _inFlightRequests[inFlightKey];
-    if (inFlight != null) return inFlight;
-
-    final request = _sendRawRequest(
-      normalizedMethod,
-      url,
-      headers: finalHeaders,
-      body: body,
-    );
-    _inFlightRequests[inFlightKey] = request;
-
     try {
-      var response = await request;
+      var response = await _sendRawRequest(
+        method,
+        url,
+        headers: finalHeaders,
+        body: body,
+      );
       if (usePersistentValidation) {
         if (response.statusCode == 304 && cachedBody != null) {
           response = http.Response(
@@ -459,21 +482,19 @@ class ApiClient {
       }
 
       if (cacheDuration == Duration.zero && response.statusCode == 200) {
-        _cachedResponses.remove(inFlightKey);
+        _cachedResponses.remove(requestKey);
       }
       if (revision == _cacheRevision &&
           cacheDuration > Duration.zero &&
           response.statusCode == 200) {
-        _cachedResponses[inFlightKey] = _CachedHttpResponse(
+        _cachedResponses[requestKey] = _CachedHttpResponse(
           response: response,
           expiresAt: DateTime.now().add(cacheDuration),
         );
       }
       return response;
     } catch (error) {
-      unawaited(
-        AppLog.write('Network Request Error: $normalizedMethod $url - $error'),
-      );
+      unawaited(AppLog.write('Network Request Error: $method $url - $error'));
       if (cachedBody != null && cachedBody.isNotEmpty) {
         return http.Response(
           cachedBody,
@@ -484,15 +505,11 @@ class ApiClient {
           reasonPhrase: 'OK',
         );
       }
-      final expiredCache = _cachedResponses[inFlightKey];
+      final expiredCache = _cachedResponses[requestKey];
       if (expiredCache != null) {
         return expiredCache.response;
       }
       rethrow;
-    } finally {
-      if (identical(_inFlightRequests[inFlightKey], request)) {
-        _inFlightRequests.remove(inFlightKey);
-      }
     }
   }
 

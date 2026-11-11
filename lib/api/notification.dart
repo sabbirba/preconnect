@@ -476,7 +476,15 @@ class NotificationService {
     return isRecent ? getRecentNotifications() : fetchRecentNotifications();
   }
 
-  Future<NotificationsFeed?> fetchRecentNotifications() async {
+  Future<NotificationsFeed?>? _recentFetch;
+
+  Future<NotificationsFeed?> fetchRecentNotifications() {
+    return _recentFetch ??= _fetchRecentNotifications().whenComplete(
+      () => _recentFetch = null,
+    );
+  }
+
+  Future<NotificationsFeed?> _fetchRecentNotifications() async {
     _connectFetchedAt = DateTime.now();
     final url =
         '${ApiConfig.connectApiBase}${ApiConfig.recentNotificationsPath}';

@@ -8,7 +8,6 @@ import 'package:preconnect/api/seat_status.dart';
 import 'package:preconnect/api/seat_stream.dart';
 import 'package:preconnect/pages/home_tab.dart';
 import 'package:preconnect/model/seat_timetable.dart';
-import 'package:preconnect/pages/notifications.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/ramadan.dart';
 import 'package:preconnect/tools/refresh_bus.dart';

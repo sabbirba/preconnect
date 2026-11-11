@@ -11,6 +11,7 @@ import 'package:preconnect/pages/free_labs.dart';
 import 'package:preconnect/pages/friend_schedule.dart';
 import 'package:preconnect/pages/shared_widgets/map_shared.dart';
 import 'package:preconnect/pages/dspace_browser.dart';
+import 'package:preconnect/pages/seat_status.dart';
 import 'package:preconnect/tools/runtime_stub.dart'
     if (dart.library.js_interop) 'package:preconnect/tools/runtime_web.dart';
 import 'package:preconnect/tools/build_info.dart';
@@ -379,6 +380,13 @@ class _OnboardingPageState extends State<OnboardingPage> {
                                 color: const Color(0xFF22B573),
                                 onTap: () => _openOnboardingQuickPage(
                                   const FreeLabsPage(),
+                                ),
+                              ),
+                              _CompactQuickAccessCard(
+                                icon: Icons.insights_outlined,
+                                color: const Color(0xFF00A8E8),
+                                onTap: () => _openOnboardingQuickPage(
+                                  const SeatStatusPage(),
                                 ),
                               ),
                               _CompactQuickAccessCard(
