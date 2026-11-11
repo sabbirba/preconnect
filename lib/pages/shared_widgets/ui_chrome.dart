@@ -803,6 +803,7 @@ class AppTodayScheduleStatus {
 
   factory AppTodayScheduleStatus.resolve({
     required HolidayStatus holidayStatus,
+    DateTime? on,
     String? overrideTitle,
     String? overrideSubtitle,
     String fallbackTitle = 'No Classes Today',
@@ -815,11 +816,9 @@ class AppTodayScheduleStatus {
         subtitle: overrideSubtitle ?? fallbackSubtitle,
       );
     }
-    final isHoliday =
-        holidayStatus.isTodayHoliday ||
-        holidayStatus.isHolidayOn(DateTime.now());
-    if (isHoliday) {
-      final name = holidayStatus.holidayNameOn(DateTime.now());
+    final day = on ?? DateTime.now();
+    if (holidayStatus.isHolidayOn(day)) {
+      final name = holidayStatus.holidayNameOn(day);
       final display = (name != null && name.isNotEmpty)
           ? name
           : (holidayStatus.displayNames.isNotEmpty

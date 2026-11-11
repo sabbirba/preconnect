@@ -3,7 +3,7 @@ import WidgetKit
 let todayWidgetAppGroupId = "group.com.sabbirba.preconnect.TodayWidgetExtension"
 let todayWidgetKind = "TodayWidget"
 
-struct TodayWidgetItem {
+struct TodayWidgetItem: Decodable {
   let badge: String
   let title: String
   let subtitle: String
@@ -13,6 +13,19 @@ struct TodayWidgetItem {
   var endMinutes = -1
 
   var hasTime: Bool { startMinutes >= 0 && startMinutes < endMinutes }
+
+  enum CodingKeys: String, CodingKey {
+    case badge, title, subtitle, trailing, trailingSub
+    case startMinutes = "start"
+    case endMinutes = "end"
+  }
+}
+
+struct TodayWidgetDay: Decodable {
+  let day: Int
+  let title: String
+  let date: String
+  let items: [TodayWidgetItem]
 }
 
 struct TodayWidgetEntry: TimelineEntry {
@@ -53,52 +66,47 @@ struct TodayWidgetProvider: TimelineProvider {
   }
 
   func getSnapshot(in context: Context, completion: @escaping (TodayWidgetEntry) -> Void) {
-    completion(readEntry())
+    completion(entry(at: Date(), in: readDays()))
   }
 
   func getTimeline(in context: Context, completion: @escaping (Timeline<TodayWidgetEntry>) -> Void)
   {
-    let entry = readEntry()
     let now = Date()
     let calendar = Calendar.current
-    let startOfDay = calendar.startOfDay(for: now)
-    let nextReload = calendar.date(byAdding: .minute, value: 15, to: now) ?? now
-    let redrawTimes = Set(entry.items.flatMap { [$0.startMinutes, $0.endMinutes] } + [24 * 60])
-      .filter { $0 >= 0 }
-      .compactMap { calendar.date(byAdding: .minute, value: $0, to: startOfDay) }
-      .filter { $0 > now }
-      .sorted()
-    let entries = [entry] + redrawTimes.map {
-      TodayWidgetEntry(date: $0, title: entry.title, dateText: entry.dateText, items: entry.items)
+    let days = readDays()
+    let redrawTimes = days.flatMap { day -> [Date] in
+      guard let start = startOfDay(day.day) else { return [] }
+      return ([0] + day.items.flatMap { [$0.startMinutes, $0.endMinutes] })
+        .filter { $0 >= 0 }
+        .compactMap { calendar.date(byAdding: .minute, value: $0, to: start) }
     }
+    .filter { $0 > now }
+    let entries = ([now] + Set(redrawTimes).sorted()).map { entry(at: $0, in: days) }
+    let nextReload = calendar.date(byAdding: .minute, value: 15, to: now) ?? now
     completion(Timeline(entries: entries, policy: .after(nextReload)))
   }
 
-  private func readEntry() -> TodayWidgetEntry {
-    let preferences = UserDefaults(suiteName: todayWidgetAppGroupId)
+  private func entry(at date: Date, in days: [TodayWidgetDay]) -> TodayWidgetEntry {
+    let day = days.first { $0.day == dayKey(date) }
+    return TodayWidgetEntry(
+      date: date, title: day?.title ?? "Today", dateText: day?.date ?? "", items: day?.items ?? [])
+  }
 
-    let title = preferences?.string(forKey: "today_title") ?? "Today"
-    let dateText = preferences?.string(forKey: "today_date") ?? ""
-    let itemCount = preferences?.integer(forKey: "today_item_count") ?? 0
+  private func dayKey(_ date: Date) -> Int {
+    let parts = Calendar.current.dateComponents([.year, .month, .day], from: date)
+    return (parts.year ?? 0) * 10000 + (parts.month ?? 0) * 100 + (parts.day ?? 0)
+  }
 
-    var items: [TodayWidgetItem] = []
-    if itemCount > 0 {
-      for slot in 1...itemCount {
-        let itemTitle = preferences?.string(forKey: "today_item\(slot)_title") ?? ""
-        if itemTitle.isEmpty { continue }
-        items.append(
-          TodayWidgetItem(
-            badge: preferences?.string(forKey: "today_item\(slot)_badge") ?? "",
-            title: itemTitle,
-            subtitle: preferences?.string(forKey: "today_item\(slot)_subtitle") ?? "",
-            trailing: preferences?.string(forKey: "today_item\(slot)_trailing") ?? "",
-            trailingSub: preferences?.string(forKey: "today_item\(slot)_trailing_sub") ?? "",
-            startMinutes: preferences?.object(forKey: "today_item\(slot)_start") as? Int ?? -1,
-            endMinutes: preferences?.object(forKey: "today_item\(slot)_end") as? Int ?? -1
-          ))
-      }
-    }
+  private func startOfDay(_ key: Int) -> Date? {
+    Calendar.current.date(
+      from: DateComponents(year: key / 10000, month: key / 100 % 100, day: key % 100))
+  }
 
-    return TodayWidgetEntry(date: Date(), title: title, dateText: dateText, items: items)
+  private func readDays() -> [TodayWidgetDay] {
+    guard
+      let raw = UserDefaults(suiteName: todayWidgetAppGroupId)?.string(forKey: "today_days"),
+      let data = raw.data(using: .utf8)
+    else { return [] }
+    return (try? JSONDecoder().decode([TodayWidgetDay].self, from: data)) ?? []
   }
 }

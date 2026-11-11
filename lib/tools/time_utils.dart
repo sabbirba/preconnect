@@ -201,6 +201,10 @@ class AppTime {
     return DateFormat('h:mm a').format(DateTime(0, 1, 1, hour, minute));
   }
 
+  static String weekdayName(DateTime date) {
+    return DateFormat('EEEE').format(date);
+  }
+
   static String formatLongDate(DateTime date) {
     return DateFormat('d MMMM, yyyy').format(date);
   }

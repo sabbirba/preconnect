@@ -34,7 +34,11 @@ class HolidayStatus {
 
   String get displayNames => todayHolidayNames.join(' • ');
 
-  bool isHolidayOn(DateTime date) => holidayNameOn(date) != null;
+  bool isHolidayOn(DateTime date) =>
+      holidayNameOn(date) != null ||
+      (isTodayHoliday &&
+          HolidayTiming.toIsoDate(date) ==
+              HolidayTiming.toIsoDate(DateTime.now()));
 
   String? holidayNameOn(DateTime date) {
     final iso = HolidayTiming.toIsoDate(date);

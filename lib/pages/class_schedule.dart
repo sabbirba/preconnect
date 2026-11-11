@@ -729,8 +729,7 @@ class _ClassScheduleState extends State<ClassSchedulePage>
           final holidayStatus = isCurrentSemester
               ? _holidayStatus
               : HolidayStatus.empty;
-          final isTodayHoliday =
-              holidayStatus.isTodayHoliday || holidayStatus.isHolidayOn(now);
+          final isTodayHoliday = holidayStatus.isHolidayOn(now);
           final todayScheduleStatus = AppTodayScheduleStatus.resolve(
             holidayStatus: holidayStatus,
           );

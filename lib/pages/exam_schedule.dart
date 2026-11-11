@@ -368,8 +368,7 @@ class _ExamScheduleState extends State<ExamSchedule> with RefreshBusState {
           final holidayStatus = isCurrentSemester
               ? _holidayStatus
               : HolidayStatus.empty;
-          final isTodayHoliday =
-              holidayStatus.isTodayHoliday || holidayStatus.isHolidayOn(now);
+          final isTodayHoliday = holidayStatus.isHolidayOn(now);
 
           if (midExams.isEmpty &&
               finalExams.isEmpty &&

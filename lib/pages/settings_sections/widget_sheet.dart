@@ -2,7 +2,6 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:preconnect/tools/time_utils.dart';
 import 'package:gap/gap.dart';
-import 'package:intl/intl.dart';
 import 'package:preconnect/features/schedule/application/today_widget.dart';
 import 'package:preconnect/pages/home.dart';
 import 'package:preconnect/pages/ui_kit.dart';
@@ -215,7 +214,7 @@ class _WidgetSetupSheetState extends State<WidgetSetupSheet> {
     final now = DateTime.now();
     final title = _widgetData?.title.isNotEmpty == true
         ? _widgetData!.title
-        : 'Today is ${DateFormat('EEEE').format(now)}';
+        : 'Today is ${AppTime.weekdayName(now)}';
     final dateText = _widgetData?.date.isNotEmpty == true
         ? _widgetData!.date
         : AppTime.formatLongDate(now);

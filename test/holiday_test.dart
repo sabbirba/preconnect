@@ -179,6 +179,21 @@ void main() {
       expect(status.isHolidayOn(DateTime(2026, 3, 27)), isFalse);
     });
 
+    test('applies the today holiday flag only to today', () {
+      const status = HolidayStatus(
+        isTodayHoliday: true,
+        todayHolidayNames: <String>[],
+        nextHolidaysThisYear: <HolidayItem>[],
+      );
+      final now = DateTime.now();
+
+      expect(status.isHolidayOn(now), isTrue);
+      expect(
+        status.isHolidayOn(DateTime(now.year, now.month, now.day + 1)),
+        isFalse,
+      );
+    });
+
     test('deduplicates overlapping holiday labels on same date', () {
       final status = HolidayStatus(
         isTodayHoliday: false,

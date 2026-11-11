@@ -10,8 +10,7 @@ Future<void> syncTodayWidgetInBackground({bool forceRefresh = false}) async {
       forceRefresh: forceRefresh,
     );
     final state = _HomeDashboardState();
-    final derived = state._deriveDashboardValues(data, updateWidget: false);
-    await state._syncTodayWidget(data, derived);
+    await state._syncTodayWidget(data);
     if (forceRefresh) {
       await state._saveHomeDashboardSnapshot(data);
     }
@@ -635,177 +634,153 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
   }
 
   _HomeData? _derivedForData;
-  String? _derivedForToday;
+  String? _derivedForDay;
   _DerivedDashboardData? _derivedCache;
 
-  _DerivedDashboardData _deriveDashboardValues(
-    _HomeData? data, {
-    bool updateWidget = true,
-  }) {
-    final today = _todayName();
+  _DerivedDashboardData _deriveDashboardValues(_HomeData? data) {
+    final now = DateTime.now();
+    final day = AppTime.formatLongDate(now);
     final cached = _derivedCache;
     if (cached != null &&
         identical(_derivedForData, data) &&
-        _derivedForToday == today) {
+        _derivedForDay == day) {
       return cached;
     }
-
-    final now = DateTime.now();
-    final todayNormalized = DateTime(now.year, now.month, now.day);
-    final todayDate = AppTime.formatLongDate(now);
-    final todayEntries =
-        (data?.entries ?? const <_ScheduleEntry>[]).where((e) {
-          if (normalizeWeekday(e.day) != normalizeWeekday(today)) return false;
-          final s = AppTime.parseDate(e.startDate);
-          if (s != null &&
-              todayNormalized.isBefore(DateTime(s.year, s.month, s.day))) {
-            return false;
-          }
-          final end = AppTime.parseDate(e.endDate);
-          if (end != null &&
-              todayNormalized.isAfter(DateTime(end.year, end.month, end.day))) {
-            return false;
-          }
-          return true;
-        }).toList()..sort(
-          (a, b) =>
-              (AppTime.toMinutes(a.startTime) ?? 0) -
-              (AppTime.toMinutes(b.startTime) ?? 0),
-        );
-    final examWeekStatus = _todayExamWeekStatus(
-      data?.sections ?? const <section.Section>[],
-      data?.examOverrides ?? const <String, ExamScheduleOverride>{},
-    );
-    final nextCountdown = _nextDeadlineCountdown(
-      data?.sections ?? const <section.Section>[],
-      data?.examOverrides ?? const <String, ExamScheduleOverride>{},
-      data?.personalSchedules ?? const <CustomSchedule>[],
-      data?.advisingInfo,
-    );
-    final todayExams = _todayExamEntries(
-      data?.sections ?? const <section.Section>[],
-      data?.examOverrides ?? const <String, ExamScheduleOverride>{},
-    );
-
     final result = _DerivedDashboardData(
-      today: today,
-      todayDate: todayDate,
-      todayEntries: todayEntries,
-      examWeekStatus: examWeekStatus,
-      nextCountdown: nextCountdown,
-      todayExams: todayExams,
+      today: _scheduleOn(data, now),
+      nextCountdown: _nextDeadlineCountdown(
+        data?.sections ?? const <section.Section>[],
+        data?.examOverrides ?? const <String, ExamScheduleOverride>{},
+        data?.personalSchedules ?? const <CustomSchedule>[],
+        data?.advisingInfo,
+      ),
     );
     _derivedForData = data;
-    _derivedForToday = today;
+    _derivedForDay = day;
     _derivedCache = result;
-    if (updateWidget) {
-      unawaited(_syncTodayWidget(data, result));
-    }
+    unawaited(_syncTodayWidget(data));
     return result;
   }
 
-  Future<void> _syncTodayWidget(
-    _HomeData? data,
-    _DerivedDashboardData derived,
-  ) async {
-    if (!TodayWidget.isSupported) return;
-
-    final holidayStatus = data?.holiday ?? HolidayStatus.empty;
-    final isTodayHoliday =
-        holidayStatus.isTodayHoliday ||
-        holidayStatus.isHolidayOn(DateTime.now());
-    final isExamWeekActive = derived.examWeekStatus.isActive;
-    final todayExams = derived.todayExams;
-    final visibleEntries = isTodayHoliday
-        ? const <_ScheduleEntry>[]
-        : (todayExams.isNotEmpty || isExamWeekActive
-              ? const <_ScheduleEntry>[]
-              : derived.todayEntries);
-
-    final title = 'Today is ${derived.today}';
-    final date = derived.todayDate;
-
-    if (todayExams.isNotEmpty) {
-      await TodayWidget.sync(
-        title: title,
-        date: date,
-        items: todayExams
-            .map(
-              (exam) => TodayItem(
-                badge: formatSectionBadge(exam.sectionName),
-                title: '${exam.courseCode} ${exam.type}',
-                subtitle: formatTimeRange(exam.startTime, exam.endTime),
-                trailing: (exam.room ?? '').trim(),
-                trailingSub: exam.faculties.trim(),
-                startMinutes: AppTime.toMinutes(exam.startTime) ?? -1,
-                endMinutes: AppTime.toMinutes(exam.endTime) ?? -1,
-              ),
-            )
-            .toList(),
-      );
-      return;
-    }
-
-    if (isTodayHoliday || visibleEntries.isEmpty) {
-      final todayScheduleStatus = AppTodayScheduleStatus.resolve(
-        holidayStatus: holidayStatus,
-        overrideSubtitle: isExamWeekActive
-            ? derived.examWeekStatus.subtitle
-            : null,
-      );
-      await TodayWidget.sync(
-        title: title,
-        date: date,
-        items: [
-          TodayItem(
-            badge: todayScheduleStatus.badge,
-            title: todayScheduleStatus.title,
-            subtitle: todayScheduleStatus.subtitle,
-          ),
-        ],
-      );
-      return;
-    }
-
-    await TodayWidget.sync(
-      title: title,
-      date: date,
-      items: visibleEntries
-          .map(
-            (entry) => TodayItem(
-              badge: formatSectionBadge(entry.sectionName),
-              title: entry.courseCode,
-              subtitle: formatTimeRange(entry.startTime, entry.endTime),
-              trailing: (entry.roomNumber ?? '').trim(),
-              trailingSub: (entry.faculties ?? '').trim(),
-              startMinutes: AppTime.toMinutes(entry.startTime) ?? -1,
-              endMinutes: AppTime.toMinutes(entry.endTime) ?? -1,
-            ),
-          )
-          .toList(),
+  _DaySchedule _scheduleOn(_HomeData? data, DateTime day) {
+    final sections = data?.sections ?? const <section.Section>[];
+    final overrides =
+        data?.examOverrides ?? const <String, ExamScheduleOverride>{};
+    final holiday = data?.holiday ?? HolidayStatus.empty;
+    final examWeek = _examWeekStatusOn(sections, overrides, day);
+    final exams = _examEntriesOn(sections, overrides, day);
+    final noClasses =
+        holiday.isHolidayOn(day) || exams.isNotEmpty || examWeek.isActive;
+    return _DaySchedule(
+      day: _dateOnly(day),
+      exams: exams,
+      classes: noClasses
+          ? const <_ScheduleEntry>[]
+          : _classesOn(data?.entries ?? const <_ScheduleEntry>[], day),
+      isExamWeek: examWeek.isActive,
+      status: AppTodayScheduleStatus.resolve(
+        holidayStatus: holiday,
+        on: day,
+        overrideSubtitle: examWeek.isActive ? examWeek.subtitle : null,
+      ),
     );
   }
 
-  String _todayName() {
-    switch (DateTime.now().weekday) {
-      case DateTime.monday:
-        return 'Monday';
-      case DateTime.tuesday:
-        return 'Tuesday';
-      case DateTime.wednesday:
-        return 'Wednesday';
-      case DateTime.thursday:
-        return 'Thursday';
-      case DateTime.friday:
-        return 'Friday';
-      case DateTime.saturday:
-        return 'Saturday';
-      case DateTime.sunday:
-        return 'Sunday';
-      default:
-        return 'Monday';
+  List<_ScheduleEntry> _classesOn(List<_ScheduleEntry> entries, DateTime day) {
+    final weekday = normalizeWeekday(AppTime.weekdayName(day));
+    final date = _dateOnly(day);
+    bool startsBy(String? raw) {
+      final start = AppTime.parseDate(raw);
+      return start == null || !date.isBefore(_dateOnly(start));
     }
+
+    bool endsAfter(String? raw) {
+      final end = AppTime.parseDate(raw);
+      return end == null || !date.isAfter(_dateOnly(end));
+    }
+
+    return entries
+        .where(
+          (entry) =>
+              normalizeWeekday(entry.day) == weekday &&
+              startsBy(entry.startDate) &&
+              endsAfter(entry.endDate),
+        )
+        .toList()
+      ..sort(
+        (a, b) =>
+            (AppTime.toMinutes(a.startTime) ?? 0) -
+            (AppTime.toMinutes(b.startTime) ?? 0),
+      );
   }
+
+  Future<void> _syncTodayWidget(_HomeData? data) async {
+    if (!TodayWidget.isSupported) return;
+    final now = DateTime.now();
+    await TodayWidget.sync([
+      for (var offset = 0; offset < TodayWidget.dayCount; offset++)
+        _widgetDay(
+          _scheduleOn(data, DateTime(now.year, now.month, now.day + offset)),
+        ),
+    ]);
+  }
+
+  TodayWidgetData _widgetDay(_DaySchedule schedule) {
+    final status = schedule.status;
+    return TodayWidgetData(
+      day: TodayWidget.dayKey(schedule.day),
+      title: 'Today is ${schedule.weekday}',
+      date: schedule.date,
+      items: schedule.exams.isNotEmpty
+          ? [
+              for (final exam in schedule.exams)
+                _timedItem(
+                  section: exam.sectionName,
+                  title: '${exam.courseCode} ${exam.type}',
+                  start: exam.startTime,
+                  end: exam.endTime,
+                  room: exam.room,
+                  faculties: exam.faculties,
+                ),
+            ]
+          : schedule.classes.isEmpty
+          ? [
+              TodayItem(
+                badge: status.badge,
+                title: status.title,
+                subtitle: status.subtitle,
+              ),
+            ]
+          : [
+              for (final entry in schedule.classes)
+                _timedItem(
+                  section: entry.sectionName,
+                  title: entry.courseCode,
+                  start: entry.startTime,
+                  end: entry.endTime,
+                  room: entry.roomNumber,
+                  faculties: entry.faculties,
+                ),
+            ],
+    );
+  }
+
+  TodayItem _timedItem({
+    required String section,
+    required String title,
+    required String? start,
+    required String? end,
+    required String? room,
+    required String? faculties,
+  }) => TodayItem(
+    badge: formatSectionBadge(section),
+    title: title,
+    subtitle: formatTimeRange(start, end),
+    trailing: (room ?? '').trim(),
+    trailingSub: (faculties ?? '').trim(),
+    startMinutes: AppTime.toMinutes(start) ?? -1,
+    endMinutes: AppTime.toMinutes(end) ?? -1,
+  );
 
   _CountdownCardData? _nextExamCountdown(
     List<section.Section> sections,
@@ -930,9 +905,10 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
     return DateTime(value.year, value.month, value.day);
   }
 
-  _ExamWeekStatus _todayExamWeekStatus(
+  _ExamWeekStatus _examWeekStatusOn(
     List<section.Section> sections,
     Map<String, ExamScheduleOverride> overrides,
+    DateTime day,
   ) {
     final examService = ExamScheduleService();
     DateTime? firstMidDate;
@@ -974,7 +950,7 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
       }
     }
 
-    final today = _dateOnly(DateTime.now());
+    final today = _dateOnly(day);
     final isMidWeek =
         firstMidDate != null &&
         lastMidDate != null &&
@@ -1007,9 +983,10 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
     return const _ExamWeekStatus(isActive: false, subtitle: '');
   }
 
-  List<_TodayExamEntry> _todayExamEntries(
+  List<_TodayExamEntry> _examEntriesOn(
     List<section.Section> sections,
     Map<String, ExamScheduleOverride> overrides,
+    DateTime day,
   ) {
     final examService = ExamScheduleService();
     final now = DateTime.now();
@@ -1025,7 +1002,7 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
       );
       if (mid != null &&
           ExamVisibility.isUpcomingOrOngoingDateTime(mid, now: now) &&
-          _isSameDate(mid, now)) {
+          _isSameDate(mid, day)) {
         exams.add(
           _TodayExamEntry(
             dateTime: mid,
@@ -1045,7 +1022,7 @@ class _HomeDashboardState extends State<_HomeDashboard> with RefreshBusState {
       );
       if (fin != null &&
           ExamVisibility.isUpcomingOrOngoingDateTime(fin, now: now) &&
-          _isSameDate(fin, now)) {
+          _isSameDate(fin, day)) {
         exams.add(
           _TodayExamEntry(
             dateTime: fin,
@@ -1151,19 +1128,30 @@ Future<_HomeData> _preloadHomeDashboardData({bool forceRefresh = false}) async {
 class _DerivedDashboardData {
   const _DerivedDashboardData({
     required this.today,
-    required this.todayDate,
-    required this.todayEntries,
-    required this.examWeekStatus,
     required this.nextCountdown,
-    required this.todayExams,
   });
 
-  final String today;
-  final String todayDate;
-  final List<_ScheduleEntry> todayEntries;
-  final _ExamWeekStatus examWeekStatus;
+  final _DaySchedule today;
   final _CountdownCardData? nextCountdown;
-  final List<_TodayExamEntry> todayExams;
+}
+
+class _DaySchedule {
+  const _DaySchedule({
+    required this.day,
+    required this.exams,
+    required this.classes,
+    required this.isExamWeek,
+    required this.status,
+  });
+
+  final DateTime day;
+  final List<_TodayExamEntry> exams;
+  final List<_ScheduleEntry> classes;
+  final bool isExamWeek;
+  final AppTodayScheduleStatus status;
+
+  String get weekday => AppTime.weekdayName(day);
+  String get date => AppTime.formatLongDate(day);
 }
 
 class _ExamWeekStatus {

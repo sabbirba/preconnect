@@ -77,31 +77,15 @@ extension _HomeDashboardView on _HomeDashboardState {
                             sehri: ramadan.sehriEndsAt,
                             iftar: ramadan.iftarAt,
                           );
-                          final holidayStatus =
-                              data?.holiday ?? HolidayStatus.empty;
-                          final isTodayHoliday =
-                              holidayStatus.isTodayHoliday ||
-                              holidayStatus.isHolidayOn(DateTime.now());
                           final derived = _deriveDashboardValues(data);
-                          final today = derived.today;
-                          final todayDate = derived.todayDate;
-                          final todayEntries = derived.todayEntries;
-                          final examWeekStatus = derived.examWeekStatus;
-                          final isExamWeekActive = examWeekStatus.isActive;
-                          final todayScheduleStatus =
-                              AppTodayScheduleStatus.resolve(
-                                holidayStatus: holidayStatus,
-                                overrideSubtitle: isExamWeekActive
-                                    ? examWeekStatus.subtitle
-                                    : null,
-                              );
+                          final schedule = derived.today;
+                          final today = schedule.weekday;
+                          final todayDate = schedule.date;
+                          final isExamWeekActive = schedule.isExamWeek;
+                          final todayScheduleStatus = schedule.status;
                           final nextCountdown = derived.nextCountdown;
-                          final todayExams = derived.todayExams;
-                          final visibleEntries = isTodayHoliday
-                              ? <_ScheduleEntry>[]
-                              : (todayExams.isNotEmpty || isExamWeekActive
-                                    ? <_ScheduleEntry>[]
-                                    : todayEntries);
+                          final todayExams = schedule.exams;
+                          final visibleEntries = schedule.classes;
                           return AppRefreshScroll(
                             onRefresh: _handleRefresh,
                             padding: const EdgeInsets.fromLTRB(14, 4, 14, 28),
@@ -242,8 +226,7 @@ extension _HomeDashboardView on _HomeDashboardState {
                                       ),
                                     ),
                                   if (todayExams.isEmpty &&
-                                      (isTodayHoliday ||
-                                          visibleEntries.isEmpty))
+                                      visibleEntries.isEmpty)
                                     Padding(
                                       padding: const EdgeInsets.only(
                                         bottom: 12,
