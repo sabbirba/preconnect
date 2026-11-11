@@ -87,6 +87,16 @@ class FCMService {
 
   static bool _isLocalNotifInitialized = false;
 
+  static bool get _isApple =>
+      defaultTargetPlatform == TargetPlatform.iOS ||
+      defaultTargetPlatform == TargetPlatform.macOS;
+
+  static AndroidFlutterLocalNotificationsPlugin? get _androidNotifications =>
+      _localNotifications
+          .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin
+          >();
+
   static void _handlePayloadTap(String? payload) {
     if (payload == null || payload.isEmpty) return;
     if (payload == 'captive_wifi') {
@@ -159,12 +169,8 @@ class FCMService {
         showBadge: true,
       );
 
-      final androidPlugin = _localNotifications
-          .resolvePlatformSpecificImplementation<
-            AndroidFlutterLocalNotificationsPlugin
-          >();
-      await androidPlugin?.createNotificationChannel(channel);
-      await androidPlugin?.requestNotificationsPermission();
+      await _androidNotifications?.createNotificationChannel(channel);
+      await _androidNotifications?.requestNotificationsPermission();
     } else if (defaultTargetPlatform == TargetPlatform.iOS) {
       await _localNotifications
           .resolvePlatformSpecificImplementation<
@@ -301,72 +307,41 @@ class FCMService {
     if (!force && _cachedToken != null) {
       return _cachedToken;
     }
-    if (kIsWeb) {
-      if (isChromeRuntimeAvailable()) {
-        var token = await TokenStorage.instance.read(
-          key: PreConnectPushConfig.gcmTokenKey,
-        );
-        if (token == null || token.isEmpty) {
-          await requestWebExtensionPushTokenSync();
-          for (var attempt = 0; attempt < 5; attempt++) {
-            await Future<void>.delayed(const Duration(milliseconds: 200));
-            token = await TokenStorage.instance.read(
-              key: PreConnectPushConfig.gcmTokenKey,
-            );
-            if (token != null && token.isNotEmpty) break;
-          }
-        }
-
-        _cachedToken = token;
-        return token;
-      } else {
-        try {
-          await ensureFirebase();
-          final token = await _firebaseRegistration();
-
-          _cachedToken = token;
-          return token;
-        } catch (e) {
-          return null;
-        }
-      }
+    if (isChromeRuntimeAvailable()) {
+      return _cachedToken = await _extensionToken();
     }
     try {
       await ensureFirebase();
-      if (defaultTargetPlatform == TargetPlatform.iOS ||
-          defaultTargetPlatform == TargetPlatform.macOS) {
-        String? apnsToken;
-        int retries = 0;
-        final isAppleDebug =
-            (defaultTargetPlatform == TargetPlatform.macOS ||
-                defaultTargetPlatform == TargetPlatform.iOS) &&
-            kDebugMode;
-        final maxRetries = isAppleDebug ? 1 : 10;
-
-        while (apnsToken == null && retries < maxRetries) {
-          apnsToken = await FirebaseMessaging.instance.getAPNSToken();
-
-          if (apnsToken == null) {
-            await Future.delayed(const Duration(seconds: 1));
-            retries++;
-          }
-        }
-
-        if (apnsToken == null) {
-          _apnsAvailable = false;
-
-          return null;
-        } else {
-          _apnsAvailable = true;
-        }
-      }
-      final token = await _firebaseRegistration();
-
-      _cachedToken = token;
-      return token;
-    } catch (e) {
+      if (!kIsWeb && _isApple && !await _waitForApnsToken()) return null;
+      return _cachedToken = await _firebaseRegistration();
+    } catch (_) {
       return null;
     }
+  }
+
+  Future<String?> _extensionToken() async {
+    Future<String?> read() =>
+        TokenStorage.instance.read(key: PreConnectPushConfig.gcmTokenKey);
+    var token = await read();
+    if (token != null && token.isNotEmpty) return token;
+    await requestWebExtensionPushTokenSync();
+    for (var attempt = 0; attempt < 5; attempt++) {
+      await Future<void>.delayed(const Duration(milliseconds: 200));
+      token = await read();
+      if (token != null && token.isNotEmpty) break;
+    }
+    return token;
+  }
+
+  Future<bool> _waitForApnsToken() async {
+    final attempts = kDebugMode ? 1 : 10;
+    for (var attempt = 0; attempt < attempts; attempt++) {
+      if (await FirebaseMessaging.instance.getAPNSToken() != null) {
+        return _apnsAvailable = true;
+      }
+      await Future<void>.delayed(const Duration(seconds: 1));
+    }
+    return _apnsAvailable = false;
   }
 
   Future<void> _sendTokenToBackend(String token) async {
@@ -402,109 +377,46 @@ class FCMService {
     }
   }
 
-  Future<void> _postTopicWeb(String path, String token, String topic) async {
-    final url = '${ApiConfig.realtimeApiBase}$path';
-    await _deviceRegistry().post(url, {'token': token, 'topic': topic});
-  }
+  Future<bool> subscribeToTopic(String topic) =>
+      _setTopic(topic, subscribe: true);
 
-  Future<bool> _subscribeToTopicWeb(String token, String topic) async {
-    try {
-      await _postTopicWeb(
-        PreConnectPushConfig.subscribeTopicPath,
-        token,
-        topic,
-      );
-      unawaited(AppLog.write('FCM topic subscribed: $topic'));
-      return true;
-    } catch (error) {
-      unawaited(AppLog.write('FCM topic subscription failed ($topic): $error'));
-      return false;
-    }
-  }
+  Future<bool> unsubscribeFromTopic(String topic) =>
+      _setTopic(topic, subscribe: false);
 
-  Future<bool> _unsubscribeFromTopicWeb(String token, String topic) async {
+  Future<bool> _setTopic(
+    String topic, {
+    required bool subscribe,
+    String? cachedToken,
+  }) async {
+    if (!isSupported) return false;
+    final token = cachedToken ?? await _getToken();
     try {
-      await _postTopicWeb(
-        PreConnectPushConfig.unsubscribeTopicPath,
-        token,
-        topic,
-      );
-      unawaited(AppLog.write('FCM topic unsubscribed: $topic'));
+      if (kIsWeb) {
+        if (token == null) return false;
+        final path = subscribe
+            ? PreConnectPushConfig.subscribeTopicPath
+            : PreConnectPushConfig.unsubscribeTopicPath;
+        await _deviceRegistry().post('${ApiConfig.realtimeApiBase}$path', {
+          'token': token,
+          'topic': topic,
+        });
+        return true;
+      }
+      if (_isApple && !_apnsAvailable) return false;
+      await ensureFirebase();
+      final messaging = FirebaseMessaging.instance;
+      await (subscribe
+          ? messaging.subscribeToTopic(topic)
+          : messaging.unsubscribeFromTopic(topic));
       return true;
     } catch (error) {
       unawaited(
-        AppLog.write('FCM topic unsubscription failed ($topic): $error'),
+        AppLog.write(
+          'FCM topic ${subscribe ? 'subscribe' : 'unsubscribe'} failed ($topic): $error',
+        ),
       );
       return false;
     }
-  }
-
-  Future<bool> subscribeToTopic(String topic) async {
-    if (!isSupported) return false;
-    final token = await _getToken();
-    return _subscribeToTopicInternal(topic, cachedToken: token);
-  }
-
-  Future<bool> _subscribeToTopicInternal(
-    String topic, {
-    String? cachedToken,
-  }) async {
-    if (!isSupported) return false;
-
-    final token = cachedToken ?? await _getToken();
-
-    if (kIsWeb) {
-      if (token == null) return false;
-      return _subscribeToTopicWeb(token, topic);
-    }
-    if ((defaultTargetPlatform == TargetPlatform.iOS ||
-            defaultTargetPlatform == TargetPlatform.macOS) &&
-        !_apnsAvailable) {
-      return false;
-    }
-
-    try {
-      await ensureFirebase();
-      await FirebaseMessaging.instance.subscribeToTopic(topic);
-    } catch (error) {
-      unawaited(AppLog.write('Native FCM topic subscription failed: $error'));
-      return false;
-    }
-    return true;
-  }
-
-  Future<bool> unsubscribeFromTopic(String topic) async {
-    if (!isSupported) return false;
-    final token = await _getToken();
-    return _unsubscribeFromTopicInternal(topic, cachedToken: token);
-  }
-
-  Future<bool> _unsubscribeFromTopicInternal(
-    String topic, {
-    String? cachedToken,
-  }) async {
-    if (!isSupported) return false;
-
-    final token = cachedToken ?? await _getToken();
-
-    if (kIsWeb) {
-      if (token == null) return false;
-      return _unsubscribeFromTopicWeb(token, topic);
-    }
-    if ((defaultTargetPlatform == TargetPlatform.iOS ||
-            defaultTargetPlatform == TargetPlatform.macOS) &&
-        !_apnsAvailable) {
-      return false;
-    }
-
-    try {
-      await ensureFirebase();
-      await FirebaseMessaging.instance.unsubscribeFromTopic(topic);
-    } catch (error) {
-      unawaited(AppLog.write('Native FCM topic unsubscription failed: $error'));
-      return false;
-    }
-    return true;
   }
 
   Future<void> unregisterDevice() async {
@@ -520,49 +432,19 @@ class FCMService {
 
   Future<bool> requestNotificationPermission() async {
     if (!isSupported) return false;
-
-    if (kIsWeb && isChromeRuntimeAvailable()) return true;
-
-    if (kIsWeb) {
-      try {
-        await ensureFirebase();
-        final messaging = FirebaseMessaging.instance;
-        final settings = await messaging.requestPermission(
-          alert: true,
-          badge: true,
-          sound: true,
-        );
-        final granted =
-            settings.authorizationStatus == AuthorizationStatus.authorized;
-
-        return granted;
-      } catch (e) {
-        return false;
-      }
-    }
-
+    if (isChromeRuntimeAvailable()) return true;
     try {
       await ensureFirebase();
-      final messaging = FirebaseMessaging.instance;
-      final settings = await messaging.requestPermission(
+      final settings = await FirebaseMessaging.instance.requestPermission(
         alert: true,
         badge: true,
         sound: true,
       );
-
-      if (defaultTargetPlatform == TargetPlatform.android) {
-        await _localNotifications
-            .resolvePlatformSpecificImplementation<
-              AndroidFlutterLocalNotificationsPlugin
-            >()
-            ?.requestNotificationsPermission();
+      if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
+        await _androidNotifications?.requestNotificationsPermission();
       }
-
-      final granted =
-          settings.authorizationStatus == AuthorizationStatus.authorized;
-
-      return granted;
-    } catch (e) {
+      return settings.authorizationStatus == AuthorizationStatus.authorized;
+    } catch (_) {
       return false;
     }
   }
@@ -570,7 +452,7 @@ class FCMService {
   Future<bool> isNotificationPermissionGranted() async {
     if (!isSupported) return false;
 
-    if (kIsWeb && isChromeRuntimeAvailable()) return true;
+    if (isChromeRuntimeAvailable()) return true;
 
     try {
       await ensureFirebase();
@@ -587,7 +469,7 @@ class FCMService {
     if (!isSupported) return;
     await ensureFirebase();
     if (!kIsWeb) {
-      await _setupLocalNotifications();
+      await ensureLocalNotificationsInitialized();
     }
 
     RefreshBus.instance.stream.listen((reason) {
@@ -656,30 +538,22 @@ class FCMService {
   }
 
   Future<void> _initWeb() async {
-    final token = await _getToken();
-    if (token == null) return;
-
     try {
-      await _restoreTopics((topic) => _subscribeToTopicWeb(token, topic));
+      await _subscribeToDefaultTopics();
     } catch (error) {
       unawaited(AppLog.write('FCM topic restore failed: $error'));
     }
-
-    if (!isChromeRuntimeAvailable()) {
-      try {
-        FirebaseMessaging.onMessage.listen(
-          (message) => unawaited(_handleIncomingMessage(message)),
-        );
-      } catch (error) {
-        unawaited(AppLog.write('FCM foreground listener setup failed: $error'));
-      }
-    }
+    if (isChromeRuntimeAvailable()) return;
+    FirebaseMessaging.onMessage.listen(
+      (message) => unawaited(_handleIncomingMessage(message)),
+    );
   }
 
   Future<void> _subscribeToDefaultTopics() async {
     final token = await _getToken();
+    if (kIsWeb && token == null) return;
     await _restoreTopics(
-      (topic) => _subscribeToTopicInternal(topic, cachedToken: token),
+      (topic) => _setTopic(topic, subscribe: true, cachedToken: token),
     );
   }
 
@@ -688,18 +562,14 @@ class FCMService {
       (message) => unawaited(_handleIncomingMessage(message)),
     );
 
-    FirebaseMessaging.onMessageOpenedApp.listen(_handleMessageTap);
+    FirebaseMessaging.onMessageOpenedApp.listen(
+      (message) => _handleNotificationTapAction(message.data),
+    );
     FirebaseMessaging.instance.getInitialMessage().then((message) {
-      if (message != null) {
-        _handleMessageTap(message);
-      }
+      if (message != null) _handleNotificationTapAction(message.data);
     });
 
     await _subscribeToDefaultTopics();
-  }
-
-  Future<void> _setupLocalNotifications() async {
-    await ensureLocalNotificationsInitialized();
   }
 
   static DarwinNotificationDetails _darwinDetails([
@@ -740,7 +610,7 @@ class FCMService {
     try {
       final response = await HttpUtils.client
           .get(Uri.parse(imageUrl))
-          .timeout(const Duration(seconds: 5));
+          .timeout(const Duration(seconds: 15));
       if (response.statusCode != 200) return (null, null);
       if (defaultTargetPlatform == TargetPlatform.android) {
         return (
@@ -803,10 +673,6 @@ class FCMService {
         darwinAttachments: darwinAttachments,
       ),
     );
-  }
-
-  void _handleMessageTap(RemoteMessage message) {
-    _handleNotificationTapAction(message.data);
   }
 
   void _handleNotificationTapAction(Map<String, dynamic> data) {
