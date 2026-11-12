@@ -2,6 +2,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:gap/gap.dart';
 import 'package:preconnect/api/advising_service.dart';
 import 'package:preconnect/api/api_client.dart';
+import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/api/profile.dart';
 import 'package:preconnect/api/progress.dart';
 import 'package:preconnect/api/wishlist_engine.dart';
@@ -352,6 +353,9 @@ class _WishlistPageState extends State<WishlistPage> {
       subtitle: 'Wishlist',
       icon: Icons.star_outline_rounded,
       actions: [
+        AppOpenInBrowserButton(
+          url: ApiConfig.connectAdvisingUrl(ApiConfig.wishlistPageSegment),
+        ),
         AppRefreshButton(onPressed: _loadInitialData, isLoading: _isLoading),
       ],
       body: body,
@@ -379,7 +383,7 @@ class _WishlistPageState extends State<WishlistPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  '${countLabel(count, 'Course')} · ${countLabel(credits, 'Credit')}',
+                  '${countLabel(count, 'Course')} · ${creditLabel(credits)}',
                   style: TextStyle(
                     color: textPrimary,
                     fontSize: 14,
@@ -537,7 +541,7 @@ class _WishlistPageState extends State<WishlistPage> {
             ),
             const Gap(12),
             Text(
-              countLabel(row.credit, 'Credit'),
+              creditLabel(row.credit),
               style: TextStyle(
                 color: textPrimary,
                 fontSize: 14,

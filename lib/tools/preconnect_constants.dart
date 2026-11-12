@@ -30,6 +30,7 @@ class PreConnectBrowserActionIds {
   static const String openScanScheduleCommand = 'open_scan_schedule';
   static const String openSeatStatusCommand = 'open_seat_status';
   static const String openAdvisingHelperCommand = 'open_advising_helper';
+  static const String openWishlistCommand = 'open_wishlist';
 
   static const String menuRootId = 'preconnect.menu.root';
   static const String menuSidePanelId = 'preconnect.menu.sidePanel';
@@ -42,6 +43,7 @@ class PreConnectBrowserActionIds {
   static const String menuScanId = 'preconnect.menu.scan';
   static const String menuSeatStatusId = 'preconnect.menu.seatStatus';
   static const String menuAdvisingHelperId = 'preconnect.menu.advisingHelper';
+  static const String menuWishlistId = 'preconnect.menu.wishlist';
 
   static const String shortcutCustomSchedule = 'quick.customSchedule';
   static const String shortcutProfile = 'quick.profile';
@@ -52,6 +54,7 @@ class PreConnectBrowserActionIds {
   static const String shortcutScan = 'quick.scan';
   static const String shortcutSeatStatus = 'quick.seatStatus';
   static const String shortcutAdvisingHelper = 'quick.advisingHelper';
+  static const String shortcutWishlist = 'quick.wishlist';
   static const String shortcutNotifications = 'quick.notifications';
 }
 

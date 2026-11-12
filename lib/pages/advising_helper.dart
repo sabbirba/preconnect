@@ -536,13 +536,8 @@ class _AdvisingHelperPageState extends State<AdvisingHelperPage> {
       subtitle: 'Helper',
       icon: Icons.bolt_rounded,
       actions: [
-        IconButton(
-          tooltip: 'Open in Browser',
-          icon: const Icon(Icons.open_in_new_rounded),
-          onPressed: () => openExternalUrl(
-            context,
-            '${ApiConfig.connectOrigin}/student/advising/${_phase.pathSegment}',
-          ),
+        AppOpenInBrowserButton(
+          url: ApiConfig.connectAdvisingUrl(_phase.pathSegment),
         ),
         AppRefreshButton(onPressed: _load, isLoading: _isLoading),
       ],

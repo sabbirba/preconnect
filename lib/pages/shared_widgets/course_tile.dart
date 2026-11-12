@@ -111,7 +111,7 @@ class CourseTile extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   Text(
-                    '${formatCredit(credit)} credits',
+                    creditLabel(credit),
                     style: TextStyle(
                       color: AppPalette.textPrimary(context),
                       fontSize: 14,

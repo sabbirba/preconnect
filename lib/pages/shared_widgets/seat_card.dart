@@ -164,7 +164,7 @@ class SeatCard extends StatelessWidget {
                               ),
                             if (item.credits > 0)
                               TextSpan(
-                                text: countLabel(item.credits, 'Credit'),
+                                text: creditLabel(item.credits),
                                 style: TextStyle(
                                   color: textSecondary,
                                   fontWeight: FontWeight.w500,

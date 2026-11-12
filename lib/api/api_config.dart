@@ -142,6 +142,11 @@ class ApiConfig {
   static String advisingConfirmPath(String portfolioId) =>
       '/adv/v1/student-courses/$portfolioId/confirm';
 
+  static String connectAdvisingUrl(String pageSegment) =>
+      '$connectOrigin/student/advising/$pageSegment';
+
+  static const String wishlistPageSegment = 'wish-list';
+
   static String wishlistPath(String studentId) =>
       '/adv/v1/advising/$studentId/active-wishlist-sessions';
 

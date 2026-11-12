@@ -300,3 +300,18 @@ Widget buildScrollToTopButton({required ScrollController controller}) {
     ),
   );
 }
+
+class AppOpenInBrowserButton extends StatelessWidget {
+  const AppOpenInBrowserButton({super.key, required this.url});
+
+  final String url;
+
+  @override
+  Widget build(BuildContext context) {
+    return IconButton(
+      tooltip: 'Open in Browser',
+      icon: const Icon(Icons.open_in_new_rounded),
+      onPressed: () => openExternalUrl(context, url),
+    );
+  }
+}

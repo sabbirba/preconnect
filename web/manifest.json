@@ -82,6 +82,9 @@
         "mac": "MacCtrl+Shift+0"
       },
       "description": "Open Advising Helper"
+    },
+    "open_wishlist": {
+      "description": "Open Wishlist"
     }
   },
   "host_permissions": [

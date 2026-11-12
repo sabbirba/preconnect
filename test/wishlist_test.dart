@@ -97,5 +97,8 @@ void main() {
     );
     expect(countLabel(1, 'Credit'), '1 Credit');
     expect(countLabel(15, 'Credit'), '15 Credits');
+    expect(creditLabel(3), '3 Credits');
+    expect(creditLabel(1), '1 Credit');
+    expect(creditLabel(1.5), '1.5 Credits');
   });
 }

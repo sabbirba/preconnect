@@ -210,3 +210,6 @@ String titleCaseText(String value) {
 
 String countLabel(int count, String singular, [String? plural]) =>
     '$count ${count == 1 ? singular : plural ?? '${singular}s'}';
+
+String creditLabel(num credit) =>
+    '${formatCredit(credit.toDouble())} ${credit == 1 ? 'Credit' : 'Credits'}';

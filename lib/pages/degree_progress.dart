@@ -597,7 +597,7 @@ class _DegreeProgressPageState extends State<DegreeProgressPage>
                                     crossAxisAlignment: CrossAxisAlignment.end,
                                     children: [
                                       Text(
-                                        '${formatCredit(earnedCredit)} credits',
+                                        creditLabel(earnedCredit),
                                         style: TextStyle(
                                           color: AppPalette.textPrimary(
                                             context,
@@ -729,7 +729,7 @@ class _DegreeProgressPageState extends State<DegreeProgressPage>
                                 crossAxisAlignment: CrossAxisAlignment.end,
                                 children: [
                                   Text(
-                                    '${formatCredit(item.credit)} credits',
+                                    creditLabel(item.credit),
                                     style: TextStyle(
                                       color: AppPalette.textPrimary(context),
                                       fontSize: 14,
@@ -827,7 +827,7 @@ class _DegreeProgressPageState extends State<DegreeProgressPage>
                                 crossAxisAlignment: CrossAxisAlignment.end,
                                 children: [
                                   Text(
-                                    '${current.courseCredit} credits',
+                                    creditLabel(current.courseCredit),
                                     style: TextStyle(
                                       color: AppPalette.textPrimary(context),
                                       fontSize: 14,
@@ -929,7 +929,7 @@ class _DegreeProgressPageState extends State<DegreeProgressPage>
                                 crossAxisAlignment: CrossAxisAlignment.end,
                                 children: [
                                   Text(
-                                    '${formatCredit(course.credit)} credits',
+                                    creditLabel(course.credit),
                                     style: TextStyle(
                                       color: AppPalette.textPrimary(context),
                                       fontSize: 14,

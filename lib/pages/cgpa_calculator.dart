@@ -678,7 +678,7 @@ class _CgpaCalculatorPageState extends State<CgpaCalculatorPage> {
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   Text(
-                    '${draft.creditValue.isEmpty ? "3" : draft.creditValue} credits',
+                    creditLabel(double.tryParse(draft.creditValue) ?? 3),
                     style: TextStyle(
                       color: AppPalette.textPrimary(context),
                       fontSize: 14,

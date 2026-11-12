@@ -819,6 +819,9 @@ class _MyAppState extends State<MyApp>
       case 'seatStatus':
       case 'seat_status':
         return HomeTab.seatStatus;
+      case PreConnectBrowserActionIds.shortcutWishlist:
+      case 'wishlist':
+        return HomeTab.wishlist;
       case PreConnectBrowserActionIds.shortcutNotifications:
       case 'notifications':
         return HomeTab.notifications;
