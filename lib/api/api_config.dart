@@ -154,6 +154,12 @@ class ApiConfig {
   static String wishlistOfferedCoursesPath(String portfolioId) =>
       '/adv/v1/wishlists/$portfolioId/offered-courses';
 
+  static String wishlistStatusPath(String portfolioId) =>
+      '/adv/v1/wishlists/$portfolioId/status';
+
+  static String wishlistConfirmPath(String portfolioId) =>
+      '/adv/v1/wishlists/$portfolioId/confirm';
+
   static const String wishlistMutationPath = '/adv/v1/wishlists';
 
   static String schedulePath(String portfolioId, {int? semesterSessionId}) {

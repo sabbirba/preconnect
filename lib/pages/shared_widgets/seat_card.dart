@@ -184,7 +184,7 @@ class SeatCard extends StatelessWidget {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       if (onPlanTap != null)
-                        _SeatIconButton(
+                        SeatIconButton(
                           active: planned,
                           activeColor: AppPalette.accent,
                           icon: planned
@@ -196,7 +196,7 @@ class SeatCard extends StatelessWidget {
                           onTap: onPlanTap!,
                         ),
                       if (onPinTap != null)
-                        _SeatIconButton(
+                        SeatIconButton(
                           active: pinned,
                           icon: pinned
                               ? Icons.notifications_rounded
@@ -381,8 +381,9 @@ class SeatCard extends StatelessWidget {
   }
 }
 
-class _SeatIconButton extends StatelessWidget {
-  const _SeatIconButton({
+class SeatIconButton extends StatelessWidget {
+  const SeatIconButton({
+    super.key,
     required this.active,
     this.activeColor = AppPalette.primary,
     required this.icon,
@@ -758,4 +759,46 @@ class _SeatUpdatedTextState extends State<SeatUpdatedText> {
       ),
     );
   }
+}
+
+void sortSeatCardsByUpdate(List<SeatCardData> cards, {required bool latest}) {
+  final missing = latest ? 0 : 1 << 62;
+  int stamp(SeatCardData card) =>
+      card.lastUpdatedAt?.millisecondsSinceEpoch ?? missing;
+  final order = {for (var i = 0; i < cards.length; i++) cards[i].sectionId: i};
+  cards.sort((a, b) {
+    final byStamp = latest
+        ? stamp(b).compareTo(stamp(a))
+        : stamp(a).compareTo(stamp(b));
+    if (byStamp != 0) return byStamp;
+    return order[a.sectionId]!.compareTo(order[b.sectionId]!);
+  });
+}
+
+List<SeatCardData> seatCardsFromDetails(
+  Iterable<SeatStatusDetailsResponse> details,
+) => [for (final detail in details) SeatCardData.fromDetails(detail)];
+
+int seatSectionOrder(String sectionName) {
+  final number = RegExp(r'\d+').firstMatch(sectionName)?.group(0);
+  if (number == null) return 9999;
+  return int.tryParse(number) ?? 9999;
+}
+
+void sortSeatCardsByCourse(
+  List<SeatCardData> cards, {
+  required bool Function(int sectionId) isPinned,
+}) {
+  cards.sort((a, b) {
+    final ap = isPinned(a.sectionId) ? 0 : 1;
+    final bp = isPinned(b.sectionId) ? 0 : 1;
+    if (ap != bp) return ap.compareTo(bp);
+    final codeCmp = a.courseCode.compareTo(b.courseCode);
+    if (codeCmp != 0) return codeCmp;
+    final sectionCmp = seatSectionOrder(
+      a.sectionName,
+    ).compareTo(seatSectionOrder(b.sectionName));
+    if (sectionCmp != 0) return sectionCmp;
+    return a.sectionName.compareTo(b.sectionName);
+  });
 }

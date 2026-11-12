@@ -1357,3 +1357,70 @@ Widget _scaledLine(String text, TextStyle style) {
     ),
   );
 }
+
+class AppActivityLog extends StatefulWidget {
+  const AppActivityLog({super.key, required this.logs, this.step = 3});
+
+  final List<String> logs;
+  final int step;
+
+  @override
+  State<AppActivityLog> createState() => _AppActivityLogState();
+}
+
+class _AppActivityLogState extends State<AppActivityLog> {
+  late int _visibleCount = widget.step;
+
+  @override
+  Widget build(BuildContext context) {
+    final logs = widget.logs;
+    if (logs.isEmpty) return const SizedBox.shrink();
+    final textSecondary = AppPalette.textSecondary(context);
+    final visible = logs.take(_visibleCount).toList();
+    final expanded = _visibleCount > widget.step;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Activity Log',
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w700,
+            color: textSecondary,
+          ),
+        ),
+        const Gap(6),
+        SizedBox(
+          width: double.infinity,
+          child: AppCard(
+            backgroundColor: AppPalette.card(context),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                for (final log in visible)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 4),
+                    child: Text(
+                      log,
+                      style: TextStyle(fontSize: 12, color: textSecondary),
+                      maxLines: expanded ? null : 2,
+                      overflow: expanded
+                          ? TextOverflow.visible
+                          : TextOverflow.ellipsis,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
+        buildStepButtons(
+          shown: visible.length,
+          total: logs.length,
+          step: widget.step,
+          padding: const EdgeInsets.only(top: 8),
+          onChanged: (count) => setState(() => _visibleCount = count),
+        ),
+      ],
+    );
+  }
+}

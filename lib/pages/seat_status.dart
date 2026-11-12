@@ -7,15 +7,12 @@ import 'package:preconnect/api/planner_state.dart';
 import 'package:preconnect/api/seat_status.dart';
 import 'package:preconnect/api/seat_stream.dart';
 import 'package:preconnect/pages/home_tab.dart';
-import 'package:preconnect/model/seat_timetable.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/ramadan.dart';
 import 'package:preconnect/tools/refresh_bus.dart';
-import 'package:preconnect/pages/shared_widgets/faculty_sheet.dart';
 import 'package:preconnect/pages/shared_widgets/seat_filters.dart';
-import 'package:preconnect/pages/shared_widgets/routine_sheet.dart';
+import 'package:preconnect/pages/shared_widgets/planner_actions.dart';
 import 'package:preconnect/pages/shared_widgets/seat_card.dart';
-import 'package:preconnect/tools/routine_clash.dart';
 import 'package:preconnect/tools/app_log.dart';
 export 'package:preconnect/pages/shared_widgets/seat_card.dart'
     show
@@ -50,18 +47,10 @@ class _SeatStatusPageState extends State<SeatStatusPage>
   String _selectedArchive = '';
   int _requestGeneration = 0;
   bool _isInitialLoading = true;
-  String _searchQuery = '';
   bool _isDetailsRefreshing = false;
-  bool _availableOnly = false;
-  bool _labOnly = false;
-  String _selectedDayFilter = '';
-  String _selectedModeFilter = '';
-  SeatTimetable _selectedTimeFilter = SeatTimetable(startTime: '', endTime: '');
+  SeatFilters _filters = SeatFilters.cleared;
   bool _isRamadan = false;
-  bool _hideConflicts = false;
-  String _updateSort = '';
-  Object? _conflictKey;
-  Set<int> _conflictCache = const <int>{};
+  final PlannerConflictCache _conflicts = PlannerConflictCache();
 
   @override
   void initState() {
@@ -78,14 +67,13 @@ class _SeatStatusPageState extends State<SeatStatusPage>
       _searchDebounce = Timer(const Duration(milliseconds: 150), () {
         if (!mounted) return;
         final next = _searchController.text.trim().toLowerCase();
-        _updateSearchQuery(next);
+        _setFilters(_filters.copyWith(query: next));
       });
     });
     unawaited(_loadArchiveSemesters());
     SeatPins.instance.addListener(_onPinsChanged);
     PlannerController.instance.addListener(_onPlannerChanged);
-    unawaited(_loadPlanner());
-    unawaited(_loadPins());
+    loadPlannerAndPins(context);
     unawaited(_refreshDetailsFromApi());
     WidgetsBinding.instance.addObserver(this);
     HomeTabRegistry.activeTab.addListener(_onActiveTabChanged);
@@ -227,82 +215,22 @@ class _SeatStatusPageState extends State<SeatStatusPage>
     setState(update);
   }
 
-  Future<void> _loadPins() async {
-    try {
-      await SeatPins.instance.load();
-    } catch (_) {
-      if (!mounted) return;
-      showAppSnackBar(context, 'Could not load seat alerts.');
-    }
-  }
-
   void _onPinsChanged() {
     if (!mounted || _cards.isEmpty) return;
     final refreshed = List<SeatCardData>.from(_cards);
-    _sortCardsByCourseAndSection(refreshed);
+    sortSeatCardsByCourse(refreshed, isPinned: _isPinnedSection);
     _applyCardsSnapshot(refreshed, isInitialLoading: false);
-  }
-
-  Future<void> _loadPlanner() async {
-    try {
-      await PlannerController.instance.load();
-    } catch (_) {
-      if (!mounted) return;
-      showAppSnackBar(context, 'Could not load your planner.');
-    }
   }
 
   void _onPlannerChanged() {
     if (mounted) setState(() {});
   }
 
-  Future<void> _togglePlan(SeatCardData card) async {
-    final planner = PlannerController.instance;
-    final planned = planner.isPlanned(card.courseCode, card.sectionId);
-    final label = '${card.courseCode} Section ${card.sectionName}';
-    try {
-      if (planned) {
-        await planner.removeFromWishlist(card.courseCode);
-      } else {
-        await planner.plan(card.courseCode, card.sectionId);
-      }
-    } catch (_) {
-      if (!mounted) return;
-      showAppSnackBar(context, 'Could not save. Try again.');
-      return;
-    }
-    if (!mounted) return;
-    showAppSnackBar(
-      context,
-      planned ? '$label removed from planner' : '$label added to planner',
-    );
-  }
-
-  Future<void> _togglePin(SeatCardData card) async {
-    final result = await SeatPins.instance.toggle(
-      card.sectionId,
-      courseCode: card.courseCode,
-      sectionName: card.sectionName,
-    );
-    if (!mounted) return;
-    showAppSnackBar(
-      context,
-      seatPinMessage(
-        result,
-        courseCode: card.courseCode,
-        sectionName: card.sectionName,
-      ),
-    );
-  }
-
   List<SeatCardData> _buildCardsFromDetailsMap(
     Map<int, SeatStatusDetailsResponse> detailsMap,
   ) {
-    final cards = <SeatCardData>[];
-    for (final entry in detailsMap.entries) {
-      cards.add(SeatCardData.fromDetails(entry.value));
-    }
-    _sortCardsByCourseAndSection(cards);
+    final cards = seatCardsFromDetails(detailsMap.values);
+    sortSeatCardsByCourse(cards, isPinned: _isPinnedSection);
     return cards;
   }
 

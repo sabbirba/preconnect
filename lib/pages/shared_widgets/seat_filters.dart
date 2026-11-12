@@ -1,6 +1,7 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:preconnect/api/seat_status.dart';
 import 'package:preconnect/model/seat_timetable.dart';
+import 'package:preconnect/pages/shared_widgets/seat_card.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/time_utils.dart';
 
@@ -62,6 +63,124 @@ bool matchesSeatFilters({
   );
 }
 
+class SeatFilters {
+  const SeatFilters({
+    this.query = '',
+    this.availableOnly = false,
+    this.mode = '',
+    this.day = '',
+    this.time = anyTime,
+    this.hideConflicts = false,
+    this.updateSort = '',
+  });
+
+  static const SeatTimetable anyTime = SeatTimetable(
+    startTime: '',
+    endTime: '',
+  );
+  static const SeatFilters cleared = SeatFilters();
+
+  final String query;
+  final bool availableOnly;
+  final String mode;
+  final String day;
+  final SeatTimetable time;
+  final bool hideConflicts;
+  final String updateSort;
+
+  bool get isActive =>
+      query.isNotEmpty ||
+      availableOnly ||
+      hideConflicts ||
+      updateSort.isNotEmpty ||
+      day.isNotEmpty ||
+      mode.isNotEmpty ||
+      time.isNotEmpty;
+
+  bool sameMatching(SeatFilters other) =>
+      query == other.query &&
+      availableOnly == other.availableOnly &&
+      mode == other.mode &&
+      day == other.day &&
+      time == other.time;
+
+  SeatFilters copyWith({
+    String? query,
+    bool? availableOnly,
+    String? mode,
+    String? day,
+    SeatTimetable? time,
+    bool? hideConflicts,
+    String? updateSort,
+  }) {
+    return SeatFilters(
+      query: query ?? this.query,
+      availableOnly: availableOnly ?? this.availableOnly,
+      mode: mode ?? this.mode,
+      day: day ?? this.day,
+      time: time ?? this.time,
+      hideConflicts: hideConflicts ?? this.hideConflicts,
+      updateSort: updateSort ?? this.updateSort,
+    );
+  }
+
+  bool matches(SeatCardData card) {
+    final q = query.trim().toLowerCase();
+    if (q.isNotEmpty && !card.searchToken.contains(q)) return false;
+    return matchesSeatFilters(
+      availableOnly: availableOnly,
+      remaining: card.remaining,
+      mode: mode,
+      hasLabSection: card.labSectionId != null,
+      theorySchedules: card.classSchedule,
+      labSchedules: card.labSchedule,
+      day: day,
+      time: time,
+    );
+  }
+
+  List<SeatCardData> apply(
+    Iterable<SeatCardData> cards, {
+    Set<int> excludedIds = const <int>{},
+    Set<int> conflictIds = const <int>{},
+    bool Function(int sectionId)? pinnedFirst,
+  }) {
+    final result = [
+      for (final card in cards)
+        if (!excludedIds.contains(card.sectionId) &&
+            !(hideConflicts && conflictIds.contains(card.sectionId)) &&
+            matches(card))
+          card,
+    ];
+    if (pinnedFirst != null) {
+      sortSeatCardsByCourse(result, isPinned: pinnedFirst);
+    }
+    if (updateSort.isNotEmpty) {
+      sortSeatCardsByUpdate(result, latest: updateSort == 'Latest');
+    }
+    return result;
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is SeatFilters &&
+          sameMatching(other) &&
+          hideConflicts == other.hideConflicts &&
+          updateSort == other.updateSort;
+
+  @override
+  int get hashCode => Object.hash(
+    query,
+    availableOnly,
+    mode,
+    day,
+    time,
+    hideConflicts,
+    updateSort,
+  );
+}
+
 class SeatFilterBar extends StatelessWidget {
   const SeatFilterBar({
     super.key,
@@ -80,6 +199,36 @@ class SeatFilterBar extends StatelessWidget {
     this.onUpdateSortChanged,
     this.onReset,
   });
+
+  factory SeatFilterBar.bound({
+    Key? key,
+    required SeatFilters filters,
+    required Iterable<SeatCardData> cards,
+    required ValueChanged<SeatFilters> onChanged,
+    required VoidCallback onReset,
+    bool plannerFilters = true,
+  }) {
+    return SeatFilterBar(
+      key: key,
+      availableOnly: filters.availableOnly,
+      mode: filters.mode,
+      day: filters.day,
+      time: filters.time,
+      times: sortedSeatFilterTimes(cards.expand((card) => card.timetables)),
+      onAvailableChanged: (value) =>
+          onChanged(filters.copyWith(availableOnly: value)),
+      onModeChanged: (value) => onChanged(filters.copyWith(mode: value)),
+      onDayChanged: (value) => onChanged(filters.copyWith(day: value)),
+      onTimeChanged: (value) => onChanged(filters.copyWith(time: value)),
+      hideConflicts: plannerFilters ? filters.hideConflicts : null,
+      onHideConflictsChanged: (value) =>
+          onChanged(filters.copyWith(hideConflicts: value)),
+      updateSort: plannerFilters ? filters.updateSort : null,
+      onUpdateSortChanged: (value) =>
+          onChanged(filters.copyWith(updateSort: value)),
+      onReset: filters.isActive ? onReset : null,
+    );
+  }
 
   final bool availableOnly;
   final String mode;

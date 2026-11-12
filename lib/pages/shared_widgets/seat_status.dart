@@ -79,155 +79,31 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
                 return _seatCard(listCards[index - 1]);
               },
             ),
-          if (_selectedArchive.isEmpty) _routineButton(context),
+          if (_selectedArchive.isEmpty)
+            PlannerScheduleButton(
+              picked: PlannerController.instance.pickedSections,
+              clashingIds: _conflictIds(),
+              isRamadan: _isRamadan,
+            ),
         ],
       ),
     );
   }
 
-  Widget _routineButton(BuildContext context) {
-    final picked = PlannerController.instance.pickedSections;
-    if (picked.isEmpty) return const SizedBox.shrink();
-    final textPrimary = AppPalette.textPrimary(context);
-    return Positioned(
-      left: 0,
-      right: 0,
-      bottom: 20,
-      child: Center(
-        child: Material(
-          color: AppPalette.card(context),
-          elevation: 6,
-          shape: StadiumBorder(
-            side: BorderSide(color: AppPalette.accent.withValues(alpha: 0.6)),
-          ),
-          child: InkWell(
-            customBorder: const StadiumBorder(),
-            onTap: () => showRoutineSheet(
-              context,
-              sections: picked,
-              clashingIds: _plannedClashIds(picked),
-              isRamadan: _isRamadan,
-            ),
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 10, 10, 10),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    Icons.calendar_month_rounded,
-                    size: 18,
-                    color: AppPalette.accent,
-                  ),
-                  const Gap(8),
-                  Text(
-                    'Schedule',
-                    style: TextStyle(
-                      color: textPrimary,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  const Gap(8),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 2,
-                    ),
-                    decoration: BoxDecoration(
-                      color: AppPalette.accent.withValues(alpha: 0.18),
-                      borderRadius: BorderRadius.circular(999),
-                    ),
-                    child: Text(
-                      '${picked.length}',
-                      style: TextStyle(
-                        color: textPrimary,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Set<int> _plannedClashIds(List<SeatStatusDetailsResponse> picked) {
-    final conflicts = _conflictIds();
-    return {
-      for (final section in picked)
-        if (conflicts.contains(section.sectionId)) section.sectionId,
-    };
-  }
-
   List<SeatCardData> _unplannedCards() {
     if (_selectedArchive.isNotEmpty) return _visibleCards;
-    final plannedIds = {
-      for (final section in PlannerController.instance.pickedSections)
-        section.sectionId,
-    };
-    final conflicts = _hideConflicts ? _conflictIds() : const <int>{};
-    final cards = [
-      for (final card in _visibleCards)
-        if (!plannedIds.contains(card.sectionId) &&
-            !conflicts.contains(card.sectionId))
-          card,
-    ];
-    if (_updateSort.isNotEmpty) {
-      _sortByUpdate(cards, latest: _updateSort == 'Latest');
-    }
-    return cards;
-  }
-
-  void _sortByUpdate(List<SeatCardData> cards, {required bool latest}) {
-    final missing = latest ? 0 : 1 << 62;
-    int stamp(SeatCardData card) =>
-        card.lastUpdatedAt?.millisecondsSinceEpoch ?? missing;
-    final order = {
-      for (var i = 0; i < cards.length; i++) cards[i].sectionId: i,
-    };
-    cards.sort((a, b) {
-      final byStamp = latest
-          ? stamp(b).compareTo(stamp(a))
-          : stamp(a).compareTo(stamp(b));
-      if (byStamp != 0) return byStamp;
-      return order[a.sectionId]!.compareTo(order[b.sectionId]!);
-    });
-  }
-
-  Set<int> _conflictIds() {
-    final picked = PlannerController.instance.pickedSections;
-    if (picked.isEmpty || _cards.isEmpty) return const <int>{};
-    final key = (
-      Object.hashAll(_cards.map((card) => card.sectionId)),
-      Object.hashAll(picked.map((section) => section.sectionId)),
+    return _filters.apply(
+      _visibleCards,
+      excludedIds: {
+        for (final section in PlannerController.instance.pickedSections)
+          section.sectionId,
+      },
+      conflictIds: _conflictIds(),
     );
-    if (key == _conflictKey) return _conflictCache;
-    final plannedBlocks = [
-      for (final section in picked)
-        (planCourseKey(section.courseCode), sectionBlocks(section)),
-    ];
-    final conflicts = <int>{};
-    for (final card in _cards) {
-      final course = planCourseKey(card.courseCode);
-      final blocks = routineBlocks([
-        ...card.classSchedule,
-        ...card.labSchedule,
-      ]);
-      for (final (plannedCourse, planned) in plannedBlocks) {
-        if (plannedCourse != course && blocksClash(blocks, planned)) {
-          conflicts.add(card.sectionId);
-          break;
-        }
-      }
-    }
-    _conflictKey = key;
-    _conflictCache = conflicts;
-    return conflicts;
   }
+
+  Set<int> _conflictIds() =>
+      _conflicts.ids(_cards, PlannerController.instance.pickedSections);
 
   List<Widget> _plannedSeatCards() {
     final picked = PlannerController.instance.pickedSections;
@@ -242,25 +118,13 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
   }
 
   Widget _seatCard(SeatCardData item) {
-    final current = _selectedArchive.isEmpty;
-    final planned =
-        current &&
-        PlannerController.instance.isPlanned(item.courseCode, item.sectionId);
-    final conflict = current && _conflictIds().contains(item.sectionId);
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: SeatCard(
-        item: item,
-        highlighted: planned || conflict,
-        highlightColor: conflict ? AppPalette.warning : AppPalette.accent,
-        onPinTap: current ? () => _togglePin(item) : null,
-        pinned: _isPinnedSection(item.sectionId),
-        planned: planned,
-        onPlanTap: current ? () => _togglePlan(item) : null,
-        onTap: () => _showFacultyScheduleSheet(
-          item.facultyInitial,
-          item.faculty?.staffName,
-        ),
+    return PlannerSeatCard(
+      item: item,
+      conflictIds: _conflictIds(),
+      active: _selectedArchive.isEmpty,
+      onTap: () => _showFacultyScheduleSheet(
+        item.facultyInitial,
+        item.faculty?.staffName,
       ),
     );
   }
@@ -282,164 +146,48 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
   Widget _buildSearchField(BuildContext context) {
     return AppSearchField(
       controller: _searchController,
-      query: _searchQuery,
+      query: _filters.query,
       keySuffix: 'seat',
     );
   }
 
   Widget _buildFilterActions(BuildContext context) {
-    return SeatFilterBar(
-      availableOnly: _availableOnly,
-      mode: _selectedModeFilter,
-      day: _selectedDayFilter,
-      time: _selectedTimeFilter,
-      times: sortedSeatFilterTimes(_cards.expand((card) => card.timetables)),
-      onAvailableChanged: _setAvailableFilter,
-      onModeChanged: _setModeFilter,
-      onDayChanged: _setDayFilter,
-      onTimeChanged: _setTimeFilter,
-      hideConflicts: _selectedArchive.isEmpty ? _hideConflicts : null,
-      onHideConflictsChanged: (next) =>
-          _updateSeatStatusState(() => _hideConflicts = next),
-      updateSort: _selectedArchive.isEmpty ? _updateSort : null,
-      onUpdateSortChanged: (next) =>
-          _updateSeatStatusState(() => _updateSort = next),
-      onReset: _canResetFilters ? _resetFilters : null,
+    return SeatFilterBar.bound(
+      filters: _filters,
+      cards: _cards,
+      onChanged: _setFilters,
+      onReset: _resetFilters,
+      plannerFilters: _selectedArchive.isEmpty,
     );
   }
-
-  bool get _canResetFilters =>
-      _searchQuery.isNotEmpty ||
-      _availableOnly ||
-      _hideConflicts ||
-      _updateSort.isNotEmpty ||
-      _selectedDayFilter.isNotEmpty ||
-      _selectedModeFilter.isNotEmpty ||
-      _selectedTimeFilter.isNotEmpty;
 
   void _resetFilters() {
     _searchController.clear();
+    _setFilters(SeatFilters.cleared);
+  }
+
+  void _setFilters(SeatFilters next) {
+    if (next == _filters) return;
+    final matchingChanged = !next.sameMatching(_filters);
+    final nextVisible = matchingChanged
+        ? _cards.where(next.matches).toList()
+        : null;
     _updateSeatStatusState(() {
-      _hideConflicts = false;
-      _updateSort = '';
+      _filters = next;
+      if (nextVisible != null) {
+        _visibleCards
+          ..clear()
+          ..addAll(nextVisible);
+      }
     });
-    _refreshVisibleCards(
-      availableOnly: false,
-      dayFilter: '',
-      modeFilter: '',
-      timeFilter: const SeatTimetable(startTime: '', endTime: ''),
-      query: '',
-    );
-  }
-
-  void _setAvailableFilter(bool next) {
-    if (next == _availableOnly) return;
-    _refreshVisibleCards(availableOnly: next);
-  }
-
-  void _setModeFilter(String next) {
-    if (next == _selectedModeFilter.toString()) return;
-    _refreshVisibleCards(modeFilter: next);
-  }
-
-  void _setDayFilter(String next) {
-    if (next == _selectedDayFilter) return;
-    _refreshVisibleCards(dayFilter: next);
-  }
-
-  void _setTimeFilter(SeatTimetable next) {
-    if (next == _selectedTimeFilter) return;
-    _refreshVisibleCards(timeFilter: next);
-  }
-
-  void _refreshVisibleCards({
-    bool? availableOnly,
-    bool? labOnly,
-    String? dayFilter,
-    String? modeFilter,
-    SeatTimetable? timeFilter,
-    String? query,
-  }) {
-    final resolvedAvailableOnly = availableOnly ?? _availableOnly;
-    final resolvedLabOnly = labOnly ?? _labOnly;
-    final resolvedDayFilter = dayFilter ?? _selectedDayFilter;
-    final resolvedModeFilter = modeFilter ?? _selectedModeFilter;
-    final resolvedTimeFilter = timeFilter ?? _selectedTimeFilter;
-    final resolvedQuery = query ?? _searchQuery;
-    final nextVisible = _filterCards(
-      _cards,
-      resolvedQuery,
-      availableOnly: resolvedAvailableOnly,
-      dayFilter: resolvedDayFilter,
-      modeFilter: resolvedModeFilter,
-      timeFilter: resolvedTimeFilter,
-    );
-    final filtersChanged =
-        resolvedAvailableOnly != _availableOnly ||
-        resolvedLabOnly != _labOnly ||
-        resolvedDayFilter != _selectedDayFilter ||
-        resolvedModeFilter != _selectedModeFilter ||
-        resolvedTimeFilter != _selectedTimeFilter ||
-        resolvedQuery != _searchQuery;
-    if (!filtersChanged &&
-        !_areCardListsDifferent(_visibleCards, nextVisible)) {
-      return;
-    }
-    _updateSeatStatusState(() {
-      _availableOnly = resolvedAvailableOnly;
-      _labOnly = resolvedLabOnly;
-      _selectedDayFilter = resolvedDayFilter;
-      _selectedTimeFilter = resolvedTimeFilter;
-      _selectedModeFilter = resolvedModeFilter;
-      _searchQuery = resolvedQuery;
-      _visibleCards
-        ..clear()
-        ..addAll(nextVisible);
-    });
-    _refreshIfActive();
-  }
-
-  List<SeatCardData> _filterCards(
-    List<SeatCardData> source,
-    String query, {
-    required bool availableOnly,
-    required String dayFilter,
-    required SeatTimetable timeFilter,
-    required String modeFilter,
-  }) {
-    final q = query.trim().toLowerCase();
-    return source.where((card) {
-      if (q.isNotEmpty && !card.searchToken.contains(q)) return false;
-      return matchesSeatFilters(
-        availableOnly: availableOnly,
-        remaining: card.remaining,
-        mode: modeFilter,
-        hasLabSection: card.labSectionId != null,
-        theorySchedules: card.classSchedule,
-        labSchedules: card.labSchedule,
-        day: dayFilter,
-        time: timeFilter,
-      );
-    }).toList();
-  }
-
-  void _updateSearchQuery(String nextQuery) {
-    if (nextQuery == _searchQuery) return;
-    _refreshVisibleCards(query: nextQuery);
+    if (matchingChanged) _refreshIfActive();
   }
 
   void _applyCardsSnapshot(
     List<SeatCardData> nextCards, {
     bool? isInitialLoading,
   }) {
-    final nextVisible = _filterCards(
-      nextCards,
-      _searchQuery,
-      availableOnly: _availableOnly,
-      dayFilter: _selectedDayFilter,
-      modeFilter: _selectedModeFilter,
-      timeFilter: _selectedTimeFilter,
-    );
+    final nextVisible = nextCards.where(_filters.matches).toList();
     if (!mounted) return;
     final cardsChanged = _areCardListsDifferent(_cards, nextCards);
     final visibleChanged = _areCardListsDifferent(_visibleCards, nextVisible);
@@ -460,21 +208,6 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
       }
     });
     _refreshIfActive();
-  }
-
-  void _sortCardsByCourseAndSection(List<SeatCardData> cards) {
-    cards.sort((a, b) {
-      final ap = _isPinnedSection(a.sectionId) ? 0 : 1;
-      final bp = _isPinnedSection(b.sectionId) ? 0 : 1;
-      if (ap != bp) return ap.compareTo(bp);
-      final codeCmp = a.courseCode.compareTo(b.courseCode);
-      if (codeCmp != 0) return codeCmp;
-      final sectionCmp = _sectionOrder(
-        a.sectionName,
-      ).compareTo(_sectionOrder(b.sectionName));
-      if (sectionCmp != 0) return sectionCmp;
-      return a.sectionName.compareTo(b.sectionName);
-    });
   }
 
   bool _areCardListsDifferent(List<SeatCardData> a, List<SeatCardData> b) {
@@ -532,12 +265,6 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
     return true;
   }
 
-  int _sectionOrder(String sectionName) {
-    final number = RegExp(r'\d+').firstMatch(sectionName)?.group(0);
-    if (number == null) return 9999;
-    return int.tryParse(number) ?? 9999;
-  }
-
   void _refreshIfActive() {
     _syncSeatStream();
     final shouldRefresh =
@@ -586,48 +313,11 @@ extension _SeatStatusPageStateMethods on _SeatStatusPageState {
   }
 
   void _showFacultyScheduleSheet(String facultyInitial, String? staffName) {
-    if (facultyInitial.trim().isEmpty) return;
-
-    final items = <FacultyScheduleItem>[];
-    for (final card in _cards) {
-      if (card.facultyInitial.trim().toUpperCase() ==
-          facultyInitial.trim().toUpperCase()) {
-        for (final sc in card.classSchedule) {
-          items.add(
-            FacultyScheduleItem(
-              courseCode: card.courseCode,
-              sectionName: card.sectionName,
-              day: sc.day,
-              startTime: sc.startTime,
-              endTime: sc.endTime,
-              roomNumber: card.room,
-              consumedSeat: card.consumed,
-              courseType: card.courseType,
-            ),
-          );
-        }
-        for (final sc in card.labSchedule) {
-          items.add(
-            FacultyScheduleItem(
-              courseCode: card.courseCode,
-              sectionName: card.sectionName,
-              day: sc.day,
-              startTime: sc.startTime,
-              endTime: sc.endTime,
-              roomNumber: card.labRoom.isNotEmpty ? card.labRoom : card.room,
-              consumedSeat: card.consumed,
-              courseType: 'Lab',
-            ),
-          );
-        }
-      }
-    }
-
-    showFacultyScheduleSheet(
+    showSeatFacultySchedule(
       context,
+      cards: _cards,
       facultyInitial: facultyInitial,
       staffName: staffName,
-      items: items,
       isRamadan: _selectedArchive.isEmpty && _isRamadan,
     );
   }

@@ -1,59 +1,23 @@
-import 'dart:convert';
-import 'package:http/http.dart' as http;
 import 'package:material_ui/material_ui.dart';
 import 'package:gap/gap.dart';
+import 'package:preconnect/api/advising_service.dart';
 import 'package:preconnect/api/api_client.dart';
-import 'package:preconnect/api/api_config.dart';
+import 'package:preconnect/api/profile.dart';
+import 'package:preconnect/api/progress.dart';
+import 'package:preconnect/api/wishlist_engine.dart';
+import 'package:preconnect/pages/shared_widgets/seat_card.dart';
 import 'package:preconnect/pages/ui_kit.dart';
 import 'package:preconnect/tools/app_storage.dart';
-import 'package:preconnect/api/profile.dart';
+import 'package:preconnect/tools/time_utils.dart';
 
-List<Map<String, dynamic>> parseWishlistCourseList(String body) {
-  final decoded = jsonDecode(body);
-  if (decoded is! List) {
-    throw const FormatException('Invalid Wishlist course response.');
-  }
-  return decoded
-      .map((item) {
-        if (item is! Map) {
-          throw const FormatException('Invalid Wishlist course record.');
-        }
-        final course = item.cast<String, dynamic>();
-        if (course['courseId'] is! num ||
-            '${course['courseCode'] ?? ''}'.trim().isEmpty ||
-            '${course['name'] ?? ''}'.trim().isEmpty ||
-            course['courseCredit'] is! num) {
-          throw const FormatException('Incomplete Wishlist course record.');
-        }
-        return course;
-      })
-      .toList(growable: false);
-}
+enum _WishlistWindow { open, closed, completed }
 
-int wishlistCourseId(Map<String, dynamic> course) =>
-    (course['courseId'] as num).toInt();
-
-bool wishlistContainsCourse(
-  Iterable<Map<String, dynamic>> courses,
-  Map<String, dynamic> course,
-) {
-  final courseId = wishlistCourseId(course);
-  return courses.any((item) => wishlistCourseId(item) == courseId);
-}
-
-List<Map<String, dynamic>> mergeWishlistCourseOptions(
-  Iterable<Map<String, dynamic>> selectedCourses,
-  Iterable<Map<String, dynamic>> offeredCourses,
-) {
-  final coursesById = <int, Map<String, dynamic>>{};
-  for (final course in selectedCourses) {
-    coursesById[wishlistCourseId(course)] = course;
-  }
-  for (final course in offeredCourses) {
-    coursesById.putIfAbsent(wishlistCourseId(course), () => course);
-  }
-  return coursesById.values.toList(growable: false);
-}
+typedef _CourseRow = ({
+  String code,
+  String name,
+  int credit,
+  Map<String, dynamic>? course,
+});
 
 class WishlistPage extends StatefulWidget {
   const WishlistPage({super.key});
@@ -63,269 +27,277 @@ class WishlistPage extends StatefulWidget {
 }
 
 class _WishlistPageState extends State<WishlistPage> {
-  final ApiClient _client = ApiClient();
+  final WishlistService _service = WishlistService();
+  final WishlistAutoEngine _engine = WishlistAutoEngine.instance;
+  final TextEditingController _searchController = TextEditingController();
+  final Set<String> _pendingCodes = <String>{};
   bool _isLoading = true;
-  bool _isPhaseCompleted = false;
+  bool _isConfirmed = false;
+  bool _isConfirming = false;
   String? _errorMessage;
   String? _portfolioId;
   String? _publicKey;
+  DateTime? _opensAt;
+  _WishlistWindow _window = _WishlistWindow.closed;
+  WishlistCreditLimit? _creditLimit;
   List<Map<String, dynamic>> _wishlistCourses = [];
-  List<Map<String, dynamic>> _offeredCourses = [];
-  List<Map<String, dynamic>> _filteredOfferedCourses = [];
-  final TextEditingController _searchController = TextEditingController();
-  final List<Map<String, dynamic>> _batchQueue = [];
+  List<_CourseRow> _courseRows = [];
   String _searchQuery = '';
-
-  ({String title, String message}) _errorDetails(String rawMessage) {
-    var message = rawMessage;
-    try {
-      final startIndex = message.indexOf('{');
-      final endIndex = message.lastIndexOf('}');
-      if (startIndex != -1 && endIndex > startIndex) {
-        final decoded = jsonDecode(message.substring(startIndex, endIndex + 1));
-        if (decoded is Map && decoded['message'] != null) {
-          message = decoded['message'].toString().replaceAll('\n', '').trim();
-        }
-      }
-    } catch (_) {}
-
-    if (message.contains('Wishlist has not been scheduled') ||
-        message.contains('expired') ||
-        message.contains('404')) {
-      return (title: 'Wishlist Closed', message: message);
-    }
-    if (message.contains('SocketException') ||
-        message.contains('Failed host lookup') ||
-        message.contains('Connection failed') ||
-        message.contains('Connection refused') ||
-        message.contains('Connection timed out')) {
-      return (
-        title: 'You\'re Offline',
-        message:
-            'Wishlist requires an active connection to Connect. '
-            'Check your internet and try again.',
-      );
-    }
-    return (title: 'Advising Status', message: message);
-  }
-
-  Map<String, String> _buildHeaders() {
-    return {
-      'Content-Type': 'application/json',
-      'Accept': 'application/json, text/plain, */*',
-      'X-Advising-Session': _publicKey ?? '',
-    };
-  }
 
   @override
   void initState() {
     super.initState();
+    _engine.addListener(_handleEngineChanged);
+    if (_engine.isRunning) _engine.onWishlistChanged = _handleWishlistChanged;
     _loadInitialData();
     _searchController.addListener(() {
-      if (!mounted) return;
-      setState(() {
-        _searchQuery = _searchController.text;
-      });
-      _filterCourses(_searchQuery);
+      if (!mounted || _searchQuery == _searchController.text) return;
+      setState(() => _searchQuery = _searchController.text);
     });
   }
 
   @override
   void dispose() {
+    _engine.removeListener(_handleEngineChanged);
+    if (_engine.onWishlistChanged == _handleWishlistChanged) {
+      _engine.onWishlistChanged = null;
+    }
     _searchController.dispose();
     super.dispose();
   }
 
-  Future<void> _loadInitialData() async {
+  void _handleEngineChanged() {
+    if (mounted) setState(() {});
+  }
+
+  void _handleWishlistChanged() {
+    if (mounted) _loadInitialData(showLoading: false);
+  }
+
+  Future<void> _loadInitialData({bool showLoading = true}) async {
     if (!mounted) return;
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-    });
+    if (showLoading) {
+      setState(() {
+        _isLoading = true;
+        _errorMessage = null;
+      });
+    }
 
     try {
-      _portfolioId = await resolvePortfolioId(
+      await _engine.load();
+      final portfolioId = await resolvePortfolioId(
         prefs: AppStorage.instance,
         refreshProfile: () => ProfileService().getProfile(fromFetch: true),
       );
-
-      if (_portfolioId == null) {
+      if (portfolioId == null) {
         throw Exception('Failed to resolve student portfolio profile.');
       }
-
-      _publicKey = DateTime.now().millisecondsSinceEpoch.toString();
-
-      try {
-        await _client.authenticatedRequest(
-          'POST',
-          '${ApiConfig.connectApiBase}${ApiConfig.wishlistSessionPath(_portfolioId!, _publicKey!)}',
-          body: '',
-        );
-      } on ApiException catch (e) {
-        if (e.statusCode == 412) {
-          _isPhaseCompleted = true;
-        } else {
-          rethrow;
-        }
-      }
-
-      await _refreshWishlistData();
+      _portfolioId = portfolioId;
+      _opensAt = await _readOpensAt();
+      await _openWindow(portfolioId);
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _errorMessage = e.toString();
+        _errorMessage = advisingErrorMessage(e);
         _isLoading = false;
       });
     }
   }
 
+  Future<DateTime?> _readOpensAt() async {
+    final info = await AdvisingService().getAdvisingInfo();
+    final phase = (info?['advisingPhase'] ?? '').toUpperCase();
+    if (phase.isNotEmpty && !phase.contains('WISHLIST')) return null;
+    return DateTime.tryParse(info?['advisingStartDate'] ?? '');
+  }
+
+  Future<void> _openWindow(String portfolioId) async {
+    final publicKey = DateTime.now().millisecondsSinceEpoch.toString();
+    _publicKey = publicKey;
+    try {
+      _creditLimit = await _service.openSession(portfolioId, publicKey);
+      _window = _WishlistWindow.open;
+    } on ApiException catch (e) {
+      if (e.statusCode == 404) {
+        _window = _WishlistWindow.closed;
+        await _loadCatalog();
+        return;
+      }
+      if (e.statusCode != 412) rethrow;
+      _window = _WishlistWindow.completed;
+    }
+    await _refreshWishlistData();
+  }
+
+  Future<void> _loadCatalog() async {
+    final progress = await ProgressService().getProgress();
+    final passedCodes = {
+      for (final course in progress?.completedCourses ?? const [])
+        if (course.isPassed) normalizeWishlistCode(course.code),
+    };
+    final rowsByCode = <String, _CourseRow>{};
+    for (final course in progress?.curriculumCourses ?? const []) {
+      final code = normalizeWishlistCode(course.code);
+      if (code.isEmpty || passedCodes.contains(code)) continue;
+      rowsByCode.putIfAbsent(
+        code,
+        () => (
+          code: code,
+          name: course.title,
+          credit: course.credit.round(),
+          course: null,
+        ),
+      );
+    }
+    if (!mounted) return;
+    setState(() {
+      _wishlistCourses = [];
+      _courseRows = rowsByCode.values.toList(growable: false);
+      _isConfirmed = false;
+      _isLoading = false;
+      _errorMessage = null;
+    });
+  }
+
   Future<void> _refreshWishlistData() async {
-    if (_portfolioId == null) return;
+    final portfolioId = _portfolioId;
+    final publicKey = _publicKey;
+    if (portfolioId == null || publicKey == null) return;
 
     try {
-      final wishlistRes = await _client.authenticatedGet(
-        '${ApiConfig.connectApiBase}${ApiConfig.wishlistCoursesPath(_portfolioId!)}',
-        additionalHeaders: _buildHeaders(),
-        bypassCache: true,
-      );
-      final offeredRes = await _client.authenticatedGet(
-        '${ApiConfig.connectApiBase}${ApiConfig.wishlistOfferedCoursesPath(_portfolioId!)}',
-        additionalHeaders: _buildHeaders(),
-        bypassCache: true,
-      );
-
-      _wishlistCourses = parseWishlistCourseList(wishlistRes.body);
-      _offeredCourses = mergeWishlistCourseOptions(
-        _wishlistCourses,
-        parseWishlistCourseList(offeredRes.body),
-      );
-      _filterCourses(_searchController.text);
+      final results = await Future.wait([
+        _service.fetchWishlist(portfolioId, publicKey),
+        _service.fetchOffered(portfolioId, publicKey),
+      ]);
+      final confirmed = await _service.fetchConfirmed(portfolioId, publicKey);
+      final wishlist = results[0];
+      final options = mergeWishlistCourseOptions(wishlist, results[1]);
 
       if (!mounted) return;
       setState(() {
+        _wishlistCourses = wishlist;
+        _courseRows = [
+          for (final course in options)
+            (
+              code: wishlistCourseCode(course),
+              name: '${course['name']}',
+              credit: wishlistCourseCredit(course),
+              course: course,
+            ),
+        ];
+        _isConfirmed = confirmed;
         _isLoading = false;
         _errorMessage = null;
       });
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _errorMessage = e.toString();
+        _errorMessage = advisingErrorMessage(e);
         _isLoading = false;
       });
     }
   }
 
-  void _filterCourses(String query) {
-    if (query.isEmpty) {
-      if (!mounted) return;
-      setState(() {
-        _filteredOfferedCourses = List.from(_offeredCourses);
-      });
+  List<_CourseRow> get _visibleRows {
+    final query = _searchQuery.trim().toLowerCase();
+    if (query.isEmpty) return _courseRows;
+    return _courseRows
+        .where(
+          (row) =>
+              row.code.toLowerCase().contains(query) ||
+              row.name.toLowerCase().contains(query),
+        )
+        .toList(growable: false);
+  }
+
+  bool _isInWishlist(_CourseRow row) {
+    final course = row.course;
+    return course != null && wishlistContainsCourse(_wishlistCourses, course);
+  }
+
+  void _onCourseTap(_CourseRow row) {
+    final course = row.course;
+    if (course != null && _isInWishlist(row)) {
+      _mutateNow(row, () => _removeCourse(course));
       return;
     }
-
-    final lower = query.toLowerCase();
-    if (!mounted) return;
-    setState(() {
-      _filteredOfferedCourses = _offeredCourses.where((c) {
-        final code = c['courseCode'].toString().toLowerCase();
-        final name = c['name'].toString().toLowerCase();
-        return code.contains(lower) || name.contains(lower);
-      }).toList();
-    });
+    final canAddNow =
+        course != null &&
+        _window == _WishlistWindow.open &&
+        !_engine.isRunning &&
+        !_engine.isQueued(row.code);
+    if (canAddNow) {
+      _mutateNow(row, () => _addCourse(course));
+      return;
+    }
+    _engine.toggle(row.code, row.name, row.credit);
   }
 
-  Future<void> _addCourse(Map<String, dynamic> course) async {
-    if (_portfolioId == null) return;
-    if (!mounted) return;
-    setState(() {
-      _isLoading = true;
-    });
+  Future<void> _addCourse(Map<String, dynamic> course) =>
+      _service.addCourse(_portfolioId!, _publicKey!, course);
 
+  Future<void> _removeCourse(Map<String, dynamic> course) =>
+      _service.removeCourse(_portfolioId!, _publicKey!, course);
+
+  Future<void> _mutateNow(
+    _CourseRow row,
+    Future<void> Function() action,
+  ) async {
+    if (_portfolioId == null || _publicKey == null) return;
+    if (_pendingCodes.contains(row.code)) return;
+    setState(() => _pendingCodes.add(row.code));
     try {
-      final res = await _postWishlistCourse(course);
-
-      if (res.statusCode == 200 || res.statusCode == 201) {
-        await _refreshWishlistData();
-      } else {
-        throw Exception('Failed to add course: ${res.body}');
-      }
+      await action();
+      await _refreshWishlistData();
     } catch (e) {
-      if (!mounted) return;
-      showAppSnackBar(context, e.toString());
-      setState(() {
-        _isLoading = false;
-      });
+      if (mounted) showAppSnackBar(context, advisingErrorMessage(e));
+    } finally {
+      if (mounted) setState(() => _pendingCodes.remove(row.code));
     }
   }
 
-  Future<void> _confirmDropCourse(Map<String, dynamic> course) async {
-    final code = course['courseCode'];
-    await showAppConfirmationWithActionDialog(
-      context,
-      icon: Icons.remove_circle_outline_rounded,
-      title: 'Drop Course?',
-      message: 'Are you sure you want to drop $code from your wishlist?',
-      confirmLabel: 'Drop',
-      cancelLabel: 'Cancel',
-      confirmColor: AppPalette.danger,
-      onConfirm: () => _dropCourse(course),
+  void _toggleEngine() {
+    final portfolioId = _portfolioId;
+    if (_engine.isRunning) {
+      _engine.stop();
+      return;
+    }
+    if (portfolioId == null) return;
+    _engine.start(
+      portfolioId: portfolioId,
+      opensAt: _opensAt,
+      onWishlistChanged: _handleWishlistChanged,
     );
   }
 
-  Future<void> _dropCourse(Map<String, dynamic> course) async {
-    if (_portfolioId == null || _publicKey == null) return;
-    if (!mounted) return;
-    setState(() {
-      _isLoading = true;
-    });
-
-    try {
-      final int courseId = (course['courseId'] as num).toInt();
-      final res = await _client.authenticatedRequest(
-        'DELETE',
-        '${ApiConfig.connectApiBase}${ApiConfig.wishlistMutationPath}',
-        body: jsonEncode({
-          'courseId': courseId,
-          'studentPortfolioId': int.parse(_portfolioId!),
-        }),
-        additionalHeaders: _buildHeaders(),
-        acceptedStatusCodes: const <int>{200, 204},
-      );
-
-      if (res.statusCode == 200 || res.statusCode == 204) {
-        await _refreshWishlistData();
-      } else {
-        throw Exception('Failed to drop course: ${res.body}');
-      }
-    } catch (e) {
-      if (!mounted) return;
-      showAppSnackBar(context, e.toString());
-      setState(() {
-        _isLoading = false;
-      });
-    }
+  Future<void> _promptConfirmWishlist() async {
+    final count = _wishlistCourses.length;
+    final credits = wishlistCredits(_wishlistCourses);
+    await showAppConfirmationWithActionDialog(
+      context,
+      icon: Icons.check_circle_outline_rounded,
+      title: 'Confirm Wishlist?',
+      message:
+          'Submit ${wishlistCourseCount(count)} ($credits credits) to Connect.',
+      confirmLabel: 'Confirm',
+      confirmColor: AppPalette.accent,
+      onConfirm: _confirmWishlist,
+    );
   }
 
-  Future<void> _executeBatchAdd() async {
-    if (_batchQueue.isEmpty || _portfolioId == null) return;
-    if (!mounted) return;
-    setState(() {
-      _isLoading = true;
-    });
-
+  Future<void> _confirmWishlist() async {
+    final portfolioId = _portfolioId;
+    final publicKey = _publicKey;
+    if (portfolioId == null || publicKey == null) return;
+    setState(() => _isConfirming = true);
     try {
-      for (final course in List<Map<String, dynamic>>.from(_batchQueue)) {
-        await _postWishlistCourse(course);
-      }
-      _batchQueue.clear();
+      await _service.confirm(portfolioId, publicKey);
+      if (mounted) showAppSnackBar(context, 'Wishlist confirmed');
       await _refreshWishlistData();
     } catch (e) {
-      if (!mounted) return;
-      showAppSnackBar(context, e.toString());
-      setState(() {
-        _isLoading = false;
-      });
+      if (mounted) showAppSnackBar(context, advisingErrorMessage(e));
+    } finally {
+      if (mounted) setState(() => _isConfirming = false);
     }
   }
 
@@ -333,28 +305,44 @@ class _WishlistPageState extends State<WishlistPage> {
   Widget build(BuildContext context) {
     final textPrimary = AppPalette.textPrimary(context);
     final textSecondary = AppPalette.textSecondary(context);
+    final errorMessage = _errorMessage;
+    final showAutoRun =
+        _engine.queue.isNotEmpty ||
+        _engine.activityLogs.isNotEmpty ||
+        _engine.isRunning;
 
+    Widget body;
     if (_isLoading) {
-      return const AppPageScaffold(
-        title: 'Advising',
-        subtitle: 'Wishlist',
-        icon: Icons.star_outline_rounded,
-        body: Center(child: AppLoading()),
+      body = const Center(child: AppLoading());
+    } else if (errorMessage != null) {
+      body = AppErrorState(
+        title: 'Wishlist Unavailable',
+        message: errorMessage,
+        onRetry: _loadInitialData,
       );
-    }
-
-    if (_errorMessage != null) {
-      final error = _errorDetails(_errorMessage!);
-
-      return AppPageScaffold(
-        title: 'Advising',
-        subtitle: 'Wishlist',
-        icon: Icons.star_outline_rounded,
-        body: AppErrorState(
-          title: error.title,
-          message: error.message,
-          onRetry: _loadInitialData,
-        ),
+    } else {
+      final rows = _visibleRows;
+      body = AppRefreshList(
+        onRefresh: () => _loadInitialData(showLoading: false),
+        children: [
+          _buildSummary(textPrimary, textSecondary),
+          if (showAutoRun) ...[
+            const Gap(12),
+            _buildAutoRun(textPrimary, textSecondary),
+          ],
+          const Gap(12),
+          AppSearchField(controller: _searchController, query: _searchQuery),
+          const Gap(12),
+          if (rows.isEmpty)
+            AppEmptyCard(
+              message: _searchQuery.trim().isEmpty
+                  ? 'No courses to choose'
+                  : 'No matching courses',
+            )
+          else
+            for (final row in rows)
+              _buildCourseRow(row, textPrimary, textSecondary),
+        ],
       );
     }
 
@@ -363,122 +351,154 @@ class _WishlistPageState extends State<WishlistPage> {
       subtitle: 'Wishlist',
       icon: Icons.star_outline_rounded,
       actions: [
-        IconButton(
-          tooltip: 'Sync',
-          icon: const Icon(Icons.sync_rounded),
-          onPressed: _isLoading ? null : _loadInitialData,
-        ),
-        AppRefreshButton(
-          onPressed: _refreshWishlistData,
-          isLoading: _isLoading,
-        ),
+        AppRefreshButton(onPressed: _loadInitialData, isLoading: _isLoading),
       ],
-      body: Column(
+      body: body,
+    );
+  }
+
+  Widget _buildSummary(Color textPrimary, Color textSecondary) {
+    final count = _wishlistCourses.length;
+    final credits = wishlistCredits(_wishlistCourses);
+    final limit = _creditLimit;
+    final withinLimit = isWithinWishlistLimit(credits, limit);
+    final isOpen = _window == _WishlistWindow.open;
+    final canConfirm = count > 0 && withinLimit && !_isConfirming;
+    final statusColor = _isConfirmed
+        ? AppPalette.accent
+        : withinLimit || !isOpen
+        ? textSecondary
+        : AppPalette.warning;
+
+    return AppCard(
+      child: Row(
         children: [
-          if (_isPhaseCompleted)
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-              child: AppCard(
-                backgroundColor: AppPalette.info.withValues(alpha: 0.12),
-                child: Row(
-                  children: [
-                    const Icon(
-                      Icons.check_circle_rounded,
-                      color: AppPalette.info,
-                    ),
-                    const Gap(8),
-                    Expanded(
-                      child: Text(
-                        'Wishlist phase completed already. Your selection has been finalized.',
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: textPrimary,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          if (_batchQueue.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: AppCard(
-                backgroundColor: AppPalette.info.withValues(alpha: 0.12),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        '${_batchQueue.length} course(s) selected in batch queue.',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: textPrimary,
-                        ),
-                      ),
-                    ),
-                    AppActionButton(
-                      onPressed: _executeBatchAdd,
-                      label: 'Add Batch',
-                      outlined: false,
-                      borderRadius: 10,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 10,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          const Gap(8),
           Expanded(
-            child: AppRefreshList(
-              onRefresh: _refreshWishlistData,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const AppSectionTitle(title: 'Current Wishlist'),
-                const Gap(8),
-                ..._buildWishlistItems(textPrimary, textSecondary),
-                const Gap(8),
-                const AppSectionTitle(title: 'Offered Courses'),
-                const Gap(8),
-                AppSearchField(
-                  controller: _searchController,
-                  query: _searchQuery,
+                Text(
+                  '${wishlistCourseCount(count)} · $credits credits',
+                  style: TextStyle(
+                    color: textPrimary,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
-                const Gap(12),
-                ..._buildOfferedItems(textPrimary, textSecondary),
+                const Gap(3),
+                Text(
+                  _summaryStatus(limit, withinLimit),
+                  style: TextStyle(
+                    color: statusColor,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
               ],
             ),
           ),
+          if (isOpen && !_isConfirmed) ...[
+            const Gap(12),
+            AppActionButton(
+              icon: Icons.check_circle_outline_rounded,
+              label: 'Confirm',
+              isLoading: _isConfirming,
+              foregroundColor: AppPalette.accent,
+              onPressed: canConfirm ? _promptConfirmWishlist : null,
+            ),
+          ],
         ],
       ),
     );
   }
 
-  Future<http.Response> _postWishlistCourse(Map<String, dynamic> course) {
-    return _client.authenticatedRequest(
-      'POST',
-      '${ApiConfig.connectApiBase}${ApiConfig.wishlistMutationPath}',
-      body: jsonEncode({
-        'courseId': (course['courseId'] as num).toInt(),
-        'courseCredit': (course['courseCredit'] as num).toInt(),
-        'studentPortfolioId': int.parse(_portfolioId!),
-      }),
-      additionalHeaders: _buildHeaders(),
-      acceptedStatusCodes: const <int>{200, 201},
+  String _summaryStatus(WishlistCreditLimit? limit, bool withinLimit) {
+    if (_window == _WishlistWindow.completed) return 'Wishlist phase completed';
+    if (_window == _WishlistWindow.closed) {
+      final opensAt = _opensAt;
+      return opensAt == null
+          ? 'Wishlist is not open yet'
+          : 'Opens at ${AppTime.formatDateTime(opensAt)}';
+    }
+    if (_isConfirmed) return 'Confirmed on Connect';
+    if (limit == null) return 'Not confirmed';
+    final range = '${limit.min}–${limit.max} credits';
+    return withinLimit ? 'Limit $range' : 'Choose $range to confirm';
+  }
+
+  String _autoRunStatus() {
+    final queued = '${_engine.queue.length} queued';
+    final opensAt = _opensAt;
+    if (_window == _WishlistWindow.open) return '$queued · Wishlist open';
+    if (opensAt == null) return queued;
+    return '$queued · opens ${AppTime.formatDateTime(opensAt)}';
+  }
+
+  Widget _buildAutoRun(Color textPrimary, Color textSecondary) {
+    final isRunning = _engine.isRunning;
+    final canStart = isRunning || _window != _WishlistWindow.completed;
+    return AppCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  _autoRunStatus(),
+                  style: TextStyle(
+                    color: textPrimary,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+              const Gap(12),
+              AppActionButton(
+                icon: isRunning
+                    ? Icons.stop_circle_outlined
+                    : Icons.play_circle_outline_rounded,
+                label: isRunning ? 'Stop' : 'Start',
+                foregroundColor: isRunning
+                    ? AppPalette.danger
+                    : AppPalette.accent,
+                onPressed: canStart ? _toggleEngine : null,
+              ),
+            ],
+          ),
+          if (_engine.activityLogs.isNotEmpty) ...[
+            const Gap(12),
+            AppActivityLog(logs: _engine.activityLogs),
+          ],
+        ],
+      ),
     );
   }
 
-  Widget _courseCard(
-    Map<String, dynamic> course,
+  Widget _buildCourseRow(
+    _CourseRow row,
     Color textPrimary,
     Color textSecondary,
-    List<Widget> actions,
   ) {
+    final isSelected = _isInWishlist(row);
+    final queued = _engine.queuedItem(row.code);
+    final isFailed = queued?.status == WishlistQueueStatus.failed;
+    final isPending =
+        _pendingCodes.contains(row.code) ||
+        queued?.status == WishlistQueueStatus.adding;
+    final isActive = isSelected || queued != null;
+    final highlightColor = isSelected
+        ? AppPalette.accent
+        : isFailed
+        ? AppPalette.warning
+        : AppPalette.primary;
+    final label = queued == null ? null : (queued.note ?? 'Queued');
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: AppCard(
+        isHighlighted: isActive,
+        highlightColor: highlightColor.withValues(alpha: 0.35),
         child: Row(
           children: [
             Expanded(
@@ -486,106 +506,66 @@ class _WishlistPageState extends State<WishlistPage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    '${course['courseCode']} - ${course['name']}',
+                    row.code,
                     style: TextStyle(
-                      fontWeight: FontWeight.bold,
                       color: textPrimary,
-                      fontSize: 15,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
-                  const Gap(4),
+                  const Gap(3),
                   Text(
-                    'Credits: ${course['courseCredit']}',
-                    style: TextStyle(color: textSecondary, fontSize: 13),
+                    row.name,
+                    style: TextStyle(color: textSecondary, fontSize: 11),
                   ),
+                  if (label != null) ...[
+                    const Gap(3),
+                    Text(
+                      label,
+                      style: TextStyle(
+                        color: isFailed
+                            ? AppPalette.warning
+                            : AppPalette.primary,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),
-            ...actions,
+            const Gap(12),
+            Text(
+              '${row.credit} credits',
+              style: TextStyle(
+                color: textPrimary,
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            SizedBox(
+              width: 48,
+              child: isPending
+                  ? const Center(child: AppSpinner(size: 18))
+                  : _window == _WishlistWindow.completed
+                  ? null
+                  : SeatIconButton(
+                      active: isActive,
+                      activeColor: highlightColor,
+                      icon: isActive
+                          ? Icons.remove_circle_outline_rounded
+                          : Icons.add_circle_outline_rounded,
+                      tooltip: isSelected
+                          ? 'Remove From Wishlist'
+                          : queued != null
+                          ? 'Remove From Queue'
+                          : 'Add To Wishlist',
+                      onTap: () => _onCourseTap(row),
+                    ),
+            ),
           ],
         ),
       ),
     );
-  }
-
-  List<Widget> _buildWishlistItems(Color textPrimary, Color textSecondary) {
-    if (_wishlistCourses.isEmpty) {
-      return const [AppEmptyCard(message: 'No courses in your wishlist')];
-    }
-    return [
-      for (final course in _wishlistCourses)
-        _courseCard(course, textPrimary, textSecondary, [
-          IconButton(
-            icon: Icon(
-              Icons.remove_circle_outline_rounded,
-              color: _isPhaseCompleted
-                  ? Colors.grey.withValues(alpha: 0.5)
-                  : AppPalette.danger,
-            ),
-            onPressed: _isPhaseCompleted
-                ? null
-                : () => _confirmDropCourse(course),
-          ),
-        ]),
-    ];
-  }
-
-  List<Widget> _buildOfferedItems(Color textPrimary, Color textSecondary) {
-    if (_filteredOfferedCourses.isEmpty) {
-      return [
-        AppEmptyCard(
-          message: _searchQuery.trim().isEmpty
-              ? 'No offered courses'
-              : 'No matching courses',
-        ),
-      ];
-    }
-    return [
-      for (final course in _filteredOfferedCourses)
-        _buildOfferedCard(course, textPrimary, textSecondary),
-    ];
-  }
-
-  Widget _buildOfferedCard(
-    Map<String, dynamic> course,
-    Color textPrimary,
-    Color textSecondary,
-  ) {
-    final isWishlisted = wishlistContainsCourse(_wishlistCourses, course);
-    final isQueued = wishlistContainsCourse(_batchQueue, course);
-    final isSelected = isWishlisted || isQueued;
-    final locked = _isPhaseCompleted || isWishlisted;
-    return _courseCard(course, textPrimary, textSecondary, [
-      IconButton(
-        icon: Icon(
-          isSelected ? Icons.check_box_rounded : Icons.add_box_outlined,
-          color: _isPhaseCompleted
-              ? Colors.grey.withValues(alpha: 0.5)
-              : (isSelected ? AppPalette.accent : AppPalette.primary),
-        ),
-        onPressed: locked ? null : () => _toggleQueued(course, isQueued),
-      ),
-      IconButton(
-        icon: Icon(
-          Icons.flash_on_rounded,
-          color: _isPhaseCompleted
-              ? Colors.grey.withValues(alpha: 0.5)
-              : AppPalette.favorite,
-        ),
-        onPressed: locked ? null : () => _addCourse(course),
-      ),
-    ]);
-  }
-
-  void _toggleQueued(Map<String, dynamic> course, bool isQueued) {
-    setState(() {
-      if (isQueued) {
-        _batchQueue.removeWhere(
-          (item) => wishlistCourseId(item) == wishlistCourseId(course),
-        );
-      } else {
-        _batchQueue.add(course);
-      }
-    });
   }
 }

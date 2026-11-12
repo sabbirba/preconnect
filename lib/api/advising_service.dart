@@ -6,8 +6,6 @@ import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/api/seat_status.dart';
 import 'package:preconnect/model/advising_phase.dart';
 import 'package:preconnect/tools/advising_background.dart';
-import 'package:preconnect/tools/app_storage.dart';
-import 'package:preconnect/tools/storage_keys.dart';
 
 enum TargetSectionStatus {
   idle,
@@ -33,7 +31,34 @@ String advisingErrorMessage(Object error) {
       message.contains('Connection timed out')) {
     return 'Could not reach the Connect API';
   }
-  return message.replaceAll(RegExp(r'https?://\S+'), 'Connect API');
+  return _connectErrorMessage(message) ??
+      message.replaceAll(RegExp(r'https?://\S+'), 'Connect API');
+}
+
+String? _connectErrorMessage(String raw) {
+  final start = raw.indexOf('{');
+  final end = raw.lastIndexOf('}');
+  if (start == -1 || end <= start) return null;
+  try {
+    final decoded = jsonDecode(raw.substring(start, end + 1));
+    final message = decoded is Map ? decoded['message'] : null;
+    if (message is! String || message.trim().isEmpty) return null;
+    return message.replaceAll('\n', ' ').trim();
+  } on FormatException {
+    return null;
+  }
+}
+
+mixin ActivityLogger on ChangeNotifier {
+  static const int _maxLogs = 200;
+  final List<String> activityLogs = <String>[];
+
+  void addLog(String text) {
+    final timeStr = DateTime.now().toIso8601String().substring(11, 19);
+    activityLogs.insert(0, '[$timeStr] $text');
+    if (activityLogs.length > _maxLogs) activityLogs.removeLast();
+    notifyListeners();
+  }
 }
 
 class AdvisingSectionRecord {
@@ -278,12 +303,12 @@ class AdvisingHelperService {
 
   final ApiClient _client = ApiClient();
 
-  Future<Map<String, String>> buildRequestHeaders({
+  Map<String, String> buildRequestHeaders({
     String? publicKey,
-    required AdvisingPhase phase,
-  }) async {
+    String contentType = 'application/json',
+  }) {
     return <String, String>{
-      'Content-Type': 'application/json',
+      'Content-Type': contentType,
       'Accept': 'application/json, text/plain, */*',
       'x-realm': 'bracu',
       'x-source': '3',
@@ -305,11 +330,7 @@ class AdvisingHelperService {
           'POST',
           url,
           body: '',
-          additionalHeaders: const <String, String>{
-            'Content-Type': 'text/plain',
-            'x-realm': 'bracu',
-            'x-source': '3',
-          },
+          additionalHeaders: buildRequestHeaders(contentType: 'text/plain'),
           acceptedStatusCodes: const <int>{200, 201},
         );
         if (res.statusCode == 200 || res.statusCode == 201) {
@@ -324,7 +345,7 @@ class AdvisingHelperService {
         '?advisingPhase=${phase.queryValue}';
     final response = await _client.authenticatedGet(
       url,
-      additionalHeaders: await buildRequestHeaders(phase: phase),
+      additionalHeaders: buildRequestHeaders(),
       bypassCache: true,
     );
     return parseActiveAdvisingSessionId(response.body, phase);
@@ -337,10 +358,7 @@ class AdvisingHelperService {
   }) async {
     final url =
         '${ApiConfig.connectApiBase}${ApiConfig.studentCoursesForPhasePath(portfolioId, phase)}';
-    final headers = await buildRequestHeaders(
-      publicKey: publicKey,
-      phase: phase,
-    );
+    final headers = buildRequestHeaders(publicKey: publicKey);
 
     final res = await _client.authenticatedGet(
       url,
@@ -363,10 +381,7 @@ class AdvisingHelperService {
       try {
         final url =
             '${ApiConfig.connectApiBase}${ApiConfig.advisingSectionsPath(portfolioId, phase: phase)}';
-        final headers = await buildRequestHeaders(
-          publicKey: publicKey,
-          phase: phase,
-        );
+        final headers = buildRequestHeaders(publicKey: publicKey);
         final res = await _client.authenticatedGet(
           url,
           additionalHeaders: headers,
@@ -428,10 +443,7 @@ class AdvisingHelperService {
     String publicKey,
     AdvisingPhase phase,
   ) async {
-    final headers = await buildRequestHeaders(
-      publicKey: publicKey,
-      phase: phase,
-    );
+    final headers = buildRequestHeaders(publicKey: publicKey);
     await _client.authenticatedRequest(
       method,
       '${ApiConfig.connectApiBase}${ApiConfig.advisingStudentCoursesPath(phase)}',
@@ -449,11 +461,10 @@ class AdvisingHelperService {
     required String publicKey,
     required AdvisingPhase phase,
   }) async {
-    final headers = await buildRequestHeaders(
+    final headers = buildRequestHeaders(
       publicKey: publicKey,
-      phase: phase,
+      contentType: 'text/plain',
     );
-    headers['Content-Type'] = 'text/plain';
 
     final url =
         '${ApiConfig.connectApiBase}${ApiConfig.advisingConfirmPath(portfolioId)}';
@@ -468,7 +479,7 @@ class AdvisingHelperService {
   }
 }
 
-class AdvisingAutoEngine extends ChangeNotifier {
+class AdvisingAutoEngine extends ChangeNotifier with ActivityLogger {
   static final AdvisingAutoEngine _instance = AdvisingAutoEngine._internal();
   factory AdvisingAutoEngine() => _instance;
   AdvisingAutoEngine._internal();
@@ -477,7 +488,6 @@ class AdvisingAutoEngine extends ChangeNotifier {
 
   final AdvisingHelperService _service = AdvisingHelperService();
   final List<TargetSectionItem> targetSections = <TargetSectionItem>[];
-  final List<String> activityLogs = <String>[];
   List<AdvisingSectionRecord> enrolledSections = <AdvisingSectionRecord>[];
 
   bool isRunning = false;
@@ -499,124 +509,42 @@ class AdvisingAutoEngine extends ChangeNotifier {
   bool clearCompletedQueue() {
     if (!hasCompletedQueue) return false;
     if (isRunning) stop();
-    unawaited(saveQueueToStorage());
     notifyListeners();
     return true;
   }
 
-  void addLog(String text) {
-    final timeStr = DateTime.now().toIso8601String().substring(11, 19);
-    final formatted = '[$timeStr] $text';
-    activityLogs.insert(0, formatted);
-    if (activityLogs.length > 200) {
-      activityLogs.removeLast();
-    }
-    notifyListeners();
-  }
-
-  Future<void> saveQueueToStorage([AdvisingPhase? targetPhase]) async {
-    final p = targetPhase ?? (tryPhase);
-    if (p == null) return;
-    try {
-      final key = StorageKeys.advisingTargetSections(p.name);
-      final jsonList = targetSections.map((e) => e.toJson()).toList();
-      await AppStorage.instance.setString(key, jsonEncode(jsonList));
-    } catch (_) {}
-  }
-
-  Future<void> loadQueueFromStorage(AdvisingPhase targetPhase) async {
-    if (isRunning) return;
-    try {
-      phase = targetPhase;
-      final key = StorageKeys.advisingTargetSections(targetPhase.name);
-      final raw = await AppStorage.instance.getString(key);
-      if (raw == null || raw.trim().isEmpty) return;
-      final decoded = jsonDecode(raw);
-      if (decoded is! List) return;
-      targetSections.clear();
-      for (final entry in decoded) {
-        if (entry is Map<String, dynamic>) {
-          targetSections.add(TargetSectionItem.fromJson(entry));
-        } else if (entry is Map) {
-          targetSections.add(
-            TargetSectionItem.fromJson(entry.cast<String, dynamic>()),
-          );
-        }
+  void syncTargets(List<TargetSectionItem> desired) {
+    final desiredIds = {for (final item in desired) item.sectionId};
+    final removed = targetSections
+        .where(
+          (item) =>
+              !desiredIds.contains(item.sectionId) &&
+              item.status != TargetSectionStatus.adding,
+        )
+        .toList();
+    for (final item in removed) {
+      targetSections.remove(item);
+      if (item.status != TargetSectionStatus.added) {
+        addLog('Removed: ${item.courseCode} Section ${item.sectionName}');
       }
-      notifyListeners();
-    } catch (_) {}
-  }
-
-  AdvisingPhase? get tryPhase {
-    try {
-      return phase;
-    } catch (_) {
-      return null;
     }
-  }
-
-  void addSectionToQueue(TargetSectionItem item) {
-    if (targetSections.any((e) => e.sectionId == item.sectionId)) return;
-    targetSections.add(item);
-    final replacement = item.replacement;
-    if (replacement == null) {
-      addLog('Queued: ${item.courseCode} Section ${item.sectionName}');
-    } else {
+    final existingIds = {for (final item in targetSections) item.sectionId};
+    for (final item in desired) {
+      if (existingIds.contains(item.sectionId)) continue;
+      targetSections.add(item);
+      final replacement = item.replacement;
       addLog(
-        'Queued replacement priority ${_replacementPriority(item)}: '
-        '${replacement.courseCode} Sec ${replacement.sectionName} → '
-        '${item.courseCode} Sec ${item.sectionName}',
+        replacement == null
+            ? 'Queued: ${item.courseCode} Section ${item.sectionName}'
+            : 'Queued replacement: ${replacement.courseCode} Sec '
+                  '${replacement.sectionName} → ${item.courseCode} Sec '
+                  '${item.sectionName}',
       );
     }
-    unawaited(saveQueueToStorage());
-  }
-
-  int _replacementPriority(TargetSectionItem item) {
-    final groupKey = item.replacement?.groupKey;
-    if (groupKey == null) return 0;
-    return targetSections
-            .where((entry) => entry.replacement?.groupKey == groupKey)
-            .toList()
-            .indexOf(item) +
-        1;
-  }
-
-  void moveSectionPriority(int sectionId, int offset) {
-    final index = targetSections.indexWhere((e) => e.sectionId == sectionId);
-    if (index == -1) return;
-    final item = targetSections[index];
-    final groupKey = item.replacement?.groupKey;
-    if (groupKey == null) return;
-    final group = targetSections
-        .where((entry) => entry.replacement?.groupKey == groupKey)
-        .toList();
-    final groupIndex = group.indexOf(item);
-    final nextGroupIndex = groupIndex + offset;
-    if (nextGroupIndex < 0 || nextGroupIndex >= group.length) return;
-    final other = group[nextGroupIndex];
-    final otherIndex = targetSections.indexOf(other);
-    targetSections[index] = other;
-    targetSections[otherIndex] = item;
-    addLog(
-      '${item.courseCode} Sec ${item.sectionName} moved to replacement '
-      'priority ${nextGroupIndex + 1}',
-    );
-    unawaited(saveQueueToStorage());
-  }
-
-  void removeSectionFromQueue(int sectionId) {
-    final index = targetSections.indexWhere((e) => e.sectionId == sectionId);
-    if (index != -1) {
-      final item = targetSections.removeAt(index);
-      addLog('Removed: ${item.courseCode} Section ${item.sectionName}');
-      unawaited(saveQueueToStorage());
+    if (isRunning && (targetSections.isEmpty || hasCompletedQueue)) {
+      stop();
+      return;
     }
-  }
-
-  void clearQueue() {
-    targetSections.clear();
-    addLog('Queue cleared');
-    unawaited(saveQueueToStorage());
     notifyListeners();
   }
 
@@ -640,7 +568,6 @@ class AdvisingAutoEngine extends ChangeNotifier {
       }
     } else {
       targetSections.clear();
-      unawaited(saveQueueToStorage());
     }
     activityLogs.clear();
     unawaited(AdvisingBackground.stop());
@@ -977,7 +904,6 @@ class AdvisingAutoEngine extends ChangeNotifier {
           entry.sectionId == item.sectionId ||
           entry.replacement?.groupKey == rep.groupKey,
     );
-    unawaited(saveQueueToStorage());
     onReplacementCompleted?.call();
     if (targetSections.isEmpty) stop();
     notifyListeners();
