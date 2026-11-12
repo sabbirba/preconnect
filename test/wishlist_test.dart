@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:preconnect/api/wishlist_engine.dart';
+import 'package:preconnect/tools/string_utils.dart';
 
 Map<String, dynamic> _course(int id, String code, int credit) => {
   'courseId': id,
@@ -83,5 +84,18 @@ void main() {
     expect(fallback.status, WishlistQueueStatus.queued);
     expect(fallback.credit, 0);
     expect(fallback.note, isNull);
+  });
+
+  test('title cases course names and count labels', () {
+    expect(
+      titleCaseText('MATHEMATICS III: COMPLEX VARIABLES & LAPLACE'),
+      'Mathematics III: Complex Variables & Laplace',
+    );
+    expect(
+      titleCaseText('INTRODUCTION TO POLITICAL SCIENCE'),
+      'Introduction to Political Science',
+    );
+    expect(countLabel(1, 'Credit'), '1 Credit');
+    expect(countLabel(15, 'Credit'), '15 Credits');
   });
 }

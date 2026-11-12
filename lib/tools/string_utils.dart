@@ -170,3 +170,43 @@ String titleCaseWords(String value) {
       })
       .join(' ');
 }
+
+const Set<String> _minorTitleWords = {
+  'a',
+  'an',
+  'and',
+  'as',
+  'at',
+  'but',
+  'by',
+  'for',
+  'from',
+  'in',
+  'into',
+  'nor',
+  'of',
+  'on',
+  'or',
+  'the',
+  'to',
+  'via',
+  'with',
+};
+
+final RegExp _titleWord = RegExp(r"[A-Za-z][A-Za-z']*");
+final RegExp _romanNumeral = RegExp(r'^[ivx]+$');
+
+String titleCaseText(String value) {
+  var isFirst = true;
+  return value.trim().replaceAllMapped(_titleWord, (match) {
+    final lower = match[0]!.toLowerCase();
+    final first = isFirst;
+    isFirst = false;
+    if (_romanNumeral.hasMatch(lower)) return lower.toUpperCase();
+    if (!first && _minorTitleWords.contains(lower)) return lower;
+    return lower[0].toUpperCase() + lower.substring(1);
+  });
+}
+
+String countLabel(int count, String singular, [String? plural]) =>
+    '$count ${count == 1 ? singular : plural ?? '${singular}s'}';

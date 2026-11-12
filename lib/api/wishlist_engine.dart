@@ -5,6 +5,7 @@ import 'package:preconnect/api/advising_service.dart';
 import 'package:preconnect/api/api_client.dart';
 import 'package:preconnect/api/api_config.dart';
 import 'package:preconnect/tools/advising_background.dart';
+import 'package:preconnect/tools/string_utils.dart';
 import 'package:preconnect/tools/app_storage.dart';
 import 'package:preconnect/tools/storage_keys.dart';
 import 'package:preconnect/tools/time_utils.dart';
@@ -98,8 +99,7 @@ Map<String, dynamic>? findWishlistCourse(
   return null;
 }
 
-String wishlistCourseCount(int count) =>
-    '$count ${count == 1 ? 'course' : 'courses'}';
+String wishlistCourseCount(int count) => countLabel(count, 'course');
 
 enum WishlistQueueStatus { queued, adding, failed }
 

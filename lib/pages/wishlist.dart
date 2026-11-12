@@ -7,6 +7,7 @@ import 'package:preconnect/api/progress.dart';
 import 'package:preconnect/api/wishlist_engine.dart';
 import 'package:preconnect/pages/shared_widgets/seat_card.dart';
 import 'package:preconnect/pages/ui_kit.dart';
+import 'package:preconnect/tools/string_utils.dart';
 import 'package:preconnect/tools/app_storage.dart';
 import 'package:preconnect/tools/time_utils.dart';
 
@@ -378,7 +379,7 @@ class _WishlistPageState extends State<WishlistPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  '${wishlistCourseCount(count)} · $credits credits',
+                  '${countLabel(count, 'Course')} · ${countLabel(credits, 'Credit')}',
                   style: TextStyle(
                     color: textPrimary,
                     fontSize: 14,
@@ -413,17 +414,17 @@ class _WishlistPageState extends State<WishlistPage> {
   }
 
   String _summaryStatus(WishlistCreditLimit? limit, bool withinLimit) {
-    if (_window == _WishlistWindow.completed) return 'Wishlist phase completed';
+    if (_window == _WishlistWindow.completed) return 'Wishlist Phase Completed';
     if (_window == _WishlistWindow.closed) {
       final opensAt = _opensAt;
       return opensAt == null
-          ? 'Wishlist is not open yet'
+          ? 'Wishlist Is Not Open Yet'
           : 'Opens at ${AppTime.formatDateTime(opensAt)}';
     }
     if (_isConfirmed) return 'Confirmed on Connect';
-    if (limit == null) return 'Not confirmed';
-    final range = '${limit.min}–${limit.max} credits';
-    return withinLimit ? 'Limit $range' : 'Choose $range to confirm';
+    if (limit == null) return 'Not Confirmed';
+    final range = '${limit.min}–${limit.max} Credits';
+    return withinLimit ? 'Limit $range' : 'Choose $range to Confirm';
   }
 
   String _autoRunStatus() {
@@ -515,7 +516,7 @@ class _WishlistPageState extends State<WishlistPage> {
                   ),
                   const Gap(3),
                   Text(
-                    row.name,
+                    titleCaseText(row.name),
                     style: TextStyle(color: textSecondary, fontSize: 11),
                   ),
                   if (label != null) ...[
@@ -536,7 +537,7 @@ class _WishlistPageState extends State<WishlistPage> {
             ),
             const Gap(12),
             Text(
-              '${row.credit} credits',
+              countLabel(row.credit, 'Credit'),
               style: TextStyle(
                 color: textPrimary,
                 fontSize: 14,

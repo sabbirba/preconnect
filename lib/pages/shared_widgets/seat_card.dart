@@ -130,7 +130,7 @@ class SeatCard extends StatelessWidget {
                     if (item.courseName.trim().isNotEmpty) ...[
                       const Gap(2),
                       Text(
-                        item.courseName.trim(),
+                        titleCaseText(item.courseName),
                         style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w500,
@@ -164,7 +164,7 @@ class SeatCard extends StatelessWidget {
                               ),
                             if (item.credits > 0)
                               TextSpan(
-                                text: '${item.credits} credits',
+                                text: countLabel(item.credits, 'Credit'),
                                 style: TextStyle(
                                   color: textSecondary,
                                   fontWeight: FontWeight.w500,
