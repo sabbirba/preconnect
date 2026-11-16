@@ -21,7 +21,7 @@ dependencies:
   intl: ^0.20.3
   mobile_scanner: ^7.5.0
   image_picker: ^1.2.4
-  archive: ^4.6.0
+  archive: ^4.7.1
   barcode_widget: ^2.0.4
   flutter_flip_card: ^0.0.6
   cached_network_image: ^4.0.6
@@ -37,7 +37,7 @@ dependencies:
   flutter_secure_storage: ^11.2.0
   firebase_core: ^5.1.0
   firebase_messaging: ^17.0.1
-  flutter_local_notifications: ^23.0.0
+  flutter_local_notifications: ^23.0.2
   flutter_cache_manager: ^3.4.5
   package_info_plus: ^10.2.1
   device_info_plus: ^13.2.0
