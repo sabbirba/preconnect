@@ -5,6 +5,8 @@ Entries are written for students, not developers — plain language, no commit h
 
 ## [Unreleased]
 
+## [2.1.6] — 2026-11-22
+
 - Faster chat: unread counts and the latest message in each room update instantly.
 - Only section chats and mentions send notifications; course chats and the Lounge stay quiet.
 - Typing indicator removed.
