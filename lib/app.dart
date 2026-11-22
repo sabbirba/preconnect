@@ -567,6 +567,7 @@ class _MyAppState extends State<MyApp>
   void _onConnectivityChanged(List<ConnectivityResult> results) {
     final isOnline =
         results.isNotEmpty && results.any((r) => r != ConnectivityResult.none);
+    unawaited(ChatService.instance.pause());
     if (isOnline) {
       if (_initialLoggedIn) {
         MercureService().connect();
