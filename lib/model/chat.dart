@@ -317,7 +317,6 @@ class ChatSettings {
     this.pollMaxOptions = 6,
     this.pollsEnabled = true,
     this.pdfsEnabled = true,
-    this.typingEnabled = true,
     this.reviewsEnabled = true,
     this.materialsEnabled = true,
     this.unsendEnabled = true,
@@ -341,7 +340,6 @@ class ChatSettings {
       pollMaxOptions: positive('pollMaxOptions', 6),
       pollsEnabled: on('pollsEnabled'),
       pdfsEnabled: on('pdfsEnabled'),
-      typingEnabled: on('typingEnabled'),
       reviewsEnabled: on('reviewsEnabled'),
       materialsEnabled: on('materialsEnabled'),
       unsendEnabled: on('unsendEnabled'),
@@ -365,7 +363,6 @@ class ChatSettings {
   final int pollMaxOptions;
   final bool pollsEnabled;
   final bool pdfsEnabled;
-  final bool typingEnabled;
   final bool reviewsEnabled;
   final bool materialsEnabled;
   final bool unsendEnabled;
@@ -384,7 +381,6 @@ class ChatSettings {
     'pollMaxOptions': pollMaxOptions,
     'pollsEnabled': pollsEnabled,
     'pdfsEnabled': pdfsEnabled,
-    'typingEnabled': typingEnabled,
     'reviewsEnabled': reviewsEnabled,
     'materialsEnabled': materialsEnabled,
     'unsendEnabled': unsendEnabled,
@@ -483,22 +479,19 @@ List<Map<String, dynamic>> _maps(Object? value) => value is List
     : const <Map<String, dynamic>>[];
 
 class ChatRecent {
-  const ChatRecent(this.messages, this.reactions, {this.lastMessageAt = 0});
+  const ChatRecent(this.messages, this.reactions);
 
   factory ChatRecent.fromJson(Map<String, dynamic> json) => ChatRecent(
     _maps(json['messages']).map(ChatMessage.fromJson).toList(),
     _maps(json['reactions']).map(ChatReaction.fromJson).toList(),
-    lastMessageAt: _int(json['lastMessageAt']),
   );
 
   static const ChatRecent empty = ChatRecent(<ChatMessage>[], <ChatReaction>[]);
 
   final List<ChatMessage> messages;
   final List<ChatReaction> reactions;
-  final int lastMessageAt;
 
   Map<String, dynamic> toJson() => <String, dynamic>{
-    'lastMessageAt': lastMessageAt,
     'messages': [for (final message in messages) message.toJson()],
     'reactions': [for (final reaction in reactions) reaction.toJson()],
   };

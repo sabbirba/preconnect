@@ -5,6 +5,11 @@ Entries are written for students, not developers — plain language, no commit h
 
 ## [Unreleased]
 
+- Faster chat: unread counts and the latest message in each room update instantly.
+- Only section chats and mentions send notifications; course chats and the Lounge stay quiet.
+- Typing indicator removed.
+- Chat uses less battery and data in the background.
+
 ## [2.1.5] — 2026-11-12
 
 - Pictures in notifications, even on a locked phone.

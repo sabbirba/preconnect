@@ -73,8 +73,6 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
   bool _coolingDown = false;
   String? _timeShownFor;
   List<ChatVote> _votes = const <ChatVote>[];
-  final Map<String, String> _typing = <String, String>{};
-  final Map<String, Timer> _typingTimers = <String, Timer>{};
   late int _moderatedAt = _room.moderatedAt;
 
   ChatRoom get _room => widget.room;
@@ -102,8 +100,8 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
     _unreadSince = _chat.lastReadAt(_room.id);
     _scroll.addListener(_onScroll);
     _chat.rooms.addListener(_onRoomsChanged);
+    _chat.live.addListener(_onLiveChanged);
     Drafts.instance.bind(_input, ChatService.draftKey(_room.id));
-    _input.addListener(_onInputChanged);
     unawaited(_load());
   }
 
@@ -111,6 +109,7 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
   void dispose() {
     if (_chat.activeRoomId == _room.id) _chat.activeRoomId = null;
     _chat.rooms.removeListener(_onRoomsChanged);
+    _chat.live.removeListener(_onLiveChanged);
     if (!_hasNewer) {
       _chat.remember(
         _room.id,
@@ -121,9 +120,6 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
     if (_readTimer?.isActive ?? false) _markSeenRead();
     _readTimer?.cancel();
     _cooldownTimer?.cancel();
-    for (final timer in _typingTimers.values) {
-      timer.cancel();
-    }
     unawaited(_watch?.then((watch) => watch.cancel()));
     _scroll.dispose();
     _input.dispose();
@@ -142,6 +138,14 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
     unawaited(_load());
   }
 
+  void _onLiveChanged() {
+    if (!_chat.live.value) {
+      _watch = null;
+    } else if (_watch == null && mounted) {
+      unawaited(_load());
+    }
+  }
+
   Future<void> _load() async {
     try {
       final watch = _watch ??= _chat.watchRoom(
@@ -149,9 +153,15 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
         onMessage: _onIncoming,
         onReaction: _onReaction,
         onVote: _onVote,
-        onTyping: _onTyping,
       );
-      unawaited(watch.then((_) {}, onError: (Object _) => _watch = null));
+      unawaited(
+        watch.then(
+          (_) {},
+          onError: (Object _) {
+            if (identical(_watch, watch)) _watch = null;
+          },
+        ),
+      );
       final sent = _messages.where((m) => !m.isPending).toList();
       final after = sent.isEmpty ? null : sent.last;
       final messages = await _chat.loadMessages(_room.id, after: after);
@@ -432,29 +442,6 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
       if (message.isPoll && !message.isPending) message.id,
   ];
 
-  void _onInputChanged() {
-    if (_room.active && _input.text.trim().isNotEmpty) {
-      _chat.sendTyping(_room.id);
-    }
-  }
-
-  void _onTyping(String studentId, String name) {
-    if (!mounted || studentId.isEmpty) return;
-    _typingTimers[studentId]?.cancel();
-    _typingTimers[studentId] = Timer(
-      ChatService.typingInterval + const Duration(seconds: 2),
-      () => _stopTyping(studentId),
-    );
-    setState(() => _typing[studentId] = name);
-  }
-
-  void _stopTyping(String studentId) {
-    _typingTimers.remove(studentId)?.cancel();
-    if (mounted && _typing.containsKey(studentId)) {
-      setState(() => _typing.remove(studentId));
-    }
-  }
-
   void _onVote(ChatVote vote, bool removed) {
     if (!mounted) return;
     setState(() {
@@ -495,7 +482,6 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
 
   void _onIncoming(ChatMessage message) {
     if (!mounted) return;
-    _stopTyping(message.author.id);
     final follow = _anchorId != null && _isAtLatest;
     if (!_isAtLatest) setState(() => _newBelow++);
     if (_hasNewer) return;
@@ -908,7 +894,7 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
               );
             },
           ),
-        if (_room.kind != ChatRoomKind.lounge && _room.active)
+        if (_room.kind == ChatRoomKind.section && _room.active)
           ValueListenableBuilder<Set<String>>(
             valueListenable: _chat.muted,
             builder: (context, muted, _) {
@@ -1331,7 +1317,6 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          if (_typing.isNotEmpty) _TypingLine(names: _typing.values.toList()),
           if (_replyTo != null)
             _ComposerBanner(
               icon: Icons.reply_rounded,
@@ -3005,40 +2990,6 @@ class _FileCardState extends State<_FileCard> {
                 child: AppSpinner(size: 18),
               ),
           ],
-        ),
-      ),
-    );
-  }
-}
-
-class _TypingLine extends StatelessWidget {
-  const _TypingLine({required this.names});
-
-  final List<String> names;
-
-  @override
-  Widget build(BuildContext context) {
-    final first = names
-        .map((name) => name.split(' ').where((p) => p.length > 1).firstOrNull)
-        .whereType<String>()
-        .toList();
-    final label = switch (first.length) {
-      0 => 'Someone is typing…',
-      1 => '${first.first} is typing…',
-      2 => '${first[0]} and ${first[1]} are typing…',
-      _ => 'Several people are typing…',
-    };
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
-      child: Align(
-        alignment: Alignment.centerLeft,
-        child: Text(
-          label,
-          style: TextStyle(
-            fontSize: 12,
-            fontStyle: FontStyle.italic,
-            color: AppPalette.textSecondary(context),
-          ),
         ),
       ),
     );

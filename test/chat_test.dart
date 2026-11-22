@@ -34,8 +34,14 @@ void main() {
       'chatr_abcdefghijklmnopqrstuvwx',
       'chatu_abcdefghijklmnopqrstuvwx',
     });
+    expect(await ChatService.isUser(), isTrue);
     await ChatService.instance.reset();
     expect(await ChatService.savedPushTopics(), isEmpty);
+    expect(await ChatService.isUser(), isFalse);
+    await ChatService.markUsed();
+    expect(await ChatService.isUser(), isTrue);
+    await ChatService.instance.reset();
+    expect(await ChatService.isUser(), isFalse);
   });
 
   test('drafts survive a restart and clear when sent', () async {
@@ -329,16 +335,11 @@ void main() {
       studentId: 's1',
       emoji: '👍',
     );
-    final cached = ChatRecent(
-      [original],
-      const [reaction],
-      lastMessageAt: 1794300000000,
-    );
+    final cached = ChatRecent([original], const [reaction]);
     final restored = ChatRecent.fromJson(
       jsonDecode(jsonEncode(cached.toJson())) as Map<String, dynamic>,
     );
     final message = restored.messages.single;
-    expect(restored.lastMessageAt, 1794300000000);
     expect(message.id, 'm2');
     expect(message.author.name, 'Test Student B');
     expect(message.author.photo, '/p/b.jpg');

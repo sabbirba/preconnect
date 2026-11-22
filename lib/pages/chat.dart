@@ -30,6 +30,7 @@ class _ChatPageState extends State<ChatPage> {
   @override
   void initState() {
     super.initState();
+    unawaited(ChatService.markUsed());
     unawaited(_load());
   }
 
@@ -204,6 +205,16 @@ String _roomSubtitle(ChatRoom room) {
   final draft = Drafts.instance.read(ChatService.draftKey(room.id)).trim();
   if (draft.isNotEmpty) return 'Draft: ${draft.replaceAll('\n', ' ')}';
   final chat = ChatService.instance;
+  String sender(String id, String name) => id == chat.me?.id
+      ? 'You'
+      : name
+            .split(' ')
+            .firstWhere(
+              (part) => part.length > 1 && !part.endsWith('.'),
+              orElse: () => name,
+            );
+  final live = chat.preview(room.id);
+  if (live != null) return '${sender(live.author, live.name)}: ${live.text}';
   final blocked = chat.blocked.value;
   final visible = chat
       .recent(room.id)
@@ -214,14 +225,6 @@ String _roomSubtitle(ChatRoom room) {
     return room.lastMessageAt > 0 ? ' ' : 'No messages yet';
   }
   final last = visible.last;
-  final sender = last.author.id == chat.me?.id
-      ? 'You'
-      : last.author.name
-            .split(' ')
-            .firstWhere(
-              (part) => part.length > 1 && !part.endsWith('.'),
-              orElse: () => last.author.name,
-            );
   final event = last.event;
   final body = event != null
       ? '${personalSchedulesKindLabel(event.kind)}: ${last.text}'
@@ -236,7 +239,7 @@ String _roomSubtitle(ChatRoom room) {
       : last.images.length > 1
       ? '${last.images.length} Photos'
       : 'Photo';
-  return '$sender: $body';
+  return '${sender(last.author.id, last.author.name)}: $body';
 }
 
 String _roomTime(int lastMessageAt) {
@@ -323,7 +326,7 @@ class _RoomTile extends StatelessWidget {
                             ),
                           ),
                         ),
-                        if (muted)
+                        if (muted && isSection)
                           Padding(
                             padding: const EdgeInsets.only(left: 6),
                             child: Icon(

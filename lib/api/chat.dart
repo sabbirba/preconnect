@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
@@ -41,6 +42,10 @@ class ChatWatch {
   Future<void> cancel() => _cancel();
 }
 
+typedef _Topic = (String, SubscriptionFunc, Map<String, dynamic>);
+
+typedef ChatPreview = ({String author, String name, String text});
+
 class ChatService {
   ChatService._();
 
@@ -56,12 +61,14 @@ class ChatService {
   ];
   static const int pageSize = 50;
   static const int pinMaxLength = 500;
+  static const int _unreadCap = 10;
   static const int _scheduledLimit = 500;
   static const Duration scheduleReminderLead = Duration(hours: 1);
   static const Duration _sessionLifetime = Duration(hours: 5);
   static const Duration _preloadInterval = Duration(minutes: 5);
   static const Duration _fileTokenLifetime = Duration(minutes: 2);
-  static const Duration typingInterval = Duration(seconds: 3);
+  static const Duration _retryMin = Duration(seconds: 30);
+  static const Duration _retryMax = Duration(minutes: 10);
   static const String _messageExpand = 'author,replyTo,replyTo.author';
 
   final ValueNotifier<List<ChatRoom>> rooms = ValueNotifier<List<ChatRoom>>(
@@ -75,6 +82,7 @@ class ChatService {
   final ValueNotifier<Set<String>> muted = ValueNotifier<Set<String>>(
     const <String>{},
   );
+  final ValueNotifier<bool> live = ValueNotifier<bool>(false);
   final ValueNotifier<int> recentVersion = ValueNotifier<int>(0);
   final ValueNotifier<int> scheduledVersion = ValueNotifier<int>(0);
   final ValueNotifier<Map<String, ChatFaculty>> facultyRatings =
@@ -89,19 +97,23 @@ class ChatService {
   String _personalTopic = '';
   DateTime? _sessionAt;
   Future<void>? _starting;
-  String? _fileToken;
+  Future<String>? _fileToken;
   DateTime? _fileTokenAt;
   final Map<String, String> _memberIds = <String, String>{};
   final Map<String, DateTime> _lastRead = <String, DateTime>{};
   final Map<String, ChatRecent> _recent = <String, ChatRecent>{};
+  final Map<String, ChatPreview> _previews = <String, ChatPreview>{};
+  final Map<String, int> _topicRefs = <String, int>{};
   Future<List<ChatRoom>>? _roomsLoading;
+  Future<void>? _unreadLoading;
   Future<ChatWatch>? _roomsWatch;
-  DateTime? _preloadedAt;
+  DateTime? _retryAt;
+  Duration _retryDelay = _retryMin;
   DateTime? _roomsLoadedAt;
   Timer? _persistTimer;
-  DateTime? _typingSentAt;
   Future<void> _scheduling = Future<void>.value();
   int _generation = 0;
+  int _liveEpoch = 0;
   String? activeRoomId;
 
   ChatAuthor? get me => _me;
@@ -201,7 +213,7 @@ class ChatService {
     _me = ChatAuthor.fromJson(student);
     _personalTopic = '${body['pushTopic'] ?? ''}';
     _sessionAt = DateTime.now();
-    _fileToken = null;
+    _fileTokenAt = null;
   }
 
   Object? _decodeMessage(String body) {
@@ -227,20 +239,7 @@ class ChatService {
 
   bool hasRecent(String roomId) => _recent.containsKey(roomId);
 
-  ChatRoom? _room(String roomId) {
-    for (final room in rooms.value) {
-      if (room.id == roomId) return room;
-    }
-    return null;
-  }
-
-  bool isFresh(String roomId) {
-    final cached = _recent[roomId];
-    final room = _room(roomId);
-    return cached != null &&
-        room != null &&
-        cached.lastMessageAt >= room.lastMessageAt;
-  }
+  ChatPreview? preview(String roomId) => _previews[roomId];
 
   void remember(
     String roomId,
@@ -251,10 +250,10 @@ class ChatService {
         ? messages.sublist(messages.length - pageSize)
         : messages;
     final ids = kept.map((message) => message.id).toSet();
+    _previews.remove(roomId);
     _recent[roomId] = ChatRecent(
       kept,
       reactions.where((r) => ids.contains(r.messageId)).toList(),
-      lastMessageAt: _room(roomId)?.lastMessageAt ?? 0,
     );
     recentVersion.value++;
     _persistRecentSoon();
@@ -410,35 +409,36 @@ class ChatService {
     });
   }
 
+  static Future<bool> isUser() async =>
+      await AppStorage.instance.getBool(StorageKeys.chatUsed) ??
+      (await savedPushTopics()).isNotEmpty;
+
+  static Future<void> markUsed() =>
+      AppStorage.instance.setBool(StorageKeys.chatUsed, true);
+
   Future<void> preload() async {
     restoreCache();
-    final last = _preloadedAt;
-    if (last != null && DateTime.now().difference(last) < _preloadInterval) {
-      return;
-    }
-    _preloadedAt = DateTime.now();
+    final retryAt = _retryAt;
+    if (retryAt != null && DateTime.now().isBefore(retryAt)) return;
     try {
-      final list = await loadRooms(force: true);
-      unawaited(keepRoomsLive());
-      await Future.wait(
-        list.where((room) => !isFresh(room.id)).map((r) => _sync(r.id)),
-      );
+      final resuming = _roomsWatch == null;
+      await loadRooms();
+      if (resuming) await refreshUnread();
+      await keepRoomsLive();
+      _retryAt = null;
+      _retryDelay = _retryMin;
     } catch (_) {
-      _preloadedAt = null;
+      _retryAt = DateTime.now().add(_retryDelay);
+      _retryDelay = _retryDelay * 2 > _retryMax ? _retryMax : _retryDelay * 2;
     }
   }
 
-  Future<void> _sync(String roomId) async {
-    final cached = recent(roomId);
-    final fresh = await loadMessages(roomId, after: cached.messages.lastOrNull);
-    if (isViewing(roomId)) return;
-    final kept = fresh.length >= pageSize
-        ? const <ChatMessage>[]
-        : cached.messages;
-    final known = {for (final message in kept) message.id};
-    final added = fresh.where((m) => !known.contains(m.id)).toList();
-    final reactions = await loadReactions(added.map((m) => m.id).toList());
-    remember(roomId, [...kept, ...added], [...cached.reactions, ...reactions]);
+  Future<void> pause() async {
+    _liveEpoch++;
+    _roomsWatch = null;
+    _topicRefs.clear();
+    live.value = false;
+    await _pb?.realtime.unsubscribe();
   }
 
   Future<List<ChatRoom>> loadRooms({bool force = false}) async {
@@ -511,7 +511,10 @@ class ChatService {
     return true;
   }
 
-  Future<void> refreshUnread() async {
+  Future<void> refreshUnread() => _unreadLoading ??= _refreshUnread()
+      .whenComplete(() => _unreadLoading = null);
+
+  Future<void> _refreshUnread() async {
     final pb = await _client();
     final result = await pb.send('/api/chat/unread');
     final counts = result is Map ? result['counts'] : null;
@@ -524,46 +527,135 @@ class ChatService {
     };
   }
 
-  Future<ChatWatch> keepRoomsLive() =>
-      _roomsWatch ??= _watchRooms().catchError((Object error) {
-        _roomsWatch = null;
-        throw error;
-      });
+  Future<ChatWatch> keepRoomsLive() => _roomsWatch ??= _watchRooms();
 
   Future<ChatWatch> _watchRooms() async {
-    final pb = await _client();
-    final stopMembers = await pb.collection('chat_members').subscribe('*', (
-      event,
-    ) {
-      final record = event.record;
-      if (event.action != 'update' || record == null) return;
-      _applyMember(record);
-      final roomId = record.getStringValue('room');
-      final isMuted = record.getBoolValue('muted');
-      if (muted.value.contains(roomId) != isMuted) {
-        _setMutedLocally(roomId, isMuted);
+    final epoch = _liveEpoch;
+    try {
+      final pb = await _client();
+      final watch = await _subscribe(pb, epoch, [
+        (
+          'chat_members/*',
+          _records(_onMember),
+          {
+            'filter': pb.filter('student = {:me}', {'me': _me?.id ?? ''}),
+          },
+        ),
+        ('chat_rooms/*', _records(_onRoom), const {}),
+        (
+          'chat_activity',
+          (message) => _onActivity(message.jsonData()),
+          const {},
+        ),
+      ]);
+      if (epoch == _liveEpoch) live.value = true;
+      return watch;
+    } catch (_) {
+      if (epoch == _liveEpoch) _roomsWatch = null;
+      rethrow;
+    }
+  }
+
+  Future<ChatWatch> _subscribe(
+    PocketBase pb,
+    int epoch,
+    List<_Topic> topics,
+  ) async {
+    Future<void> release(_Topic entry) {
+      final (topic, listener, query) = entry;
+      if (epoch != _liveEpoch) return Future<void>.value();
+      final key = _topicKey(topic, query);
+      final left = (_topicRefs[key] ?? 1) - 1;
+      if (left > 0) {
+        _topicRefs[key] = left;
+        return pb.realtime.unsubscribeByTopicAndListener(topic, listener);
       }
+      _topicRefs.remove(key);
+      return pb.realtime.unsubscribe(key);
+    }
+
+    Future<void> cancel() => Future.wait(topics.map(release));
+    if (epoch != _liveEpoch) return ChatWatch(cancel);
+    for (final (topic, _, query) in topics) {
+      final key = _topicKey(topic, query);
+      _topicRefs[key] = (_topicRefs[key] ?? 0) + 1;
+    }
+    try {
+      await Future.wait([
+        for (final (topic, listener, query) in topics)
+          pb.realtime.subscribe(topic, listener, query: query),
+      ]);
+    } catch (_) {
+      await cancel();
+      if (epoch == _liveEpoch) rethrow;
+    }
+    return ChatWatch(cancel);
+  }
+
+  static String _topicKey(String topic, Map<String, dynamic> query) =>
+      query.isEmpty
+      ? topic
+      : '$topic?options=${Uri.encodeQueryComponent(jsonEncode({'query': query}))}';
+
+  static SubscriptionFunc _records(
+    void Function(RecordSubscriptionEvent event) callback,
+  ) =>
+      (message) =>
+          callback(RecordSubscriptionEvent.fromJson(message.jsonData()));
+
+  void _onMember(RecordSubscriptionEvent event) {
+    final record = event.record;
+    if (event.action != 'update' || record == null) return;
+    _applyMember(record);
+    final roomId = record.getStringValue('room');
+    final isMuted = record.getBoolValue('muted');
+    if (muted.value.contains(roomId) != isMuted) {
+      _setMutedLocally(roomId, isMuted);
+    }
+  }
+
+  void _onRoom(RecordSubscriptionEvent event) {
+    final record = event.record;
+    if (event.action != 'update' || record == null) return;
+    final list = rooms.value;
+    final index = list.indexWhere((room) => room.id == record.id);
+    if (index < 0) return;
+    final updated = ChatRoom.fromJson({
+      ...record.toJson(),
+      'lastMessageAt': math.max(
+        list[index].lastMessageAt,
+        record.getIntValue('lastMessageAt'),
+      ),
     });
-    final stop = await pb.collection('chat_rooms').subscribe('*', (event) {
-      final record = event.record;
-      if (event.action != 'update' || record == null) return;
-      final updated = ChatRoom.fromJson(record.toJson());
-      final list = rooms.value;
-      final index = list.indexWhere((room) => room.id == updated.id);
-      if (index < 0) return;
-      final previous = list[index];
-      final moderated = _dropModerated([updated]);
-      rooms.value = [...list]..[index] = updated;
-      if ((moderated || updated.lastMessageAt > previous.lastMessageAt) &&
-          !isViewing(updated.id)) {
-        unawaited(refreshUnread().catchError((Object _) {}));
-        unawaited(_sync(updated.id).catchError((Object _) {}));
-      }
-    });
-    return ChatWatch(() async {
-      await stop();
-      await stopMembers();
-    });
+    _dropModerated([updated]);
+    rooms.value = [...list]..[index] = updated;
+  }
+
+  void _onActivity(Map<String, dynamic> data) {
+    final roomId = '${data['room'] ?? ''}';
+    final author = '${data['author'] ?? ''}';
+    final at = data['at'] is num ? (data['at'] as num).toInt() : 0;
+    final list = rooms.value;
+    final index = list.indexWhere((room) => room.id == roomId);
+    if (index < 0) return;
+    final room = list[index];
+    if (at > room.lastMessageAt) {
+      rooms.value = [...list]
+        ..[index] = ChatRoom.fromJson({...room.toJson(), 'lastMessageAt': at});
+    }
+    if (isViewing(roomId) || blocked.value.contains(author)) return;
+    _previews[roomId] = (
+      author: author,
+      name: '${data['name'] ?? ''}',
+      text: '${data['preview'] ?? ''}',
+    );
+    recentVersion.value++;
+    if (author == _me?.id) return;
+    final counts = unread.value;
+    unread.value = <String, int>{
+      ...counts,
+      roomId: math.min((counts[roomId] ?? 0) + 1, _unreadCap),
+    };
   }
 
   void _applyMember(RecordModel member) {
@@ -602,7 +694,7 @@ class ChatService {
       if (_personalTopic.isNotEmpty) _personalTopic,
       for (final room in list)
         if (room.active &&
-            room.kind != ChatRoomKind.lounge &&
+            room.kind == ChatRoomKind.section &&
             !muted.value.contains(room.id) &&
             room.pushTopic.isNotEmpty)
           room.pushTopic,
@@ -811,25 +903,6 @@ class ChatService {
         _serverMessage(error.response['message'], 'Could not update the pin.'),
       );
     }
-  }
-
-  void sendTyping(String roomId) {
-    final last = _typingSentAt;
-    final now = DateTime.now();
-    if (!settings.value.typingEnabled) return;
-    if (last != null && now.difference(last) < typingInterval) return;
-    _typingSentAt = now;
-    unawaited(
-      _client()
-          .then(
-            (pb) => pb.send(
-              '/api/chat/typing',
-              method: 'POST',
-              body: <String, dynamic>{'room': roomId},
-            ),
-          )
-          .catchError((Object _) => null),
-    );
   }
 
   Future<void> toggleReaction(
@@ -1097,14 +1170,17 @@ class ChatService {
 
   Future<String> _withFileToken(PocketBase pb, String key) async {
     final issued = _fileTokenAt;
-    if (_fileToken == null ||
-        issued == null ||
+    if (issued == null ||
         DateTime.now().difference(issued) > _fileTokenLifetime) {
-      _fileToken = await pb.files.getToken();
       _fileTokenAt = DateTime.now();
+      _fileToken = pb.files.getToken().catchError((Object error) {
+        _fileTokenAt = null;
+        throw error;
+      });
     }
+    final token = await _fileToken!;
     final separator = key.contains('?') ? '&' : '?';
-    return '$key${separator}token=${Uri.encodeQueryComponent(_fileToken!)}';
+    return '$key${separator}token=${Uri.encodeQueryComponent(token)}';
   }
 
   Future<ChatWatch> watchRoom(
@@ -1112,59 +1188,60 @@ class ChatService {
     required void Function(ChatMessage message) onMessage,
     required void Function(ChatReaction reaction, bool added) onReaction,
     required void Function(ChatVote vote, bool removed) onVote,
-    required void Function(String studentId, String name) onTyping,
   }) async {
+    final epoch = _liveEpoch;
     final pb = await _client();
-    final inRoom = pb.filter('message.room = {:room}', {'room': roomId});
-    final (stopMessages, stopReactions, stopVotes, stopTyping) = await (
-      pb
-          .collection('chat_messages')
-          .subscribe(
-            '*',
-            (event) {
-              final record = event.record;
-              if (event.action == 'create' && record != null) {
-                onMessage(ChatMessage.fromJson(record.toJson()));
-              }
-            },
-            filter: pb.filter('room = {:room}', {'room': roomId}),
-            expand: _messageExpand,
-          ),
-      pb.collection('chat_reactions').subscribe('*', (event) {
-        final record = event.record;
-        if (record == null || event.action == 'update') return;
-        onReaction(
-          ChatReaction.fromJson(record.toJson()),
-          event.action == 'create',
-        );
-      }, filter: inRoom),
-      pb.collection('chat_votes').subscribe('*', (event) {
-        final record = event.record;
-        if (record == null) return;
-        onVote(ChatVote.fromJson(record.toJson()), event.action == 'delete');
-      }, filter: inRoom),
-      pb.realtime.subscribe('chat_typing/$roomId', (event) {
-        final data = event.jsonData();
-        onTyping('${data['id'] ?? ''}', '${data['name'] ?? ''}');
-      }),
-    ).wait;
-    return ChatWatch(() async {
-      await stopMessages();
-      await stopReactions();
-      await stopVotes();
-      await stopTyping();
-    });
+    final inRoom = <String, dynamic>{
+      'filter': pb.filter('message.room = {:room}', {'room': roomId}),
+    };
+    return _subscribe(pb, epoch, [
+      (
+        'chat_messages/*',
+        _records((event) {
+          final record = event.record;
+          if (event.action == 'create' && record != null) {
+            onMessage(ChatMessage.fromJson(record.toJson()));
+          }
+        }),
+        {
+          'expand': _messageExpand,
+          'filter': pb.filter('room = {:room}', {'room': roomId}),
+        },
+      ),
+      (
+        'chat_reactions/*',
+        _records((event) {
+          final record = event.record;
+          if (record == null || event.action == 'update') return;
+          onReaction(
+            ChatReaction.fromJson(record.toJson()),
+            event.action == 'create',
+          );
+        }),
+        inRoom,
+      ),
+      (
+        'chat_votes/*',
+        _records((event) {
+          final record = event.record;
+          if (record == null) return;
+          onVote(ChatVote.fromJson(record.toJson()), event.action == 'delete');
+        }),
+        inRoom,
+      ),
+    ]);
   }
 
   Future<void> reset() async {
     _generation++;
+    final closing = pause();
     final pb = _pb;
     _pb = null;
     final saved = await savedPushTopics();
     await Future.wait(<Future<Object?>>[
       for (final topic in saved)
         FCMService.instance.unsubscribeFromTopic(topic),
-      if (pb != null) pb.realtime.unsubscribe(),
+      closing,
     ]);
     _persistTimer?.cancel();
     await Future.wait(<Future<void>>[
@@ -1174,6 +1251,7 @@ class ChatService {
         StorageKeys.chatRecent,
         StorageKeys.chatSettings,
         StorageKeys.chatScheduled,
+        StorageKeys.chatUsed,
       ])
         AppStorage.instance.remove(key),
     ]);
@@ -1189,8 +1267,9 @@ class ChatService {
     _memberIds.clear();
     _lastRead.clear();
     _recent.clear();
-    _roomsWatch = null;
-    _preloadedAt = null;
+    _previews.clear();
+    _retryAt = null;
+    _retryDelay = _retryMin;
     _roomsLoadedAt = null;
     activeRoomId = null;
     rooms.value = const <ChatRoom>[];

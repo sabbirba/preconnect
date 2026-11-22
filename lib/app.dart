@@ -556,6 +556,7 @@ class _MyAppState extends State<MyApp>
       if (state == AppLifecycleState.paused) {
         MercureService().disconnect();
         DatasetSync.instance.stopLive();
+        unawaited(ChatService.instance.pause());
       }
       if (_appLockEnabled && _isUnlocked && !_isUnlocking) {
         _lastPausedAt ??= DateTime.now();
@@ -606,7 +607,9 @@ class _MyAppState extends State<MyApp>
           RefreshBus.instance.notify(reason: 'home_dashboard');
         }
         unawaited(NotificationsPage.preloadData(forceRefresh: forceRefresh));
-        unawaited(ChatService.instance.preload());
+        if (await ChatService.isUser()) {
+          unawaited(ChatService.instance.preload());
+        }
       }
     } catch (_) {
     } finally {

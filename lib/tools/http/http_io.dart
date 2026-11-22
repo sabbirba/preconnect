@@ -40,7 +40,7 @@ http.Client _cronetClient() {
     storagePath: storage.path,
     enableHttp2: true,
     enableQuic: true,
-    enableBrotli: true,
+    enableBrotli: false,
     quicHints: [for (final host in HttpUtils.connectionHosts) (host, 443, 443)],
     enableStaleDns: true,
     useStaleOnNameNotResolved: true,
