@@ -13,7 +13,7 @@ Use this guide when you want to build, test, or contribute to the app. You do no
 - Android Studio with Android SDK 37.0
 - An Android emulator or physical Android device
 - Chrome for Chrome extension testing
-- Xcode only if you plan to work on iOS or macOS
+- Xcode 27 or later only if you plan to work on iOS or macOS
 
 Linux and Windows contributors can work on Dart, tests, Android, web, documentation, APIs, models, and most shared application code. This repository does not ship Linux or Windows desktop applications. Windows contributors should use WSL or Git Bash for shell scripts such as the extension builder.
 

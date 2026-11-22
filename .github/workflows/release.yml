@@ -548,7 +548,7 @@ jobs:
     name: Build iOS
     if: ${{ github.event_name == 'workflow_dispatch' || needs.detect-pending.outputs.should_run == 'true' }}
     needs: [detect-pending, prepare-version]
-    runs-on: macos-latest
+    runs-on: xcode-27
     timeout-minutes: 90
     permissions:
       contents: write
@@ -565,6 +565,15 @@ jobs:
       - name: Apply Version
         shell: bash
         run: ./tool/sync_versions.sh apply "${{ needs.prepare-version.outputs.version_name }}" "${{ needs.prepare-version.outputs.version_code }}"
+
+      - name: Select Xcode 27
+        shell: bash
+        run: |
+          sudo xcode-select -s /Applications/Xcode_27.2.app
+          xcodebuild -version
+          sdk_version="$(xcrun --sdk iphoneos --show-sdk-version)"
+          echo "SDK iphoneos $sdk_version"
+          [ "${sdk_version%%.*}" -ge 27 ]
 
       - name: Set Up Flutter
         uses: subosito/flutter-action@v2.23.0
@@ -607,9 +616,9 @@ jobs:
           path: |
             ~/Library/Developer/Xcode/DerivedData
             ~/Library/Caches/org.swift.swiftpm
-          key: ${{ runner.os }}-xcode-deriveddata-ios-${{ hashFiles('ios/**/Package.resolved', 'pubspec.lock') }}
+          key: ${{ runner.os }}-xcode27-deriveddata-ios-${{ hashFiles('ios/**/Package.resolved', 'pubspec.lock') }}
           restore-keys: |
-            ${{ runner.os }}-xcode-deriveddata-ios-
+            ${{ runner.os }}-xcode27-deriveddata-ios-
 
       - name: Detect iOS Signing
         id: ios_signing
@@ -749,7 +758,7 @@ jobs:
     name: Build macOS
     if: ${{ github.event_name == 'workflow_dispatch' || needs.detect-pending.outputs.should_run == 'true' }}
     needs: [detect-pending, prepare-version]
-    runs-on: macos-latest
+    runs-on: xcode-27
     timeout-minutes: 90
     permissions:
       contents: write
@@ -766,6 +775,15 @@ jobs:
       - name: Apply Version
         shell: bash
         run: ./tool/sync_versions.sh apply "${{ needs.prepare-version.outputs.version_name }}" "${{ needs.prepare-version.outputs.version_code }}"
+
+      - name: Select Xcode 27
+        shell: bash
+        run: |
+          sudo xcode-select -s /Applications/Xcode_27.2.app
+          xcodebuild -version
+          sdk_version="$(xcrun --sdk macosx --show-sdk-version)"
+          echo "SDK macosx $sdk_version"
+          [ "${sdk_version%%.*}" -ge 27 ]
 
       - name: Set Up Flutter
         uses: subosito/flutter-action@v2.23.0
@@ -808,9 +826,9 @@ jobs:
           path: |
             ~/Library/Developer/Xcode/DerivedData
             ~/Library/Caches/org.swift.swiftpm
-          key: ${{ runner.os }}-xcode-deriveddata-macos-${{ hashFiles('macos/**/Package.resolved', 'pubspec.lock') }}
+          key: ${{ runner.os }}-xcode27-deriveddata-macos-${{ hashFiles('macos/**/Package.resolved', 'pubspec.lock') }}
           restore-keys: |
-            ${{ runner.os }}-xcode-deriveddata-macos-
+            ${{ runner.os }}-xcode27-deriveddata-macos-
 
       - name: Detect macOS Signing
         id: macos_signing

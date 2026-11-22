@@ -9,7 +9,7 @@ PreConnect is a Flutter academic companion for BRAC University students. Support
 - Flutter stable; the app requires Dart 3.8.1 or newer and MCP requires Dart 3.9 or newer
 - Git
 - Android Studio, Android SDK 37.0, and a compatible JDK for Android
-- Xcode on macOS for iOS and macOS
+- Xcode 27 or later (iOS 27 SDK) on macOS for iOS and macOS
 - Chrome for extension testing
 - Ruby and Bundler only for Fastlane release or store tasks
 - Node.js only for Firefox publishing automation
