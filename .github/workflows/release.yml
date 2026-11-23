@@ -527,7 +527,7 @@ jobs:
 
       - name: Set Up Ruby
         if: steps.play_auth.outputs.enabled == 'true'
-        uses: ruby/setup-ruby@v1.342.0
+        uses: ruby/setup-ruby@v1.343.0
         with:
           ruby-version: "3.3"
           bundler-cache: true
@@ -595,7 +595,7 @@ jobs:
           defaults write com.apple.dt.Xcode-CLT IDEBuildOperationMaxNumberOfConcurrentCompileJobs 4
 
       - name: Set Up Ruby
-        uses: ruby/setup-ruby@v1.342.0
+        uses: ruby/setup-ruby@v1.343.0
         with:
           ruby-version: "3.3"
           bundler-cache: true
@@ -804,7 +804,7 @@ jobs:
           defaults write com.apple.dt.Xcode-CLT IDEBuildOperationMaxNumberOfConcurrentCompileJobs 4
 
       - name: Set Up Ruby
-        uses: ruby/setup-ruby@v1.342.0
+        uses: ruby/setup-ruby@v1.343.0
         with:
           ruby-version: "3.3"
           bundler-cache: true
